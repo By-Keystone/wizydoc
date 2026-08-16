@@ -31,7 +31,7 @@ export function SettingsSidebar() {
 
   return (
     <aside className="w-56 shrink-0 border-r border-gray-200 bg-white px-3 py-6">
-      <p className="mb-3 px-3 text-xs font-semibold uppercase tracking-wide text-gray-400">
+      <p className="mb-3 px-3 text-xs font-semibold uppercase tracking-wide text-brand-gray">
         Configuración
       </p>
       <nav className="flex flex-col gap-1">
@@ -46,8 +46,8 @@ export function SettingsSidebar() {
               className={cn(
                 "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
                 isActive
-                  ? "bg-blue-50 font-medium text-blue-700"
-                  : "text-gray-600 hover:bg-gray-100 hover:text-gray-900",
+                  ? "bg-brand-teal/10 font-medium text-brand-teal"
+                  : "text-brand-gray hover:bg-gray-100 hover:text-brand-ink",
               )}
             >
               <Icon className="h-4 w-4 shrink-0" />

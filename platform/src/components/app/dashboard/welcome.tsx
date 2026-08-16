@@ -12,8 +12,8 @@ export function Welcome() {
 
   return (
     <div className="mb-8">
-      <h1 className="text-2xl font-bold text-gray-900">Hola {name} 👋</h1>
-      <p className="mt-1 text-sm text-gray-500">
+      <h1 className="text-2xl font-bold text-brand-teal-dark">Hola {name} 👋</h1>
+      <p className="mt-1 text-sm text-brand-gray">
         Bienvenido a tu panel de {membership.resourceName}
       </p>
     </div>

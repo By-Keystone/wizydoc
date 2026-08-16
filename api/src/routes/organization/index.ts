@@ -2,6 +2,7 @@ import { ApplicationError } from "@/application/errors/application.errors";
 import { UnprocessableEntity } from "@/application/errors/unprocessable-entity.errors";
 import { getOrganizationClinicsSchema } from "@/application/queries/organization/get-organization-clinics.query";
 import { getOrganizationsClinicCountSchema } from "@/application/queries/organization/get-organizations-clinic-count.query";
+import { getOrganizationsDoctorCountSchema } from "@/application/queries/organization/get-organizations-doctor-count.query";
 import {
   CreateOrganizationDto,
   createOrganizationSchema,
@@ -27,6 +28,7 @@ import { IOrganizationRepository } from "@/domain/repositories/organization.repo
 import { IUserRepository } from "@/domain/repositories/user.repository";
 import { GetOrganizationClinicsQuery } from "@/infrastructure/postgres/queries/organization/get-organization-clinics.query";
 import { GetOrganizationsClinicCountQuery } from "@/infrastructure/postgres/queries/organization/get-organizations-clinic-count.query";
+import { GetOrganizationsDoctorCountQuery } from "@/infrastructure/postgres/queries/organization/get-organizations-doctor-count.query";
 import { policy } from "@/plugins/policy";
 import { ZodTypeProvider } from "@fastify/type-provider-zod";
 import { FastifyInstance } from "fastify";
@@ -114,6 +116,39 @@ export default async function organizationRoutes(
 
         return reply.internalServerError(
           "An error occurred when getting clinic count metric",
+        );
+      }
+    },
+  );
+
+  app.get(
+    "/organization/:resourceId/metrics/doctor-count",
+    {
+      schema: { params: getOrganizationsDoctorCountSchema },
+      ...policy({
+        account: true,
+        confirmed: true,
+        onboarded: true,
+        roles: ["ADMIN"],
+      }),
+    },
+    async (request, reply) => {
+      try {
+        const { resourceId } = request.params;
+
+        const query = new GetOrganizationsDoctorCountQuery();
+
+        const result = await query.execute({ resourceId });
+
+        return reply.status(200).send(result);
+      } catch (error) {
+        console.error(
+          "An error occurred when getting organization doctor count metrics:",
+          error,
+        );
+
+        return reply.internalServerError(
+          "An error occurred when getting doctor count metric",
         );
       }
     },

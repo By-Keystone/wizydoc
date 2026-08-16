@@ -64,7 +64,7 @@ export function PhoneInput({
           setCountryCode(e.target.value);
           updateHiddenValue(e.target.value, number);
         }}
-        className="rounded-l-lg border border-r-0 border-gray-300 bg-gray-50 px-2 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+        className="rounded-l-lg border border-r-0 border-gray-300 bg-gray-50 px-2 py-2 text-sm outline-none transition focus:border-brand-teal focus:ring-2 focus:ring-brand-teal/20"
       >
         {COUNTRY_CODES.map((c) => (
           <option key={c.country} value={c.code}>
@@ -82,7 +82,7 @@ export function PhoneInput({
           setNumber(e.target.value);
           updateHiddenValue(countryCode, e.target.value);
         }}
-        className="flex-1 rounded-r-lg border border-gray-300 px-3 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+        className="flex-1 rounded-r-lg border border-gray-300 px-3 py-2 text-sm outline-none transition focus:border-brand-teal focus:ring-2 focus:ring-brand-teal/20"
       />
     </div>
   );

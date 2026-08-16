@@ -6,7 +6,7 @@ export const Label = ({
   ...rest
 }: LabelHTMLAttributes<HTMLLabelElement>) => (
   <label
-    className={`text-sm font-medium text-gray-700 ${className ?? ""}`}
+    className={`text-sm font-medium text-brand-gray ${className ?? ""}`}
     {...rest}
   />
 );

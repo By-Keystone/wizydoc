@@ -76,10 +76,10 @@ export function DateTimeStep({ doctorProfileId, onNext, onBack }: Props) {
 
   return (
     <div>
-      <h2 className="text-lg font-semibold text-gray-900">
+      <h2 className="text-lg font-semibold text-brand-teal-dark">
         Elige fecha y horario
       </h2>
-      <p className="mt-1 text-sm text-gray-500">
+      <p className="mt-1 text-sm text-brand-gray">
         Selecciona el día y un horario disponible.
       </p>
 
@@ -92,18 +92,18 @@ export function DateTimeStep({ doctorProfileId, onNext, onBack }: Props) {
               type="button"
               onClick={() => setWeekOffset((w) => w - 1)}
               disabled={weekOffset === 0}
-              className="rounded-lg p-1.5 text-gray-500 transition-colors hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-30"
+              className="rounded-lg p-1.5 text-brand-gray transition-colors hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-30"
               aria-label="Semana anterior"
             >
               <ChevronLeft className="h-4 w-4" />
             </button>
-            <span className="text-sm font-medium text-gray-700">
+            <span className="text-sm font-medium text-brand-gray">
               {formatWeekRange(weekDays[0], weekDays[6])}
             </span>
             <button
               type="button"
               onClick={() => setWeekOffset((w) => w + 1)}
-              className="rounded-lg p-1.5 text-gray-500 transition-colors hover:bg-gray-100"
+              className="rounded-lg p-1.5 text-brand-gray transition-colors hover:bg-gray-100"
               aria-label="Semana siguiente"
             >
               <ChevronRight className="h-4 w-4" />
@@ -130,10 +130,10 @@ export function DateTimeStep({ doctorProfileId, onNext, onBack }: Props) {
                       "cursor-not-allowed border-gray-100 text-gray-300",
                     !disabled &&
                       selectedDate === date &&
-                      "border-blue-600 bg-blue-50 text-blue-700",
+                      "border-brand-teal bg-brand-teal/10 text-brand-teal",
                     !disabled &&
                       selectedDate !== date &&
-                      "border-gray-200 text-gray-700 hover:bg-gray-50",
+                      "border-gray-200 text-brand-gray hover:bg-gray-50",
                   )}
                 >
                   <span>{dayLabel(index)}</span>
@@ -144,19 +144,19 @@ export function DateTimeStep({ doctorProfileId, onNext, onBack }: Props) {
           </div>
 
           <div className="mt-6">
-            <span className="text-sm font-medium text-gray-700">Horarios</span>
+            <span className="text-sm font-medium text-brand-gray">Horarios</span>
 
             {!slots ? (
-              <div className="mt-2 flex items-center gap-2 text-sm text-gray-500">
+              <div className="mt-2 flex items-center gap-2 text-sm text-brand-gray">
                 <Loader2 className="h-4 w-4 animate-spin" />
                 Cargando horarios...
               </div>
             ) : !selectedDate ? (
-              <p className="mt-2 text-sm text-gray-500">
+              <p className="mt-2 text-sm text-brand-gray">
                 Elige un día para ver los horarios disponibles.
               </p>
             ) : daySlots.length === 0 ? (
-              <p className="mt-2 text-sm text-gray-500">
+              <p className="mt-2 text-sm text-brand-gray">
                 El doctor no tiene horarios disponibles ese día.
               </p>
             ) : (
@@ -169,8 +169,8 @@ export function DateTimeStep({ doctorProfileId, onNext, onBack }: Props) {
                     className={cn(
                       "rounded-lg border px-2 py-2 text-sm font-medium transition-colors",
                       time === slot
-                        ? "border-blue-600 bg-blue-50 text-blue-700"
-                        : "border-gray-200 text-gray-700 hover:bg-gray-50",
+                        ? "border-brand-teal bg-brand-teal/10 text-brand-teal"
+                        : "border-gray-200 text-brand-gray hover:bg-gray-50",
                     )}
                   >
                     {slot}

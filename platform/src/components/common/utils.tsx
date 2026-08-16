@@ -1,13 +1,10 @@
 import { MembershipRole } from "@/lib/utils";
 import {
-  Building2,
   Building2Icon,
-  CalendarDays,
   LayoutDashboard,
   LucideProps,
   Settings,
   Tags,
-  UserRound,
 } from "lucide-react";
 import { ForwardRefExoticComponent, RefAttributes } from "react";
 
@@ -25,17 +22,6 @@ const clinicNavLinks: NavLink[] = [
     href: "dashboard",
     label: "Inicio",
     icon: LayoutDashboard,
-  },
-  {
-    href: "appointments",
-    label: "Citas",
-    icon: CalendarDays,
-  },
-  {
-    href: "doctors",
-    label: "Doctores",
-    icon: UserRound,
-    roles: [MembershipRole.ADMIN],
   },
   {
     href: "profile",

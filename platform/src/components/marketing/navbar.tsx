@@ -2,8 +2,10 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Menu, X, Stethoscope } from "lucide-react";
+import Image from "next/image";
+import { Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import logo from "@/images/logo.png";
 
 const navLinks = [
   { label: "Funcionalidades", href: "#features" },
@@ -19,13 +21,8 @@ export function Navbar() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-2 shrink-0">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600">
-              <Stethoscope className="h-4 w-4 text-white" />
-            </div>
-            <span className="text-xl font-bold text-gray-900 tracking-tight">
-              WizyDoc
-            </span>
+          <Link href="/" className="flex items-center shrink-0">
+            <Image src={logo} alt="WizyDoc" className="h-8 w-auto" priority />
           </Link>
 
           {/* Desktop links */}
@@ -34,7 +31,7 @@ export function Navbar() {
               <Link
                 key={link.href}
                 href={link.href}
-                className="text-sm text-gray-500 hover:text-gray-900 transition-colors"
+                className="text-sm text-brand-gray hover:text-brand-ink transition-colors"
               >
                 {link.label}
               </Link>
@@ -69,7 +66,7 @@ export function Navbar() {
             <Link
               key={link.href}
               href={link.href}
-              className="text-sm text-gray-600 hover:text-gray-900"
+              className="text-sm text-brand-gray hover:text-brand-ink"
               onClick={() => setOpen(false)}
             >
               {link.label}

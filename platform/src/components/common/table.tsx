@@ -49,7 +49,7 @@ export function Table<T>({
     return (
       <div
         className={cn(
-          "rounded-xl border border-gray-200 bg-white p-8 text-center text-sm text-gray-500",
+          "rounded-xl border border-gray-200 bg-white p-8 text-center text-sm text-brand-gray",
           className,
         )}
       >
@@ -67,11 +67,11 @@ export function Table<T>({
     >
       <table className="w-full text-sm">
         {caption && (
-          <caption className="px-4 py-3 text-left text-sm text-gray-500">
+          <caption className="px-4 py-3 text-left text-sm text-brand-gray">
             {caption}
           </caption>
         )}
-        <thead className="border-b border-gray-200 bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+        <thead className="border-b border-gray-200 bg-gray-50 text-xs uppercase tracking-wide text-brand-gray">
           <tr>
             {columns.map((col) => (
               <th
@@ -95,7 +95,7 @@ export function Table<T>({
                 <td
                   key={col.key}
                   className={cn(
-                    "px-4 py-3 text-gray-700",
+                    "px-4 py-3 text-brand-gray",
                     alignClass[col.align ?? "left"],
                     col.cellClassName,
                   )}

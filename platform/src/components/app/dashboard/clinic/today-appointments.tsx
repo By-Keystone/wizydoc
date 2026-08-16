@@ -23,15 +23,15 @@ export async function TodayAppointments({ resourceId }: Props) {
   return (
     <section className="mt-8 rounded-xl border border-gray-200 bg-white">
       <header className="flex items-center gap-2 border-b border-gray-200 px-5 py-4">
-        <CalendarDays className="h-5 w-5 text-blue-600" />
-        <h2 className="font-semibold text-gray-900">Citas de hoy</h2>
-        <span className="ml-auto text-sm text-gray-500">
+        <CalendarDays className="h-5 w-5 text-brand-teal" />
+        <h2 className="font-semibold text-brand-teal-dark">Citas de hoy</h2>
+        <span className="ml-auto text-sm text-brand-gray">
           {appointments.length}
         </span>
       </header>
 
       {appointments.length === 0 ? (
-        <p className="px-5 py-10 text-center text-sm text-gray-500">
+        <p className="px-5 py-10 text-center text-sm text-brand-gray">
           No hay citas programadas para hoy.
         </p>
       ) : (
@@ -46,16 +46,16 @@ export async function TodayAppointments({ resourceId }: Props) {
               >
                 <time
                   dateTime={appointment.scheduledAt}
-                  className="w-14 shrink-0 font-semibold tabular-nums text-gray-900"
+                  className="w-14 shrink-0 font-semibold tabular-nums text-brand-ink"
                 >
                   {appointment.time}
                 </time>
 
                 <div className="min-w-0 flex-1">
-                  <p className="truncate font-medium text-gray-900">
+                  <p className="truncate font-medium text-brand-ink">
                     {appointment.patientName} {appointment.patientLastName}
                   </p>
-                  <p className="truncate text-sm text-gray-500">
+                  <p className="truncate text-sm text-brand-gray">
                     {appointment.specialty} · {appointment.durationMinutes} min ·{" "}
                     {appointment.doctor.name} {appointment.doctor.lastName}
                   </p>
@@ -63,7 +63,7 @@ export async function TodayAppointments({ resourceId }: Props) {
 
                 <a
                   href={`tel:${appointment.patientPhone}`}
-                  className="text-sm text-gray-500 hover:text-gray-900"
+                  className="text-sm text-brand-gray hover:text-brand-ink"
                 >
                   {appointment.patientPhone}
                 </a>

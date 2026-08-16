@@ -103,8 +103,8 @@ export function AvailabilityEditor({ initial }: Props) {
   return (
     <div className="max-w-2xl">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-700">Mi Disponibilidad</h1>
-        <p className="mt-1 text-sm text-gray-500">
+        <h1 className="text-2xl font-bold text-brand-teal-dark">Mi Disponibilidad</h1>
+        <p className="mt-1 text-sm text-brand-gray">
           Define tus horarios de atención en esta clínica. Puedes agregar varios
           rangos por día (por ejemplo, mañana y tarde).
         </p>
@@ -114,11 +114,11 @@ export function AvailabilityEditor({ initial }: Props) {
         {DAYS.map(({ label, value }) => (
           <div key={value} className="border-b border-gray-100 pb-4 last:border-0 last:pb-0">
             <div className="mb-2 flex items-center justify-between">
-              <span className="text-sm font-medium text-gray-700">{label}</span>
+              <span className="text-sm font-medium text-brand-gray">{label}</span>
               <button
                 type="button"
                 onClick={() => addSlot(value)}
-                className="flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-700"
+                className="flex items-center gap-1 text-xs font-medium text-brand-teal hover:text-brand-teal-dark"
               >
                 <Plus className="h-3 w-3" />
                 Agregar rango
@@ -126,7 +126,7 @@ export function AvailabilityEditor({ initial }: Props) {
             </div>
 
             {!schedule[value]?.length ? (
-              <p className="text-xs text-gray-400">Sin disponibilidad</p>
+              <p className="text-xs text-brand-gray">Sin disponibilidad</p>
             ) : (
               <div className="flex flex-col gap-2">
                 {schedule[value].map((slot, i) => (
@@ -137,21 +137,21 @@ export function AvailabilityEditor({ initial }: Props) {
                       onChange={(e) =>
                         updateSlot(value, i, "startTime", e.target.value)
                       }
-                      className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                      className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm outline-none focus:border-brand-teal focus:ring-2 focus:ring-brand-teal/20"
                     />
-                    <span className="text-sm text-gray-400">—</span>
+                    <span className="text-sm text-brand-gray">—</span>
                     <input
                       type="time"
                       value={slot.endTime}
                       onChange={(e) =>
                         updateSlot(value, i, "endTime", e.target.value)
                       }
-                      className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                      className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm outline-none focus:border-brand-teal focus:ring-2 focus:ring-brand-teal/20"
                     />
                     <button
                       type="button"
                       onClick={() => removeSlot(value, i)}
-                      className="text-gray-400 transition-colors hover:text-red-500"
+                      className="text-brand-gray transition-colors hover:text-red-500"
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>

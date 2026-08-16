@@ -17,7 +17,7 @@ export function StepperProgress({ currentStep, totalSteps }: Props) {
             key={step}
             className={cn(
               "h-1.5 flex-1 rounded-full transition-colors",
-              isActive ? "bg-blue-600" : "bg-gray-200",
+              isActive ? "bg-brand-teal" : "bg-gray-200",
             )}
           />
         );

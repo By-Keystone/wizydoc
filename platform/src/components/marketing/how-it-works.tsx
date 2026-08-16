@@ -26,18 +26,18 @@ const steps = [
 
 export function HowItWorks() {
   return (
-    <section id="how-it-works" className="bg-gray-50 py-24">
+    <section id="how-it-works" className="bg-brand-surface py-24">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
 
         {/* Header */}
         <div className="mx-auto max-w-2xl text-center">
-          <p className="text-sm font-semibold uppercase tracking-widest text-teal-600">
+          <p className="text-sm font-semibold uppercase tracking-widest text-brand-teal">
             Cómo funciona
           </p>
-          <h2 className="mt-3 text-3xl font-extrabold tracking-tight text-gray-900 sm:text-4xl">
+          <h2 className="mt-3 text-3xl font-extrabold tracking-tight text-brand-teal-dark sm:text-4xl">
             En 3 pasos, listo para recibir pacientes
           </h2>
-          <p className="mt-4 text-lg text-gray-500">
+          <p className="mt-4 text-lg text-brand-gray">
             Sin instalaciones. Sin configuraciones complejas. Empieza hoy.
           </p>
         </div>
@@ -55,14 +55,14 @@ export function HowItWorks() {
 
                 {/* Icon circle */}
                 <div className="relative flex h-20 w-20 items-center justify-center rounded-2xl bg-white shadow-md ring-1 ring-gray-200">
-                  <Icon className="h-8 w-8 text-blue-600" />
-                  <span className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full bg-blue-600 text-xs font-bold text-white">
+                  <Icon className="h-8 w-8 text-brand-teal" />
+                  <span className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full bg-brand-teal text-xs font-bold text-white">
                     {index + 1}
                   </span>
                 </div>
 
-                <h3 className="mt-6 text-lg font-semibold text-gray-900">{step.title}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-gray-500 max-w-xs">
+                <h3 className="mt-6 text-lg font-semibold text-brand-teal-dark">{step.title}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-brand-gray max-w-xs">
                   {step.description}
                 </p>
               </div>

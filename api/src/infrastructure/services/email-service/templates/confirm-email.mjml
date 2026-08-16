@@ -6,10 +6,10 @@
         <mj-text font-size="16px">
           Gracias por registrarte en WizyDoc. Para activar tu cuenta, confirma tu correo haciendo clic en el botón:
         </mj-text>
-        <mj-button background-color="#2563eb" href="{{confirmUrl}}">
+        <mj-button background-color="#0E8C82" href="{{confirmUrl}}">
           Confirmar correo
         </mj-button>
-        <mj-text font-size="14px" color="#6b7280">
+        <mj-text font-size="14px" color="#5C6B6A">
           Si no creaste esta cuenta, puedes ignorar este correo.
         </mj-text>
       </mj-column>
