@@ -55,15 +55,15 @@ export function PatientStep({
 
   return (
     <div>
-      <h2 className="text-lg font-semibold text-gray-900">Tus datos</h2>
-      <p className="mt-1 text-sm text-gray-500">
+      <h2 className="text-lg font-semibold text-brand-teal-dark">Tus datos</h2>
+      <p className="mt-1 text-sm text-brand-gray">
         Completa tus datos para confirmar la cita.
       </p>
 
-      <div className="mt-4 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-600">
+      <div className="mt-4 rounded-xl border border-gray-200 bg-brand-surface px-4 py-3 text-sm text-brand-gray">
         <p>
-          <span className="font-medium text-gray-900">{specialtyName}</span>{" "}
-          con <span className="font-medium text-gray-900">{doctorName}</span>
+          <span className="font-medium text-brand-ink">{specialtyName}</span>{" "}
+          con <span className="font-medium text-brand-ink">{doctorName}</span>
         </p>
         <p className="mt-0.5">
           {date} a las {time}

@@ -6,10 +6,10 @@
         <mj-text font-size="16px">
           Has sido invitado a unirte a <strong>{{resourceName}}</strong> en WizyDoc. Para aceptar la invitación, haz clic en el botón:
         </mj-text>
-        <mj-button background-color="#2563eb" href="{{inviteUrl}}">
+        <mj-button background-color="#0E8C82" href="{{inviteUrl}}">
           Aceptar invitación
         </mj-button>
-        <mj-text font-size="14px" color="#6b7280">
+        <mj-text font-size="14px" color="#5C6B6A">
           Si no esperabas esta invitación, puedes ignorar este correo.
         </mj-text>
       </mj-column>

@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { Stethoscope } from "lucide-react";
+import Image from "next/image";
+import logo from "@/images/logo.png";
 
 export default function CreateAppointmentLayout({
   children,
@@ -7,15 +8,10 @@ export default function CreateAppointmentLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex min-h-screen flex-col bg-gradient-to-br from-blue-50 via-white to-teal-50">
+    <div className="flex min-h-screen flex-col bg-gradient-to-br from-brand-surface via-white to-brand-surface">
       <header className="px-6 py-5">
-        <Link href="/" className="inline-flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600">
-            <Stethoscope className="h-4 w-4 text-white" />
-          </div>
-          <span className="text-xl font-bold tracking-tight text-gray-900">
-            WizyDoc
-          </span>
+        <Link href="/" className="inline-flex items-center">
+          <Image src={logo} alt="WizyDoc" className="h-8 w-auto" />
         </Link>
       </header>
 
@@ -23,7 +19,7 @@ export default function CreateAppointmentLayout({
         {children}
       </main>
 
-      <footer className="py-6 text-center text-xs text-gray-400">
+      <footer className="py-6 text-center text-xs text-brand-gray">
         © {new Date().getFullYear()} WizyDoc. Todos los derechos reservados.
       </footer>
     </div>

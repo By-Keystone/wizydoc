@@ -1,7 +1,9 @@
 "use client";
 
-import { LogOut, Stethoscope } from "lucide-react";
+import { LogOut } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
+import logo from "@/images/logo.png";
 import { FormEvent, useMemo } from "react";
 import { getNavLinks } from "./utils";
 import { authClient } from "@/lib/auth/client";
@@ -40,10 +42,7 @@ export function Sidebar() {
         href={`/account/${params.accountId}/${lowerResourceType}/${resourceId}/dashboard`}
         className="flex items-center gap-2 px-2 mb-8"
       >
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600">
-          <Stethoscope className="h-4 w-4 text-white" />
-        </div>
-        <span className="text-lg font-bold text-gray-900">WizyDoc</span>
+        <Image src={logo} alt="WizyDoc" className="h-7 w-auto" />
       </Link>
 
       <nav className="flex flex-col gap-1 flex-1">
@@ -51,7 +50,7 @@ export function Sidebar() {
           <Link
             key={href}
             href={`/account/${params.accountId}/${lowerResourceType}/${resourceId}/${href}`}
-            className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors"
+            className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-brand-gray hover:bg-gray-100 hover:text-brand-ink transition-colors"
           >
             <Icon className="h-4 w-4 shrink-0" />
             {label}
@@ -64,7 +63,7 @@ export function Sidebar() {
         <button
           type="button"
           onClick={handleSignOut}
-          className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-gray-500 hover:bg-gray-100 hover:text-gray-900 transition-colors"
+          className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-brand-gray hover:bg-gray-100 hover:text-brand-ink transition-colors"
         >
           <LogOut className="h-4 w-4 shrink-0" />
           Cerrar sesión

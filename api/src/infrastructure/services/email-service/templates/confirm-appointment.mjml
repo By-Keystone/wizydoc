@@ -8,34 +8,34 @@
         </mj-text>
         <mj-table font-size="15px" cellpadding="0">
           <tr>
-            <td style="padding: 8px 16px 8px 0; color: #6b7280;">Fecha y hora</td>
+            <td style="padding: 8px 16px 8px 0; color: #5C6B6A;">Fecha y hora</td>
             <td style="padding: 8px 0; font-weight: bold;">{{scheduledAt}}</td>
           </tr>
           <tr>
-            <td style="padding: 8px 16px 8px 0; color: #6b7280;">Duración</td>
+            <td style="padding: 8px 16px 8px 0; color: #5C6B6A;">Duración</td>
             <td style="padding: 8px 0;">{{durationMinutes}} minutos</td>
           </tr>
           <tr>
-            <td style="padding: 8px 16px 8px 0; color: #6b7280;">Especialidad</td>
+            <td style="padding: 8px 16px 8px 0; color: #5C6B6A;">Especialidad</td>
             <td style="padding: 8px 0;">{{specialty}}</td>
           </tr>
           <tr>
-            <td style="padding: 8px 16px 8px 0; color: #6b7280;">Profesional</td>
+            <td style="padding: 8px 16px 8px 0; color: #5C6B6A;">Profesional</td>
             <td style="padding: 8px 0;">{{doctorName}}</td>
           </tr>
           <tr>
-            <td style="padding: 8px 16px 8px 0; color: #6b7280;">Sede</td>
+            <td style="padding: 8px 16px 8px 0; color: #5C6B6A;">Sede</td>
             <td style="padding: 8px 0;">{{clinicName}}</td>
           </tr>
           <tr>
-            <td style="padding: 8px 16px 8px 0; color: #6b7280;">Dirección</td>
+            <td style="padding: 8px 16px 8px 0; color: #5C6B6A;">Dirección</td>
             <td style="padding: 8px 0;">{{clinicAddress}}</td>
           </tr>
         </mj-table>
-        <mj-text font-size="14px" color="#6b7280">
+        <mj-text font-size="14px" color="#5C6B6A">
           Te recomendamos llegar unos minutos antes de la hora indicada.
         </mj-text>
-        <mj-text font-size="14px" color="#6b7280">
+        <mj-text font-size="14px" color="#5C6B6A">
           Si necesitas cancelar o reprogramar, comunícate con la clínica al {{clinicPhone}} indicando la referencia {{appointmentId}}.
         </mj-text>
       </mj-column>

@@ -29,10 +29,10 @@ export default function OnboardingPage() {
     <div className="w-full max-w-md flex justify-self-center h-dvh items-center">
       <div className="rounded-2xl border border-gray-200 bg-white p-8 shadow-xl">
         <div className="mb-8">
-          <h1 className="text-2xl font-bold text-gray-900">
+          <h1 className="text-2xl font-bold text-brand-teal-dark">
             Crea tu cuenta
           </h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <p className="mt-1 text-sm text-brand-gray">
             Configura tu cuenta en WizyDoc para empezar a gestionar tus citas.
           </p>
         </div>

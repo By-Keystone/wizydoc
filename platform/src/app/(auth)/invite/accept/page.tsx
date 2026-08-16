@@ -19,15 +19,15 @@ export default async function AcceptInvitePage({ searchParams }: Props) {
           <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-red-100">
             <XCircle className="h-7 w-7 text-red-500" />
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">
+          <h1 className="text-2xl font-bold text-brand-teal-dark">
             Invitación inválida
           </h1>
-          <p className="mt-2 text-sm text-gray-500">
+          <p className="mt-2 text-sm text-brand-gray">
             Este enlace de invitación no es válido o ya expiró.
           </p>
           <Link
             href="/login"
-            className="mt-6 inline-block text-sm font-medium text-blue-600 hover:text-blue-700"
+            className="mt-6 inline-block text-sm font-medium text-brand-teal hover:text-brand-teal-dark"
           >
             Ir a iniciar sesión
           </Link>

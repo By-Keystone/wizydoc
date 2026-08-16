@@ -21,15 +21,15 @@ export function SuccessStep({
       <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-green-100">
         <CheckCircle className="h-7 w-7 text-green-600" />
       </div>
-      <h2 className="text-2xl font-bold text-gray-900">¡Cita reservada!</h2>
-      <p className="mt-2 text-sm text-gray-500">
+      <h2 className="text-2xl font-bold text-brand-teal-dark">¡Cita reservada!</h2>
+      <p className="mt-2 text-sm text-brand-gray">
         Te esperamos, {patient.name}. Guarda los detalles de tu cita.
       </p>
 
-      <div className="mt-6 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-left text-sm text-gray-600">
+      <div className="mt-6 rounded-xl border border-gray-200 bg-brand-surface px-4 py-3 text-left text-sm text-brand-gray">
         <p>
-          <span className="font-medium text-gray-900">{specialtyName}</span>{" "}
-          con <span className="font-medium text-gray-900">{doctorName}</span>
+          <span className="font-medium text-brand-ink">{specialtyName}</span>{" "}
+          con <span className="font-medium text-brand-ink">{doctorName}</span>
         </p>
         <p className="mt-0.5">
           {date} a las {time}

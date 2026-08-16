@@ -91,7 +91,7 @@ export const InviteUserForm = ({
             autoFocus
             error={emailError ?? undefined}
           />
-          <p className="text-xs text-gray-400">
+          <p className="text-xs text-brand-gray">
             Verificaremos si ya tiene una cuenta para precargar sus datos.
           </p>
 
@@ -120,12 +120,12 @@ export const InviteUserForm = ({
         <>
           {/* El correo ya no se edita aquí; viaja en un hidden dentro del form. */}
           <input type="hidden" name="email" value={email} />
-          <div className="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2 text-sm">
-            <span className="truncate text-gray-700">{email}</span>
+          <div className="flex items-center justify-between rounded-lg bg-brand-surface px-3 py-2 text-sm">
+            <span className="truncate text-brand-gray">{email}</span>
             <button
               type="button"
               onClick={() => setStep("email")}
-              className="ml-2 shrink-0 text-xs font-medium text-blue-600 hover:text-blue-700"
+              className="ml-2 shrink-0 text-xs font-medium text-brand-teal hover:text-brand-teal-dark"
             >
               Cambiar
             </button>
@@ -134,8 +134,8 @@ export const InviteUserForm = ({
           <div
             className={`rounded-lg px-3 py-2 text-xs ${
               existingUser
-                ? "bg-blue-50 text-blue-700"
-                : "bg-gray-50 text-gray-500"
+                ? "bg-brand-teal/10 text-brand-teal"
+                : "bg-brand-surface text-brand-gray"
             }`}
           >
             {existingUser

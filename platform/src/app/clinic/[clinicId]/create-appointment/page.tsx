@@ -22,10 +22,10 @@ export default async function CreateAppointmentPage({ params }: Props) {
       <div className="w-full max-w-md">
         <Card>
           <CardHeader>
-            <h1 className="text-2xl font-bold text-gray-900">Reservar cita</h1>
+            <h1 className="text-2xl font-bold text-brand-teal-dark">Reservar cita</h1>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-brand-gray">
               Esta clínica todavía no tiene doctores disponibles para reservar
               citas.
             </p>

@@ -21,6 +21,14 @@ const config: Config = {
           DEFAULT: "hsl(var(--muted))",
           foreground: "hsl(var(--muted-foreground))",
         },
+        brand: {
+          teal: "#0E8C82",
+          "teal-dark": "#0B4F49",
+          ink: "#1F2A2A",
+          gray: "#5C6B6A",
+          surface: "#EFF5F4",
+          coral: "#FF6F59",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",

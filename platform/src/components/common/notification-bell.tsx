@@ -72,9 +72,9 @@ export function NotificationBell() {
         onClick={() => setOpen((v) => !v)}
         className="relative flex h-9 w-9 items-center justify-center rounded-lg hover:bg-gray-100 transition-colors"
       >
-        <Bell className="h-5 w-5 text-gray-600" />
+        <Bell className="h-5 w-5 text-brand-gray" />
         {unreadCount > 0 && (
-          <span className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-full bg-blue-600 text-[10px] font-bold text-white">
+          <span className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-full bg-brand-teal text-[10px] font-bold text-white">
             {unreadCount}
           </span>
         )}
@@ -83,11 +83,11 @@ export function NotificationBell() {
       {open && (
         <div className="absolute right-0 z-50 mt-2 w-80 rounded-2xl border border-gray-200 bg-white shadow-xl">
           <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
-            <span className="font-semibold text-gray-900">Notificaciones</span>
+            <span className="font-semibold text-brand-ink">Notificaciones</span>
             {unreadCount > 0 && (
               <button
                 onClick={markAllAsRead}
-                className="text-xs text-blue-600 hover:underline"
+                className="text-xs text-brand-teal hover:underline"
               >
                 Marcar todas como leídas
               </button>
@@ -96,7 +96,7 @@ export function NotificationBell() {
 
           <div className="max-h-96 overflow-y-auto">
             {notifications.length === 0 ? (
-              <div className="py-10 text-center text-sm text-gray-400">
+              <div className="py-10 text-center text-sm text-brand-gray">
                 No tienes notificaciones
               </div>
             ) : (
@@ -105,19 +105,19 @@ export function NotificationBell() {
                   key={n.id}
                   onClick={() => markAsRead(n.id)}
                   className={`flex w-full flex-col gap-0.5 px-4 py-3 text-left transition-colors hover:bg-gray-50 ${
-                    !n.read ? "bg-blue-50/50" : ""
+                    !n.read ? "bg-brand-teal/5" : ""
                   }`}
                 >
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-gray-900">
+                    <span className="text-sm font-medium text-brand-ink">
                       {n.title}
                     </span>
                     {!n.read && (
-                      <span className="h-2 w-2 shrink-0 rounded-full bg-blue-600" />
+                      <span className="h-2 w-2 shrink-0 rounded-full bg-brand-teal" />
                     )}
                   </div>
-                  <span className="text-xs text-gray-500">{n.description}</span>
-                  <span className="text-xs text-gray-400">{n.createdAt}</span>
+                  <span className="text-xs text-brand-gray">{n.description}</span>
+                  <span className="text-xs text-brand-gray">{n.createdAt}</span>
                 </button>
               ))
             )}

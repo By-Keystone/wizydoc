@@ -19,15 +19,15 @@ export function DoctorStep({ doctors, onNext, onBack }: Props) {
 
   return (
     <div>
-      <h2 className="text-lg font-semibold text-gray-900">
+      <h2 className="text-lg font-semibold text-brand-teal-dark">
         Elige un doctor
       </h2>
-      <p className="mt-1 text-sm text-gray-500">
+      <p className="mt-1 text-sm text-brand-gray">
         Doctores disponibles para la especialidad seleccionada.
       </p>
 
       {doctors.length === 0 ? (
-        <p className="mt-6 text-sm text-gray-500">
+        <p className="mt-6 text-sm text-brand-gray">
           No hay doctores disponibles para esta especialidad.
         </p>
       ) : (
@@ -40,8 +40,8 @@ export function DoctorStep({ doctors, onNext, onBack }: Props) {
               className={cn(
                 "rounded-xl border px-4 py-3 text-left text-sm font-medium transition-colors",
                 selectedId === doctor.doctorProfileId
-                  ? "border-blue-600 bg-blue-50 text-blue-700"
-                  : "border-gray-200 text-gray-700 hover:bg-gray-50",
+                  ? "border-brand-teal bg-brand-teal/10 text-brand-teal"
+                  : "border-gray-200 text-brand-gray hover:bg-gray-50",
               )}
             >
               Dr. {doctor.name} {doctor.lastName}

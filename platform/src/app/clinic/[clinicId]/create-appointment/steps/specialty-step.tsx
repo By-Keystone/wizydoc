@@ -21,15 +21,15 @@ export function SpecialtyStep({ specialties, onNext }: Props) {
 
   return (
     <div>
-      <h2 className="text-lg font-semibold text-gray-900">
+      <h2 className="text-lg font-semibold text-brand-teal-dark">
         ¿Qué especialidad necesitas?
       </h2>
-      <p className="mt-1 text-sm text-gray-500">
+      <p className="mt-1 text-sm text-brand-gray">
         Elige la especialidad para ver los doctores disponibles.
       </p>
 
       {specialties.length === 0 ? (
-        <p className="mt-6 text-sm text-gray-500">
+        <p className="mt-6 text-sm text-brand-gray">
           Esta clínica todavía no tiene especialidades disponibles.
         </p>
       ) : (
@@ -42,8 +42,8 @@ export function SpecialtyStep({ specialties, onNext }: Props) {
               className={cn(
                 "rounded-xl border px-4 py-3 text-left text-sm font-medium transition-colors",
                 selectedId === specialty.id
-                  ? "border-blue-600 bg-blue-50 text-blue-700"
-                  : "border-gray-200 text-gray-700 hover:bg-gray-50",
+                  ? "border-brand-teal bg-brand-teal/10 text-brand-teal"
+                  : "border-gray-200 text-brand-gray hover:bg-gray-50",
               )}
             >
               {specialty.name}

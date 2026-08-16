@@ -94,14 +94,14 @@ export const SpecialtyMultiSelect = ({
           {selected.map((s) => (
             <span
               key={s.id}
-              className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700"
+              className="inline-flex items-center gap-1 rounded-full bg-brand-teal/10 px-2.5 py-1 text-xs font-medium text-brand-teal"
             >
               {s.name}
               <button
                 type="button"
                 onClick={() => remove(s.id)}
                 aria-label={`Quitar ${s.name}`}
-                className="text-blue-500 hover:text-blue-700"
+                className="text-brand-teal hover:text-brand-teal-dark"
               >
                 <X className="h-3 w-3" />
               </button>
@@ -120,7 +120,7 @@ export const SpecialtyMultiSelect = ({
           onFocus={() => setOpen(true)}
           onBlur={() => setOpen(false)}
           placeholder="Buscar especialidad..."
-          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none transition focus:border-brand-teal focus:ring-2 focus:ring-brand-teal/20"
         />
 
         {open && (query.trim().length > 0 || filtered.length > 0) && (
@@ -132,7 +132,7 @@ export const SpecialtyMultiSelect = ({
                     type="button"
                     onMouseDown={(e) => e.preventDefault()}
                     onClick={() => select(s)}
-                    className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
+                    className="w-full px-3 py-2 text-left text-sm text-brand-gray hover:bg-gray-50"
                   >
                     {s.name}
                   </button>
@@ -145,7 +145,7 @@ export const SpecialtyMultiSelect = ({
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={createAndSelect}
                 disabled={isPending}
-                className="flex w-full items-center gap-1.5 border-t border-gray-100 px-3 py-2 text-left text-sm font-medium text-blue-600 hover:bg-blue-50 disabled:opacity-50"
+                className="flex w-full items-center gap-1.5 border-t border-gray-100 px-3 py-2 text-left text-sm font-medium text-brand-teal hover:bg-brand-teal/10 disabled:opacity-50"
               >
                 <Plus className="h-3.5 w-3.5" />
                 {isPending ? "Creando..." : `Crear "${query.trim()}"`}

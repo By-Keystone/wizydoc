@@ -9,7 +9,7 @@ export function MembershipsList({ memberships }: Props) {
   if (memberships.length === 0) {
     return (
       <div className="flex items-center justify-center">
-        <p className="text-sm text-gray-500">
+        <p className="text-sm text-brand-gray">
           No perteneces a ninguna organización todavía.
         </p>
       </div>
@@ -28,7 +28,7 @@ export function MembershipsList({ memberships }: Props) {
 
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-col gap-4 p-6">
-      <h1 className="text-xl font-semibold text-gray-900">
+      <h1 className="text-xl font-semibold text-brand-teal-dark">
         Selecciona un workspace
       </h1>
       {memberships.map((m) => (
@@ -39,7 +39,7 @@ export function MembershipsList({ memberships }: Props) {
           <summary className="flex cursor-pointer list-none items-center justify-between p-5 [&::-webkit-details-marker]:hidden">
             <div className="flex items-center gap-3">
               <svg
-                className="h-4 w-4 text-gray-400 transition-transform group-open:rotate-90"
+                className="h-4 w-4 text-brand-gray transition-transform group-open:rotate-90"
                 viewBox="0 0 20 20"
                 fill="currentColor"
               >
@@ -50,14 +50,14 @@ export function MembershipsList({ memberships }: Props) {
                 />
               </svg>
               <div>
-                <h2 className="text-base font-semibold text-gray-900">
+                <h2 className="text-base font-semibold text-brand-teal-dark">
                   {m.organization.name}
                 </h2>
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-brand-gray">
                   {m.membership
                     ? `Tu rol: ${m.membership.role}`
                     : "Acceso por clínicas"}
-                  <span className="ml-2 text-gray-400">
+                  <span className="ml-2 text-brand-gray">
                     · {m.clinics.length}{" "}
                     {m.clinics.length === 1 ? "clínica" : "clínicas"}
                   </span>
@@ -68,7 +68,7 @@ export function MembershipsList({ memberships }: Props) {
             {m.membership && m.membership.role === "ADMIN" && (
               <EnterLink
                 href={`/account/${m.accountId}/organization/${m.organization.resourceId}`}
-                className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700"
+                className="rounded-lg bg-brand-teal px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-teal-dark"
                 resourceId={m.organization.resourceId}
                 resourceType={"ORGANIZATION"}
               >
@@ -85,10 +85,10 @@ export function MembershipsList({ memberships }: Props) {
                   className="flex items-center justify-between py-2.5"
                 >
                   <div>
-                    <p className="text-sm font-medium text-gray-800">
+                    <p className="text-sm font-medium text-brand-ink">
                       {c.name}
                     </p>
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-brand-gray">
                       {c.role}
                       {c.accessVia === "INHERITED_FROM_ORG" && (
                         <span className="ml-2 rounded bg-gray-100 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-gray-600">
@@ -100,7 +100,7 @@ export function MembershipsList({ memberships }: Props) {
 
                   <EnterLink
                     href={`/account/${m.accountId}/clinic/${c.resourceId}`}
-                    className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                    className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-brand-gray hover:bg-gray-50"
                     resourceId={c.resourceId}
                     resourceType={"CLINIC"}
                   >

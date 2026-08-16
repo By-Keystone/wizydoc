@@ -68,13 +68,13 @@ export function Pricing() {
 
         {/* Header */}
         <div className="mx-auto max-w-2xl text-center">
-          <p className="text-sm font-semibold uppercase tracking-widest text-blue-600">
+          <p className="text-sm font-semibold uppercase tracking-widest text-brand-teal">
             Precios
           </p>
-          <h2 className="mt-3 text-3xl font-extrabold tracking-tight text-gray-900 sm:text-4xl">
+          <h2 className="mt-3 text-3xl font-extrabold tracking-tight text-brand-teal-dark sm:text-4xl">
             Un plan para cada necesidad
           </h2>
-          <p className="mt-4 text-lg text-gray-500">
+          <p className="mt-4 text-lg text-brand-gray">
             Comienza gratis y crece a tu ritmo. Sin permanencia. Cancela cuando quieras.
           </p>
         </div>
@@ -85,7 +85,7 @@ export function Pricing() {
             <Card
               key={plan.name}
               className={plan.highlight
-                ? "relative border-blue-600 shadow-xl ring-2 ring-blue-600"
+                ? "relative border-brand-teal shadow-xl ring-2 ring-brand-teal"
                 : ""}
             >
               {plan.badge && (
@@ -97,19 +97,19 @@ export function Pricing() {
               )}
 
               <CardHeader className={plan.highlight ? "pt-8" : ""}>
-                <p className="text-sm font-semibold text-gray-500">{plan.name}</p>
+                <p className="text-sm font-semibold text-brand-gray">{plan.name}</p>
                 <div className="mt-2 flex items-baseline gap-1">
-                  <span className="text-4xl font-extrabold text-gray-900">{plan.price}</span>
-                  <span className="text-sm text-gray-400">{plan.period}</span>
+                  <span className="text-4xl font-extrabold text-brand-ink">{plan.price}</span>
+                  <span className="text-sm text-brand-gray">{plan.period}</span>
                 </div>
-                <p className="mt-2 text-sm text-gray-500">{plan.description}</p>
+                <p className="mt-2 text-sm text-brand-gray">{plan.description}</p>
               </CardHeader>
 
               <CardContent>
                 <ul className="flex flex-col gap-3">
                   {plan.features.map((feature) => (
-                    <li key={feature} className="flex items-start gap-2.5 text-sm text-gray-600">
-                      <Check className="mt-0.5 h-4 w-4 shrink-0 text-teal-500" />
+                    <li key={feature} className="flex items-start gap-2.5 text-sm text-brand-gray">
+                      <Check className="mt-0.5 h-4 w-4 shrink-0 text-brand-teal" />
                       {feature}
                     </li>
                   ))}
