@@ -29,30 +29,34 @@ export function AcceptInviteForm({ token, name, resourceName }: Props) {
     setError(null);
     setPending(true);
 
-    // Same-origin: el rewrite reenvía /api/invitations/* al api.
-    // Sin body ni Content-Type: el accept no lleva payload (Fastify rechaza
-    // un body vacío si el Content-Type es application/json).
-    const res = await fetch(`/api/invitations/${token}/accept`, {
-      method: "POST",
-      credentials: "include",
-    });
+    try {
+      // Same-origin: el rewrite reenvía /api/invitations/* al api.
+      // Sin body ni Content-Type: el accept no lleva payload (Fastify rechaza
+      // un body vacío si el Content-Type es application/json).
+      const res = await fetch(`/api/invitations/${token}/accept`, {
+        method: "POST",
+        credentials: "include",
+      });
 
-    setPending(false);
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        setError(data?.message ?? "No se pudo aceptar la invitación");
+        return;
+      }
 
-    if (!res.ok) {
-      const data = await res.json().catch(() => null);
-      setError(data?.message ?? "No se pudo aceptar la invitación");
-      return;
-    }
+      const { step, userId } = (await res.json()).data;
 
-    const { step, userId } = (await res.json()).data;
-
-    if (step === "set_password") {
-      // Usuario nuevo: pasa a la etapa de definir contraseña (misma página).
-      setSetPasswordStage({ userId });
-    } else {
-      // Usuario existente: ya aceptó, debe iniciar sesión.
-      router.push("/login");
+      if (step === "set_password") {
+        // Usuario nuevo: pasa a la etapa de definir contraseña (misma página).
+        setSetPasswordStage({ userId });
+      } else {
+        // Usuario existente: ya aceptó, debe iniciar sesión.
+        router.push("/login");
+      }
+    } catch {
+      setError("No se pudo conectar con el servidor. Intenta de nuevo.");
+    } finally {
+      setPending(false);
     }
   }
 
@@ -68,25 +72,29 @@ export function AcceptInviteForm({ token, name, resourceName }: Props) {
       "password",
     ) as string;
 
-    const res = await fetch(`/api/invitations/set-password`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({ userId: setPasswordStage.userId, password }),
-    });
+    try {
+      const res = await fetch(`/api/invitations/set-password`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ userId: setPasswordStage.userId, password }),
+      });
 
-    setPending(false);
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        setError(data?.message ?? "No se pudo configurar la contraseña");
+        return;
+      }
 
-    if (!res.ok) {
-      const data = await res.json().catch(() => null);
-      setError(data?.message ?? "No se pudo configurar la contraseña");
-      return;
+      const { accountId } = (await res.json()).data;
+
+      // El backend creó la sesión → al selector de recursos.
+      router.push(`/account/${accountId}/select`);
+    } catch {
+      setError("No se pudo conectar con el servidor. Intenta de nuevo.");
+    } finally {
+      setPending(false);
     }
-
-    const { accountId } = (await res.json()).data;
-
-    // El backend creó la sesión → al selector de recursos.
-    router.push(`/account/${accountId}/select`);
   }
 
   return (
