@@ -17,7 +17,8 @@ interface AppProviderProps {
   user: Me;
 }
 
-export function AppProvider({ membership, user, children }: AppProviderProps) {  return (
+export function AppProvider({ membership, user, children }: AppProviderProps) {
+  return (
     <AppContext.Provider value={{ membership, user }}>
       {children}
     </AppContext.Provider>
