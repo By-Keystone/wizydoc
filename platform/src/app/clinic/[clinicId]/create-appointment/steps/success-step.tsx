@@ -1,5 +1,6 @@
 import { CheckCircle } from "lucide-react";
 import { BookingPatient } from "./patient-step";
+import { Button } from "@/components/ui/button";
 
 interface Props {
   specialtyName: string;
@@ -7,6 +8,7 @@ interface Props {
   date: string;
   time: string;
   patient: BookingPatient;
+  onClick: () => void;
 }
 
 export function SuccessStep({
@@ -15,6 +17,7 @@ export function SuccessStep({
   date,
   time,
   patient,
+  onClick
 }: Props) {
   return (
     <div className="text-center">
@@ -36,6 +39,8 @@ export function SuccessStep({
         </p>
         <p className="mt-0.5">Teléfono: {patient.phone}</p>
       </div>
+
+      <Button onClick={onClick} variant={'coral'}>Reserva de nuevo</Button>
     </div>
   );
 }

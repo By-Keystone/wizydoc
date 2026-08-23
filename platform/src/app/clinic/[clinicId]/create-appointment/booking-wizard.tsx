@@ -49,6 +49,14 @@ export function BookingWizard({ doctors, clinicId }: Props) {
     );
   }, [doctors, specialty]);
 
+  const reset = () => {
+    setStep(1);
+    setSpecialty(null);
+    setDoctor(null);
+    setDateTime(null);
+    setPatient(null);
+  }
+
   return (
     <div className="w-full max-w-md">
       <Card>
@@ -131,6 +139,7 @@ export function BookingWizard({ doctors, clinicId }: Props) {
               date={dateTime.date}
               time={dateTime.time}
               patient={patient}
+              onClick={reset}
             />
           )}
         </CardContent>
