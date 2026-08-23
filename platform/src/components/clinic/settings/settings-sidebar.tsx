@@ -30,11 +30,13 @@ export function SettingsSidebar() {
   const base = `/account/${params.accountId}/clinic/${params.clinicId}/profile`;
 
   return (
-    <aside className="w-56 shrink-0 border-r border-gray-200 bg-white px-3 py-6">
-      <p className="mb-3 px-3 text-xs font-semibold uppercase tracking-wide text-brand-gray">
+    // En móvil es una fila de pestañas sobre el contenido: los 224px fijos de
+    // `w-56` dejarían el panel sin ancho utilizable en una pantalla pequeña.
+    <aside className="w-full shrink-0 border-b border-gray-200 bg-white px-3 py-4 md:w-56 md:border-b-0 md:border-r md:py-6">
+      <p className="mb-3 hidden px-3 text-xs font-semibold uppercase tracking-wide text-brand-gray md:block">
         Configuración
       </p>
-      <nav className="flex flex-col gap-1">
+      <nav className="flex gap-1 overflow-x-auto md:flex-col">
         {settingsLinks.map(({ segment, label, icon: Icon, roleScope }) => {
           const href = segment ? `${base}/${segment}` : base;
           const isActive = pathname === href;
@@ -44,7 +46,7 @@ export function SettingsSidebar() {
               key={label}
               href={href}
               className={cn(
-                "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
+                "flex shrink-0 items-center gap-3 whitespace-nowrap rounded-lg px-3 py-2 text-sm transition-colors",
                 isActive
                   ? "bg-brand-teal/10 font-medium text-brand-teal"
                   : "text-brand-gray hover:bg-gray-100 hover:text-brand-ink",
