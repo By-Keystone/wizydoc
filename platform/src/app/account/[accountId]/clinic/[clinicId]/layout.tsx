@@ -21,9 +21,13 @@ export default async function ClinicLayout({
 
     return (
       <AppProvider membership={membership} user={me}>
-        <div className="flex min-h-screen bg-gray-50">
+        {/* En móvil se apila (barra superior sobre el contenido); a partir de
+            `md` vuelve a ser sidebar + contenido en fila. `min-h-dvh` en vez de
+            `min-h-screen` porque `100vh` incluye la franja que tapa la barra
+            del navegador. */}
+        <div className="flex min-h-dvh flex-col bg-gray-50 md:flex-row">
           <Sidebar />
-          <main className="flex-1 p-6 md:p-8 relative">{children}</main>
+          <main className="relative flex-1 p-4 sm:p-6 md:p-8">{children}</main>
         </div>
       </AppProvider>
     );
