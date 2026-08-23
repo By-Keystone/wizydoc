@@ -1,6 +1,6 @@
 "use client";
 
-import { LogOut, Menu, X } from "lucide-react";
+import { LogOut, Menu, X, ArrowLeftRight } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import logo from "@/images/logo.png";
@@ -10,6 +10,7 @@ import { getNavLinks } from "./utils";
 import { authClient } from "@/lib/auth/client";
 import { useApp } from "@/context/app/app.context";
 import { useParams, useRouter } from "next/navigation";
+import { Button } from "../ui/button";
 
 export function Sidebar() {
   const { membership } = useApp();
@@ -39,6 +40,12 @@ export function Sidebar() {
     router.push("/login");
   };
 
+  const handleChangeResource = async () => {
+    router.push(`/account/${params.accountId}/select`);
+    document.cookie = "resource_id=; path=/; max-age=0";
+    document.cookie = "resource_type=; path=/; max-age=0";
+  }
+
   const basePath = `/account/${params.accountId}/${lowerResourceType}/${resourceId}`;
   const dashboardHref = `${basePath}/dashboard`;
 
@@ -67,6 +74,15 @@ export function Sidebar() {
       Cerrar sesión
     </button>
   );
+
+  const selectResourcesButton = (
+    <button className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-brand-gray transition-colors hover:bg-gray-100 hover:text-brand-ink"
+      onClick={handleChangeResource}
+    >
+      <ArrowLeftRight className="h-4 w-4 shrink-0" />
+      Selección de recursos
+    </button>
+  )
 
   return (
     <>
@@ -129,6 +145,7 @@ export function Sidebar() {
                 mide `h-dvh`: su fondo es el borde visible de la pantalla, no el
                 del viewport, que quedaría tapado por la barra del navegador. */}
             <div className="mt-auto border-t border-gray-100 pt-4">
+              {selectResourcesButton}
               {signOutButton}
             </div>
           </Dialog.Content>
@@ -141,11 +158,12 @@ export function Sidebar() {
           <Image src={logo} alt="WizyDoc" className="h-7 w-auto" />
         </Link>
 
-        {/* Aquí sí interesa `flex-1`: empuja el cerrar sesión al pie de la
-            columna, que en escritorio es la altura del layout y siempre se ve. */}
         <nav className="flex flex-1 flex-col gap-1">{renderNavLinks()}</nav>
 
-        <div className="border-t border-gray-100 pt-4">{signOutButton}</div>
+        <div className="border-t border-gray-100 pt-4 ">
+          {selectResourcesButton}
+          {signOutButton}
+        </div>
       </aside>
     </>
   );
