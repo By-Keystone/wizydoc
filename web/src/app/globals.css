@@ -1,0 +1,29 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222 47% 11%;
+    --primary: 175 82% 30%;
+    --primary-foreground: 0 0% 100%;
+    --muted: 170 23% 95%;
+    --muted-foreground: 176 8% 39%;
+    --border: 214 32% 91%;
+    --ring: 175 82% 30%;
+    --radius: 0.625rem;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+  }
+}
