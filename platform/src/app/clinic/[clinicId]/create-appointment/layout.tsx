@@ -10,7 +10,7 @@ export default function CreateAppointmentLayout({
   return (
     <div className="flex min-h-screen flex-col bg-gradient-to-br from-brand-surface via-white to-brand-surface">
       <header className="px-6 py-5">
-        <Link href="/" className="inline-flex items-center">
+        <Link href="/login" className="inline-flex items-center">
           <Image src={logo} alt="WizyDoc" className="h-8 w-auto" />
         </Link>
       </header>

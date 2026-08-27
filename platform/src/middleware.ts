@@ -2,10 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSessionCookie } from "better-auth/cookies";
 
 const PUBLIC_PATHS = [
-  "/",
   "/register",
   "/login",
-  "/beta",
   "/confirm-email",
   "/invite/accept",
 ];
@@ -29,8 +27,6 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (isPublicPath(pathname)) {
-    if (process.env.BETA_ENDED === "false" && pathname === "/")
-      return NextResponse.redirect(new URL("/beta", request.nextUrl));
     return NextResponse.next();
   }
 

@@ -6,7 +6,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
   return (
     <div className="min-h-screen bg-gradient-to-br from-brand-surface via-white to-brand-surface flex flex-col">
       <header className="px-6 py-5">
-        <Link href="/" className="inline-flex items-center">
+        <Link href="/login" className="inline-flex items-center">
           <Image src={logo} alt="WizyDoc" className="h-8 w-auto" />
         </Link>
       </header>

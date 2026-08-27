@@ -5,35 +5,12 @@ import { Toaster } from "@/components/ui/toaster"
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" })
 
-const siteUrl = "https://wizydoc.app"
-const title = "WizyDoc — Gestión de citas médicas"
-const description =
-  "WizyDoc ayuda a sedes médicas a gestionar citas, definir horarios y confirmar asistencias por WhatsApp. Sin complicaciones."
-
 export const metadata: Metadata = {
-  metadataBase: new URL(siteUrl),
-  title: {
-    default: title,
-    template: "%s | WizyDoc",
-  },
-  description,
-  keywords: ["citas médicas", "sede médica", "agenda médica", "WhatsApp", "gestión de citas"],
-  openGraph: {
-    type: "website",
-    locale: "es_CO",
-    url: siteUrl,
-    siteName: "WizyDoc",
-    title,
-    description,
-  },
-  twitter: {
-    card: "summary_large_image",
-    title,
-    description,
-  },
+  title: "WizyDoc — Panel",
+  description: "Panel de gestión de citas médicas de WizyDoc.",
   robots: {
-    index: true,
-    follow: true,
+    index: false,
+    follow: false,
   },
 }
 
