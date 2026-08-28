@@ -1,0 +1,25 @@
+name: Deploy Web on Release
+
+on:
+  release:
+    types: [published]
+
+concurrency:
+  group: deploy-web
+  cancel-in-progress: false
+
+jobs:
+  deploy-web:
+    environment: wizydoc/production
+    if: startsWith(github.event.release.tag_name, 'web-')
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/railwayapp/cli:latest
+    env:
+      RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+      - name: Deploy Web
+        run: railway up --service=${{ secrets.RAILWAY_WEB_SERVICE_ID }} --detach
