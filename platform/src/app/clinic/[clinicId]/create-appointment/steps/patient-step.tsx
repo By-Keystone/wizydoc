@@ -3,14 +3,22 @@
 import { useState } from "react";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/common/form";
+import { Input, Select } from "@/components/common/form";
 import { toast } from "@/lib/toast";
+
+const DOCUMENT_TYPES = [
+  { value: "DNI", label: "DNI" },
+  { value: "CE", label: "Carné de extranjería" },
+  { value: "PASSPORT", label: "Pasaporte" },
+];
 
 export interface BookingPatient {
   name: string;
   lastName: string;
   phone: string;
   email: string;
+  documentType: string;
+  documentNumber: string;
 }
 
 interface Props {
@@ -44,6 +52,8 @@ export function PatientStep({
         lastName: formData.get("lastName") as string,
         phone: formData.get("phone") as string,
         email: formData.get("email") as string,
+        documentType: formData.get("documentType") as string,
+        documentNumber: formData.get("documentNumber") as string,
       });
     } catch (err) {
       toast.error(
@@ -74,6 +84,15 @@ export function PatientStep({
         <div className="grid grid-cols-2 gap-3">
           <Input label="Nombre" name="name" required />
           <Input label="Apellido" name="lastName" required />
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <Select
+            label="Tipo de documento"
+            name="documentType"
+            options={DOCUMENT_TYPES}
+          />
+          <Input label="N° de documento" name="documentNumber" required />
         </div>
 
         <Input label="Teléfono" name="phone" type="tel" required />

@@ -7,5 +7,7 @@ export type CreateAppointmentInput = {
   patientLastName: string;
   patientPhone: string;
   patientEmail: string;
+  patientDocumentType: string;
+  patientDocumentNumber: string;
   clinicId: string;
 };

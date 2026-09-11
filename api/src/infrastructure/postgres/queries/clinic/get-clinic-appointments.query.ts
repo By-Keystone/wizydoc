@@ -34,12 +34,10 @@ export class GetClinicAppointmentsQuery implements IGetClinicAppointmentsQuery {
         durationMinutes: true,
         status: true,
         specialty: true,
-        patientName: true,
-        patientLastName: true,
-        patientPhone: true,
         doctorProfile: {
           select: { user: { select: { name: true, lastName: true } } },
         },
+        patient: { select: { name: true, lastName: true, phone: true } },
       },
     });
 
