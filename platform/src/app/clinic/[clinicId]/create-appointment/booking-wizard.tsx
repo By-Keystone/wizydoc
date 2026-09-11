@@ -105,15 +105,14 @@ export function BookingWizard({ doctors, clinicId }: Props) {
                 const result = await createAppointmentAction({
                   doctorProfileId: doctor.doctorProfileId,
                   specialty: specialty.name,
-                  // Se envía la hora del hueco tal cual se eligió, sin zona: es
-                  // el api quien sabe en qué huso opera la clínica y la
-                  // convierte al instante que le toca.
                   scheduledAt: `${dateTime.date}T${dateTime.time}`,
                   durationMinutes: dateTime.durationMinutes,
                   patientName: p.name,
                   patientLastName: p.lastName,
                   patientPhone: p.phone,
                   patientEmail: p.email,
+                  patientDocumentType: p.documentType,
+                  patientDocumentNumber: p.documentNumber,
                   clinicId,
                 });
 

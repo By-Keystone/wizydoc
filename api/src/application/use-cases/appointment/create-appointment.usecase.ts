@@ -1,4 +1,5 @@
 import { NotFound } from "@/application/errors/not-found.error";
+import { UnprocessableEntity } from "@/application/errors/unprocessable-entity.errors";
 import { IEmailService } from "@/application/ports/email-service.port";
 import { CLINIC_TIME_ZONE, toInstant } from "@/domain/services/clinic-time";
 import { getClient } from "@/infrastructure/postgres/transaction-context";
@@ -10,6 +11,8 @@ export const createAppointmentSchema = z.object({
   patientLastName: z.string(),
   patientPhone: z.string(),
   patientEmail: z.string(),
+  patientDocumentNumber: z.string(),
+  patientDocumentType: z.string(),
   specialty: z.string(),
   durationMinutes: z
     .number()
@@ -39,7 +42,11 @@ export class CreateApointmentUseCase {
 
     const clinic = await client.clinic.findFirst({
       where: { resourceId: dto.clinicId },
+      include: { resource: { select: { accountId: true } } },
     });
+
+    if (!clinic?.resource)
+      throw new UnprocessableEntity("La clínica no pertenece a ningún recurso");
 
     const profile = await client.doctorProfile.findUnique({
       where: { id: dto.doctorProfileId },
@@ -51,10 +58,25 @@ export class CreateApointmentUseCase {
 
     const [date, time] = dto.scheduledAt.split("T");
 
+    const patient = await client.patient.create({
+      data: {
+        documentNumber: dto.patientDocumentNumber,
+        documentType: dto.patientDocumentType,
+        email: dto.patientEmail,
+        lastName: dto.patientLastName,
+        name: dto.patientName,
+        phone: dto.patientPhone,
+        accountId: clinic.resource.accountId,
+      },
+    });
+
     const appointment = await client.appointment.create({
       data: {
-        ...dto,
+        specialty: dto.specialty,
+        durationMinutes: dto.durationMinutes,
+        doctorProfileId: dto.doctorProfileId,
         scheduledAt: toInstant(date, time),
+        patientId: patient.id,
         clinicId: clinic.resourceId,
       },
     });
@@ -68,8 +90,8 @@ export class CreateApointmentUseCase {
     }).format(appointment.scheduledAt);
 
     const html = await renderTemplate("confirm-appointment", {
-      patientName: appointment.patientName,
-      patientLastName: appointment.patientLastName,
+      patientName: patient.name,
+      patientLastName: patient.lastName,
       scheduledAt,
       durationMinutes: appointment.durationMinutes,
       specialty: appointment.specialty,
