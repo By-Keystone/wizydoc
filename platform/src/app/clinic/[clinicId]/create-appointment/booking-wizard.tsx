@@ -113,6 +113,7 @@ export function BookingWizard({ doctors, clinicId }: Props) {
                   patientEmail: p.email,
                   patientDocumentType: p.documentType,
                   patientDocumentNumber: p.documentNumber,
+                  patientBirthDate: p.birthDate,
                   clinicId,
                 });
 

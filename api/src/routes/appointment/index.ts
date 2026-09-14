@@ -7,7 +7,6 @@ import { ZodTypeProvider } from "@fastify/type-provider-zod";
 import { FastifyInstance } from "fastify";
 import { policy } from "@/plugins/policy";
 import { ApplicationError } from "@/application/errors/application.errors";
-import { SESEmailService } from "@/infrastructure/services/email-service/ses.service";
 import { IEmailService } from "@/application/ports/email-service.port";
 
 interface RouteProps {

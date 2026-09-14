@@ -13,6 +13,11 @@ export const createAppointmentSchema = z.object({
   patientEmail: z.string(),
   patientDocumentNumber: z.string(),
   patientDocumentType: z.string(),
+  // `z.iso.date()` y no una regex de forma: la columna es `text`, así que esta
+  // validación es lo único que impide guardar un 2026-02-30.
+  patientBirthDate: z.iso.date({
+    error: "patientBirthDate debe ser una fecha válida con formato YYYY-MM-DD",
+  }),
   specialty: z.string(),
   durationMinutes: z
     .number()
@@ -58,14 +63,30 @@ export class CreateApointmentUseCase {
 
     const [date, time] = dto.scheduledAt.split("T");
 
-    const patient = await client.patient.create({
-      data: {
+    // El documento identifica al paciente dentro de la cuenta, así que una
+    // segunda reserva reutiliza su ficha en vez de duplicarla. Solo se refrescan
+    // teléfono y correo: el resto lo mantiene el personal sanitario y no puede
+    // pisarlo lo que alguien escriba en un formulario público.
+    const patient = await client.patient.upsert({
+      where: {
+        accountId_documentType_documentNumber: {
+          accountId: clinic.resource.accountId,
+          documentType: dto.patientDocumentType,
+          documentNumber: dto.patientDocumentNumber,
+        },
+      },
+      update: {
+        phone: dto.patientPhone,
+        email: dto.patientEmail,
+      },
+      create: {
         documentNumber: dto.patientDocumentNumber,
         documentType: dto.patientDocumentType,
         email: dto.patientEmail,
         lastName: dto.patientLastName,
         name: dto.patientName,
         phone: dto.patientPhone,
+        birthDate: dto.patientBirthDate,
         accountId: clinic.resource.accountId,
       },
     });

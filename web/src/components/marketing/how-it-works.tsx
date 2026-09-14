@@ -18,9 +18,9 @@ const steps = [
   {
     number: "03",
     icon: CheckCircle2,
-    title: "Tus pacientes reservan y confirman",
+    title: "Tus pacientes reservan y reciben su confirmación",
     description:
-      "Los pacientes eligen médico, fecha y horario desde el enlace de reserva. WizyDoc les envía una confirmación por WhatsApp automáticamente.",
+      "Los pacientes eligen médico, fecha y horario desde el enlace de reserva, y WizyDoc les envía la confirmación automáticamente.",
   },
 ]
 

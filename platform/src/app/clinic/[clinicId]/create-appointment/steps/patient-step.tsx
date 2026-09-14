@@ -19,6 +19,9 @@ export interface BookingPatient {
   email: string;
   documentType: string;
   documentNumber: string;
+  /** `"YYYY-MM-DD"` tal cual lo devuelve el input: es una fecha de calendario,
+   *  no un instante, y pasarla por `new Date()` la desplazaría un día. */
+  birthDate: string;
 }
 
 interface Props {
@@ -54,6 +57,7 @@ export function PatientStep({
         email: formData.get("email") as string,
         documentType: formData.get("documentType") as string,
         documentNumber: formData.get("documentNumber") as string,
+        birthDate: formData.get("birthDate") as string,
       });
     } catch (err) {
       toast.error(
@@ -81,9 +85,22 @@ export function PatientStep({
       </div>
 
       <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4">
+        {/* `autoComplete` deja que el navegador rellene con los datos del propio
+            paciente. Es la alternativa a consultarlos por correo, que en un
+            formulario público expondría el documento de cualquiera. */}
         <div className="grid grid-cols-2 gap-3">
-          <Input label="Nombre" name="name" required />
-          <Input label="Apellido" name="lastName" required />
+          <Input
+            label="Nombre"
+            name="name"
+            autoComplete="given-name"
+            required
+          />
+          <Input
+            label="Apellido"
+            name="lastName"
+            autoComplete="family-name"
+            required
+          />
         </div>
 
         <div className="grid grid-cols-2 gap-3">
@@ -92,12 +109,40 @@ export function PatientStep({
             name="documentType"
             options={DOCUMENT_TYPES}
           />
-          <Input label="N° de documento" name="documentNumber" required />
+          {/* Sin token estándar para documentos de identidad: `off` evita que el
+              navegador ofrezca aquí un valor de otro campo. */}
+          <Input
+            label="N° de documento"
+            name="documentNumber"
+            inputMode="numeric"
+            autoComplete="off"
+            required
+          />
         </div>
 
-        <Input label="Teléfono" name="phone" type="tel" required />
+        <Input
+          label="Fecha de nacimiento"
+          name="birthDate"
+          type="date"
+          autoComplete="bday"
+          required
+        />
 
-        <Input label="Email" name="email" type="email" required />
+        <Input
+          label="Teléfono"
+          name="phone"
+          type="tel"
+          autoComplete="tel"
+          required
+        />
+
+        <Input
+          label="Email"
+          name="email"
+          type="email"
+          autoComplete="email"
+          required
+        />
 
         <div className="mt-2 flex gap-3">
           <Button

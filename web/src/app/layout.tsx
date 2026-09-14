@@ -9,7 +9,7 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-inter" })
 const siteUrl = "https://wizydoc.app"
 const title = "WizyDoc — Gestión de citas médicas"
 const description =
-  "WizyDoc ayuda a sedes médicas a gestionar citas, definir horarios y confirmar asistencias por WhatsApp. Sin complicaciones."
+  "WizyDoc ayuda a sedes médicas a gestionar citas, definir horarios y confirmar asistencias. Sin complicaciones."
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
@@ -18,7 +18,13 @@ export const metadata: Metadata = {
     template: "%s | WizyDoc",
   },
   description,
-  keywords: ["citas médicas", "sede médica", "agenda médica", "WhatsApp", "gestión de citas"],
+  keywords: [
+    "citas médicas",
+    "sede médica",
+    "agenda médica",
+    "confirmación de citas",
+    "gestión de citas",
+  ],
   openGraph: {
     type: "website",
     locale: "es_CO",
