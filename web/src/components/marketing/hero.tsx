@@ -19,7 +19,7 @@ export function Hero() {
           {/* Copy */}
           <div className="max-w-xl">
             <Badge variant="teal" className="mb-5">
-              Confirmación automática por WhatsApp
+              Confirmación automática de cada cita
             </Badge>
 
             <h1 className="text-4xl font-extrabold tracking-tight text-brand-teal-dark sm:text-5xl lg:text-6xl">
@@ -32,14 +32,15 @@ export function Hero() {
 
             <p className="mt-6 text-lg leading-relaxed text-brand-gray">
               WizyDoc ayuda a médicos y clínicas a gestionar citas, definir
-              horarios y confirmar asistencias por WhatsApp. Todo desde un solo lugar.
+              horarios y confirmar asistencias automáticamente. Todo desde un
+              solo lugar.
             </p>
 
             <ul className="mt-6 flex flex-col gap-2">
               {[
                 "Tus pacientes reservan en línea 24/7",
-                "Recordatorio automático antes de cada cita",
-                "Sin llamadas. Sin cancelaciones de último minuto.",
+                "Cada reserva queda confirmada al instante",
+                "Sin llamadas ni agendas en papel",
               ].map((item) => (
                 <li key={item} className="flex items-center gap-2 text-sm text-brand-gray">
                   <Check className="h-4 w-4 shrink-0 text-brand-teal" />
@@ -67,11 +68,11 @@ export function Hero() {
 
           {/* App mockup */}
           <div className="relative flex justify-center lg:justify-end">
-            {/* Floating WhatsApp notification */}
-            <div className="absolute -top-4 -left-4 z-10 flex items-center gap-2 rounded-xl border border-green-200 bg-green-50 px-3 py-2 shadow-lg">
-              <div className="h-2 w-2 animate-pulse rounded-full bg-green-500" />
-              <p className="text-xs font-medium text-green-700">
-                Cita confirmada por WhatsApp ✓
+            {/* Aviso de confirmación */}
+            <div className="absolute -top-4 -left-4 z-10 flex items-center gap-2 rounded-xl border border-brand-teal/20 bg-brand-teal/5 px-3 py-2 shadow-lg">
+              <div className="h-2 w-2 animate-pulse rounded-full bg-brand-teal" />
+              <p className="text-xs font-medium text-brand-teal-dark">
+                Cita confirmada ✓
               </p>
             </div>
 
@@ -123,14 +124,14 @@ export function Hero() {
               </button>
 
               <p className="mt-3 text-center text-xs text-brand-gray">
-                Se enviará confirmación por WhatsApp
+                Recibirás la confirmación de tu cita
               </p>
             </div>
 
             {/* Floating stat */}
             <div className="absolute -bottom-4 -right-4 rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-lg">
-              <p className="text-2xl font-bold text-brand-ink">98%</p>
-              <p className="text-xs text-brand-gray">tasa de confirmación</p>
+              <p className="text-2xl font-bold text-brand-ink">24/7</p>
+              <p className="text-xs text-brand-gray">reservas sin llamadas</p>
             </div>
           </div>
         </div>

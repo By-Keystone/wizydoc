@@ -197,6 +197,7 @@ model Appointment {
 
   @@unique([doctorProfileId, scheduledAt])
   @@index([scheduledAt])
+  @@index([patientId, scheduledAt])
   @@map("appointment")
 }
 
@@ -285,13 +286,29 @@ model Patient {
   documentType   String @map("document_type")
   accountId      String @map("account_id") @db.Uuid
 
+  birthDate        String? @map("birth_date")
+  sex              String?
+  emergencyContact String? @map("emergency_contact")
+  insurer          String?
+
+  bloodType   String?  @map("blood_type")
+  allergies   String[]
+  background  String?
+  medications String?
+
+  // Sin esto una lista de alergias vacía significa a la vez "no tiene" y "nadie
+  // se lo ha preguntado todavía", que clínicamente no es lo mismo.
+  allergiesReviewedAt DateTime? @map("allergies_reviewed_at")
+
   createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @default(now()) @map("updated_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  updatedBy String?  @map("updated_by") @db.Uuid
 
   account Account @relation(fields: [accountId], references: [id], onDelete: NoAction)
 
   appointments Appointment[]
 
+  @@unique([accountId, documentType, documentNumber])
   @@index([accountId, documentNumber])
   @@map("patient")
 }

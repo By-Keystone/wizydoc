@@ -9,5 +9,6 @@ export type CreateAppointmentInput = {
   patientEmail: string;
   patientDocumentType: string;
   patientDocumentNumber: string;
+  patientBirthDate: string; // "YYYY-MM-DD", fecha de calendario sin zona
   clinicId: string;
 };

@@ -3,6 +3,7 @@ import {
   Building2Icon,
   LayoutDashboard,
   LucideProps,
+  PersonStanding,
   Settings,
   Tags,
 } from "lucide-react";
@@ -29,12 +30,18 @@ const clinicNavLinks: NavLink[] = [
     icon: Settings,
     roles: [MembershipRole.DOCTOR, MembershipRole.USER],
   },
+  {
+    href: "patients",
+    label: "Pacientes",
+    icon: PersonStanding,
+  },
 ];
 
 const orgNavLinks: NavLink[] = [
   // { href: "users", label: "Usuarios", icon: UserRound },
   { href: "clinics", label: "Clínicas", icon: Building2Icon },
   { href: "specialties", label: "Especialidades", icon: Tags },
+  { href: "patients", label: "Pacientes", icon: PersonStanding },
 ];
 
 export function getNavLinks({

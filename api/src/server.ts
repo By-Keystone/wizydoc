@@ -26,6 +26,7 @@ import auth from "./infrastructure/vendors/auth/better-auth/auth";
 import userInvitationRoutes from "./routes/user-invitation";
 import doctorProfileRoutes from "./routes/doctor-profile/index";
 import appointmentRoutes from "./routes/appointment/index";
+import patientRoutes from "./routes/patient";
 
 const fastify = Fastify({
   logger:
@@ -145,6 +146,10 @@ async function start() {
   await fastify.register(appointmentRoutes, {
     prefix: "/appointment",
     emailService,
+  });
+
+  await fastify.register(patientRoutes, {
+    prefix: "/patients",
   });
 
   fastify.get("/health", { ...policy({ public: true }) }, async () => ({
