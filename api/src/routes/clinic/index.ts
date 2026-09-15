@@ -213,6 +213,7 @@ export default async function clinicRoutes(
         member: true,
         roles: "*",
       }),
+      preHandler: fastify.requireFeature("CLINIC_METRICS"),
     },
     async (request, reply) => {
       const membership = requireMembership(request);
