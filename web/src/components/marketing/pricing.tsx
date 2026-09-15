@@ -1,8 +1,13 @@
-import Link from "next/link"
-import { Check, Minus, X } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Card, CardHeader, CardContent, CardFooter } from "@/components/ui/card"
+import Link from "next/link";
+import { Check, Minus, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import {
+  Card,
+  CardHeader,
+  CardContent,
+  CardFooter,
+} from "@/components/ui/card";
 
 const plans = [
   {
@@ -71,12 +76,15 @@ const plans = [
     cta: "Hablar con ventas",
     href: "/contact",
   },
-]
+];
 
-type Cell = string | boolean
+type Cell = string | boolean;
 
 const comparison: { label: string; values: [Cell, Cell, Cell, Cell] }[] = [
-  { label: "Precio", values: ["S/ 0", "S/ 79 al mes", "S/ 199 al mes", "A medida"] },
+  {
+    label: "Precio",
+    values: ["S/ 0", "S/ 79 al mes", "S/ 199 al mes", "A medida"],
+  },
   { label: "Médicos incluidos", values: ["1", "3", "8", "A medida"] },
   { label: "Médico adicional", values: ["—", "S/ 25", "S/ 20", "A medida"] },
   { label: "Sedes incluidas", values: ["1", "1", "3", "A medida"] },
@@ -88,7 +96,7 @@ const comparison: { label: string; values: [Cell, Cell, Cell, Cell] }[] = [
   { label: "Métricas por sede", values: [false, false, true, true] },
   { label: "Exportación de datos", values: [false, false, false, true] },
   { label: "Soporte prioritario", values: [false, false, false, true] },
-]
+];
 
 function ComparisonCell({ value }: { value: Cell }) {
   if (value === true) {
@@ -97,7 +105,7 @@ function ComparisonCell({ value }: { value: Cell }) {
         <Check className="mx-auto h-5 w-5 text-brand-teal" aria-hidden />
         <span className="sr-only">Incluido</span>
       </>
-    )
+    );
   }
 
   if (value === false) {
@@ -106,7 +114,7 @@ function ComparisonCell({ value }: { value: Cell }) {
         <X className="mx-auto h-5 w-5 text-gray-300" aria-hidden />
         <span className="sr-only">No incluido</span>
       </>
-    )
+    );
   }
 
   if (value === "—") {
@@ -115,17 +123,16 @@ function ComparisonCell({ value }: { value: Cell }) {
         <Minus className="mx-auto h-5 w-5 text-gray-300" aria-hidden />
         <span className="sr-only">No disponible</span>
       </>
-    )
+    );
   }
 
-  return <span className="text-sm text-brand-ink">{value}</span>
+  return <span className="text-sm text-brand-ink">{value}</span>;
 }
 
 export function Pricing() {
   return (
     <section id="pricing" className="bg-white py-24">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-
         {/* Header */}
         <div className="mx-auto max-w-2xl text-center">
           <p className="text-sm font-semibold uppercase tracking-widest text-brand-teal">
@@ -135,7 +142,8 @@ export function Pricing() {
             Un plan para cada necesidad
           </h2>
           <p className="mt-4 text-lg text-brand-gray">
-            Comienza gratis y crece a tu ritmo. Sin permanencia. Cancela cuando quieras.
+            Comienza gratis y crece a tu ritmo. Sin permanencia. Cancela cuando
+            quieras.
           </p>
         </div>
 
@@ -144,31 +152,45 @@ export function Pricing() {
           {plans.map((plan) => (
             <Card
               key={plan.name}
-              className={plan.highlight
-                ? "relative border-brand-teal shadow-xl ring-2 ring-brand-teal"
-                : ""}
+              className={
+                plan.highlight
+                  ? "relative border-brand-teal shadow-xl ring-2 ring-brand-teal"
+                  : ""
+              }
             >
               {plan.badge && (
-                <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
-                  <Badge variant="blue" className="shadow-sm px-3 py-1 text-xs">
+                <div className="absolute -top-3.5 left-1/2 z-10 -translate-x-1/2">
+                  <Badge
+                    variant="blue"
+                    className="bg-brand-teal px-3 py-1 text-xs text-white shadow-sm"
+                  >
                     {plan.badge}
                   </Badge>
                 </div>
               )}
 
               <CardHeader className={plan.highlight ? "pt-8" : ""}>
-                <p className="text-sm font-semibold text-brand-gray">{plan.name}</p>
+                <p className="text-sm font-semibold text-brand-gray">
+                  {plan.name}
+                </p>
                 <div className="mt-2 flex items-baseline gap-1">
-                  <span className="text-4xl font-extrabold text-brand-ink">{plan.price}</span>
+                  <span className="text-4xl font-extrabold text-brand-ink">
+                    {plan.price}
+                  </span>
                   <span className="text-sm text-brand-gray">{plan.period}</span>
                 </div>
-                <p className="mt-2 text-sm text-brand-gray">{plan.description}</p>
+                <p className="mt-2 text-sm text-brand-gray">
+                  {plan.description}
+                </p>
               </CardHeader>
 
               <CardContent>
                 <ul className="flex flex-col gap-3">
                   {plan.features.map((feature) => (
-                    <li key={feature} className="flex items-start gap-2.5 text-sm text-brand-gray">
+                    <li
+                      key={feature}
+                      className="flex items-start gap-2.5 text-sm text-brand-gray"
+                    >
                       <Check className="mt-0.5 h-4 w-4 shrink-0 text-brand-teal" />
                       {feature}
                     </li>
@@ -199,12 +221,15 @@ export function Pricing() {
           <div className="mt-8 overflow-x-auto">
             <table className="w-full min-w-[720px] border-collapse text-left">
               <caption className="sr-only">
-                Comparación de características entre los planes Gratis, Consultorio,
-                Clínica y Red
+                Comparación de características entre los planes Gratis,
+                Consultorio, Clínica y Red
               </caption>
               <thead>
                 <tr className="border-b border-gray-200">
-                  <th scope="col" className="py-4 pr-4 text-sm font-semibold text-brand-gray">
+                  <th
+                    scope="col"
+                    className="py-4 pr-4 text-sm font-semibold text-brand-gray"
+                  >
                     Características
                   </th>
                   {plans.map((plan) => (
@@ -247,5 +272,5 @@ export function Pricing() {
         </div>
       </div>
     </section>
-  )
+  );
 }
