@@ -2,7 +2,8 @@
 
 import { useActionState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/common/form";
+import { Input, Select } from "@/components/common/form";
+import { PLAN_OPTIONS } from "@/lib/plans";
 import {
   createAccountAction,
   type CreateAccountState,
@@ -47,6 +48,19 @@ export default function OnboardingPage() {
             error={
               state.status === "error"
                 ? fieldError(state.fieldErrors, "name")
+                : undefined
+            }
+          />
+
+          <Select
+            label="Plan"
+            name="plan"
+            required
+            defaultValue="FREE"
+            options={PLAN_OPTIONS}
+            error={
+              state.status === "error"
+                ? fieldError(state.fieldErrors, "plan")
                 : undefined
             }
           />

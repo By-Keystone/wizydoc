@@ -1,3 +1,4 @@
+import { Plan } from "@prisma/client";
 import { z } from "zod";
 import type { IAccountRepository } from "@/domain/repositories/account.repository";
 import type { ISubscriptionRepository } from "@/domain/repositories/subscription.repository";
@@ -6,6 +7,9 @@ import type { ITransactionManager } from "@/domain/services/transaction-manager"
 
 export const completeAccountSetupSchema = z.object({
   accountName: z.string().min(1),
+  // Todavía no hay cobro, así que cualquier plan se activa al elegirlo. Cuando
+  // exista el checkout, sólo FREE podrá seguir activándose aquí.
+  plan: z.enum(Plan).default("FREE"),
 });
 
 export type CompleteAccountSetupDto = z.infer<
@@ -39,7 +43,7 @@ export class CompleteAccountSetupUseCase {
         }),
         this.subscriptions.save({
           accountId: account.id,
-          plan: "BASIC",
+          plan: dto.plan,
           status: "ACTIVE",
         }),
       ]);
