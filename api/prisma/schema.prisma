@@ -47,6 +47,7 @@ model Resource {
   createdByUser       User                     @relation(fields: [createdBy], references: [id])
   account             Account                  @relation(fields: [accountId], references: [id], onDelete: Cascade)
 
+  @@index([accountId, type])
   @@map("resource")
 }
 
@@ -94,6 +95,7 @@ model UserResourceMembership {
   deletedAt     DateTime?       @map("deleted_at")
 
   @@unique([userId, resourceId])
+  @@index([accountId, role])
   @@map("user_resource_membership")
 }
 
@@ -120,6 +122,9 @@ model Subscription {
   accountId String             @unique @map("account_id") @db.Uuid
   status    SubscriptionStatus
   plan      Plan
+
+  extraDoctors Int @default(0) @map("extra_doctors")
+  extraClinics Int @default(0) @map("extra_clinics")
 
   account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
 
@@ -225,7 +230,10 @@ enum SubscriptionStatus {
 }
 
 enum Plan {
-  BASIC
+  FREE
+  CONSULTORIO
+  CLINICA
+  RED
 }
 
 model Session {
