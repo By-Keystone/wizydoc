@@ -37,6 +37,7 @@ export class OrganizationRepository implements IOrganizationRepository {
         const created = await getClient().organization.create({
           data: {
             name: data.name,
+            account: { connect: { id: data.accountId } },
             resource: { connect: { id: resource.id } },
           },
         });
@@ -59,7 +60,7 @@ export class OrganizationRepository implements IOrganizationRepository {
       console.error(error);
       if (error instanceof PrismaClientKnownRequestError) {
         if (error.code === "P2002") {
-          throw new BadRequest("Organization already exists");
+          throw new BadRequest("Ya tienes una organización con ese nombre");
         }
         throw new UnknownError("Database error while creating organization");
       }

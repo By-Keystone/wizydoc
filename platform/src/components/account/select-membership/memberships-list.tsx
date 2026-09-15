@@ -56,10 +56,10 @@ export function MembershipsList({ memberships }: Props) {
                 <p className="text-xs text-brand-gray">
                   {m.membership
                     ? `Tu rol: ${m.membership.role}`
-                    : "Acceso por clínicas"}
+                    : "Acceso por sedes"}
                   <span className="ml-2 text-brand-gray">
                     · {m.clinics.length}{" "}
-                    {m.clinics.length === 1 ? "clínica" : "clínicas"}
+                    {m.clinics.length === 1 ? "sede" : "sedes"}
                   </span>
                 </p>
               </div>

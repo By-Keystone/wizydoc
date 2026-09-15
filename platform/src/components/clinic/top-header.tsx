@@ -11,10 +11,10 @@ export const TopHeader = () => {
   return (
     <div className="mb-6 flex justify-between items-center">
       <div>
-        <h1 className="text-2xl font-bold text-brand-teal-dark">Clínicas</h1>
+        <h1 className="text-2xl font-bold text-brand-teal-dark">Sedes</h1>
       </div>
       <Button onClick={() => setModalCreateClinicOpen(true)}>
-        Crear clínica
+        Crear sede
       </Button>
       <CreateClinicModal
         isOpen={modalCreateClinicOpen}

@@ -38,7 +38,7 @@ export default async function ClinicLayout({
       <div className="flex h-dvh items-center justify-center">
         <div className="text-center">
           <h2 className="text-lg font-semibold">
-            No se pudo cargar la clínica
+            No se pudo cargar la sede
           </h2>
           {error instanceof Error && <p>{error.message}</p>}
         </div>

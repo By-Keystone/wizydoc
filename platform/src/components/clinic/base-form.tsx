@@ -23,7 +23,7 @@ export const ClinicBaseForm = ({
   return (
     <form id={formId} action={action} className="flex flex-col gap-y-3">
       <Input
-        label="Nombre de la clínica"
+        label="Nombre de la sede"
         name="name"
         value={clinic?.name}
         error={fieldError(fieldErrors, "name")}

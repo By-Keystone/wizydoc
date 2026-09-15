@@ -22,7 +22,7 @@ export const OrganizationStats = async ({
 
       <StatCard
         icon={Building2}
-        label="Clínicas"
+        label="Sedes"
         value={clinicCount}
         color="purple"
       />

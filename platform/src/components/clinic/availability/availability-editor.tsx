@@ -105,7 +105,7 @@ export function AvailabilityEditor({ initial }: Props) {
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-brand-teal-dark">Mi Disponibilidad</h1>
         <p className="mt-1 text-sm text-brand-gray">
-          Define tus horarios de atención en esta clínica. Puedes agregar varios
+          Define tus horarios de atención en esta sede. Puedes agregar varios
           rangos por día (por ejemplo, mañana y tarde).
         </p>
       </div>
