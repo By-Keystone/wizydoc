@@ -1,65 +1,125 @@
 import Link from "next/link"
-import { Check } from "lucide-react"
+import { Check, Minus, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardHeader, CardContent, CardFooter } from "@/components/ui/card"
 
 const plans = [
   {
-    name: "Básico",
-    price: "Gratis",
+    name: "Gratis",
+    price: "S/ 0",
     period: "para siempre",
-    description: "Ideal para médicos independientes que quieren empezar.",
+    description: "Para el médico independiente que quiere empezar hoy.",
     badge: null,
     highlight: false,
     features: [
+      "1 médico",
       "1 sede",
-      "Hasta 2 médicos",
-      "15 citas al mes",
-      "Horarios personalizados",
-      "Reserva en línea para pacientes",
+      "Reserva de citas en línea",
+      "Agenda de citas del doctor",
     ],
     cta: "Empezar gratis",
     href: "/register",
   },
   {
-    name: "Pro",
-    price: "$29",
+    name: "Consultorio",
+    price: "S/ 79",
     period: "/ mes",
-    description: "Para sedes con mayor volumen o varios médicos.",
+    description: "Para consultorios que ya llevan historia de sus pacientes.",
     badge: "Más popular",
     highlight: true,
     features: [
-      "Hasta 3 sedes",
-      "Médicos ilimitados",
-      "Citas ilimitadas",
-      "Confirmación automática de citas",
-      "Panel de administración",
-      "Todo lo del plan Básico",
+      "3 médicos incluidos",
+      "1 sede",
+      "Ficha del paciente",
+      "Historial de citas",
+      "Médico adicional por S/ 25",
     ],
     cta: "Suscribirse",
-    href: "/register?plan=pro",
+    href: "/register?plan=CONSULTORIO",
   },
   {
-    name: "Red",
-    price: "$79",
+    name: "Clínica",
+    price: "S/ 199",
     period: "/ mes",
-    description: "Para redes de sedes que necesitan escala y soporte.",
+    description: "Para clínicas con varias sedes y equipo médico.",
     badge: null,
     highlight: false,
     features: [
-      "Sedes ilimitadas",
-      "Médicos ilimitados",
-      "Citas ilimitadas",
-      "Confirmación automática de citas",
-      "Reportes y estadísticas",
+      "8 médicos incluidos",
+      "3 sedes incluidas",
+      "Métricas por sede",
+      "Médico adicional por S/ 20",
+      "Todo lo del plan Consultorio",
+    ],
+    cta: "Suscribirse",
+    href: "/register?plan=CLINICA",
+  },
+  {
+    name: "Red",
+    price: "A medida",
+    period: "",
+    description: "Para redes de clínicas que necesitan escala y soporte.",
+    badge: null,
+    highlight: false,
+    features: [
+      "Médicos y sedes a medida",
+      "Exportación de datos",
       "Soporte prioritario",
-      "Todo lo del plan Pro",
+      "Todo lo del plan Clínica",
     ],
     cta: "Hablar con ventas",
     href: "/contact",
   },
 ]
+
+type Cell = string | boolean
+
+const comparison: { label: string; values: [Cell, Cell, Cell, Cell] }[] = [
+  { label: "Precio", values: ["S/ 0", "S/ 79 al mes", "S/ 199 al mes", "A medida"] },
+  { label: "Médicos incluidos", values: ["1", "3", "8", "A medida"] },
+  { label: "Médico adicional", values: ["—", "S/ 25", "S/ 20", "A medida"] },
+  { label: "Sedes incluidas", values: ["1", "1", "3", "A medida"] },
+  { label: "Sede adicional", values: ["—", "S/ 40", "S/ 40", "A medida"] },
+  { label: "Reserva de citas", values: [true, true, true, true] },
+  { label: "Agenda de citas de doctores", values: [true, true, true, true] },
+  { label: "Ficha del paciente", values: [false, true, true, true] },
+  { label: "Historial de citas", values: [false, true, true, true] },
+  { label: "Métricas por sede", values: [false, false, true, true] },
+  { label: "Exportación de datos", values: [false, false, false, true] },
+  { label: "Soporte prioritario", values: [false, false, false, true] },
+]
+
+function ComparisonCell({ value }: { value: Cell }) {
+  if (value === true) {
+    return (
+      <>
+        <Check className="mx-auto h-5 w-5 text-brand-teal" aria-hidden />
+        <span className="sr-only">Incluido</span>
+      </>
+    )
+  }
+
+  if (value === false) {
+    return (
+      <>
+        <X className="mx-auto h-5 w-5 text-gray-300" aria-hidden />
+        <span className="sr-only">No incluido</span>
+      </>
+    )
+  }
+
+  if (value === "—") {
+    return (
+      <>
+        <Minus className="mx-auto h-5 w-5 text-gray-300" aria-hidden />
+        <span className="sr-only">No disponible</span>
+      </>
+    )
+  }
+
+  return <span className="text-sm text-brand-ink">{value}</span>
+}
 
 export function Pricing() {
   return (
@@ -80,7 +140,7 @@ export function Pricing() {
         </div>
 
         {/* Cards */}
-        <div className="mt-16 grid grid-cols-1 gap-8 md:grid-cols-3 items-start">
+        <div className="mt-16 grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-4 items-start">
           {plans.map((plan) => (
             <Card
               key={plan.name}
@@ -128,6 +188,62 @@ export function Pricing() {
               </CardFooter>
             </Card>
           ))}
+        </div>
+
+        {/* Comparativa */}
+        <div className="mt-20">
+          <h3 className="text-center text-2xl font-bold tracking-tight text-brand-teal-dark">
+            Compara los planes
+          </h3>
+
+          <div className="mt-8 overflow-x-auto">
+            <table className="w-full min-w-[720px] border-collapse text-left">
+              <caption className="sr-only">
+                Comparación de características entre los planes Gratis, Consultorio,
+                Clínica y Red
+              </caption>
+              <thead>
+                <tr className="border-b border-gray-200">
+                  <th scope="col" className="py-4 pr-4 text-sm font-semibold text-brand-gray">
+                    Características
+                  </th>
+                  {plans.map((plan) => (
+                    <th
+                      key={plan.name}
+                      scope="col"
+                      className={`px-4 py-4 text-center text-sm font-semibold ${
+                        plan.highlight ? "text-brand-teal" : "text-brand-ink"
+                      }`}
+                    >
+                      {plan.name}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {comparison.map((row) => (
+                  <tr key={row.label} className="border-b border-gray-100">
+                    <th
+                      scope="row"
+                      className="py-4 pr-4 text-sm font-normal text-brand-gray"
+                    >
+                      {row.label}
+                    </th>
+                    {row.values.map((value, index) => (
+                      <td
+                        key={plans[index].name}
+                        className={`px-4 py-4 text-center ${
+                          plans[index].highlight ? "bg-brand-teal/5" : ""
+                        }`}
+                      >
+                        <ComparisonCell value={value} />
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </section>

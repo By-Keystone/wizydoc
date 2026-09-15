@@ -2,11 +2,13 @@
 
 import { doFetchJson } from "@/lib/api/fetch";
 import { AuthExpiredError } from "@/lib/api/errors";
+import { PLAN_VALUES } from "@/lib/plans";
 import { redirect } from "next/navigation";
 import z, { treeifyError } from "zod";
 
 const completeAccountSchema = z.object({
   name: z.string().min(1, "El nombre es requerido"),
+  plan: z.enum(PLAN_VALUES, { error: "Elige un plan" }),
 });
 
 export type CreateAccountState =
@@ -26,7 +28,10 @@ export async function createAccountAction(
   _prevState: CreateAccountState,
   data: FormData,
 ): Promise<CreateAccountState> {
-  const parsed = completeAccountSchema.safeParse({ name: data.get("name") });
+  const parsed = completeAccountSchema.safeParse({
+    name: data.get("name"),
+    plan: data.get("plan"),
+  });
 
   if (!parsed.success) {
     return {
@@ -40,7 +45,10 @@ export async function createAccountAction(
   try {
     const result = await doFetchJson<{ accountId: string }>("/account", {
       method: "POST",
-      body: JSON.stringify({ accountName: parsed.data.name }),
+      body: JSON.stringify({
+        accountName: parsed.data.name,
+        plan: parsed.data.plan,
+      }),
     });
     accountId = result.accountId;
   } catch (error) {

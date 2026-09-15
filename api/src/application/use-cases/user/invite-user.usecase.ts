@@ -1,7 +1,11 @@
 import { NotFound } from "@/application/errors/not-found.error";
+import { PaymentRequired } from "@/application/errors/payment-required.error";
 import { UnprocessableEntity } from "@/application/errors/unprocessable-entity.errors";
 import { IEmailService } from "@/application/ports/email-service.port";
+import { isWithinLimit } from "@/domain/entities/subscription/entitlements";
 import { ITransactionManager } from "@/domain/services/transaction-manager";
+import { lockAccountQuota } from "@/infrastructure/postgres/lock-account-quota";
+import { GetAccountEntitlements } from "@/infrastructure/postgres/queries/subscription/get-account-entitlements.query";
 import { getClient } from "@/infrastructure/postgres/transaction-context";
 import { renderTemplate } from "@/infrastructure/services/email-service/template-renderer";
 import { MembershipRole, UserRole } from "@prisma/client";
@@ -36,7 +40,32 @@ export class InviteUserUseCase {
   constructor(
     private readonly tx: ITransactionManager,
     private readonly services: InviteUserUseCaseService,
+    private readonly entitlementsQuery = new GetAccountEntitlements(),
   ) { }
+
+  /**
+   * El plan cuenta médicos, no perfiles: el mismo doctor atendiendo en tres
+   * sedes ocupa una plaza, no tres.
+   */
+  private async assertDoctorSeatAvailable(accountId: string, userId: string) {
+    await lockAccountQuota(accountId);
+
+    const entitlements = await this.entitlementsQuery.execute(accountId);
+
+    const doctors = await getClient().userResourceMembership.findMany({
+      where: { accountId, role: "DOCTOR", deletedAt: null },
+      distinct: ["userId"],
+      select: { userId: true },
+    });
+
+    if (doctors.some((doctor) => doctor.userId === userId)) return;
+
+    if (!isWithinLimit(entitlements.maxDoctors, doctors.length)) {
+      throw new PaymentRequired(
+        `El plan ${entitlements.plan} incluye ${entitlements.maxDoctors} médicos`,
+      );
+    }
+  }
 
   async execute(data: InviteUserDto) {
     const result = await this.tx.runInTransaction(async () => {
@@ -77,7 +106,9 @@ export class InviteUserUseCase {
         throw new NotFound("Resource not found");
       }
 
-      if (data.role === "DOCTOR")
+      if (data.role === "DOCTOR") {
+        await this.assertDoctorSeatAvailable(data.accountId, user.id);
+
         await client.doctorProfile.create({
           data: {
             userId: user.id,
@@ -87,6 +118,7 @@ export class InviteUserUseCase {
             },
           },
         });
+      }
 
       const membership = await client.userResourceMembership.create({
         data: {

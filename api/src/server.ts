@@ -9,6 +9,7 @@ import {
 } from "@fastify/type-provider-zod";
 import authPlugin from "./plugins/auth";
 import policyPlugin, { policy } from "./plugins/policy";
+import entitlementsPlugin from "./plugins/entitlements";
 import { PrismaUserRepository } from "./infrastructure/postgres/repositories/user.repository";
 import { SESEmailService } from "./infrastructure/services/email-service/ses.service";
 import { ClinicRepository } from "./infrastructure/postgres/repositories/clinic.repository";
@@ -71,6 +72,7 @@ async function start() {
   await fastify.register(policyPlugin, {
     userRepository,
   });
+  await fastify.register(entitlementsPlugin);
 
   // Hook global: toda ruta registrada a partir de aquí pasa por la política.
   // Una ruta sin `policy({...})` responde 401, así que olvidarla la cierra en
