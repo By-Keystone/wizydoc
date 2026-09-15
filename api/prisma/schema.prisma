@@ -53,14 +53,16 @@ model Resource {
 
 model Organization {
   resourceId String   @id @map("resource_id") @db.Uuid
-  name       String   @unique
+  name       String
   createdAt  DateTime @default(now()) @map("created_at")
   updatedAt  DateTime @updatedAt @map("updated_at")
 
   resource    Resource    @relation(fields: [resourceId], references: [id])
-  accountId   String?     @db.Uuid
+  accountId   String      @map("account_id") @db.Uuid
+  account     Account     @relation(fields: [accountId], references: [id], onDelete: Cascade)
   specialties Specialty[]
 
+  @@unique([accountId, name])
   @@map("organization")
 }
 
@@ -141,6 +143,7 @@ model Account {
   userResourceMemberships UserResourceMembership[]
   resources               Resource[]
   patients                Patient[]
+  organizations           Organization[]
 
   @@map("account")
 }
