@@ -1,4 +1,5 @@
 import { NotFound } from "@/application/errors/not-found.error";
+import { PaymentRequired } from "@/application/errors/payment-required.error";
 import { getClinicAppointmentsParamsSchema } from "@/application/queries/clinic/get-clinic-appointments.query";
 import { getClinicMetricsParamsSchema } from "@/application/queries/clinic/get-clinic-metrics.query";
 import { getClinicUsersSchema } from "@/application/queries/clinic/get-clinic-users.query";
@@ -62,6 +63,11 @@ export default async function clinicRoutes(
 
         return reply.status(201).send(result);
       } catch (error) {
+        if (error instanceof PaymentRequired) {
+          return reply.status(error.statusCode).send({
+            message: `You cannot execute this action because of the limits from your plan. ${error.message}`,
+          });
+        }
         console.error("An error occured when creating clinic:", error);
 
         return reply.internalServerError(
