@@ -32,7 +32,7 @@ export const CreateClinicModal = ({ isOpen, setIsOpen }: Props) => {
   const { submit, isPending, fieldErrors } = useFormAction<ClinicFields>(
     (formData) => createClinicAction(resourceId, { status: "idle" }, formData),
     {
-      successMessage: "Clínica creada",
+      successMessage: "Sede creada",
       onSuccess: () => setIsOpen(false),
     },
   );
@@ -41,7 +41,7 @@ export const CreateClinicModal = ({ isOpen, setIsOpen }: Props) => {
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent size="S">
         <DialogHeader>
-          <DialogTitle>Nueva clínica</DialogTitle>
+          <DialogTitle>Nueva sede</DialogTitle>
         </DialogHeader>
         <CreateClinicForm
           formId={FORM_ID}

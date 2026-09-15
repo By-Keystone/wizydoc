@@ -15,7 +15,7 @@ const buildColumns = (
 ): Column<ClinicWithUser>[] => [
   {
     key: "name",
-    header: "Nombre de la clínica",
+    header: "Nombre de la sede",
     align: "center",
     cell: (row) => <span>{row.name}</span>,
   },

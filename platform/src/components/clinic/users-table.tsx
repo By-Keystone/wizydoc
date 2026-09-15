@@ -42,7 +42,7 @@ export const UsersTable = ({ users }: Props) => {
       getRowKey={(row) => row.email}
       rows={users}
       columns={columns}
-      empty="Esta clínica aún no tiene usuarios."
+      empty="Esta sede aún no tiene usuarios."
     />
   );
 };
