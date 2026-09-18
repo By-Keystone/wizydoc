@@ -6,6 +6,8 @@ interface PlanCapabilities {
   /** `null` es ilimitado: el plan Red se negocia por contrato, no por tope. */
   includedDoctors: number | null;
   includedClinics: number | null;
+  /** `null` cuando el plan no se cobra al contratarlo: Gratis no cuesta y Red se negocia aparte. */
+  monthlyPriceCents: number | null;
   features: readonly Feature[];
 }
 
@@ -18,21 +20,29 @@ export const PLAN_CAPABILITIES: Record<Plan, PlanCapabilities> = {
   FREE: {
     includedDoctors: 1,
     includedClinics: 1,
+    monthlyPriceCents: null,
     features: [],
   },
   CONSULTORIO: {
     includedDoctors: 3,
     includedClinics: 1,
+    monthlyPriceCents: 7900,
     features: ["PATIENT_RECORD"],
   },
   CLINICA: {
     includedDoctors: 8,
     includedClinics: 3,
+    monthlyPriceCents: 19900,
     features: ["PATIENT_RECORD", "CLINIC_METRICS"],
   },
   RED: {
     includedDoctors: null,
     includedClinics: null,
+    monthlyPriceCents: null,
     features: ["PATIENT_RECORD", "CLINIC_METRICS", "DATA_EXPORT"],
   },
 };
+
+export function requiresPayment(plan: Plan): boolean {
+  return PLAN_CAPABILITIES[plan].monthlyPriceCents !== null;
+}
