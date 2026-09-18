@@ -128,9 +128,32 @@ model Subscription {
   extraDoctors Int @default(0) @map("extra_doctors")
   extraClinics Int @default(0) @map("extra_clinics")
 
+  // Nulos en los planes que no se cobran (Gratis, Red).
+  paymentProviderCustomerId     String? @map("payment_provider_customer_id")
+  paymentProviderCardId         String? @map("payment_provider_card_id")
+  paymentProviderSubscriptionId String? @unique @map("payment_provider_subscription_id")
+
   account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  addOns  AddOn[]
 
   @@map("subscription")
+}
+
+model AddOn {
+  id             String       @id @default(uuid(7)) @db.Uuid
+  type           AddOnType
+  subscriptionId String       @map("subscription_id") @db.Uuid
+  amount         Int
+  quantity       Int
+  subscription   Subscription @relation(fields: [subscriptionId], references: [id])
+
+  paymentProviderSubscriptionId String @map("payment_provider_subscriptioin_id")
+
+  createdAt   DateTime  @default(now()) @map("created_at")
+  cancelledAt DateTime? @map("cancelled_at")
+
+  @@index([paymentProviderSubscriptionId])
+  @@map("add_on")
 }
 
 model Account {
@@ -334,4 +357,9 @@ enum MembershipRole {
   ADMIN
   DOCTOR
   USER
+}
+
+enum AddOnType {
+  DOCTOR_SEAT
+  CLINIC_SEAT
 }

@@ -4,17 +4,19 @@ import { IAccountRepository } from "@/domain/repositories/account.repository";
 import { ISubscriptionRepository } from "@/domain/repositories/subscription.repository";
 import { IUserRepository } from "@/domain/repositories/user.repository";
 import { ITransactionManager } from "@/domain/services/transaction-manager";
+import type { BillingService } from "@/application/ports/billing-service.port";
 import {
   completeAccountSetupSchema,
   CompleteAccountSetupUseCase,
 } from "@/application/use-cases/account/complete-account-setup.usecase";
-import { BadRequest } from "@/application/errors/bad-request.errors";
+import { ApplicationError } from "@/application/errors/application.errors";
 import { policy } from "@/plugins/policy";
 
 interface AccountRoutesOptions {
   userRepository: IUserRepository;
   accountRepository: IAccountRepository;
   subscriptionRepository: ISubscriptionRepository;
+  billingService: BillingService;
   transactionManager: ITransactionManager;
 }
 
@@ -26,6 +28,7 @@ export default async function accountRoutes(
     userRepository,
     accountRepository,
     subscriptionRepository,
+    billingService,
     transactionManager,
   } = opts;
   const app = fastify.withTypeProvider<ZodTypeProvider>();
@@ -44,13 +47,16 @@ export default async function accountRoutes(
           userRepository,
           accountRepository,
           subscriptionRepository,
+          billingService,
           transactionManager,
         );
         const result = await useCase.execute(request.user.userId, request.body);
         return reply.status(201).send(result);
       } catch (error) {
-        if (error instanceof BadRequest) {
-          return reply.status(400).send({ message: error.message });
+        if (error instanceof ApplicationError) {
+          return reply
+            .status(error.statusCode)
+            .send({ message: error.message, code: error.code });
         }
         throw error;
       }

@@ -13,6 +13,9 @@ export class SubscriptionRepository implements ISubscriptionRepository {
         accountId: dto.accountId,
         plan: dto.plan,
         status: dto.status,
+        paymentProviderCustomerId: dto.paymentProvider?.customerId,
+        paymentProviderCardId: dto.paymentProvider?.cardId,
+        paymentProviderSubscriptionId: dto.paymentProvider?.subscriptionId,
       },
     });
     return toDomain(created);

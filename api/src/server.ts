@@ -28,6 +28,7 @@ import userInvitationRoutes from "./routes/user-invitation";
 import doctorProfileRoutes from "./routes/doctor-profile/index";
 import appointmentRoutes from "./routes/appointment/index";
 import patientRoutes from "./routes/patient";
+import { CulqiBillingService } from "./infrastructure/vendors/billing/culqi/culqi-billing.service";
 
 const fastify = Fastify({
   logger:
@@ -60,6 +61,14 @@ async function start() {
   const accountRepository = new AccountRepository();
   const subscriptionRepository = new SubscriptionRepository();
   const transactionManager = new PostgresTransactionManager();
+  const billingService = new CulqiBillingService({
+    baseUrl: process.env.CULQI_API_BASE_URL!,
+    privateKey: process.env.CULQI_API_PRIVATE_KEY!,
+    planIds: {
+      CONSULTORIO: process.env.CULQI_PLAN_ID_CONSULTORIO,
+      CLINICA: process.env.CULQI_PLAN_ID_CLINICA,
+    },
+  });
 
   await fastify.register(cors, {
     origin: process.env.FRONTEND_URL || "http://localhost:3000",
@@ -134,6 +143,7 @@ async function start() {
     userRepository,
     accountRepository,
     subscriptionRepository,
+    billingService,
     transactionManager,
   });
 

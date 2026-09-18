@@ -9,6 +9,9 @@ import z, { treeifyError } from "zod";
 const completeAccountSchema = z.object({
   name: z.string().min(1, "El nombre es requerido"),
   plan: z.enum(PLAN_VALUES, { error: "Elige un plan" }),
+  cardToken: z.string().min(1).optional(),
+  billingAddress: z.string().min(1, "La dirección es requerida").optional(),
+  billingCity: z.string().min(1, "La ciudad es requerida").optional(),
 });
 
 export type CreateAccountState =
@@ -31,6 +34,9 @@ export async function createAccountAction(
   const parsed = completeAccountSchema.safeParse({
     name: data.get("name"),
     plan: data.get("plan"),
+    cardToken: data.get("cardToken") || undefined,
+    billingAddress: data.get("billingAddress") || undefined,
+    billingCity: data.get("billingCity") || undefined,
   });
 
   if (!parsed.success) {
@@ -48,6 +54,9 @@ export async function createAccountAction(
       body: JSON.stringify({
         accountName: parsed.data.name,
         plan: parsed.data.plan,
+        cardToken: parsed.data.cardToken,
+        billingAddress: parsed.data.billingAddress,
+        billingCity: parsed.data.billingCity,
       }),
     });
     accountId = result.accountId;
