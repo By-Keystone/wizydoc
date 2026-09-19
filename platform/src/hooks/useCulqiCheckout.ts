@@ -75,15 +75,15 @@ export function useCulqiCheckout() {
     );
 
     culqi.culqi = () => {
+      console.error({ culqi });
+
       if (culqi.token) {
         onToken(culqi.token.id);
         culqi.close();
         return;
       }
 
-      onError(
-        culqi.error?.user_message ?? "No se pudo procesar la tarjeta",
-      );
+      onError(culqi.error?.user_message ?? "No se pudo procesar la tarjeta");
     };
 
     culqi.open();

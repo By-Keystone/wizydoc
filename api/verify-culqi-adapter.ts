@@ -44,7 +44,7 @@ async function main() {
   check("orden: customers → cards → subscriptions", calls.map((c) => c.path).join(" → ") === "/v2/customers → /v2/cards → /v2/recurrent/subscriptions/create");
   check("Authorization Bearer con la llave privada", calls.every((c) => c.auth === "Bearer sk_test_fake"));
   check("customer con country_code PE y address_city", calls[0].body.country_code === "PE" && calls[0].body.address_city === "Lima");
-  check("card usa el customer creado y el token, sin validate", calls[1].body.customer_id === "cus_test_123" && calls[1].body.token_id === "tkn_abc" && calls[1].body.validate === false);
+  check("card usa el customer creado y el token, con validate", calls[1].body.customer_id === "cus_test_123" && calls[1].body.token_id === "tkn_abc" && calls[1].body.validate === true);
   check("subscription usa la card creada, el plan_id de CLINICA y tyc", calls[2].body.card_id === "crd_test_123" && calls[2].body.plan_id === "pln_clinica" && calls[2].body.tyc === true);
   check("devuelve los tres ids", result.customerId === "cus_test_123" && result.cardId === "crd_test_123" && result.subscriptionId === "sxn_test_123");
 

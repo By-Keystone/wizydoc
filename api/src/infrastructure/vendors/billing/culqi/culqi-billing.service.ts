@@ -57,12 +57,13 @@ export class CulqiBillingService implements BillingService {
       country_code: input.customer.countryCode,
     });
 
-    // Sin validar: la suscripción cobra inmediatamente después, y el cargo de
-    // validación aparecería como un segundo movimiento en la tarjeta.
+    // Culqi cobra S/ 3 y los devuelve al momento. Es el único punto en que la
+    // tarjeta pasa por el banco antes de crear la suscripción: sin esto, una
+    // tarjeta rechazada deja la cuenta activa con el primer cobro fallido.
     const card = await this.createCard({
       customer_id: customer.id,
       token_id: input.cardToken,
-      validate: false,
+      validate: true,
     });
 
     const subscription = await this.createSubscription({
