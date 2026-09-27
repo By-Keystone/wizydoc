@@ -1,5 +1,13 @@
 import Link from "next/link";
-import { Check, Minus, X } from "lucide-react";
+import {
+  Building2,
+  Check,
+  ClipboardList,
+  Minus,
+  Network,
+  Stethoscope,
+  X,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -12,6 +20,7 @@ import {
 const plans = [
   {
     name: "Gratis",
+    icon: Stethoscope,
     price: "S/ 0",
     period: "para siempre",
     description: "Para el médico independiente que quiere empezar hoy.",
@@ -28,9 +37,10 @@ const plans = [
   },
   {
     name: "Consultorio",
+    icon: ClipboardList,
     price: "S/ 79",
     period: "/ mes",
-    description: "Para consultorios que ya llevan historia de sus pacientes.",
+    description: "Para consultorios que quieren llevar historia clínica de sus pacientes.",
     badge: "Más popular",
     highlight: true,
     features: [
@@ -45,6 +55,7 @@ const plans = [
   },
   {
     name: "Clínica",
+    icon: Building2,
     price: "S/ 199",
     period: "/ mes",
     description: "Para clínicas con varias sedes y equipo médico.",
@@ -62,6 +73,7 @@ const plans = [
   },
   {
     name: "Red",
+    icon: Network,
     price: "A medida",
     period: "",
     description: "Para redes de clínicas que necesitan escala y soporte.",
@@ -149,7 +161,7 @@ export function Pricing() {
 
         {/* Cards */}
         <div className="mt-16 grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-4 items-start">
-          {plans.map((plan) => (
+          {plans.map(({ icon: Icon, ...plan }) => (
             <Card
               key={plan.name}
               className={
@@ -170,6 +182,9 @@ export function Pricing() {
               )}
 
               <CardHeader className={plan.highlight ? "pt-8" : ""}>
+                <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-xl bg-brand-teal/10">
+                  <Icon className="h-5 w-5 text-brand-teal" aria-hidden />
+                </div>
                 <p className="text-sm font-semibold text-brand-gray">
                   {plan.name}
                 </p>
