@@ -9,6 +9,9 @@ const links = {
     { label: "Precios",         href: "#pricing" },
     { label: "Cómo funciona",   href: "#how-it-works" },
   ],
+  Legal: [
+    { label: "Términos y condiciones", href: "/terminos-y-condiciones" },
+  ],
 }
 
 const socials = [
@@ -20,7 +23,7 @@ export function Footer() {
   return (
     <footer className="border-t border-gray-200 bg-white">
       <div className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-2 gap-10 md:grid-cols-3">
+        <div className="grid grid-cols-2 gap-10 md:grid-cols-4">
 
           {/* Brand */}
           <div className="col-span-2 md:col-span-1">
