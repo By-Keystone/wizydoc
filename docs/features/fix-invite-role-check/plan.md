@@ -657,3 +657,127 @@ local.
 ### Qué no se puede verificar en local
 
 - La auditoría sobre datos reales de producción.
+
+---
+
+## Criterios de aceptación
+
+Decisiones que estos criterios dan por cerradas (5 de octubre de 2026): la
+comprobación de rol va en el caso de uso (decisión 3); el API sigue aceptando
+`role: "ADMIN"` y sólo un ADMIN puede otorgarlo (decisión 2); `POST
+/organization` queda fuera de este ticket (decisión 1); la auditoría en
+producción la corre el humano **tras** desplegar y no bloquea la aceptación del
+ticket (decisión 4).
+
+`[e2e]`: lo prueba el e2e-tester en el navegador contra la base local.
+`[manual]`: petición HTTP, consulta a la base local o lectura de logs; el
+engineer o el reviewer pegan la salida. "Sin escrituras" significa que los
+totales de `user`, `user_resource_membership`, `doctor_profile` y
+`user_invitation` no cambian y no se envía ningún correo de invitación.
+
+### Lo que debe seguir funcionando
+
+- **CA-1** `[e2e]` — Administrador de la organización.
+  Dado que entra a Sedes → una sede → Usuarios,
+  Cuando invita a un usuario nuevo como recepción (USER) o como médico
+  (DOCTOR),
+  Entonces ve el toast "Invitación enviada" y el invitado aparece en la tabla.
+- **CA-2** `[e2e]` — Médico invitado por el administrador (en conjunto con
+  `fix-invitation-set-password`).
+  Dado el correo de invitación que generó CA-1,
+  Cuando abre el link y fija su contraseña,
+  Entonces entra con sesión a la cuenta (el token generado sigue siendo
+  válido para el flujo de activación).
+- **CA-3** `[manual]` — Administrador de la organización, sin membership
+  directa en la sede.
+  Dado que es ADMIN de la organización padre de la sede B,
+  Cuando invita a un médico a B,
+  Entonces recibe 200 y la membership queda creada en B.
+- **CA-4** `[manual]` — Administrador de una sede.
+  Dado que es ADMIN directo de la sede A,
+  Cuando invita a alguien como USER a A, o a otra persona como ADMIN de A,
+  Entonces recibe 200 en ambos casos.
+- **CA-5** `[manual]` — Administrador con plan al tope de médicos.
+  Dado que su plan ya no admite otro médico,
+  Cuando invita a un médico nuevo,
+  Entonces recibe 402 con el mensaje del plan (antes 500), y en el formulario
+  de la UI ese mensaje aparece en el toast.
+- **CA-6** `[manual]` — Administrador que invita un correo que ya tiene
+  cuenta en otra clínica de WizyDoc.
+  Dado ese correo,
+  Cuando lo invita a su sede,
+  Entonces recibe 422 "Ya existe una cuenta con este correo en otra cuenta"
+  (antes 500).
+- **CA-7** `[e2e]` — Recepción que abre a mano la URL de usuarios de su sede.
+  Dada la URL `/account/<accountId>/organization/<orgId>/clinic/<A>/users`,
+  Cuando la abre,
+  Entonces ve la página de error del segmento y no hay botón "Invitar
+  usuario" (como hoy).
+
+### Lo que deja de ser posible
+
+- **CA-8** `[manual]` — Recepción (USER) de la sede A.
+  Dado que tiene sesión,
+  Cuando se invita a sí misma a la sede B como ADMIN, como DOCTOR o como
+  USER,
+  Entonces recibe 403 "Sólo un administrador de la sede puede invitar
+  usuarios" en los tres casos, sin escrituras, y `GET /clinic/B/users` le
+  sigue respondiendo 404.
+- **CA-9** `[manual]` — Recepción (USER) de la sede A.
+  Cuando invita a un tercero como ADMIN de su propia sede A,
+  Entonces recibe 403 y no hay escrituras.
+- **CA-10** `[manual]` — Médico (DOCTOR) de la sede A.
+  Cuando se invita a sí mismo como ADMIN de B, o invita a un tercero como
+  USER de A,
+  Entonces recibe 403 y no hay escrituras.
+- **CA-11** `[manual]` — Administrador de la sede A que no es administrador de
+  B ni de la organización.
+  Cuando invita a alguien a la sede B,
+  Entonces recibe 403 y no hay escrituras.
+- **CA-12** `[manual]` — Miembro de la organización con rol USER o DOCTOR
+  (acceso heredado, sin membership directa en la sede).
+  Cuando se invita como ADMIN de una sede de esa organización,
+  Entonces recibe 403 y no hay escrituras.
+- **CA-13** `[manual]` — Administrador cuya membership ADMIN está borrada
+  (`deletedAt` con fecha, simulado en la base local).
+  Cuando invita a alguien a esa sede,
+  Entonces recibe 403.
+- **CA-14** `[manual]` — Miembro de otra cuenta (ADMIN de su propia cuenta).
+  Dado el `resourceId` de una sede de esta cuenta,
+  Cuando invita a alguien a esa sede,
+  Entonces recibe 404 "Sede no encontrada" y no hay escrituras.
+- **CA-15** `[manual]` — Miembro de otra cuenta que falsificó su `accountId`
+  (sólo en local, antes del arreglo de `auth.ts`).
+  Dado que su `accountId` apunta a la cuenta víctima y volvió a iniciar
+  sesión,
+  Cuando se invita como ADMIN de una sede de la cuenta víctima,
+  Entonces recibe 403 y no hay escrituras.
+- **CA-16** `[manual]` — Administrador que manda un recurso que no es una
+  sede.
+  Dado el id de una organización o un id inexistente,
+  Cuando invita a alguien con ese `resourceId`,
+  Entonces recibe 404 "Sede no encontrada".
+- **CA-17** `[manual]` — Atacante sin sesión.
+  Cuando llama a `POST /user/invite`,
+  Entonces recibe el mismo rechazo que hoy (la política de la ruta no cambia)
+  y no hay escrituras.
+
+### Lo que no debe filtrarse
+
+- **CA-18** `[manual]` — Recepción o médico que sondea correos.
+  Dado un correo que tiene cuenta en otra clínica de WizyDoc y otro que no
+  existe,
+  Cuando intenta invitar a cada uno a una sede de su cuenta,
+  Entonces recibe en ambos el mismo 403 con el mismo cuerpo, sin que se cree
+  ningún `user` ni se envíe ningún correo.
+- **CA-19** `[manual]` — Quien lee los logs del api.
+  Dado un error no previsto en la invitación (p. ej. reinvitar a la misma
+  persona en la misma sede, P2002),
+  Cuando se lee la línea `[invite-user]`,
+  Entonces muestra sólo `errName` y `errCode` (`"P2002"`), sin correo,
+  teléfono ni el error original; y la respuesta es 500 con el mensaje
+  genérico.
+- **CA-20** `[manual]` — Integridad entre cuentas.
+  Tras ejecutar todos los criterios anteriores,
+  Cuando se buscan memberships cuyo `account_id` difiere del de su recurso,
+  Entonces no hay ninguna.
