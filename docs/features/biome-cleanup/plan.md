@@ -199,13 +199,4 @@ ejecutarse.
   sólo a11y.
 - `api/biome.json` sin bloque `suspicious`; `platform/biome.json` sin
   `noEmptyPattern` ni `noAssignInExpressions`.
-- e2e: no hace falta, ningún cambio altera el comportamiento. Si se elige la
-  alternativa de la pregunta 1, tampoco (el valor sigue sin efecto por la
-  `policy`).
-
-## Preguntas abiertas
-
-1. **`onboarding` en `POST /organization`: ¿borrarlo o leerlo bien?** Leerlo
-   con un `querystring` de `z.stringbool()` no cambia nada, porque la ruta ya
-   exige un usuario con onboarding completo. Recomiendo **borrarlo** (parámetro,
-   query en la action, `userRepository` de la ruta y `IUserRepository.update`).
+- e2e: no hace falta, ningún cambio altera el comportamiento.
