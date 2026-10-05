@@ -17,8 +17,6 @@ function maxRole(a: MembershipRole, b: MembershipRole): MembershipRole {
 }
 
 export class GetUserMembership implements IGetUserMembership {
-  constructor() {}
-
   async execute({
     resourceId,
     userId,

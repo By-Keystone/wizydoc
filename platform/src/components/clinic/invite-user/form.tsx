@@ -56,7 +56,7 @@ export const InviteUserForm = ({
       (new FormData(formRef.current!).get("email") as string) ?? ""
     ).trim();
 
-    if (!value || !value.includes("@")) {
+    if (!value?.includes("@")) {
       setEmailError("Ingresa un correo electrónico válido");
       return;
     }

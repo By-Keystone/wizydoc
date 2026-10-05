@@ -7,10 +7,7 @@
   "assist": { "actions": { "source": { "organizeImports": "off" } } },
   "linter": {
     "rules": {
-      "recommended": true,
-      "suspicious": {
-        "useIterableCallbackReturn": "warn"
-      }
+      "recommended": true
     }
   }
 }

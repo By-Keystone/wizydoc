@@ -17,8 +17,6 @@ export interface IGetDoctorProfileAvailabilityQueryResult {
 }
 
 export class GetDoctorProfileAvailabilityQuery {
-  constructor() {}
-
   async execute(dto: GetDoctorProfileAvailabilityDto) {
     const client = getClient();
 

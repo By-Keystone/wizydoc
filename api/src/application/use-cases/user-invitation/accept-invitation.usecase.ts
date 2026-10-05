@@ -24,8 +24,6 @@ export const acceptInvitationParamsSchema = z.object({
 type AcceptInvitationDto = z.infer<typeof acceptInvitationParamsSchema>;
 
 export class AcceptInvitationUseCase {
-  constructor() {}
-
   async execute(data: AcceptInvitationDto) {
     return await inTransaction(async () => {
       const userId = await this.claimPendingInvitation(data.token);

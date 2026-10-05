@@ -29,8 +29,6 @@ export type GetPatientsDto = z.infer<typeof getPatientsSchema> &
   GetPatientsQueryDto;
 
 export class GetPatientsUseCase {
-  constructor() {}
-
   async execute(input: GetPatientsDto) {
     const client = getClient();
 

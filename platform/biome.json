@@ -24,12 +24,10 @@
         "useKeyWithClickEvents": "warn"
       },
       "correctness": {
-        "noEmptyPattern": "warn",
         "useExhaustiveDependencies": "warn"
       },
       "suspicious": {
-        "noArrayIndexKey": "warn",
-        "noAssignInExpressions": "warn"
+        "noArrayIndexKey": "warn"
       }
     }
   }

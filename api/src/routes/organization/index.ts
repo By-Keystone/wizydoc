@@ -25,7 +25,6 @@ import {
   UpdateSpecialtyUseCase,
 } from "@/application/use-cases/specialty/update-specialty.usecase";
 import type { IOrganizationRepository } from "@/domain/repositories/organization.repository";
-import type { IUserRepository } from "@/domain/repositories/user.repository";
 import { GetOrganizationClinicsQuery } from "@/infrastructure/postgres/queries/organization/get-organization-clinics.query";
 import { GetOrganizationsClinicCountQuery } from "@/infrastructure/postgres/queries/organization/get-organizations-clinic-count.query";
 import { GetOrganizationsDoctorCountQuery } from "@/infrastructure/postgres/queries/organization/get-organizations-doctor-count.query";
@@ -35,14 +34,13 @@ import type { FastifyInstance } from "fastify";
 
 export interface OrganizationRoutesOptions {
   organizationRepository: IOrganizationRepository;
-  userRepository: IUserRepository;
 }
 
 export default async function organizationRoutes(
   fastify: FastifyInstance,
   opts: OrganizationRoutesOptions,
 ) {
-  const { organizationRepository, userRepository } = opts;
+  const { organizationRepository } = opts;
 
   const app = fastify.withTypeProvider<ZodTypeProvider>();
 
@@ -55,12 +53,7 @@ export default async function organizationRoutes(
     },
     async (request, reply) => {
       try {
-        const useCase = new CreateOrganizationUseCase(
-          organizationRepository,
-          userRepository,
-        );
-
-        const params = request.params as Record<string, unknown>;
+        const useCase = new CreateOrganizationUseCase(organizationRepository);
 
         const body: CreateOrganizationDto = {
           accountId: request.user.accountId!,
@@ -68,10 +61,7 @@ export default async function organizationRoutes(
           userId: request.user.userId,
         };
 
-        const result = await useCase.execute(
-          body,
-          params?.onboarding as boolean | undefined,
-        );
+        const result = await useCase.execute(body);
 
         return reply.status(201).send(result);
       } catch (error) {

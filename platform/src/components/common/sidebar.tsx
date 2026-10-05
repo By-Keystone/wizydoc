@@ -10,7 +10,6 @@ import { getNavLinks } from "./utils";
 import { authClient } from "@/lib/auth/client";
 import { useApp } from "@/context/app/app.context";
 import { useParams, useRouter } from "next/navigation";
-import { Button } from "../ui/button";
 
 export function Sidebar() {
   const { membership } = useApp();

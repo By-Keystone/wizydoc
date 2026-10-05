@@ -17,8 +17,6 @@ function maxRole(a: MembershipRole, b: MembershipRole): MembershipRole {
 }
 
 export class UserMembershipsQuery implements IUserMembershipsQuery {
-  constructor() {}
-
   async execute(
     userId: string,
     accountId: string,

@@ -20,8 +20,6 @@ import { policy } from "@/plugins/policy";
 import auth from "@/infrastructure/vendors/auth/better-auth/auth";
 import { fromNodeHeaders } from "better-auth/node";
 
-type UserInvitationRoutesOptions = {};
-
 // Sólo se loguean errName/errCode: el error de Prisma puede incluir el token en los argumentos de la consulta.
 function logUnhandledError(
   request: FastifyRequest,
@@ -37,10 +35,7 @@ function logUnhandledError(
   request.log.error({ errName, errCode }, label);
 }
 
-export default async function userInvitationRoutes(
-  fastify: FastifyInstance,
-  opts: UserInvitationRoutesOptions,
-) {
+export default async function userInvitationRoutes(fastify: FastifyInstance) {
   const app = fastify.withTypeProvider<ZodTypeProvider>();
 
   app.get(

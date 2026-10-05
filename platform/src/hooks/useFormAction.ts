@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "@/lib/toast";
 import type { ActionState, FieldErrors } from "@/lib/actions/types";
 
-interface Options<Fields> {
+interface Options {
   /** Mensaje de éxito. Si se omite, se usa el `message` que devuelva la action. */
   successMessage?: string;
   /** Se ejecuta tras un resultado `success` (p. ej. cerrar el modal). */
@@ -30,7 +30,7 @@ interface Options<Fields> {
  */
 export function useFormAction<Fields extends Record<string, unknown>>(
   action: (formData: FormData) => Promise<ActionState<Fields>>,
-  options: Options<Fields> = {},
+  options: Options = {},
 ) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();

@@ -10,8 +10,6 @@ export const getSpecialtiesParamSchema = z.object({
 export type GetSpecialtiesDto = { organizationId: string };
 
 export class GetSpecialtiesUseCase {
-  constructor() {}
-
   async execute(dto: GetSpecialtiesDto) {
     const client = getClient();
 

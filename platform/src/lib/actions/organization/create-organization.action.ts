@@ -47,7 +47,7 @@ export const createOrganizationAction = async (
   }
 
   try {
-    await doFetchJson("/organization?onboarding=false", {
+    await doFetchJson("/organization", {
       method: "POST",
       body: JSON.stringify(parsed.data),
     });

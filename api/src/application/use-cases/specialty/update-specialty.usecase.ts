@@ -21,8 +21,6 @@ export type UpdateSpecialtyDto = z.infer<typeof updateSpecialtyBodySchema> &
   };
 
 export class UpdateSpecialtyUseCase {
-  constructor() {}
-
   async execute(dto: UpdateSpecialtyDto) {
     try {
       const client = getClient();

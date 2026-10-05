@@ -11,8 +11,6 @@ export const getDoctorAvailabilityParamsSchema = z.object({
 export type GetDoctorAvailabilityDto = { clinicId: string; userId: string };
 
 export class GetDoctorAvailabilityUseCase {
-  constructor() {}
-
   async execute(dto: GetDoctorAvailabilityDto) {
     const client = getClient();
 

@@ -1,5 +1,3 @@
-import type { UserRole } from "@/domain/enums/user-role";
-
 export interface User {
   id: string;
   email: string;

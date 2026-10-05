@@ -135,7 +135,7 @@ test.describe("Lo que sigue funcionando", () => {
 
     expect(response.status()).toBeGreaterThanOrEqual(300);
     expect(response.status()).toBeLessThan(400);
-    const location = response.headers()["location"] ?? "";
+    const location = response.headers().location ?? "";
     expect(location).not.toContain("/onboarding");
     expect(location).toContain(admin.accountId);
   });

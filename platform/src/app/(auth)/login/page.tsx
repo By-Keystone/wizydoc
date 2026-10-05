@@ -10,7 +10,7 @@ export default async function LoginPage({
 }) {
   const { callbackUrl } = await searchParams;
   const callback =
-    callbackUrl && callbackUrl.startsWith("/") && !callbackUrl.startsWith("//")
+    callbackUrl?.startsWith("/") && !callbackUrl.startsWith("//")
       ? callbackUrl
       : null;
 

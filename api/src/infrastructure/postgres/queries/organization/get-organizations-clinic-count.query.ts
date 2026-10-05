@@ -8,8 +8,6 @@ import { getClient } from "../../transaction-context";
 export class GetOrganizationsClinicCountQuery
   implements IGetOrganizationsClinicCountQuery
 {
-  constructor() {}
-
   async execute(
     dto: GetOrganizationsClinicCountDto,
   ): Promise<GetOrganizationsClinicCountQueryResult> {

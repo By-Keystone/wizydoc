@@ -23,10 +23,9 @@ type ScheduleByDay = Record<number, Slot[]>;
 
 function toScheduleByDay(blocks: AvailabilityBlock[]): ScheduleByDay {
   return blocks.reduce<ScheduleByDay>((acc, b) => {
-    (acc[b.dayOfWeek] ??= []).push({
-      startTime: b.startTime,
-      endTime: b.endTime,
-    });
+    const slots = acc[b.dayOfWeek] ?? [];
+    slots.push({ startTime: b.startTime, endTime: b.endTime });
+    acc[b.dayOfWeek] = slots;
     return acc;
   }, {});
 }

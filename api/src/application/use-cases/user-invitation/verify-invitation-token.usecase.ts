@@ -18,8 +18,6 @@ export type VerifyInvitationTokenDto = z.infer<
 >;
 
 export class VerifyInvitationTokenUseCase {
-  constructor() {}
-
   async execute(data: VerifyInvitationTokenDto) {
     const client = getClient();
     const invitation = await client.userInvitation.findUnique({

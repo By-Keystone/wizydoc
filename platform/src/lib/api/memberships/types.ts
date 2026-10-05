@@ -22,7 +22,3 @@ export interface ClinicMembership {
 }
 
 export type UserMembership = OrganizationMembership | ClinicMembership;
-
-const tags = {
-  membersjips: () => "",
-};
