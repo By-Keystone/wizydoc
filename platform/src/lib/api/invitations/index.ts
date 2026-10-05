@@ -8,6 +8,7 @@ export type InvitationStep = "set_password" | "login";
 export interface InvitationDetails {
   name: string;
   resourceName: string;
+  step: InvitationStep;
 }
 
 /**

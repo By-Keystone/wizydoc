@@ -4,35 +4,28 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, MailCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import type { InvitationStep } from "@/lib/api/invitations";
 
 interface Props {
   token: string;
   name: string;
   resourceName: string;
+  step: InvitationStep;
 }
 
-/** Etapa 2 (solo usuarios nuevos): datos necesarios para definir la contraseña. */
-interface SetPasswordStage {
-  userId: string;
-}
-
-export function AcceptInviteForm({ token, name, resourceName }: Props) {
+export function AcceptInviteForm({ token, name, resourceName, step }: Props) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
-  // Cuando pasa a etapa 2 (definir contraseña), guarda el userId que devolvió accept.
-  const [setPasswordStage, setSetPasswordStage] =
-    useState<SetPasswordStage | null>(null);
+  const needsPassword = step === "set_password";
 
-  // Etapa 1: aceptar la invitación.
+  // Usuario que ya tenía contraseña (invitado a otra sede): sólo acepta.
   async function handleAccept() {
     setError(null);
     setPending(true);
 
     try {
-      // Same-origin: el rewrite reenvía /api/invitations/* al api.
-      // Sin body ni Content-Type: el accept no lleva payload (Fastify rechaza
-      // un body vacío si el Content-Type es application/json).
+      // Sin body ni Content-Type: Fastify rechaza un body vacío si el Content-Type es application/json.
       const res = await fetch(`/api/invitations/${token}/accept`, {
         method: "POST",
         credentials: "include",
@@ -44,15 +37,7 @@ export function AcceptInviteForm({ token, name, resourceName }: Props) {
         return;
       }
 
-      const { step, userId } = (await res.json()).data;
-
-      if (step === "set_password") {
-        // Usuario nuevo: pasa a la etapa de definir contraseña (misma página).
-        setSetPasswordStage({ userId });
-      } else {
-        // Usuario existente: ya aceptó, debe iniciar sesión.
-        router.push("/login");
-      }
+      router.push("/login");
     } catch {
       setError("No se pudo conectar con el servidor. Intenta de nuevo.");
     } finally {
@@ -60,10 +45,8 @@ export function AcceptInviteForm({ token, name, resourceName }: Props) {
     }
   }
 
-  // Etapa 2: definir contraseña (solo usuarios nuevos).
   async function handleSetPassword(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!setPasswordStage) return;
 
     setError(null);
     setPending(true);
@@ -77,7 +60,7 @@ export function AcceptInviteForm({ token, name, resourceName }: Props) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ userId: setPasswordStage.userId, password }),
+        body: JSON.stringify({ token, password }),
       });
 
       if (!res.ok) {
@@ -86,10 +69,9 @@ export function AcceptInviteForm({ token, name, resourceName }: Props) {
         return;
       }
 
-      const { accountId } = (await res.json()).data;
+      const { accountId, isSignedIn } = (await res.json()).data;
 
-      // El backend creó la sesión → al selector de recursos.
-      router.push(`/account/${accountId}/select`);
+      router.push(isSignedIn ? `/account/${accountId}/select` : "/login");
     } catch {
       setError("No se pudo conectar con el servidor. Intenta de nuevo.");
     } finally {
@@ -108,7 +90,7 @@ export function AcceptInviteForm({ token, name, resourceName }: Props) {
             Hola {name}, te invitaron a {resourceName}
           </h1>
           <p className="mt-2 text-sm text-brand-gray">
-            {setPasswordStage
+            {needsPassword
               ? "Configura una contraseña para activar tu cuenta."
               : "Acepta la invitación para unirte al equipo."}
           </p>
@@ -120,7 +102,7 @@ export function AcceptInviteForm({ token, name, resourceName }: Props) {
           </p>
         )}
 
-        {setPasswordStage ? (
+        {needsPassword ? (
           <form onSubmit={handleSetPassword} className="flex flex-col gap-4">
             <div className="flex flex-col gap-1.5">
               <label
@@ -135,6 +117,7 @@ export function AcceptInviteForm({ token, name, resourceName }: Props) {
                 type="password"
                 required
                 minLength={8}
+                maxLength={128}
                 autoComplete="new-password"
                 placeholder="Mínimo 8 caracteres"
                 className="rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none transition focus:border-brand-teal focus:ring-2 focus:ring-brand-teal/20"

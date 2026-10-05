@@ -6,7 +6,7 @@ export class GetClinicDoctorsQuery implements IGetClinicDoctorsQuery {
         const client = getClient();
 
         const doctors = await client.$queryRaw<IGetClinicDoctorsQueryResult[]>`
-            SELECT dp.id AS "doctorProfileId", u.id AS "userId", u.name, u.last_name AS "lastName", json_agg(
+            SELECT dp.id AS "doctorProfileId", u.name, u.last_name AS "lastName", json_agg(
                 json_build_object('id', s.id, 'name', s.name)
             ) as specialties
             FROM doctor_profile dp

@@ -45,10 +45,13 @@ Playwright arranca el api en `:4100` y platform en `:3100` (nunca reutiliza el
 | --- | --- | --- |
 | Registro | `ui/auth/register.spec.ts` | Un usuario nuevo se registra, confirma su correo con el link capturado y llega al onboarding |
 | Registro completo | `ui/auth/onboarding.spec.ts` | Registro → confirmación → login → onboarding Gratis; el médico queda en su cuenta nueva |
-| Invitación de un médico | `ui/invitations/invite-doctor.spec.ts` | El ADMIN invita a una médica; ella fija su contraseña desde el link del correo y las dos entran a su propio consultorio |
+| Invitación de un médico | `ui/invitations/invite-doctor.spec.ts` | El ADMIN invita a una médica; ella ve directamente el formulario de contraseña (sin paso previo de "Aceptar invitación"), entra con sesión a `/select`, el link ya usado muestra "Invitación inválida" y puede volver a entrar por `/login` tras cerrar sesión |
+| Invitación a alguien que ya tiene contraseña | `ui/invitations/accept-invitation-existing-password.spec.ts` | Un médico con contraseña, invitado a otra sede, ve el botón "Aceptar invitación" (no el formulario); al aceptar llega a `/login` y entra con su contraseña de siempre |
+| Link de invitación inválido | `ui/invitations/invitation-invalid-link.spec.ts` | Una invitación `EXPIRED` con fecha aún futura, o con la membership borrada, muestra "Invitación inválida" sin llegar al formulario de contraseña |
 | Formulario de invitar | `ui/clinic/invite-user-form.spec.ts` | Precarga los datos de alguien que ya está en el consultorio y los cambia con "Cambiar"; "Usuario nuevo" con un correo de otra cuenta (error al enviar) y con uno nuevo ("Invitación enviada"); el correo nunca aparece en una URL |
 | Nombre de especialidad repetido | `ui/specialties/specialty-name-conflict.spec.ts` | Crear, desde el panel, un nombre que ya existe en la organización muestra el toast "Ya existe esa especialidad", no un error genérico |
 | Booking público en el celular | `ui/booking/public-booking-specialty-scope.spec.ts` | Con viewport móvil: el paciente ve sólo las especialidades y médicos de la sede (no los de otra organización) y completa una reserva de punta a punta |
+| Booking público (caso feliz) | `ui/clinic/public-booking.spec.ts` | Especialidad → doctor → fecha/hora → datos del paciente → "¡Cita reservada!", con un médico invitado y disponibilidad sembrada por Prisma; confirma que quitar `userId` del listado de médicos no rompe la reserva |
 
 ### Sólo API (`e2e/api/`)
 
@@ -59,18 +62,18 @@ Playwright arranca el api en `:4100` y platform en `:3100` (nunca reutiliza el
 | Búsqueda de usuarios por correo | `api/security/fix-user-by-email-scope.spec.ts` | La ruta vieja `GET /user/by-email` no devuelve datos; `POST /clinic/:resourceId/users/lookup` sólo para ADMIN (DOCTOR/USER 403, otra cuenta 404, sin sesión 401), acotada a la cuenta de la sede, misma respuesta para correo inexistente y de otra cuenta, y sólo `name`/`lastName`/`phone` |
 | Envío del correo de invitación | `api/security/fix-invite-email-send.spec.ts` | `POST /user/invite` con un correo inválido responde 400 sin crear usuario, membership, perfil de doctor ni invitación, y el api sigue vivo después; un correo con mayúsculas se guarda y se envía en minúsculas; las mayúsculas del correo de un usuario de otra cuenta se rechazan igual que en minúsculas y sin duplicarlo (422) |
 | Especialidades acotadas por organización | `api/security/fix-specialty-account-scope.spec.ts` | Editar o conectar una especialidad de otra organización responde 404 igual que un id inexistente (también a través de una sede o de otra organización de la misma cuenta); DOCTOR/USER no pueden crear ni editar (403); invitar a un médico con un `specialtyId` ajeno (o mezclado con uno propio) no crea nada; el nombre es único por organización, no global (crear o renombrar a uno repetido en la misma organización da 422 "Ya existe esa especialidad", nunca 500; dos organizaciones pueden repetir nombre); sigue funcionando crear, listar, renombrar (se ve en el booking público) y invitar con especialidades repetidas o a un USER; un médico cuyas únicas especialidades sean ajenas a la organización de su sede desaparece del booking público en vez de filtrar el nombre |
+| Token de invitación (toma de cuenta) | `api/invitations/fix-invitation-set-password.spec.ts` | `set-password` exige el token (un `userId` en el cuerpo no basta ni roba la credencial de otro); token inexistente, caducado, `EXPIRED`, de membership borrada o ya usado responden el mismo 400 genérico, también en `accept`; `accept` sin contraseña no consume el token; contraseña fuera de rango (8–128) rechazada; carreras con el mismo token y con dos invitaciones del mismo usuario dejan una sola credencial; `GET /clinic/:clinicId/doctors` no expone `userId`; las respuestas exitosas no incluyen `userId` ni `email`; la sesión creada guarda `ipAddress`/`userAgent` |
 
 Las pruebas de seguridad llevan el ID del criterio de aceptación en el título
 (`CA-3: …`); los criterios están al final de cada `docs/features/<slug>/plan.md`.
 
 ### Aún sin pruebas
 
-- Booking público del paciente: `ui/booking/public-booking-specialty-scope.spec.ts` cubre el camino feliz en el
-  celular, pero no el horario ya tomado (409) ni que `doctorProfileId`/`specialty` pertenezcan a la sede (fuera de
-  alcance de fix-specialty-account-scope, ver su plan).
+- Booking público: `ui/clinic/public-booking.spec.ts` y `ui/booking/public-booking-specialty-scope.spec.ts` cubren el camino feliz; faltan el horario ya tomado (409) y comprobar que `doctorProfileId`/`specialty` pertenezcan a la sede.
 - Ficha del paciente según el rol.
 - Editor de disponibilidad del médico.
 - Login por separado (hoy sólo se ejercita dentro de registro e invitación).
+- `fix-invitation-set-password/plan.md` CA-7 (fallo interno de `signInEmail` al iniciar sesión tras guardar la contraseña), CA-22 (caída de la base de datos) y CA-23 (redacción del token en los logs del api): el propio plan los marca como no reproducibles en local o dependientes de leer la salida del proceso, no de una respuesta HTTP.
 
 ## Escribir una prueba nueva
 
@@ -86,6 +89,15 @@ Las pruebas de seguridad llevan el ID del criterio de aceptación en el título
   - `ui.ts`: pasos de navegador (registro, confirmación, login, onboarding).
   - `db.ts`: Prisma contra la base de pruebas (`getTestPrisma`), para sembrar lo
     que no es objeto de la prueba.
+  - `invitations.ts`: invitar y leer su token real desde la base
+    (`invitePendingUser`, nunca del cuerpo de la respuesta, que no lo expone),
+    simular estados (`markInvitationExpiredStatus`, `backdateInvitationExpiry`,
+    `softDeleteMembership`, `markInvitationAcceptedWithoutCredential`) y leer
+    credenciales/sesión (`countCredentialAccounts`, `getInvitationByToken`,
+    `getLatestSessionTrace`).
+  - `availability.ts`: disponibilidad de 00:00 a 23:30 los 7 días
+    (`seedFullDayAvailability`), para que el booking público tenga huecos
+    libres sin depender de la hora en que corre la prueba.
   - `test.ts`: `test`/`expect` con un fixture `auto` que cierra, al terminar
     cada prueba, todo `APIRequestContext` creado con `createApiContext`
     (incluye los de `createOnboardedAdmin`, `createMemberWithRole` y

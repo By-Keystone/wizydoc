@@ -12,7 +12,6 @@ export interface IGetClinicDoctorsQueryResult {
     id: string;
     name: string
   }[];
-  userId: string;
   name: string;
   lastName: string;
 }

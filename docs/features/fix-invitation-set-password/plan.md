@@ -701,3 +701,167 @@ el serializador en ese modo.
 - El camino `isSignedIn: false` (exige forzar un fallo de `signInEmail` tras el
   commit); se revisa leyendo el código.
 - La consulta de auditoría y los logs sobre datos reales.
+
+---
+
+## Criterios de aceptación
+
+Decisiones que estos criterios dan por cerradas (5 de octubre de 2026): opción
+B; los `ACCEPTED` sin contraseña esperan a "recuperar contraseña"; **sin**
+`@@unique([userId, providerId])` en `AuthAccount` (decisión abierta 4 cerrada:
+la unicidad la garantiza el bloqueo `FOR UPDATE`); la auditoría de producción y
+la búsqueda en logs las corre el humano **tras** desplegar y no bloquean la
+aceptación del ticket.
+
+`[e2e]`: lo prueba el e2e-tester en el navegador contra la base local.
+`[manual]`: petición HTTP, consulta a la base local, lectura de logs o de
+código; el engineer o el reviewer pegan la salida.
+
+### Lo que debe seguir funcionando
+
+- **CA-1** `[e2e]` — Médico invitado sin cuenta.
+  Dado que un administrador lo invitó a una sede y recibió el correo,
+  Cuando abre el link `/invite/accept?token=...` en el navegador,
+  Entonces ve directamente el formulario "Configura una contraseña", sin un
+  paso previo de "Aceptar invitación".
+- **CA-2** `[e2e]` — Médico invitado sin cuenta.
+  Dado que está en el formulario de contraseña de su invitación vigente,
+  Cuando escribe una contraseña de 8 caracteres o más y la envía,
+  Entonces entra con sesión iniciada a `/account/<accountId>/select`, sin
+  pasar por `/login`, y la invitación queda aceptada.
+- **CA-3** `[e2e]` — Médico invitado que ya activó su cuenta.
+  Dado que fijó su contraseña desde el link (CA-2) y cerró sesión,
+  Cuando inicia sesión en `/login` con su correo y esa contraseña,
+  Entonces entra normalmente.
+- **CA-4** `[e2e]` — Médico que ya tenía cuenta, invitado a otra sede.
+  Dado que ya tiene contraseña en WizyDoc y recibe una invitación nueva,
+  Cuando abre el link,
+  Entonces ve el botón "Aceptar invitación" (no el formulario de contraseña);
+  al pulsarlo llega a `/login` e inicia sesión con su contraseña de siempre.
+- **CA-5** `[e2e]` — Paciente sin cuenta en el booking público.
+  Dado el link de reserva de una sede con médicos,
+  Cuando abre `/clinic/<clinicId>/create-appointment` desde el celular,
+  Entonces los médicos se listan y puede reservar igual que antes del
+  arreglo.
+- **CA-6** `[manual]` — Médico invitado, sesión trazable.
+  Dado que fijó su contraseña desde el link,
+  Cuando se consulta su sesión en la base local,
+  Entonces tiene `ipAddress` y `userAgent` no nulos (el `userAgent` es el del
+  navegador o cliente que hizo la petición).
+- **CA-7** `[manual]` — Médico invitado, si el inicio de sesión automático
+  falla tras guardar la contraseña.
+  Dado que la contraseña ya quedó guardada y la invitación aceptada,
+  Cuando falla el inicio de sesión automático,
+  Entonces recibe 200 con `isSignedIn: false` y sin cookie, y la página lo
+  lleva a `/login`, donde entra con la contraseña que acaba de fijar. (No
+  reproducible en local: se verifica leyendo el código.)
+
+### Lo que deja de ser posible
+
+- **CA-8** `[manual]` — Atacante sin sesión con el link público de reserva.
+  Dado el listado público `GET /clinic/:clinicId/doctors`,
+  Cuando lo consulta,
+  Entonces ningún médico trae `userId`.
+- **CA-9** `[manual]` — Atacante sin sesión que conoce el `userId` de un
+  médico invitado sin contraseña (o miembro de la misma u otra cuenta que lo
+  vio en un listado interno).
+  Dado ese `userId`,
+  Cuando llama a `POST /invitations/set-password` con `{ userId, password }`
+  contra el api y contra el dominio de platform (`/api/invitations/set-password`),
+  Entonces recibe 400 de validación, sin `set-cookie`, y no se crea ninguna
+  credencial para ese usuario.
+- **CA-10** `[manual]` — Médico invitado H que manda un `userId` ajeno.
+  Dado su token válido y el `userId` de otro invitado J sin contraseña,
+  Cuando llama a `set-password` con `{ token de H, userId de J, password }`,
+  Entonces la contraseña se fija sólo para H y J sigue sin credencial.
+- **CA-11** `[e2e]` — Médico invitado que reutiliza su link.
+  Dado que ya fijó su contraseña con ese link,
+  Cuando vuelve a abrirlo,
+  Entonces ve "Invitación inválida"; y una nueva llamada a `set-password` con
+  ese token responde 400 genérico sin cambiar su contraseña.
+- **CA-12** `[manual]` — Atacante sin sesión con un link caducado, `EXPIRED`
+  con fecha futura, de membership borrada, ya usado o inventado.
+  Dado cualquiera de esos tokens,
+  Cuando llama a `set-password` o a `POST /invitations/:token/accept`,
+  Entonces recibe 400 sin sesión ni credencial nueva.
+- **CA-13** `[e2e]` — Médico invitado con una invitación `EXPIRED` cuya fecha
+  aún no venció, o cuya membership fue borrada.
+  Dado ese link,
+  Cuando lo abre,
+  Entonces ve "Invitación inválida" y no el formulario de contraseña.
+- **CA-14** `[manual]` — Varias pestañas o un atacante con el mismo token.
+  Dadas 5 peticiones simultáneas a `set-password` con el mismo token válido,
+  Cuando terminan,
+  Entonces una responde 200 y las otras 400, y el usuario tiene exactamente
+  una credencial.
+- **CA-15** `[manual]` — Médico invitado a dos sedes, que abre ambos links a la
+  vez.
+  Dadas dos invitaciones pendientes del mismo usuario sin contraseña,
+  Cuando fija la contraseña desde ambas en paralelo,
+  Entonces una responde 200 y la otra 422 "Ya tienes una contraseña. Inicia
+  sesión para aceptar la invitación."; tiene una sola credencial; la segunda
+  invitación sigue pendiente, su link muestra "Aceptar invitación" y al
+  aceptarla responde 200 con `{ step: "login" }`.
+- **CA-16** `[manual]` — Médico invitado sin contraseña ante `accept`.
+  Dado que llama a `POST /invitations/:token/accept` (p. ej. desde el
+  formulario anterior al despliegue de platform),
+  Cuando responde el api,
+  Entonces recibe 422 "Primero define tu contraseña desde el enlace de
+  invitación", la invitación sigue pendiente y después puede fijar la
+  contraseña con el mismo link.
+- **CA-17** `[manual]` — Médico invitado con una contraseña fuera de rango.
+  Dado su token válido,
+  Cuando envía una contraseña de menos de 8 o más de 128 caracteres
+  directamente al api,
+  Entonces recibe 400 y la invitación sigue pendiente.
+- **CA-18** `[manual]` — Médico invitado `ACCEPTED` sin contraseña (dato
+  heredado).
+  Dado que aceptó con el flujo anterior y abandonó antes de fijar la
+  contraseña,
+  Cuando alguien llama a `set-password` con su token o con su `userId`, o abre
+  el link,
+  Entonces `set-password` responde 400 (genérico con el token, de validación
+  con el `userId`), `GET /invitations/:token` responde 422, y no se crea
+  ninguna credencial. Queda bloqueado hasta "recuperar contraseña" (decisión
+  tomada).
+
+### Lo que no debe filtrarse
+
+- **CA-19** `[manual]` — Atacante sin sesión que sondea tokens.
+  Dado un token inexistente, uno caducado, uno `EXPIRED`, uno de membership
+  borrada y uno ya usado,
+  Cuando llama con cada uno a `set-password` y a `accept`,
+  Entonces todas las respuestas tienen el mismo código (400) y el mismo
+  cuerpo `{ message: "El enlace de invitación no es válido o ya expiró" }`.
+- **CA-20** `[manual]` — Atacante sin sesión con un token mal formado.
+  Dado un token que no son 64 caracteres hexadecimales,
+  Cuando llama a `set-password`,
+  Entonces recibe el 400 de validación sin que se consulte la base.
+- **CA-21** `[manual]` — Cualquiera que llama a las rutas de invitación.
+  Dado un `set-password` o un `accept` exitoso,
+  Cuando se inspecciona la respuesta,
+  Entonces no contiene `userId` ni `email`.
+- **CA-22** `[manual]` — Atacante sin sesión que provoca un error interno.
+  Dada la base de datos detenida,
+  Cuando llama a `GET /invitations/:token`, `accept` y `set-password`,
+  Entonces las tres responden 500 con un mensaje genérico que no contiene
+  "prisma", "PrismaClient", "connect" ni el token.
+- **CA-23** `[manual]` — Quien lee los logs del api.
+  Dadas peticiones a `GET /invitations/<token>` y
+  `POST /invitations/<token>/accept`, con el api en modo desarrollo y con
+  `NODE_ENV=production`,
+  Cuando se lee la línea de cada petición,
+  Entonces la URL aparece como `/invitations/[token]`; y las líneas de error de
+  estas rutas sólo traen `errName` y `errCode`, nunca el error completo, el
+  token ni el correo.
+
+### Despliegue
+
+- **CA-24** `[manual]` — Médico invitado sin contraseña durante la ventana
+  entre el despliegue de `api-*` y el de `platform-*`.
+  Dado el api nuevo con el formulario viejo,
+  Cuando abre su link y acepta,
+  Entonces ve "Primero define tu contraseña desde el enlace de invitación", su
+  invitación no se consume y, tras desplegar platform, el mismo link le deja
+  fijar la contraseña (CA-1 y CA-2). Se despliega `api-*` antes que
+  `platform-*`.

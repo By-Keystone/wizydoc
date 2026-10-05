@@ -3,9 +3,13 @@ import { NotFound } from "@/application/errors/not-found.error";
 import { UnprocessableEntity } from "@/application/errors/unprocessable-entity.errors";
 import { getClient } from "@/infrastructure/postgres/transaction-context";
 import z from "zod";
+import {
+  hasPasswordCredential,
+  invitationTokenSchema,
+} from "./pending-invitation";
 
 export const verifyInvitationTokenParamsSchema = z.object({
-  token: z.string("Token is required"),
+  token: invitationTokenSchema,
 });
 
 export type VerifyInvitationTokenDto = z.infer<
@@ -30,23 +34,24 @@ export class VerifyInvitationTokenUseCase {
     });
 
     if (!invitation) {
-      console.log(`[verify-invitation]: User has not invite for the token`);
       throw new NotFound("User has not been invited to this resource");
     }
 
-    if (!!invitation?.acceptedAt) {
-      console.log(`[verify-invitation]: User already accepted the invite`);
+    if (invitation.status === "ACCEPTED") {
       throw new UnprocessableEntity("User has already accepted the invite");
     }
 
-    if (invitation.expiresAt < new Date()) {
-      console.log("[verify-invitation]: Invite has expired");
+    // EXPIRED o con la membership borrada se trata igual que un token inválido.
+    if (invitation.status !== "INVITED" || invitation.membership.deletedAt) {
+      throw new BadRequest("Token has expired");
+    }
 
+    if (invitation.expiresAt < new Date()) {
       await client.userInvitation.update({
         where: { token: data.token },
         data: { status: "EXPIRED" },
       });
-      
+
       throw new BadRequest("Token has expired");
     }
 
@@ -58,6 +63,9 @@ export class VerifyInvitationTokenUseCase {
         invitation.membership.resource.clinic?.name ||
         invitation.membership.resource.organization?.name ||
         "[SIN-NOMBRE]",
+      step: hasPasswordCredential(user.authaccounts)
+        ? ("login" as const)
+        : ("set_password" as const),
     };
   }
 }
