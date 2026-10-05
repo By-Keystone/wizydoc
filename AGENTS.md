@@ -40,8 +40,8 @@ pnpm dev
 pnpm typecheck      # ← obligatorio antes de dar algo por terminado
 ```
 
-ESLint no tiene configuración: `pnpm lint` en platform/web pide crearla y no
-sirve como verificación.
+Todavía no hay linter. Se adoptará Biome, no ESLint; hasta entonces
+`pnpm lint` en platform/web no sirve como verificación.
 
 Base de datos local: `docker run -d --name wizydoc-db -e POSTGRES_USER=wizydoc -e POSTGRES_PASSWORD=wizydoc -e POSTGRES_DB=wizydoc -p 5432:5432 postgres:17-alpine`
 
