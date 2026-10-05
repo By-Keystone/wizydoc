@@ -1,3 +1,4 @@
+import { ApplicationError } from "@/application/errors/application.errors";
 import { IEmailService } from "@/application/ports/email-service.port";
 import { getUserMembershipSchema } from "@/application/queries/membership/get-user-membership.query";
 import {
@@ -126,9 +127,7 @@ export default async function userRoutes(
     "/invite",
     {
       schema: { body: inviteUserSchema },
-      // El recurso al que se invita llega en el cuerpo, no en la URL, así que
-      // `checkResource` no aplica: que sea de la cuenta del invitador lo
-      // comprueba el caso de uso.
+      // resourceId llega en el cuerpo: cuenta y rol ADMIN los comprueba el caso de uso.
       ...policy({ account: true, confirmed: true, onboarded: true }),
     },
     async (request, reply) => {
@@ -147,7 +146,20 @@ export default async function userRoutes(
           .status(200)
           .send({ message: "Se ha enviado la invitación al usuario" });
       } catch (error) {
-        console.error({ error });
+        if (error instanceof ApplicationError) {
+          return reply
+            .status(error.statusCode)
+            .send({ message: error.message });
+        }
+
+        const errName = error instanceof Error ? error.name : "UnknownError";
+        const errCode =
+          error && typeof error === "object" && "code" in error
+            ? error.code
+            : undefined;
+
+        request.log.error({ errName, errCode }, "[invite-user]");
+
         return reply
           .status(500)
           .send({ message: "Ha ocurrido un error al invitar al usuario" });

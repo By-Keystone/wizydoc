@@ -5,6 +5,7 @@ import {
   createMemberWithRole,
   createOnboardedAdmin,
   createOrganizationResource,
+  createSpecialty,
   type OnboardedAdmin,
   type SeededMember,
 } from "../../support/accounts";
@@ -12,7 +13,10 @@ import { PLATFORM_BASE_URL } from "../../support/env";
 import { uniqueEmail, uniqueName } from "../../support/users";
 import { loginViaUi } from "../../support/ui";
 
-/** docs/features/fix-user-by-email-scope/plan.md — CA-13, CA-15, CA-16, CA-18 y CA-19. */
+/**
+ * docs/features/fix-user-by-email-scope/plan.md — CA-13, CA-15, CA-16, CA-18 y CA-19.
+ * docs/features/fix-invite-role-check/plan.md — CA-1 y CA-7 ([e2e]).
+ */
 
 interface Fixture {
   admin: OnboardedAdmin;
@@ -65,8 +69,17 @@ async function setupFixture(): Promise<Fixture> {
   return { admin, organizationId, clinicId, reception, doctor, otherAccountAdmin };
 }
 
-async function goToUsersPage(page: Page, fixture: Fixture): Promise<void> {
-  await loginViaUi(page, fixture.admin.email, new RegExp(`/account/${fixture.admin.accountId}/select$`));
+interface UsersPageActor {
+  email: string;
+  accountId: string;
+}
+
+async function goToUsersPage(
+  page: Page,
+  fixture: Fixture,
+  actor: UsersPageActor = fixture.admin,
+): Promise<void> {
+  await loginViaUi(page, actor.email, new RegExp(`/account/${actor.accountId}/select$`));
 
   // Las cookies resource_id/resource_type imitan "Entrar" en /select; elegir sede no es parte de este flujo.
   await page.context().addCookies([
@@ -85,9 +98,8 @@ async function goToUsersPage(page: Page, fixture: Fixture): Promise<void> {
   ]);
 
   await page.goto(
-    `/account/${fixture.admin.accountId}/organization/${fixture.organizationId}/clinic/${fixture.clinicId}/users`,
+    `/account/${actor.accountId}/organization/${fixture.organizationId}/clinic/${fixture.clinicId}/users`,
   );
-  await expect(page.getByRole("heading", { name: "Usuarios" })).toBeVisible();
 }
 
 async function openInviteModal(page: Page): Promise<void> {
@@ -105,6 +117,7 @@ test("CA-15 y CA-16: el formulario precarga los datos de un usuario existente y 
 }) => {
   const fixture = await setupFixture();
   await goToUsersPage(page, fixture);
+  await expect(page.getByRole("heading", { name: "Usuarios" })).toBeVisible();
   await openInviteModal(page);
 
   // CA-15
@@ -129,6 +142,7 @@ test("CA-13: la búsqueda es una sola petición y el correo no aparece en ningun
   // Es una server action: el navegador nunca ve el POST de verdad, sólo lo que esta prueba puede observar.
   const fixture = await setupFixture();
   await goToUsersPage(page, fixture);
+  await expect(page.getByRole("heading", { name: "Usuarios" })).toBeVisible();
   await openInviteModal(page);
 
   const requestsSeenDuringLookup: { url: string; method: string }[] = [];
@@ -156,6 +170,7 @@ test("CA-18: un correo de otra cuenta muestra Usuario nuevo y un toast de error 
 }) => {
   const fixture = await setupFixture();
   await goToUsersPage(page, fixture);
+  await expect(page.getByRole("heading", { name: "Usuarios" })).toBeVisible();
   await openInviteModal(page);
 
   await continueWithEmail(page, fixture.otherAccountAdmin.email);
@@ -169,8 +184,11 @@ test("CA-18: un correo de otra cuenta muestra Usuario nuevo y un toast de error 
   await page.getByLabel("Teléfono").fill("+51900000000");
   await page.getByRole("button", { name: "Enviar invitación" }).click();
 
-  // El CA sólo exige un toast de error; hoy POST /user/invite responde 500 genérico, no un 422 específico.
-  await expect(page.getByText("Ha ocurrido un error al invitar al usuario")).toBeVisible();
+  // docs/features/fix-invite-role-check/plan.md CA-6: ahora el 422 llega con
+  // su mensaje real (antes caía al 500 genérico del catch-all).
+  await expect(
+    page.getByText("Ya existe una cuenta con este correo en otra cuenta"),
+  ).toBeVisible();
 });
 
 test("CA-19: un correo nuevo muestra Usuario nuevo y al completarlo y enviar se ve Invitación enviada", async ({
@@ -178,6 +196,7 @@ test("CA-19: un correo nuevo muestra Usuario nuevo y al completarlo y enviar se 
 }) => {
   const fixture = await setupFixture();
   await goToUsersPage(page, fixture);
+  await expect(page.getByRole("heading", { name: "Usuarios" })).toBeVisible();
   await openInviteModal(page);
 
   const newEmail = uniqueEmail("nuevo-ca19");
@@ -190,4 +209,59 @@ test("CA-19: un correo nuevo muestra Usuario nuevo y al completarlo y enviar se 
   await page.getByRole("button", { name: "Enviar invitación" }).click();
 
   await expect(page.getByText("Invitación enviada")).toBeVisible();
+});
+
+/** docs/features/fix-invite-role-check/plan.md — CA-1. */
+test("CA-1: el administrador invita a una recepción (USER) y a un médico (DOCTOR); ambos quedan en la tabla", async ({
+  page,
+}) => {
+  const fixture = await setupFixture();
+  const specialtyName = uniqueName("Especialidad CA1");
+  await createSpecialty(fixture.admin, fixture.organizationId, specialtyName);
+
+  await goToUsersPage(page, fixture);
+  await expect(page.getByRole("heading", { name: "Usuarios" })).toBeVisible();
+
+  const newUserEmail = uniqueEmail("recepcion-ca1");
+  await openInviteModal(page);
+  await continueWithEmail(page, newUserEmail);
+  await page.getByLabel("Nombre").fill("Rita");
+  await page.getByLabel("Apellido").fill("Recepción");
+  await page.getByLabel("Teléfono").fill("+51900000101");
+  await page.getByRole("button", { name: "Enviar invitación" }).click();
+
+  await expect(page.getByText("Invitación enviada")).toBeVisible();
+  await expect(page.getByText(newUserEmail)).toBeVisible();
+
+  const newDoctorEmail = uniqueEmail("doctor-ca1");
+  await openInviteModal(page);
+  await continueWithEmail(page, newDoctorEmail);
+  await page.getByLabel("Nombre").fill("Darío");
+  await page.getByLabel("Apellido").fill("Médico");
+  await page.getByLabel("Teléfono").fill("+51900000102");
+  await page.getByLabel("Rol").selectOption("DOCTOR");
+  await page.getByLabel("Especialidades").fill(specialtyName);
+  await page.getByRole("button", { name: specialtyName, exact: true }).click();
+  await page.getByRole("button", { name: "Enviar invitación" }).click();
+
+  await expect(page.getByText("Invitación enviada")).toBeVisible();
+  await expect(page.getByText(newDoctorEmail)).toBeVisible();
+});
+
+/** docs/features/fix-invite-role-check/plan.md — CA-7. */
+test("CA-7: la recepción no puede abrir a mano la página de Usuarios de su propia sede", async ({
+  page,
+}) => {
+  const fixture = await setupFixture();
+
+  await goToUsersPage(page, fixture, {
+    email: fixture.reception.email,
+    accountId: fixture.admin.accountId,
+  });
+
+  // La recepción no tiene membership en la organización: el layout de ese
+  // segmento (no el error.tsx del segmento hijo) atrapa el NoMembershipError.
+  await expect(page.getByText("No se pudo cargar el workspace")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Usuarios" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Invitar usuario" })).toHaveCount(0);
 });

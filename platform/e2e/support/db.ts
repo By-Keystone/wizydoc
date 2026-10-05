@@ -37,6 +37,20 @@ export interface TestPrisma {
   };
   userResourceMembership: {
     create(args: { data: Record<string, unknown> }): Promise<unknown>;
+    update(args: {
+      where: Record<string, unknown>;
+      data: Record<string, unknown>;
+    }): Promise<unknown>;
+    findFirst(args: {
+      where: Record<string, unknown>;
+    }): Promise<{ id: string; role: string; resourceId: string } | null>;
+    count(args: { where: Record<string, unknown> }): Promise<number>;
+  };
+  doctorProfile: {
+    count(args: { where: Record<string, unknown> }): Promise<number>;
+  };
+  userInvitation: {
+    count(args: { where: Record<string, unknown> }): Promise<number>;
   };
   $queryRaw<T = unknown>(query: TemplateStringsArray, ...values: unknown[]): Promise<T>;
   $disconnect(): Promise<void>;
