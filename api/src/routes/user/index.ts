@@ -6,6 +6,7 @@ import {
   InviteUserUseCase,
 } from "@/application/use-cases/user/invite-user.usecase";
 import { policy } from "@/plugins/policy";
+import { IAccountRepository } from "@/domain/repositories/account.repository";
 import { IUserRepository } from "@/domain/repositories/user.repository";
 import { ITransactionManager } from "@/domain/services/transaction-manager";
 import { GetUserMembership } from "@/infrastructure/postgres/queries/membership/get-user-membership.query";
@@ -15,6 +16,7 @@ import { FastifyInstance } from "fastify";
 
 interface UserRoutesOptions {
   userRepository: IUserRepository;
+  accountRepository: IAccountRepository;
   transactionManager: ITransactionManager;
   emailService: IEmailService;
 }
@@ -22,7 +24,12 @@ export default async function userRoutes(
   fastify: FastifyInstance,
   opts: UserRoutesOptions,
 ) {
-  const { userRepository, transactionManager, emailService } = opts;
+  const {
+    userRepository,
+    accountRepository,
+    transactionManager,
+    emailService,
+  } = opts;
 
   const app = fastify.withTypeProvider<ZodTypeProvider>();
 
@@ -75,6 +82,12 @@ export default async function userRoutes(
         ? await fastify.accountEntitlements(request)
         : null;
 
+      // El frontend lo usa para decidir si mostrar "Crear organización": sólo el dueño puede crear la primera de la cuenta.
+      const account = request.user.accountId
+        ? await accountRepository.findById(request.user.accountId)
+        : undefined;
+      const isAccountOwner = account?.ownerId === request.user.userId;
+
       return reply.send({
         id: user.id,
         email: user.email,
@@ -84,6 +97,7 @@ export default async function userRoutes(
         onboardingCompleted: user.onboardingCompleted,
         accountId: request.user.accountId,
         role: request.user.role,
+        isAccountOwner,
         entitlements,
       });
     },

@@ -12,6 +12,7 @@ export interface Me {
   confirmed: boolean;
   onboardingCompleted: boolean;
   accountId: string | null;
+  isAccountOwner: boolean;
 }
 
 const API_URL = process.env.API_URL;

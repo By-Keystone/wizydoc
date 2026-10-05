@@ -4,9 +4,15 @@ import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { CreateOrganizationModal } from "./create-organization/modal";
 
-export function TopHeader() {
+interface TopHeaderProps {
+  canCreateOrganization: boolean;
+}
+
+export function TopHeader({ canCreateOrganization }: TopHeaderProps) {
   const [modalCreateOrganizationOpen, setModalCreateOrganizationOpen] =
     useState<boolean>(false);
+
+  if (!canCreateOrganization) return null;
 
   return (
     <div className="text-right">

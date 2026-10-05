@@ -1,5 +1,5 @@
+import { ApplicationError } from "@/application/errors/application.errors";
 import { NotFound } from "@/application/errors/not-found.error";
-import { PaymentRequired } from "@/application/errors/payment-required.error";
 import { getClinicAppointmentsParamsSchema } from "@/application/queries/clinic/get-clinic-appointments.query";
 import { getClinicMetricsParamsSchema } from "@/application/queries/clinic/get-clinic-metrics.query";
 import { getClinicUsersSchema } from "@/application/queries/clinic/get-clinic-users.query";
@@ -45,9 +45,7 @@ export default async function clinicRoutes(
 
   const app = fastify.withTypeProvider<ZodTypeProvider>();
 
-  // La clínica cuelga de una organización que llega en el cuerpo, no en la URL,
-  // así que `checkResource` no aplica: que esa organización sea de la cuenta del
-  // usuario lo garantiza el repositorio.
+  // organizationId llega en el cuerpo: cuenta y rol los comprueba el caso de uso.
   app.post(
     "/clinic",
     {
@@ -68,12 +66,18 @@ export default async function clinicRoutes(
 
         return reply.status(201).send(result);
       } catch (error) {
-        if (error instanceof PaymentRequired) {
-          return reply.status(error.statusCode).send({
-            message: `You cannot execute this action because of the limits from your plan. ${error.message}`,
-          });
-        }
-        console.error("An error occured when creating clinic:", error);
+        if (error instanceof ApplicationError)
+          return reply
+            .status(error.statusCode)
+            .send({ message: error.message });
+
+        const errName = error instanceof Error ? error.name : "UnknownError";
+        const errCode =
+          error && typeof error === "object" && "code" in error
+            ? error.code
+            : undefined;
+
+        request.log.error({ errName, errCode }, "[create-clinic]");
 
         return reply.internalServerError(
           "An error occured when creating clinic",

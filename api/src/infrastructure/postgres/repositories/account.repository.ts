@@ -20,4 +20,12 @@ export class AccountRepository implements IAccountRepository {
 
     return toDomain(account);
   }
+
+  async findById(id: string): Promise<Account | undefined> {
+    const account = await getClient().account.findUnique({ where: { id } });
+
+    if (!account) return;
+
+    return toDomain(account);
+  }
 }

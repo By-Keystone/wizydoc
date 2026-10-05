@@ -41,6 +41,7 @@ export interface TestPrisma {
   };
   organization: {
     findFirst(args: { where: Record<string, unknown> }): Promise<{ resourceId: string } | null>;
+    count(args: { where: Record<string, unknown> }): Promise<number>;
   };
   clinic: {
     findFirst(args: { where: Record<string, unknown> }): Promise<{ resourceId: string } | null>;
@@ -48,6 +49,7 @@ export interface TestPrisma {
   };
   resource: {
     create(args: { data: Record<string, unknown> }): Promise<{ id: string }>;
+    count(args: { where: Record<string, unknown> }): Promise<number>;
   };
   userResourceMembership: {
     create(args: { data: Record<string, unknown> }): Promise<unknown>;
@@ -60,6 +62,10 @@ export interface TestPrisma {
     }): Promise<{ id: string; role: string; resourceId: string } | null>;
     count(args: { where: Record<string, unknown> }): Promise<number>;
     findMany(args: { where: Record<string, unknown> }): Promise<unknown[]>;
+    updateMany(args: {
+      where: Record<string, unknown>;
+      data: Record<string, unknown>;
+    }): Promise<{ count: number }>;
   };
   doctorProfile: {
     count(args: { where: Record<string, unknown> }): Promise<number>;

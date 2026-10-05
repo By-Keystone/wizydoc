@@ -22,8 +22,6 @@ export class OrganizationRepository implements IOrganizationRepository {
   }
 
   async save(data: CreateOrganizationData): Promise<Organization> {
-    console.log({ data });
-
     try {
       const organization = await inTransaction(async () => {
         const resource = await getClient().resource.create({
@@ -57,7 +55,13 @@ export class OrganizationRepository implements IOrganizationRepository {
 
       return toDomain(organization);
     } catch (error) {
-      console.error(error);
+      const errName = error instanceof Error ? error.name : "UnknownError";
+      const errCode =
+        error && typeof error === "object" && "code" in error
+          ? error.code
+          : undefined;
+
+      console.error({ errName, errCode }, "[organization-repository-save]");
       if (error instanceof PrismaClientKnownRequestError) {
         if (error.code === "P2002") {
           throw new BadRequest("Ya tienes una organización con ese nombre");
