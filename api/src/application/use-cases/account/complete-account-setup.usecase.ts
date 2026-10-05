@@ -1,5 +1,6 @@
 import { Plan } from "@prisma/client";
 import { z } from "zod";
+import { Conflict } from "@/application/errors/conflict.error";
 import { NotFound } from "@/application/errors/not-found.error";
 import { UnprocessableEntity } from "@/application/errors/unprocessable-entity.errors";
 import type { BillingService } from "@/application/ports/billing-service.port";
@@ -64,10 +65,14 @@ export class CompleteAccountSetupUseCase {
         ownerId: userId,
       });
 
-      await this.users.update(userId, {
-        onboardingCompleted: true,
-        accountId: account.id,
-      });
+      // Condicional y no leer-y-comprobar: dos envíos simultáneos verían los dos accountId en null.
+      const isAccountAssigned = await this.users.assignAccountIfNone(
+        userId,
+        account.id,
+      );
+      if (!isAccountAssigned) {
+        throw new Conflict("Tu usuario ya pertenece a una cuenta");
+      }
 
       const paymentProvider = requiresPayment(dto.plan)
         ? await this.startBilling(user, dto)
