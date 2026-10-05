@@ -1,5 +1,6 @@
 import { test, expect } from "../../support/test";
 import {
+  createApiContext,
   createClinicResource,
   createClinicResourceViaPrisma,
   createOnboardedAdmin,
@@ -32,7 +33,8 @@ test("CA-4: médico que ya tiene contraseña e es invitado a otra sede ve 'Acept
     specialtyIds: [specialtyId],
   });
 
-  await authPost(admin.context, "/invitations/set-password", {
+  // Contexto propio: set-password inicia sesión como el médico y pisaría la cookie del administrador.
+  await authPost(await createApiContext(), "/invitations/set-password", {
     token: doctor.token,
     password: DOCTOR_PASSWORD,
   });
