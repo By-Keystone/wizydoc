@@ -33,15 +33,17 @@ Node 22 (`.nvmrc`), pnpm.
 cd api && pnpm install && pnpm prisma:generate
 pnpm dev            # tsx watch
 pnpm typecheck      # ← obligatorio antes de dar algo por terminado
+pnpm check          # ← obligatorio antes de dar algo por terminado
 
 # platform / web
 cd platform && pnpm install
 pnpm dev
 pnpm typecheck      # ← obligatorio antes de dar algo por terminado
+pnpm check          # ← obligatorio antes de dar algo por terminado
 ```
 
-Todavía no hay linter. Se adoptará Biome, no ESLint; hasta entonces
-`pnpm lint` en platform/web no sirve como verificación.
+Linter y formateador: Biome, con un `biome.json` en cada proyecto. `pnpm check`
+verifica formato y lint; `pnpm format` reformatea.
 
 Base de datos local: `docker run -d --name wizydoc-db -e POSTGRES_USER=wizydoc -e POSTGRES_PASSWORD=wizydoc -e POSTGRES_DB=wizydoc -p 5432:5432 postgres:17-alpine`
 
@@ -71,7 +73,8 @@ worktree (sólo cuando el humano lo pide), el plan vive en ese worktree.
    El plan no incluye pasos en producción (auditorías, scripts contra datos reales).
 2. El humano aprueba el plan y el mockup.
 3. **product-manager** escribe los criterios de aceptación en el plan; los
-   marcados `[e2e]` los cubre el e2e-tester.
+   marcados `[e2e]` los cubre el e2e-tester. Los cambios de tooling sin
+   lógica de negocio (linter, build) no los llevan.
 4. **engineer** implementa según `docs/features/<slug>/`.
 5. **reviewer** revisa el diff; **security-reviewer** si toca rutas públicas,
    auth, billing, invitaciones o datos de pacientes.
@@ -82,7 +85,7 @@ worktree (sólo cuando el humano lo pide), el plan vive en ese worktree.
 
 ## Definición de "terminado"
 
-- `pnpm typecheck` limpio en cada proyecto tocado.
+- `pnpm typecheck` y `pnpm check` limpios en cada proyecto tocado.
 - Los criterios de aceptación del plan se cumplen y, si el cambio altera
   comportamiento, la suite e2e pasa.
 - Si cambió `schema.prisma`: hay migración nueva creada con `pnpm prisma:migrate`.

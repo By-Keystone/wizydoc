@@ -4,7 +4,7 @@ import { getOrganizationClinicsSchema } from "@/application/queries/organization
 import { getOrganizationsClinicCountSchema } from "@/application/queries/organization/get-organizations-clinic-count.query";
 import { getOrganizationsDoctorCountSchema } from "@/application/queries/organization/get-organizations-doctor-count.query";
 import {
-  CreateOrganizationDto,
+  type CreateOrganizationDto,
   createOrganizationSchema,
   CreateOrganizationUseCase,
 } from "@/application/use-cases/organization/create-organization.use-case";
@@ -14,24 +14,24 @@ import {
   CreateSpecialtyUseCase,
 } from "@/application/use-cases/specialty/create-specialty.usecase";
 import {
-  GetSpecialtiesDto,
+  type GetSpecialtiesDto,
   getSpecialtiesParamSchema,
   GetSpecialtiesUseCase,
 } from "@/application/use-cases/specialty/get-specialties.usecase";
 import {
   updateSpecialtyBodySchema,
-  UpdateSpecialtyDto,
+  type UpdateSpecialtyDto,
   updateSpecialtyParamsSchema,
   UpdateSpecialtyUseCase,
 } from "@/application/use-cases/specialty/update-specialty.usecase";
-import { IOrganizationRepository } from "@/domain/repositories/organization.repository";
-import { IUserRepository } from "@/domain/repositories/user.repository";
+import type { IOrganizationRepository } from "@/domain/repositories/organization.repository";
+import type { IUserRepository } from "@/domain/repositories/user.repository";
 import { GetOrganizationClinicsQuery } from "@/infrastructure/postgres/queries/organization/get-organization-clinics.query";
 import { GetOrganizationsClinicCountQuery } from "@/infrastructure/postgres/queries/organization/get-organizations-clinic-count.query";
 import { GetOrganizationsDoctorCountQuery } from "@/infrastructure/postgres/queries/organization/get-organizations-doctor-count.query";
 import { policy } from "@/plugins/policy";
-import { ZodTypeProvider } from "@fastify/type-provider-zod";
-import { FastifyInstance } from "fastify";
+import type { ZodTypeProvider } from "@fastify/type-provider-zod";
+import type { FastifyInstance } from "fastify";
 
 export interface OrganizationRoutesOptions {
   organizationRepository: IOrganizationRepository;
@@ -60,7 +60,7 @@ export default async function organizationRoutes(
           userRepository,
         );
 
-        const params = request.params as any;
+        const params = request.params as Record<string, unknown>;
 
         const body: CreateOrganizationDto = {
           accountId: request.user.accountId!,
@@ -68,7 +68,10 @@ export default async function organizationRoutes(
           userId: request.user.userId,
         };
 
-        const result = await useCase.execute(body, params?.onboarding);
+        const result = await useCase.execute(
+          body,
+          params?.onboarding as boolean | undefined,
+        );
 
         return reply.status(201).send(result);
       } catch (error) {

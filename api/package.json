@@ -7,6 +7,9 @@
     "build": "tsc && tsc-alias",
     "start": "node dist/server.js",
     "typecheck": "tsc --noEmit",
+    "lint": "biome lint",
+    "format": "biome format --write",
+    "check": "biome check",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev --create-only",
     "prisma:deploy": "prisma migrate deploy",
@@ -36,6 +39,7 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@biomejs/biome": "2.4.13",
     "@types/axios": "^0.14.4",
     "@types/bcrypt": "^5.0.2",
     "@types/mjml": "^5.0.0",

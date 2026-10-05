@@ -1,4 +1,5 @@
 import { Input } from "@/components/common/form";
+import type { Clinic } from "@/lib/api/clinic/types";
 import { fieldError, type FieldErrors } from "@/lib/actions/types";
 
 interface ClinicFields extends Record<string, unknown> {
@@ -10,7 +11,7 @@ interface ClinicFields extends Record<string, unknown> {
 interface Props {
   formId: string;
   action: (formData: FormData) => void;
-  clinic?: any;
+  clinic?: Clinic;
   fieldErrors?: FieldErrors<ClinicFields>;
 }
 

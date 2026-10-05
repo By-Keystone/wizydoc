@@ -9,7 +9,7 @@ export type GetStatisticsState =
     }
   | {
       status: "success";
-      data: Record<string, any>;
+      data: Record<string, unknown>;
     };
 
 export async function getStatistics(_prevState: GetStatisticsState) {}

@@ -48,8 +48,8 @@ Mal:
   // sin renovación ni cancelación, un plan de pago no se puede gestionar.     ← dos líneas
 
 Al terminar, corre en cada proyecto tocado:
-- api: `pnpm typecheck`
-- platform/web: `pnpm typecheck`
+- api: `pnpm typecheck && pnpm check`
+- platform/web: `pnpm typecheck && pnpm check`
 
 Y responde con:
 1. Archivos cambiados (una línea por archivo con el porqué).

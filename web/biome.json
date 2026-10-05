@@ -1,0 +1,23 @@
+{
+  "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+  "files": {
+    "includes": [
+      "src/**",
+      "*.ts",
+      "*.mjs",
+      "*.json",
+      "!next-env.d.ts",
+      "!**/*.css"
+    ]
+  },
+  "formatter": { "indentStyle": "space", "indentWidth": 2 },
+  "assist": { "actions": { "source": { "organizeImports": "off" } } },
+  "linter": {
+    "rules": {
+      "recommended": true,
+      "a11y": {
+        "useButtonType": "warn"
+      }
+    }
+  }
+}
