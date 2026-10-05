@@ -279,6 +279,7 @@ export default async function organizationRoutes(
 
         const dto: UpdateSpecialtyDto = {
           specialtyId: request.params.specialtyId,
+          organizationId: request.params.resourceId,
           ...request.body,
         };
 

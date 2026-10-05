@@ -45,6 +45,25 @@ export class InviteUserUseCase {
     private readonly entitlementsQuery = new GetAccountEntitlements(),
   ) { }
 
+  // Sin este filtro se podrían conectar especialidades de otra organización o cuenta.
+  private async assertSpecialtiesBelongToClinicOrganization(clinicResourceId: string, specialtyIds: string[]) {
+    const uniqueSpecialtyIds = [...new Set(specialtyIds)];
+
+    const ownSpecialtiesCount = await getClient().specialty.count({
+      where: {
+        id: { in: uniqueSpecialtyIds },
+        organization: { resource: { children: { some: { id: clinicResourceId } } } },
+      },
+    });
+
+    // Mismo 404 para id inexistente y de otra cuenta.
+    if (ownSpecialtiesCount !== uniqueSpecialtyIds.length) {
+      throw new NotFound("Especialidad no encontrada");
+    }
+
+    return uniqueSpecialtyIds;
+  }
+
   /**
    * El plan cuenta médicos, no perfiles: el mismo doctor atendiendo en tres
    * sedes ocupa una plaza, no tres.
@@ -142,13 +161,17 @@ export class InviteUserUseCase {
 
       if (data.role === "DOCTOR") {
         await this.assertDoctorSeatAvailable(data.accountId, user.id);
+        const uniqueSpecialtyIds = await this.assertSpecialtiesBelongToClinicOrganization(
+          data.resourceId,
+          data.specialtyIds ?? [],
+        );
 
         await client.doctorProfile.create({
           data: {
             userId: user.id,
             clinicId: resource.resourceId,
             specialties: {
-              connect: (data.specialtyIds ?? []).map((id) => ({ id })),
+              connect: uniqueSpecialtyIds.map((id) => ({ id })),
             },
           },
         });

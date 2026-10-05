@@ -201,12 +201,13 @@ model Availability {
 
 model Specialty {
   id             String @id @default(uuid(7)) @db.Uuid
-  name           String @unique
+  name           String
   organizationId String @map("organization_id") @db.Uuid
 
   organization   Organization    @relation(fields: [organizationId], references: [resourceId], onDelete: NoAction)
   doctorProfiles DoctorProfile[]
 
+  @@unique([organizationId, name])
   @@map("specialty")
 }
 

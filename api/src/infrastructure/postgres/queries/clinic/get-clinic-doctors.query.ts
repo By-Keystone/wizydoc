@@ -11,8 +11,9 @@ export class GetClinicDoctorsQuery implements IGetClinicDoctorsQuery {
             ) as specialties
             FROM doctor_profile dp
             INNER JOIN public.user u ON dp.user_id = u.id
+            INNER JOIN resource r ON r.id = dp.resource_id
             INNER JOIN "_DoctorProfileToSpecialty" dps ON dps."A" = dp.id
-            INNER JOIN specialty s ON s.id = dps."B"
+            INNER JOIN specialty s ON s.id = dps."B" AND s.organization_id = r.parent_resource_id
             WHERE dp.resource_id = ${resourceId}
             GROUP BY dp.id, u.id, u.name, u.last_name
         `
