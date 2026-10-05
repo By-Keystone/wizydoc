@@ -24,6 +24,29 @@ Reglas:
   edites migraciones existentes.
 - No instales dependencias, no toques `.env*`, no hagas commit ni push.
 
+## Comentarios
+
+Por defecto, ninguno. Antes de escribir uno, intenta que el código no lo
+necesite: un nombre mejor, una constante con nombre o una función extraída.
+
+Sólo se comenta una decisión que el código no puede expresar y que
+sorprendería a quien lo lea. Entonces:
+- **Una sola línea**, con `//`. Si no cabe, probablemente es mal diseño.
+- **El porqué, nunca el qué.**
+- **Sin JSDoc** que repita el nombre o la firma de la función.
+- **Sin referencias que caducan**: números de línea de otros archivos,
+  números de PR, "en este ticket", "ya está aplicado en esta rama".
+
+Bien:
+  // No se reutiliza GetUserMembership: ignora deletedAt.
+  // 404 y no 403: no revelar que el recurso existe en otra cuenta.
+
+Mal:
+  /** Comprueba que quien invita es ADMIN de la sede o de su organización. */   ← el qué
+  // Requiere #37 y #38 mergeados (ver create-clinic.usecase.ts:46).           ← caduca
+  // El cobro con Culqi está congelado en la beta (docs/PRODUCT.md):
+  // sin renovación ni cancelación, un plan de pago no se puede gestionar.     ← dos líneas
+
 Al terminar, corre en cada proyecto tocado:
 - api: `pnpm typecheck`
 - platform/web: `pnpm typecheck && pnpm lint`
