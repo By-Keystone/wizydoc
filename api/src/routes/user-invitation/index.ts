@@ -1,12 +1,12 @@
 import { ApplicationError } from "@/application/errors/application.errors";
 import { BadRequest } from "@/application/errors/bad-request.errors";
 import { UnprocessableEntity } from "@/application/errors/unprocessable-entity.errors";
-import { INVALID_INVITATION_MESSAGE } from "@/application/use-cases/user-invitation/pending-invitation";
 import {
   acceptInvitationParamsSchema,
   AcceptInvitationUseCase,
 } from "@/application/use-cases/user-invitation/accept-invitation.usecase";
 import {
+  INVALID_INVITATION_MESSAGE,
   setPasswordSchema,
   SetPasswordUseCase,
 } from "@/application/use-cases/user-invitation/set-password.usecase";

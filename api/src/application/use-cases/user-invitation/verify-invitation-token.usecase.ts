@@ -3,10 +3,11 @@ import { NotFound } from "@/application/errors/not-found.error";
 import { UnprocessableEntity } from "@/application/errors/unprocessable-entity.errors";
 import { getClient } from "@/infrastructure/postgres/transaction-context";
 import z from "zod";
-import {
-  hasPasswordCredential,
-  invitationTokenSchema,
-} from "./pending-invitation";
+
+// 64 hex: formato que genera `invite-user.usecase.ts`; rechazarlo aquí evita tocar la base con basura.
+export const invitationTokenSchema = z
+  .string()
+  .regex(/^[0-9a-f]{64}$/, { error: "Token inválido" });
 
 export const verifyInvitationTokenParamsSchema = z.object({
   token: invitationTokenSchema,
@@ -63,9 +64,14 @@ export class VerifyInvitationTokenUseCase {
         invitation.membership.resource.clinic?.name ||
         invitation.membership.resource.organization?.name ||
         "[SIN-NOMBRE]",
-      step: hasPasswordCredential(user.authaccounts)
+      step: this.hasPasswordCredential(user.authaccounts)
         ? ("login" as const)
         : ("set_password" as const),
     };
+  }
+
+  // Igual que Better Auth: basta con `providerId === "credential"`, sin mirar `password`.
+  private hasPasswordCredential(authAccounts: { providerId: string }[]): boolean {
+    return authAccounts.some((account) => account.providerId === "credential");
   }
 }
