@@ -212,10 +212,8 @@ test.describe("No se puede vincular una especialidad ajena al invitar a un médi
       specialtyIds: [foreignSpecialtyId],
     });
 
-    // Hoy la ruta mapea cualquier error a 500 genérico (decisión 5 del plan);
-    // pasará a 404 cuando se mergee fix/fix-invite-role-check.
-    expect(response.status()).toBe(500);
-    expect((await response.json()).message).toBe("Ha ocurrido un error al invitar al usuario");
+    expect(response.status()).toBe(404);
+    expect((await response.json()).message).toBe("Especialidad no encontrada");
     await expectUserAbsent(doctorEmail);
   });
 
@@ -234,7 +232,7 @@ test.describe("No se puede vincular una especialidad ajena al invitar a un médi
       specialtyIds: [specialtyYId],
     });
 
-    expect(response.status()).toBe(500);
+    expect(response.status()).toBe(404);
     await expectUserAbsent(doctorEmail);
   });
 
@@ -256,7 +254,7 @@ test.describe("No se puede vincular una especialidad ajena al invitar a un médi
       specialtyIds: [ownSpecialtyId, foreignSpecialtyId],
     });
 
-    expect(response.status()).toBe(500);
+    expect(response.status()).toBe(404);
     await expectUserAbsent(doctorEmail);
   });
 
@@ -331,8 +329,7 @@ test.describe("Un id inexistente y uno ajeno responden igual", () => {
       specialtyIds: [randomUUID()],
     });
 
-    // Mismo 500 genérico hoy; 404 en los dos casos cuando entre role-check (decisión 5).
-    expect(forForeignId.status()).toBe(500);
+    expect(forForeignId.status()).toBe(404);
     expect(forForeignId.status()).toBe(forNonExistentId.status());
     expect(await forForeignId.json()).toEqual(await forNonExistentId.json());
   });
