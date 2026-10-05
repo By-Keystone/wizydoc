@@ -31,6 +31,23 @@ export interface TestPrismaSessionRow {
   userAgent: string | null;
 }
 
+export interface TestPrismaAccountRow {
+  id: string;
+  name: string;
+  ownerId: string;
+}
+
+export interface TestPrismaSubscriptionRow {
+  accountId: string;
+  plan: string;
+  status: string;
+  extraDoctors: number;
+  extraClinics: number;
+  paymentProviderCustomerId: string | null;
+  paymentProviderCardId: string | null;
+  paymentProviderSubscriptionId: string | null;
+}
+
 export interface TestPrisma {
   user: {
     findUnique(args: { where: Record<string, unknown> }): Promise<TestPrismaUserRow | null>;
@@ -38,6 +55,20 @@ export interface TestPrisma {
       where: Record<string, unknown>;
       data: Record<string, unknown>;
     }): Promise<TestPrismaUserRow>;
+  };
+  account: {
+    count(args: { where: Record<string, unknown> }): Promise<number>;
+    findFirst(args: { where: Record<string, unknown> }): Promise<TestPrismaAccountRow | null>;
+  };
+  subscription: {
+    count(args: { where: Record<string, unknown> }): Promise<number>;
+    findUnique(args: {
+      where: Record<string, unknown>;
+    }): Promise<TestPrismaSubscriptionRow | null>;
+    update(args: {
+      where: Record<string, unknown>;
+      data: Record<string, unknown>;
+    }): Promise<TestPrismaSubscriptionRow>;
   };
   organization: {
     findFirst(args: { where: Record<string, unknown> }): Promise<{ resourceId: string } | null>;
@@ -104,13 +135,6 @@ export interface TestPrisma {
     findUnique(args: {
       where: Record<string, unknown>;
     }): Promise<{ id: string; name: string; organizationId: string } | null>;
-  };
-  account: {
-    count(args: { where: Record<string, unknown> }): Promise<number>;
-    findFirst(args: { where: Record<string, unknown> }): Promise<{ id: string; ownerId: string } | null>;
-  };
-  subscription: {
-    count(args: { where: Record<string, unknown> }): Promise<number>;
   };
   $queryRaw<T = unknown>(query: TemplateStringsArray, ...values: unknown[]): Promise<T>;
   $disconnect(): Promise<void>;

@@ -14,6 +14,11 @@ import { toast } from "@/lib/toast";
 
 const initialState: CreateAccountState = { status: "idle" };
 
+// Cobro con Culqi congelado en la beta: sin renovación ni cancelación (docs/PRODUCT.md, "Estado").
+const PLANS_OPEN_DURING_BETA = PLAN_OPTIONS.filter(
+  (option) => option.value === "FREE",
+);
+
 export default function OnboardingPage() {
   const [state, createAccount, isPending] = useActionState(
     createAccountAction,
@@ -97,7 +102,7 @@ export default function OnboardingPage() {
             required
             value={plan}
             onChange={(event) => setPlan(event.target.value as Plan)}
-            options={PLAN_OPTIONS}
+            options={PLANS_OPEN_DURING_BETA}
             error={
               state.status === "error"
                 ? fieldError(state.fieldErrors, "plan")
