@@ -47,6 +47,8 @@ Playwright arranca el api en `:4100` y platform en `:3100` (nunca reutiliza el
 | Registro completo | `ui/auth/onboarding.spec.ts` | Registro → confirmación → login → onboarding Gratis; el médico queda en su cuenta nueva |
 | Invitación de un médico | `ui/invitations/invite-doctor.spec.ts` | El ADMIN invita a una médica; ella fija su contraseña desde el link del correo y las dos entran a su propio consultorio |
 | Formulario de invitar | `ui/clinic/invite-user-form.spec.ts` | Precarga los datos de alguien que ya está en el consultorio y los cambia con "Cambiar"; "Usuario nuevo" con un correo de otra cuenta (error al enviar) y con uno nuevo ("Invitación enviada"); el correo nunca aparece en una URL |
+| Nombre de especialidad repetido | `ui/specialties/specialty-name-conflict.spec.ts` | Crear, desde el panel, un nombre que ya existe en la organización muestra el toast "Ya existe esa especialidad", no un error genérico |
+| Booking público en el celular | `ui/booking/public-booking-specialty-scope.spec.ts` | Con viewport móvil: el paciente ve sólo las especialidades y médicos de la sede (no los de otra organización) y completa una reserva de punta a punta |
 
 ### Sólo API (`e2e/api/`)
 
@@ -56,13 +58,16 @@ Playwright arranca el api en `:4100` y platform en `:3100` (nunca reutiliza el
 | Campos de usuario no editables | `api/security/fix-auth-user-fields-input.spec.ts` | El registro con `accountId`, `role` u `onboardingCompleted` se rechaza, también vía platform; `update-user` responde 404 en todas sus variantes; el atacante no ve las sedes de otra cuenta; no se puede saber si un correo existe |
 | Búsqueda de usuarios por correo | `api/security/fix-user-by-email-scope.spec.ts` | La ruta vieja `GET /user/by-email` no devuelve datos; `POST /clinic/:resourceId/users/lookup` sólo para ADMIN (DOCTOR/USER 403, otra cuenta 404, sin sesión 401), acotada a la cuenta de la sede, misma respuesta para correo inexistente y de otra cuenta, y sólo `name`/`lastName`/`phone` |
 | Envío del correo de invitación | `api/security/fix-invite-email-send.spec.ts` | `POST /user/invite` con un correo inválido responde 400 sin crear usuario, membership, perfil de doctor ni invitación, y el api sigue vivo después; un correo con mayúsculas se guarda y se envía en minúsculas; las mayúsculas del correo de un usuario de otra cuenta se rechazan igual que en minúsculas y sin duplicarlo (422) |
+| Especialidades acotadas por organización | `api/security/fix-specialty-account-scope.spec.ts` | Editar o conectar una especialidad de otra organización responde 404 igual que un id inexistente (también a través de una sede o de otra organización de la misma cuenta); DOCTOR/USER no pueden crear ni editar (403); invitar a un médico con un `specialtyId` ajeno (o mezclado con uno propio) no crea nada; el nombre es único por organización, no global (crear o renombrar a uno repetido en la misma organización da 422 "Ya existe esa especialidad", nunca 500; dos organizaciones pueden repetir nombre); sigue funcionando crear, listar, renombrar (se ve en el booking público) y invitar con especialidades repetidas o a un USER; un médico cuyas únicas especialidades sean ajenas a la organización de su sede desaparece del booking público en vez de filtrar el nombre |
 
 Las pruebas de seguridad llevan el ID del criterio de aceptación en el título
 (`CA-3: …`); los criterios están al final de cada `docs/features/<slug>/plan.md`.
 
 ### Aún sin pruebas
 
-- Booking público del paciente (incluido el horario ya tomado, 409).
+- Booking público del paciente: `ui/booking/public-booking-specialty-scope.spec.ts` cubre el camino feliz en el
+  celular, pero no el horario ya tomado (409) ni que `doctorProfileId`/`specialty` pertenezcan a la sede (fuera de
+  alcance de fix-specialty-account-scope, ver su plan).
 - Ficha del paciente según el rol.
 - Editor de disponibilidad del médico.
 - Login por separado (hoy sólo se ejercita dentro de registro e invitación).

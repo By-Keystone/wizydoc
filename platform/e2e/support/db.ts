@@ -50,10 +50,22 @@ export interface TestPrisma {
   doctorProfile: {
     count(args: { where: Record<string, unknown> }): Promise<number>;
     findMany(args: { where: Record<string, unknown> }): Promise<unknown[]>;
+    create(args: { data: Record<string, unknown> }): Promise<{ id: string }>;
+    findFirst(args: {
+      where: Record<string, unknown>;
+    }): Promise<{ id: string } | null>;
   };
   userInvitation: {
     count(args: { where: Record<string, unknown> }): Promise<number>;
     findMany(args: { where: Record<string, unknown> }): Promise<unknown[]>;
+  };
+  specialty: {
+    findUnique(args: {
+      where: Record<string, unknown>;
+    }): Promise<{ id: string; name: string; organizationId: string } | null>;
+  };
+  availability: {
+    createMany(args: { data: Record<string, unknown>[] }): Promise<unknown>;
   };
   $queryRaw<T = unknown>(query: TemplateStringsArray, ...values: unknown[]): Promise<T>;
   $disconnect(): Promise<void>;
