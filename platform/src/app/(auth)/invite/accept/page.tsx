@@ -41,6 +41,7 @@ export default async function AcceptInvitePage({ searchParams }: Props) {
       token={token}
       name={invitation.name}
       resourceName={invitation.resourceName}
+      step={invitation.step}
     />
   );
 }

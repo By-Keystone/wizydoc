@@ -1,9 +1,12 @@
+import { ApplicationError } from "@/application/errors/application.errors";
+import { BadRequest } from "@/application/errors/bad-request.errors";
 import { UnprocessableEntity } from "@/application/errors/unprocessable-entity.errors";
 import {
   acceptInvitationParamsSchema,
   AcceptInvitationUseCase,
 } from "@/application/use-cases/user-invitation/accept-invitation.usecase";
 import {
+  INVALID_INVITATION_MESSAGE,
   setPasswordSchema,
   SetPasswordUseCase,
 } from "@/application/use-cases/user-invitation/set-password.usecase";
@@ -12,12 +15,27 @@ import {
   VerifyInvitationTokenUseCase,
 } from "@/application/use-cases/user-invitation/verify-invitation-token.usecase";
 import { ZodTypeProvider } from "@fastify/type-provider-zod";
-import { FastifyInstance } from "fastify";
+import { FastifyInstance, FastifyRequest } from "fastify";
 import { policy } from "@/plugins/policy";
-import { request } from "http";
 import auth from "@/infrastructure/vendors/auth/better-auth/auth";
+import { fromNodeHeaders } from "better-auth/node";
 
 interface UserInvitationRoutesOptions {}
+
+// Sólo se loguean errName/errCode: el error de Prisma puede incluir el token en los argumentos de la consulta.
+function logUnhandledError(
+  request: FastifyRequest,
+  label: string,
+  error: unknown,
+) {
+  const errName = error instanceof Error ? error.name : "UnknownError";
+  const errCode =
+    error && typeof error === "object" && "code" in error
+      ? error.code
+      : undefined;
+
+  request.log.error({ errName, errCode }, label);
+}
 
 export default async function userInvitationRoutes(
   fastify: FastifyInstance,
@@ -41,13 +59,18 @@ export default async function userInvitationRoutes(
           .status(200)
           .send({ message: "Invitation successfully verified", data: result });
       } catch (error) {
-        console.log(`[verify-invitation]: Error: ${error}`);
+        if (error instanceof ApplicationError) {
+          if (error.statusCode === 422)
+            return reply.status(422).send({ message: error.message });
 
-        if (error instanceof UnprocessableEntity)
-          return reply
-            .status(422)
-            .send({ message: "User already accepted invitation" });
-        return reply.status(500).send(error);
+          if (error.statusCode === 400 || error.statusCode === 404)
+            return reply
+              .status(error.statusCode)
+              .send({ message: INVALID_INVITATION_MESSAGE });
+        }
+
+        logUnhandledError(request, "[verify-invitation]", error);
+        return reply.internalServerError("No se pudo verificar la invitación");
       }
     },
   );
@@ -68,14 +91,16 @@ export default async function userInvitationRoutes(
           .status(200)
           .send({ message: "Invitation accepted", data: result });
       } catch (error) {
-        console.log(`[accept-invitation]: Error ${error}`);
-
         if (error instanceof UnprocessableEntity)
-          return reply
-            .status(422)
-            .send({ message: "User already accepted invitation" });
+          return reply.status(422).send({ message: error.message });
 
-        return reply.status(500).send(error);
+        if (error instanceof BadRequest)
+          return reply
+            .status(400)
+            .send({ message: INVALID_INVITATION_MESSAGE });
+
+        logUnhandledError(request, "[accept-invitation]", error);
+        return reply.internalServerError("No se pudo aceptar la invitación");
       }
     },
   );
@@ -89,24 +114,49 @@ export default async function userInvitationRoutes(
 
         const result = await usecase.execute(request.body);
 
-        const { headers } = await auth.api.signInEmail({
-          body: { email: result.email, password: request.body.password },
-          returnHeaders: true,
-        });
+        try {
+          const { headers } = await auth.api.signInEmail({
+            body: { email: result.email, password: request.body.password },
+            headers: fromNodeHeaders(request.headers),
+            returnHeaders: true,
+          });
 
-        const setCookie = headers.get('set-cookie');
+          const setCookie = headers.get("set-cookie");
+          if (setCookie) reply.header("set-cookie", setCookie);
 
-        if(setCookie) reply.header('set-cookie', setCookie);
-        
-        const { email, ...rest } = result;
+          return reply.status(200).send({
+            message: "Password successfully set",
+            data: {
+              accountId: result.accountId,
+              isSignedIn: Boolean(setCookie),
+            },
+          });
+        } catch (signInError) {
+          // La contraseña ya quedó guardada: un fallo al iniciar sesión no revierte nada; el usuario entra luego desde /login.
+          logUnhandledError(
+            request,
+            "[set-password:sign-in]",
+            signInError,
+          );
 
-        return reply
-          .status(200)
-          .send({ message: "Password successfully set", data: rest });
+          return reply.status(200).send({
+            message: "Password successfully set",
+            data: { accountId: result.accountId, isSignedIn: false },
+          });
+        }
       } catch (error) {
-        console.error(`[set-password]: Error ${error}`);
+        if (error instanceof BadRequest)
+          return reply
+            .status(400)
+            .send({ message: INVALID_INVITATION_MESSAGE });
 
-        return reply.status(500).send(error);
+        if (error instanceof UnprocessableEntity)
+          return reply.status(422).send({ message: error.message });
+
+        logUnhandledError(request, "[set-password]", error);
+        return reply.internalServerError(
+          "No se pudo configurar la contraseña",
+        );
       }
     },
   );

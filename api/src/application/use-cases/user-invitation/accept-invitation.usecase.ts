@@ -1,11 +1,24 @@
 import { BadRequest } from "@/application/errors/bad-request.errors";
-import { NotFound } from "@/application/errors/not-found.error";
 import { UnprocessableEntity } from "@/application/errors/unprocessable-entity.errors";
-import { getClient } from "@/infrastructure/postgres/transaction-context";
+import {
+  getClient,
+  inTransaction,
+} from "@/infrastructure/postgres/transaction-context";
 import z from "zod";
 
+// 64 hex: formato que genera `invite-user.usecase.ts`; rechazarlo aquí evita tocar la base con basura.
+export const invitationTokenSchema = z
+  .string()
+  .regex(/^[0-9a-f]{64}$/, { error: "Token inválido" });
+
+export const INVALID_INVITATION_MESSAGE =
+  "El enlace de invitación no es válido o ya expiró";
+
+const SET_PASSWORD_FIRST_MESSAGE =
+  "Primero define tu contraseña desde el enlace de invitación";
+
 export const acceptInvitationParamsSchema = z.object({
-  token: z.string("Token is required"),
+  token: invitationTokenSchema,
 });
 
 type AcceptInvitationDto = z.infer<typeof acceptInvitationParamsSchema>;
@@ -14,49 +27,58 @@ export class AcceptInvitationUseCase {
   constructor() {}
 
   async execute(data: AcceptInvitationDto) {
-    const client = getClient();
+    return await inTransaction(async () => {
+      const userId = await this.claimPendingInvitation(data.token);
 
-    const invitation = await client.userInvitation.findUnique({
-      where: { token: data.token },
-      include: {
-        membership: { include: { user: { include: { authaccounts: true } } } },
-      },
-    });
-
-    if (!invitation) {
-      console.log("[accept-invitation]: Invitation not found for the token");
-      throw new NotFound("User has not been invited to this resource");
-    }
-
-    if (!!invitation?.acceptedAt) {
-      console.log("[accept-invitation]: User already accepted the invitation");
-      throw new UnprocessableEntity("User has already accepted the invite");
-    }
-
-    if (invitation.expiresAt < new Date()) {
-      console.log("[accept-invitation]: Invite has expired");
-
-      await client.userInvitation.update({
-        where: { token: data.token },
-        data: { status: "EXPIRED" },
+      const authAccounts = await getClient().authAccount.findMany({
+        where: { userId },
+        select: { providerId: true },
       });
 
-      throw new BadRequest("Token has expired");
-    }
+      // Si no tiene contraseña, la transacción se revierte: el token no se consume y debe usar `set-password`.
+      this.ensureHasPasswordCredential(authAccounts);
 
-    await client.userInvitation.update({
-      where: { token: data.token },
-      data: { acceptedAt: new Date(), status: "ACCEPTED" },
+      return { step: "login" as const };
     });
-    const user = invitation.membership.user;
+  }
 
-    const hasCredential = user.authaccounts.some(
-      (a) => a.providerId === "credential" && !!a.password,
+  private pendingInvitationWhere(token: string) {
+    return {
+      token,
+      status: "INVITED" as const,
+      acceptedAt: null,
+      expiresAt: { gt: new Date() },
+      membership: { deletedAt: null },
+    };
+  }
+
+  // Debe llamarse dentro de una transacción: el `updateMany` condicional hace el token de un solo uso bajo READ COMMITTED (una segunda petición concurrente reevalúa el `WHERE` tras el commit de la primera y obtiene `count = 0`).
+  private async claimPendingInvitation(token: string): Promise<string> {
+    const client = getClient();
+
+    const { count } = await client.userInvitation.updateMany({
+      where: this.pendingInvitationWhere(token),
+      data: { status: "ACCEPTED", acceptedAt: new Date() },
+    });
+
+    if (count !== 1) throw new BadRequest(INVALID_INVITATION_MESSAGE);
+
+    const invitation = await client.userInvitation.findUniqueOrThrow({
+      where: { token },
+      select: { membership: { select: { userId: true } } },
+    });
+
+    return invitation.membership.userId;
+  }
+
+  // Igual que Better Auth: basta con `providerId === "credential"`, sin mirar `password`.
+  private ensureHasPasswordCredential(authAccounts: { providerId: string }[]) {
+    const hasPasswordCredential = authAccounts.some(
+      (account) => account.providerId === "credential",
     );
 
-    return {
-      step: hasCredential ? "login" : "set_password",
-      userId: user.id,
-    };
+    if (!hasPasswordCredential) {
+      throw new UnprocessableEntity(SET_PASSWORD_FIRST_MESSAGE);
+    }
   }
 }

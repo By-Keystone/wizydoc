@@ -1,5 +1,5 @@
 import "dotenv/config";
-import Fastify from "fastify";
+import Fastify, { FastifyRequest } from "fastify";
 import cors from "@fastify/cors";
 import cookie from "@fastify/cookie";
 import sensible from "@fastify/sensible";
@@ -30,11 +30,23 @@ import appointmentRoutes from "./routes/appointment/index";
 import patientRoutes from "./routes/patient";
 import { CulqiBillingService } from "./infrastructure/vendors/billing/culqi/culqi-billing.service";
 
+// Tapa el token de invitación en el log de acceso (GET y POST /accept lo llevan en la URL).
+const INVITATION_TOKEN_IN_URL = /(\/invitations\/)[0-9a-f]{64}/;
+
+function requestSerializer(request: FastifyRequest) {
+  return {
+    method: request.method,
+    url: request.url.replace(INVITATION_TOKEN_IN_URL, "$1[token]"),
+    remoteAddress: request.ip,
+  };
+}
+
 const fastify = Fastify({
   logger:
     process.env.NODE_ENV === "production"
-      ? true
+      ? { serializers: { req: requestSerializer } }
       : {
+          serializers: { req: requestSerializer },
           transport: {
             target: "pino-pretty",
             options: {
