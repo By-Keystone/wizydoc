@@ -37,27 +37,54 @@ pnpm typecheck      # ← obligatorio antes de dar algo por terminado
 # platform / web
 cd platform && pnpm install
 pnpm dev
-pnpm typecheck && pnpm lint   # ← obligatorio antes de dar algo por terminado
+pnpm typecheck      # ← obligatorio antes de dar algo por terminado
 ```
+
+ESLint no tiene configuración: `pnpm lint` en platform/web pide crearla y no
+sirve como verificación.
 
 Base de datos local: `docker run -d --name wizydoc-db -e POSTGRES_USER=wizydoc -e POSTGRES_PASSWORD=wizydoc -e POSTGRES_DB=wizydoc -p 5432:5432 postgres:17-alpine`
 
-**Todavía no hay tests ni CI de PRs.** No digas "los tests pasan": di qué
-verificaste (typecheck, lint, petición manual, navegador).
+### Pruebas e2e
+
+Playwright en `platform/e2e/`: levanta el api (`:4100`) y platform (`:3100`)
+contra una base propia (`:5433/wizydoc_test`) y un correo en memoria. Nunca
+toca la base de desarrollo ni SES.
+
+```bash
+cd api && docker compose -f docker-compose.e2e.yml up -d
+cd ../platform && pnpm test:e2e
+```
+
+Requiere `api/.env.e2e` y `platform/.env.e2e`, que crea el humano. Detalle,
+scripts y flujos cubiertos: `platform/e2e/README.md`.
+
+No hay CI de PRs: la suite se corre a mano. No digas "los tests pasan"; di
+qué verificaste (typecheck, e2e, petición manual, navegador).
 
 ## Flujo de trabajo con agentes
 
+Cada ticket va en su propia rama desde `origin/main`. Si se trabaja en un
+worktree (sólo cuando el humano lo pide), el plan vive en ese worktree.
+
 1. **planner** → `docs/features/<slug>/plan.md` (+ `mockup.html` con Lavish si hay UI).
+   El plan no incluye pasos en producción (auditorías, scripts contra datos reales).
 2. El humano aprueba el plan y el mockup.
-3. **engineer** implementa según `docs/features/<slug>/`.
-4. **reviewer** revisa el diff; **security-reviewer** si toca rutas públicas,
-   auth, billing o datos de pacientes.
-5. **e2e-tester** prueba los flujos afectados.
-6. El humano hace commit y merge.
+3. **product-manager** escribe los criterios de aceptación en el plan; los
+   marcados `[e2e]` los cubre el e2e-tester.
+4. **engineer** implementa según `docs/features/<slug>/`.
+5. **reviewer** revisa el diff; **security-reviewer** si toca rutas públicas,
+   auth, billing, invitaciones o datos de pacientes.
+6. **e2e-tester** prueba los criterios y los flujos afectados. No hace falta
+   otra ronda si después sólo cambian tipos o comentarios.
+7. Cumplida la definición de "terminado", Claude hace commit en la rama del
+   ticket, push y abre el PR con `gh pr create`. **El humano hace el merge.**
 
 ## Definición de "terminado"
 
-- `pnpm typecheck` limpio en cada proyecto tocado (y `pnpm lint` en platform/web).
+- `pnpm typecheck` limpio en cada proyecto tocado.
+- Los criterios de aceptación del plan se cumplen y, si el cambio altera
+  comportamiento, la suite e2e pasa.
 - Si cambió `schema.prisma`: hay migración nueva creada con `pnpm prisma:migrate`.
 - Ningún endpoint nuevo sin `policy({...})` ni consulta sin acotar por `accountId`.
 - Sin `console.log` de depuración, sin código comentado, sin `any` nuevos.
@@ -81,8 +108,10 @@ verificaste (typecheck, lint, petición manual, navegador).
 - `prisma migrate reset`, `prisma db push` o cualquier comando que borre datos.
 - Leer o modificar archivos `.env*` (salvo `.env.example`).
 - Instalar o actualizar dependencias.
-- `git commit`, `git push`, crear tags o releases. **Un release `api-*` o
-  `platform-*` despliega a producción** (ver `.github/workflows/`).
+- Cualquier commit o push en `main`.
+- Commit o push fuera del paso 7 del flujo.
+- Hacer merge, crear tags o releases. **Un release `api-*` o `platform-*`
+  despliega a producción** (ver `.github/workflows/`).
 - Cambiar `api/src/plugins/policy.ts`, `auth.ts` o `entitlements.ts`.
 - Llamar a Culqi o SES reales (usa claves de test o stubs).
 

@@ -49,7 +49,7 @@ Mal:
 
 Al terminar, corre en cada proyecto tocado:
 - api: `pnpm typecheck`
-- platform/web: `pnpm typecheck && pnpm lint`
+- platform/web: `pnpm typecheck`
 
 Y responde con:
 1. Archivos cambiados (una línea por archivo con el porqué).
