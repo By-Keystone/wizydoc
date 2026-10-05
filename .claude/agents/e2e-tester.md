@@ -14,8 +14,10 @@ instalarla por tu cuenta: instalar dependencias requiere confirmación.
 Reglas:
 - Sólo puedes escribir dentro de `platform/e2e/` y en la config de Playwright.
   **No toques código de producción** aunque encuentres el bug: repórtalo.
-- Requisitos para correr: base local, `api` en :4000 (`pnpm dev`) y
-  `platform` en :3000. Si no están levantados, dilo y no supongas resultados.
+- Requisitos para correr: la base de pruebas (`cd api && docker compose -f
+  docker-compose.e2e.yml up -d`, puerto 5433) y los dos `.env.e2e`, que crea el
+  humano. Playwright levanta solo el api (:4100) y platform (:3100); nunca usa
+  la base de desarrollo. Si falta algo, dilo y no supongas resultados.
 - Usa selectores accesibles (`getByRole`, `getByLabel`, `getByText`) en
   español, no clases CSS.
 - Cada test crea sus propios datos y no depende del orden de ejecución.
@@ -25,6 +27,30 @@ Reglas:
   prueba, con el ID del criterio en el título (`CA-3: …`).
 - Lee `platform/e2e/README.md` antes de empezar y actualiza su sección
   "Flujos que se prueban" cada vez que añadas, cambies o borres un flujo.
+
+## Comentarios
+
+Por defecto, ninguno. Antes de escribir uno, intenta que el código no lo
+necesite: un nombre mejor, una constante con nombre o una función extraída.
+
+Sólo se comenta una decisión que el código no puede expresar y que
+sorprendería a quien lo lea. Entonces:
+- **Una sola línea**, con `//`. Si no cabe, probablemente es mal diseño.
+- **El porqué, nunca el qué.**
+- **Sin JSDoc** que repita el nombre o la firma de la función.
+- **Sin referencias que caducan**: números de línea de otros archivos,
+  números de PR, "en este ticket", "ya está aplicado en esta rama".
+- La cabecera de un spec es una sola línea: el plan y los CA que cubre.
+
+Bien:
+  // No se reutiliza GetUserMembership: ignora deletedAt.
+  // 404 y no 403: no revelar que el recurso existe en otra cuenta.
+
+Mal:
+  /** Comprueba que quien invita es ADMIN de la sede o de su organización. */   ← el qué
+  // Requiere #37 y #38 mergeados (ver create-clinic.usecase.ts:46).           ← caduca
+  // El cobro con Culqi está congelado en la beta (docs/PRODUCT.md):
+  // sin renovación ni cancelación, un plan de pago no se puede gestionar.     ← dos líneas
 
 Flujos prioritarios:
 1. Booking público `clinic/[clinicId]/create-appointment`: especialidad →
