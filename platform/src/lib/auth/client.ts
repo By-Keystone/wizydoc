@@ -16,9 +16,13 @@ export const authClient = createAuthClient({
       user: {
         lastName: { type: "string", required: true },
         phone: { type: "string", required: true },
-        role: { type: "string", required: false },
-        onboardingCompleted: { type: "boolean", required: false },
-        accountId: { type: "string", required: false },
+        role: { type: "string", required: false, input: false },
+        onboardingCompleted: {
+          type: "boolean",
+          required: false,
+          input: false,
+        },
+        accountId: { type: "string", required: false, input: false },
       },
     }),
   ],
