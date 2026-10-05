@@ -45,12 +45,15 @@ export interface TestPrisma {
       where: Record<string, unknown>;
     }): Promise<{ id: string; role: string; resourceId: string } | null>;
     count(args: { where: Record<string, unknown> }): Promise<number>;
+    findMany(args: { where: Record<string, unknown> }): Promise<unknown[]>;
   };
   doctorProfile: {
     count(args: { where: Record<string, unknown> }): Promise<number>;
+    findMany(args: { where: Record<string, unknown> }): Promise<unknown[]>;
   };
   userInvitation: {
     count(args: { where: Record<string, unknown> }): Promise<number>;
+    findMany(args: { where: Record<string, unknown> }): Promise<unknown[]>;
   };
   $queryRaw<T = unknown>(query: TemplateStringsArray, ...values: unknown[]): Promise<T>;
   $disconnect(): Promise<void>;
