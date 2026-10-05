@@ -25,18 +25,29 @@ interface SignUpParams {
 
 async function throwIfNotOk(response: APIResponse, action: string) {
   if (!response.ok()) {
-    throw new Error(`${action} falló (${response.status()}): ${await response.text()}`);
+    throw new Error(
+      `${action} falló (${response.status()}): ${await response.text()}`,
+    );
   }
 }
 
 export async function signUp(
   request: APIRequestContext,
-  { email, name = "Ana", lastName = "García", phone = "+51999888777", password = E2E_PASSWORD }: SignUpParams,
+  {
+    email,
+    name = "Ana",
+    lastName = "García",
+    phone = "+51999888777",
+    password = E2E_PASSWORD,
+  }: SignUpParams,
 ) {
-  const response = await request.post(`${API_BASE_URL}/api/auth/sign-up/email`, {
-    headers: { Origin: PLATFORM_BASE_URL },
-    data: { name, lastName, phone, email, password },
-  });
+  const response = await request.post(
+    `${API_BASE_URL}/api/auth/sign-up/email`,
+    {
+      headers: { Origin: PLATFORM_BASE_URL },
+      data: { name, lastName, phone, email, password },
+    },
+  );
 
   await throwIfNotOk(response, "signUp");
 
@@ -73,15 +84,20 @@ export async function signIn(
   email: string,
   password: string = E2E_PASSWORD,
 ) {
-  const response = await request.post(`${API_BASE_URL}/api/auth/sign-in/email`, {
-    headers: { Origin: PLATFORM_BASE_URL },
-    data: { email, password },
-  });
+  const response = await request.post(
+    `${API_BASE_URL}/api/auth/sign-in/email`,
+    {
+      headers: { Origin: PLATFORM_BASE_URL },
+      data: { email, password },
+    },
+  );
 
   await throwIfNotOk(response, "signIn");
 
   const { cookies } = await request.storageState();
-  const hasSessionCookie = cookies.some((cookie) => cookie.name === SESSION_COOKIE_NAME);
+  const hasSessionCookie = cookies.some(
+    (cookie) => cookie.name === SESSION_COOKIE_NAME,
+  );
   if (!hasSessionCookie) {
     throw new Error(
       `signIn no dejó la cookie "${SESSION_COOKIE_NAME}" en el contexto de la petición`,
@@ -106,7 +122,13 @@ export async function createConfirmedUser(
     lastName = "García",
     phone = "+51999888777",
   }: CreateConfirmedUserOptions = {},
-): Promise<{ email: string; userId: string; name: string; lastName: string; phone: string }> {
+): Promise<{
+  email: string;
+  userId: string;
+  name: string;
+  lastName: string;
+  phone: string;
+}> {
   const email = uniqueEmail(emailPrefix);
 
   await signUp(request, { email, name, lastName, phone });

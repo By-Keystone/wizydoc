@@ -1,5 +1,5 @@
-import { Clinic } from "@/domain/entities/clinic/entity";
-import {
+import type { Clinic } from "@/domain/entities/clinic/entity";
+import type {
   CreateClinicData,
   IClinicRepository,
 } from "@/domain/repositories/clinic.repository";

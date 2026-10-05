@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  eslint: { ignoreDuringBuilds: true },
   reactStrictMode: false,
   // Los e2e levantan otro `next dev` y no pueden compartir la carpeta del de desarrollo.
   distDir: process.env.NEXT_DIST_DIR || ".next",

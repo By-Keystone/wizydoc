@@ -21,12 +21,19 @@ test("CA-5: el paciente reserva una cita de punta a punta con un médico invitad
   page,
 }) => {
   const admin = await createOnboardedAdmin({ emailPrefix: "admin-ca5" });
-  const organizationId = await createOrganizationResource(admin, uniqueName("ORG-CA5"));
+  const organizationId = await createOrganizationResource(
+    admin,
+    uniqueName("ORG-CA5"),
+  );
   const clinicId = await createClinicResource(admin, organizationId, {
     name: uniqueName("Sede CA5"),
   });
   const specialtyName = uniqueName("Oftalmología");
-  const specialtyId = await createSpecialty(admin, organizationId, specialtyName);
+  const specialtyId = await createSpecialty(
+    admin,
+    organizationId,
+    specialtyName,
+  );
 
   const doctor = await invitePendingUser(admin, {
     resourceId: clinicId,
@@ -51,10 +58,16 @@ test("CA-5: el paciente reserva una cita de punta a punta con un médico invitad
   // Siguiente semana: con disponibilidad los 7 días, queda enteramente en el futuro.
   await page.getByRole("button", { name: "Semana siguiente" }).click();
   await page
-    .getByRole("button", { name: /^(Lu|Ma|Mi|Ju|Vi|Sá|Do)\s*\d{1,2}$/, disabled: false })
+    .getByRole("button", {
+      name: /^(Lu|Ma|Mi|Ju|Vi|Sá|Do)\s*\d{1,2}$/,
+      disabled: false,
+    })
     .first()
     .click();
-  await page.getByRole("button", { name: /^\d{2}:\d{2}$/ }).first().click();
+  await page
+    .getByRole("button", { name: /^\d{2}:\d{2}$/ })
+    .first()
+    .click();
   await page.getByRole("button", { name: "Siguiente", exact: true }).click();
 
   const patientEmail = uniqueEmail("paciente-ca5");

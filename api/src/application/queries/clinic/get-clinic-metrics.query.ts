@@ -1,4 +1,4 @@
-import { MembershipRole } from "@prisma/client";
+import type { MembershipRole } from "@prisma/client";
 import z from "zod";
 
 export const getClinicMetricsParamsSchema = z.object({
@@ -7,7 +7,7 @@ export const getClinicMetricsParamsSchema = z.object({
 
 export type GetClinicMetricsDto = z.infer<
   typeof getClinicMetricsParamsSchema
-> & { role: MembershipRole, userId: string };
+> & { role: MembershipRole; userId: string };
 
 /**
  * Métricas de una clínica. Lo que se devuelve depende del rol del solicitante:

@@ -5,13 +5,13 @@ type FeatureFlags = {
 };
 
 export const config: Record<Environment, FeatureFlags> = {
-  ["production"]: {
+  production: {
     NOTIFICATIONS_ENABLED: false,
   },
-  ["test"]: {
+  test: {
     NOTIFICATIONS_ENABLED: false,
   },
-  ["development"]: {
+  development: {
     NOTIFICATIONS_ENABLED: false,
   },
 };

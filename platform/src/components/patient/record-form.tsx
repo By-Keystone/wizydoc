@@ -9,10 +9,10 @@ import { useFormAction } from "@/hooks/useFormAction";
 import { MembershipRole } from "@/lib/utils";
 import {
   updatePatientRecordAction,
-  UpdatePatientRecordFields,
+  type UpdatePatientRecordFields,
 } from "@/lib/actions/patient/update-patient-record.action";
 import { fieldError } from "@/lib/actions/types";
-import { PatientRecord } from "@/lib/api/patients/types";
+import type { PatientRecord } from "@/lib/api/patients/types";
 import { AllergiesInput } from "./allergies-input";
 import { EMPTY, formatDocument } from "./format";
 
@@ -222,10 +222,7 @@ export function RecordForm({ patient }: Props) {
               <span className="text-xs font-semibold text-brand-gray">
                 Alergias
               </span>
-              <AllergiesInput
-                initial={patient.allergies}
-                disabled={disabled}
-              />
+              <AllergiesInput initial={patient.allergies} disabled={disabled} />
             </div>
 
             <label className="flex items-center gap-2 text-sm text-brand-gray">

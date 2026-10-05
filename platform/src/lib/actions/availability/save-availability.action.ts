@@ -3,7 +3,7 @@
 import { doFetchJson } from "@/lib/api/fetch";
 import { toActionState } from "@/lib/actions/to-action-state";
 import { tags } from "@/lib/api/availability";
-import { AvailabilityBlock } from "@/lib/api/availability/types";
+import type { AvailabilityBlock } from "@/lib/api/availability/types";
 import { getSession } from "@/lib/auth/session";
 import { revalidateTag } from "next/cache";
 

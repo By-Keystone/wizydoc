@@ -1,6 +1,6 @@
-import { Organization } from "@/domain/entities/organization/entity";
-import { Organization as PrismaOrganization } from "@prisma/client";
+import type { Organization } from "@/domain/entities/organization/entity";
+import type { Organization as PrismaOrganization } from "@prisma/client";
 
-export function toDomain(organization: PrismaOrganization): Organization { 
-    return organization;
+export function toDomain(organization: PrismaOrganization): Organization {
+  return organization;
 }

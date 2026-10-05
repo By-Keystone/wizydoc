@@ -47,8 +47,6 @@ export function PhoneInput({
   const [number, setNumber] = useState(defaultValue);
   const hiddenRef = useRef<HTMLInputElement>(null);
 
-  const selectedCountry = COUNTRY_CODES.find((c) => c.code === countryCode);
-
   const updateHiddenValue = (code: string, num: string) => {
     if (hiddenRef.current) {
       hiddenRef.current.value = num ? `${code}${num.replace(/\s/g, "")}` : "";

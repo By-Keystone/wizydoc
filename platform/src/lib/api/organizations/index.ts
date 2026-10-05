@@ -1,5 +1,5 @@
 import { doFetchJson } from "../fetch";
-import { GetDoctorCountResult, GetClinicCountResult } from "./types";
+import type { GetDoctorCountResult, GetClinicCountResult } from "./types";
 
 export const organizationsApi = {
   getClinicCount: (resourceId: string): Promise<GetClinicCountResult> =>

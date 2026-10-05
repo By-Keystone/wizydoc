@@ -1,6 +1,6 @@
-import type { MetadataRoute } from "next"
+import type { MetadataRoute } from "next";
 
-const siteUrl = "https://wizydoc.app"
+const siteUrl = "https://wizydoc.app";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   return [
@@ -22,5 +22,5 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: "yearly",
       priority: 0.3,
     },
-  ]
+  ];
 }

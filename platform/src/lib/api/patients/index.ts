@@ -1,5 +1,5 @@
 import { doFetchJson } from "../fetch";
-import { PatientDetail, PatientListEntry } from "./types";
+import type { PatientDetail, PatientListEntry } from "./types";
 
 export const tags = {
   patient: (patientId: string) => `patient-${patientId}`,

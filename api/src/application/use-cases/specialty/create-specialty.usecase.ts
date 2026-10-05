@@ -18,8 +18,6 @@ export type CreateSpecialtyDto = z.infer<typeof createSpecialtyBodySchema> & {
 };
 
 export class CreateSpecialtyUseCase {
-  constructor() { }
-
   async execute(dto: CreateSpecialtyDto) {
     try {
       const client = getClient();

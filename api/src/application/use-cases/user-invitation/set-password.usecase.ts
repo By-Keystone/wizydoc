@@ -23,8 +23,6 @@ export const setPasswordSchema = z.object({
 type SetPasswordDTO = z.infer<typeof setPasswordSchema>;
 
 export class SetPasswordUseCase {
-  constructor() {}
-
   async execute(data: SetPasswordDTO) {
     if (!(await this.isInvitationPending(data.token))) {
       throw new BadRequest(INVALID_INVITATION_MESSAGE);

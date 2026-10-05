@@ -1,6 +1,6 @@
 import { NotFound } from "@/application/errors/not-found.error";
 import { UnprocessableEntity } from "@/application/errors/unprocessable-entity.errors";
-import { IEmailService } from "@/application/ports/email-service.port";
+import type { IEmailService } from "@/application/ports/email-service.port";
 import { CLINIC_TIME_ZONE, toInstant } from "@/domain/services/clinic-time";
 import { getClient } from "@/infrastructure/postgres/transaction-context";
 import { renderTemplate } from "@/infrastructure/services/email-service/template-renderer";

@@ -10,7 +10,9 @@ los puertos de `domain`/`application`.
   (`clinic-time`, `patient-metrics`). Sin Prisma ni Fastify.
 - `src/application/use-cases/<dominio>/<accion>.usecase.ts` — escrituras. Cada
   archivo exporta su schema Zod (`xxxSchema`) y la clase `XxxUseCase` con
-  `execute(dto)`.
+  `execute(dto)`. Los pasos del caso de uso van en métodos privados de esa
+  clase, no en archivos auxiliares con funciones que llaman a `getClient()`.
+  El acceso a datos reutilizable va en un repositorio de `infrastructure`.
 - `src/application/queries/` — interfaz de la lectura; la implementación SQL/
   Prisma vive en `src/infrastructure/postgres/queries/` con la misma ruta.
 - `src/application/errors/` — errores con `statusCode` que extienden
@@ -28,6 +30,12 @@ los puertos de `domain`/`application`.
 - Para operar sobre un recurso, el parámetro se llama `:resourceId` y se usa
   `member: true` o `roles: [...]`. Lee la membership con
   `requireMembership(request)`.
+- Identidad, cuenta y rol salen siempre de la sesión (`request.user`) o de
+  una membership validada, nunca del cuerpo de la petición. Si un id de
+  recurso llega en el cuerpo (`resourceId`, `organizationId`), el caso de uso
+  comprueba la membership y el rol de quien llama sobre ese recurso.
+- En Better Auth, todo campo adicional que el usuario no deba fijar (rol,
+  cuenta, estado del onboarding) lleva `input: false`.
 - Funciones de pago: `fastify.requireFeature("FEATURE")` (responde 402).
 - **Multi-tenant:** toda consulta a datos de una cuenta filtra por
   `accountId` (de `request.user`) o por un recurso cuya membership ya se

@@ -1,7 +1,7 @@
-import Link from "next/link"
-import { ArrowRight } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { PLATFORM_URL } from "@/lib/platform-url"
+import Link from "next/link";
+import { ArrowRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { PLATFORM_URL } from "@/lib/platform-url";
 
 export function CTA() {
   return (
@@ -33,9 +33,10 @@ export function CTA() {
         </div>
 
         <p className="mt-5 text-sm text-white/70">
-          Sin tarjeta de crédito · Configuración en 5 minutos · Cancela cuando quieras
+          Sin tarjeta de crédito · Configuración en 5 minutos · Cancela cuando
+          quieras
         </p>
       </div>
     </section>
-  )
+  );
 }

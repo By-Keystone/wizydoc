@@ -204,13 +204,15 @@ export default function TerminosYCondicionesPage() {
             El tratamiento de datos personales se rige por la Ley N.° 29733, Ley
             de Protección de Datos Personales, y su reglamento. Los datos
             vinculados a la salud de los pacientes constituyen{" "}
-            <strong className="text-brand-ink">datos sensibles</strong> y reciben
-            protección reforzada.
+            <strong className="text-brand-ink">datos sensibles</strong> y
+            reciben protección reforzada.
           </p>
           <p>
             Respecto de los datos de los pacientes, el Usuario actúa como
             titular del banco de datos y WizyDoc actúa como{" "}
-            <strong className="text-brand-ink">encargado del tratamiento</strong>
+            <strong className="text-brand-ink">
+              encargado del tratamiento
+            </strong>
             , limitándose a tratarlos conforme a las instrucciones del Usuario y
             a lo necesario para prestar el servicio.
           </p>

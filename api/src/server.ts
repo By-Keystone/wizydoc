@@ -1,5 +1,5 @@
 import "dotenv/config";
-import Fastify, { FastifyRequest } from "fastify";
+import Fastify, { type FastifyRequest } from "fastify";
 import cors from "@fastify/cors";
 import cookie from "@fastify/cookie";
 import sensible from "@fastify/sensible";
@@ -118,7 +118,9 @@ async function start() {
         const response = await auth.handler(req);
         // Forward response to client
         reply.status(response.status);
-        response.headers.forEach((value, key) => reply.header(key, value));
+        response.headers.forEach((value, key) => {
+          reply.header(key, value);
+        });
         return reply.send(response.body ? await response.text() : null);
       } catch (error) {
         fastify.log.error(`Authentication Error: ${error}`);
@@ -138,7 +140,6 @@ async function start() {
   await fastify.register(clinicPublicRoutes);
   await fastify.register(organizationRoutes, {
     organizationRepository,
-    userRepository,
   });
 
   await fastify.register(userRoutes, {

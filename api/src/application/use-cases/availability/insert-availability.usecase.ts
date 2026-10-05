@@ -30,8 +30,6 @@ export type InsertAvailabilityDto = {
 } & z.infer<typeof insertAvailabilityBodySchema>;
 
 export class InsertAvailabilityUseCase {
-  constructor() {}
-
   async execute(dto: InsertAvailabilityDto) {
     await inTransaction(async () => {
       const client = getClient();

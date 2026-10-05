@@ -1,4 +1,4 @@
-import { Clinic } from "../entities/clinic/entity";
+import type { Clinic } from "../entities/clinic/entity";
 
 export interface CreateClinicData {
   name: string;

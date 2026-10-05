@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { InviteUserForm } from "./form";
 import { inviteUserAction } from "@/lib/actions/user/invite-user.action";
-import { Specialty } from "@/lib/api/specialty/types";
+import type { Specialty } from "@/lib/api/specialty/types";
 import { useFormAction } from "@/hooks/useFormAction";
 import { toast } from "@/lib/toast";
 

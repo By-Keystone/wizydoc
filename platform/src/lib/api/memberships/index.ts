@@ -1,7 +1,7 @@
 import { doFetchJson } from "@/lib/api/fetch";
-import { MembershipRole } from "@/lib/utils";
+import type { MembershipRole } from "@/lib/utils";
 import { NoMembershipError } from "../errors";
-import { UserMembership } from "./types";
+import type { UserMembership } from "./types";
 
 export type ClinicAccess = {
   resourceId: string;

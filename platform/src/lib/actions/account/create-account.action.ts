@@ -64,7 +64,8 @@ export async function createAccountAction(
     if (error instanceof AuthExpiredError) redirect("/login");
     return {
       status: "error",
-      message: error instanceof Error ? error.message : "No se pudo crear la cuenta",
+      message:
+        error instanceof Error ? error.message : "No se pudo crear la cuenta",
     };
   }
 

@@ -1,9 +1,9 @@
-import {
+import type {
   ClinicAccess,
   IUserMembershipsQuery,
   OrganizationGroup,
 } from "@/application/queries/membership/get-user-memberships.query";
-import { MembershipRole } from "@/domain/enums/membership-role";
+import type { MembershipRole } from "@/domain/enums/membership-role";
 import { getClient } from "../../transaction-context";
 
 const ROLE_RANK: Record<MembershipRole, number> = {
@@ -17,8 +17,6 @@ function maxRole(a: MembershipRole, b: MembershipRole): MembershipRole {
 }
 
 export class UserMembershipsQuery implements IUserMembershipsQuery {
-  constructor() {}
-
   async execute(
     userId: string,
     accountId: string,

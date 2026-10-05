@@ -8,30 +8,30 @@ import {
   lookupAccountUserParamsSchema,
 } from "@/application/queries/user/lookup-account-user.query";
 import {
-  GetDoctorAvailabilityDto,
+  type GetDoctorAvailabilityDto,
   getDoctorAvailabilityParamsSchema,
   GetDoctorAvailabilityUseCase,
 } from "@/application/use-cases/availability/get-doctor-availability.usecase";
 import {
   insertAvailabilityBodySchema,
-  InsertAvailabilityDto,
+  type InsertAvailabilityDto,
   insertAvailabilityParamsSchema,
   InsertAvailabilityUseCase,
 } from "@/application/use-cases/availability/insert-availability.usecase";
 import {
-  CreateClinicDto,
+  type CreateClinicDto,
   createClinicSchema,
   CreateClinicUseCase,
 } from "@/application/use-cases/clinic/create-clinic.usecase";
 import { GetClinicsUseCase } from "@/application/use-cases/clinic/get-clinics.usecase";
-import { IClinicRepository } from "@/domain/repositories/clinic.repository";
+import type { IClinicRepository } from "@/domain/repositories/clinic.repository";
 import { GetClinicAppointmentsQuery } from "@/infrastructure/postgres/queries/clinic/get-clinic-appointments.query";
 import { GetClinicMetricsQuery } from "@/infrastructure/postgres/queries/clinic/get-clinic-metrics.query";
 import { GetClinicUsersQuery } from "@/infrastructure/postgres/queries/clinic/get-clinic-users.query";
 import { LookupAccountUserQuery } from "@/infrastructure/postgres/queries/user/lookup-account-user.query";
 import { policy, requireMembership } from "@/plugins/policy";
-import { ZodTypeProvider } from "@fastify/type-provider-zod";
-import { FastifyInstance } from "fastify";
+import type { ZodTypeProvider } from "@fastify/type-provider-zod";
+import type { FastifyInstance } from "fastify";
 
 export interface ClinicRoutesOptions {
   clinicRepository: IClinicRepository;

@@ -2,12 +2,12 @@ import { MembershipRole } from "@/lib/utils";
 import {
   Building2Icon,
   LayoutDashboard,
-  LucideProps,
+  type LucideProps,
   PersonStanding,
   Settings,
   Tags,
 } from "lucide-react";
-import { ForwardRefExoticComponent, RefAttributes } from "react";
+import type { ForwardRefExoticComponent, RefAttributes } from "react";
 
 type NavLink = {
   href: string;
@@ -53,7 +53,5 @@ export function getNavLinks({
 }): NavLink[] {
   const base = resourceType === "ORGANIZATION" ? orgNavLinks : clinicNavLinks;
 
-  return base.filter((link) =>
-    !!link.roles ? link.roles.includes(role) : true,
-  );
+  return base.filter((link) => (link.roles ? link.roles.includes(role) : true));
 }

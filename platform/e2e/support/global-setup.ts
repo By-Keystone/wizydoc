@@ -1,6 +1,11 @@
 import { execFileSync } from "node:child_process";
 import { rmSync } from "node:fs";
-import { API_DIR, EMAIL_CAPTURE_PATH, apiEnv, assertE2eEnvironment } from "./env";
+import {
+  API_DIR,
+  EMAIL_CAPTURE_PATH,
+  apiEnv,
+  assertE2eEnvironment,
+} from "./env";
 import { getTestPrisma } from "./db";
 
 export default async function globalSetup(): Promise<void> {

@@ -13,5 +13,7 @@ export interface GetOrganizationsDoctorCountQueryResult {
 }
 
 export interface IGetOrganizationsDoctorCountQuery {
-  execute(dto: GetOrganizationsDoctorCountDto): Promise<GetOrganizationsDoctorCountQueryResult>;
+  execute(
+    dto: GetOrganizationsDoctorCountDto,
+  ): Promise<GetOrganizationsDoctorCountQueryResult>;
 }

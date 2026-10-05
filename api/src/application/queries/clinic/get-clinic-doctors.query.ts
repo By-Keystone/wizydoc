@@ -10,7 +10,7 @@ export interface IGetClinicDoctorsQueryResult {
   doctorProfileId: string;
   specialties: {
     id: string;
-    name: string
+    name: string;
   }[];
   name: string;
   lastName: string;

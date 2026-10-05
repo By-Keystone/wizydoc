@@ -5,10 +5,11 @@ export const UserRole = {
 
 export type UserRole = (typeof UserRole)[keyof typeof UserRole];
 
-export const MembershipRole = { 
-  ADMIN: 'ADMIN',
-  DOCTOR: 'DOCTOR',
-  USER: 'USER',
-}
+export const MembershipRole = {
+  ADMIN: "ADMIN",
+  DOCTOR: "DOCTOR",
+  USER: "USER",
+};
 
-export type MembershipRole = (typeof MembershipRole)[keyof typeof MembershipRole];
+export type MembershipRole =
+  (typeof MembershipRole)[keyof typeof MembershipRole];

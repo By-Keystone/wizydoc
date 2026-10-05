@@ -1,4 +1,4 @@
-import { AppointmentStatus } from "@/lib/api/patients/types";
+import type { AppointmentStatus } from "@/lib/api/patients/types";
 
 /**
  * Las citas se guardan como instantes, así que hay que pintarlas en el huso de

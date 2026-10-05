@@ -1,5 +1,5 @@
-import { ClinicUser } from "@/lib/api/clinic/types";
-import { Column, Table } from "../common/table";
+import type { ClinicUser } from "@/lib/api/clinic/types";
+import { type Column, Table } from "../common/table";
 
 interface Props {
   users: ClinicUser[];

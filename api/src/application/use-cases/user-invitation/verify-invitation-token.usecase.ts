@@ -18,8 +18,6 @@ export type VerifyInvitationTokenDto = z.infer<
 >;
 
 export class VerifyInvitationTokenUseCase {
-  constructor() {}
-
   async execute(data: VerifyInvitationTokenDto) {
     const client = getClient();
     const invitation = await client.userInvitation.findUnique({
@@ -71,7 +69,9 @@ export class VerifyInvitationTokenUseCase {
   }
 
   // Igual que Better Auth: basta con `providerId === "credential"`, sin mirar `password`.
-  private hasPasswordCredential(authAccounts: { providerId: string }[]): boolean {
+  private hasPasswordCredential(
+    authAccounts: { providerId: string }[],
+  ): boolean {
     return authAccounts.some((account) => account.providerId === "credential");
   }
 }

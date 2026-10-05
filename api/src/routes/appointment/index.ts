@@ -3,11 +3,11 @@ import {
   createAppointmentSchema,
 } from "@/application/use-cases/appointment/create-appointment.usecase";
 import { Prisma } from "@prisma/client";
-import { ZodTypeProvider } from "@fastify/type-provider-zod";
-import { FastifyInstance } from "fastify";
+import type { ZodTypeProvider } from "@fastify/type-provider-zod";
+import type { FastifyInstance } from "fastify";
 import { policy } from "@/plugins/policy";
 import { ApplicationError } from "@/application/errors/application.errors";
-import { IEmailService } from "@/application/ports/email-service.port";
+import type { IEmailService } from "@/application/ports/email-service.port";
 
 interface RouteProps {
   emailService: IEmailService;

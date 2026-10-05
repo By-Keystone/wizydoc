@@ -1,4 +1,4 @@
-import { type Page } from "@playwright/test";
+import type { Page } from "@playwright/test";
 import { test, expect } from "../../support/test";
 import {
   createClinicResource,
@@ -33,7 +33,10 @@ async function setupFixture(): Promise<Fixture> {
     name: "Alicia",
     lastName: "Administradora",
   });
-  const organizationId = await createOrganizationResource(admin, uniqueName("ORG-FORM"));
+  const organizationId = await createOrganizationResource(
+    admin,
+    uniqueName("ORG-FORM"),
+  );
   const clinicId = await createClinicResource(admin, organizationId, {
     name: uniqueName("Sede Larco"),
   });
@@ -66,7 +69,14 @@ async function setupFixture(): Promise<Fixture> {
     lastName: "Otro",
   });
 
-  return { admin, organizationId, clinicId, reception, doctor, otherAccountAdmin };
+  return {
+    admin,
+    organizationId,
+    clinicId,
+    reception,
+    doctor,
+    otherAccountAdmin,
+  };
 }
 
 interface UsersPageActor {
@@ -79,7 +89,11 @@ async function goToUsersPage(
   fixture: Fixture,
   actor: UsersPageActor = fixture.admin,
 ): Promise<void> {
-  await loginViaUi(page, actor.email, new RegExp(`/account/${actor.accountId}/select$`));
+  await loginViaUi(
+    page,
+    actor.email,
+    new RegExp(`/account/${actor.accountId}/select$`),
+  );
 
   // Las cookies resource_id/resource_type imitan "Entrar" en /select; elegir sede no es parte de este flujo.
   await page.context().addCookies([
@@ -122,18 +136,28 @@ test("CA-15 y CA-16: el formulario precarga los datos de un usuario existente y 
 
   // CA-15
   await continueWithEmail(page, fixture.reception.email);
-  await expect(page.getByText("Ya tiene una cuenta — precargamos sus datos.")).toBeVisible();
+  await expect(
+    page.getByText("Ya tiene una cuenta — precargamos sus datos."),
+  ).toBeVisible();
   await expect(page.getByLabel("Nombre")).toHaveValue(fixture.reception.name);
-  await expect(page.getByLabel("Apellido")).toHaveValue(fixture.reception.lastName);
-  await expect(page.getByLabel("Teléfono")).toHaveValue(fixture.reception.phone);
+  await expect(page.getByLabel("Apellido")).toHaveValue(
+    fixture.reception.lastName,
+  );
+  await expect(page.getByLabel("Teléfono")).toHaveValue(
+    fixture.reception.phone,
+  );
 
   // CA-16
   await page.getByRole("button", { name: "Cambiar" }).click();
   await continueWithEmail(page, fixture.doctor.email);
   await expect(page.getByLabel("Nombre")).toHaveValue(fixture.doctor.name);
-  await expect(page.getByLabel("Apellido")).toHaveValue(fixture.doctor.lastName);
+  await expect(page.getByLabel("Apellido")).toHaveValue(
+    fixture.doctor.lastName,
+  );
   await expect(page.getByLabel("Teléfono")).toHaveValue(fixture.doctor.phone);
-  await expect(page.getByLabel("Nombre")).not.toHaveValue(fixture.reception.name);
+  await expect(page.getByLabel("Nombre")).not.toHaveValue(
+    fixture.reception.name,
+  );
 });
 
 test("CA-13: la búsqueda es una sola petición y el correo no aparece en ninguna URL vista por el navegador", async ({
@@ -147,16 +171,23 @@ test("CA-13: la búsqueda es una sola petición y el correo no aparece en ningun
 
   const requestsSeenDuringLookup: { url: string; method: string }[] = [];
   const onRequest = (request: { url: () => string; method: () => string }) => {
-    requestsSeenDuringLookup.push({ url: request.url(), method: request.method() });
+    requestsSeenDuringLookup.push({
+      url: request.url(),
+      method: request.method(),
+    });
   };
   page.on("request", onRequest);
 
   await continueWithEmail(page, fixture.reception.email);
-  await expect(page.getByText("Ya tiene una cuenta — precargamos sus datos.")).toBeVisible();
+  await expect(
+    page.getByText("Ya tiene una cuenta — precargamos sus datos."),
+  ).toBeVisible();
 
   page.off("request", onRequest);
 
-  const postRequestsSeen = requestsSeenDuringLookup.filter((r) => r.method === "POST");
+  const postRequestsSeen = requestsSeenDuringLookup.filter(
+    (r) => r.method === "POST",
+  );
   expect(postRequestsSeen).toHaveLength(1);
 
   for (const { url } of requestsSeenDuringLookup) {
@@ -174,7 +205,9 @@ test("CA-18: un correo de otra cuenta muestra Usuario nuevo y un toast de error 
   await openInviteModal(page);
 
   await continueWithEmail(page, fixture.otherAccountAdmin.email);
-  await expect(page.getByText("Usuario nuevo — completa sus datos.")).toBeVisible();
+  await expect(
+    page.getByText("Usuario nuevo — completa sus datos."),
+  ).toBeVisible();
   await expect(page.getByLabel("Nombre")).toHaveValue("");
   await expect(page.getByLabel("Apellido")).toHaveValue("");
   await expect(page.getByLabel("Teléfono")).toHaveValue("");
@@ -201,7 +234,9 @@ test("CA-19: un correo nuevo muestra Usuario nuevo y al completarlo y enviar se 
 
   const newEmail = uniqueEmail("nuevo-ca19");
   await continueWithEmail(page, newEmail);
-  await expect(page.getByText("Usuario nuevo — completa sus datos.")).toBeVisible();
+  await expect(
+    page.getByText("Usuario nuevo — completa sus datos."),
+  ).toBeVisible();
 
   await page.getByLabel("Nombre").fill("Nueva");
   await page.getByLabel("Apellido").fill("Persona");
@@ -263,5 +298,7 @@ test("CA-7: la recepción no puede abrir a mano la página de Usuarios de su pro
   // segmento (no el error.tsx del segmento hijo) atrapa el NoMembershipError.
   await expect(page.getByText("No se pudo cargar el workspace")).toBeVisible();
   await expect(page.getByRole("heading", { name: "Usuarios" })).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "Invitar usuario" })).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Invitar usuario" }),
+  ).toHaveCount(0);
 });

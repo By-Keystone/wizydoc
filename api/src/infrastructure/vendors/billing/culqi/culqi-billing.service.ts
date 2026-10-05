@@ -94,7 +94,10 @@ export class CulqiBillingService implements BillingService {
   }
 
   private createSubscription(request: CreateSubscriptionRequest) {
-    return this.post<CulqiIdResponse>("/v2/recurrent/subscriptions/create", request);
+    return this.post<CulqiIdResponse>(
+      "/v2/recurrent/subscriptions/create",
+      request,
+    );
   }
 
   private async post<Response>(path: string, body: unknown): Promise<Response> {

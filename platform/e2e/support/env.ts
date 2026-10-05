@@ -29,9 +29,14 @@ const TEST_DB_PATH = "/wizydoc_test";
 
 export function assertTestDatabase(databaseUrl: string): void {
   const url = new URL(databaseUrl);
-  const isLocalHost = url.hostname === "localhost" || url.hostname === "127.0.0.1";
+  const isLocalHost =
+    url.hostname === "localhost" || url.hostname === "127.0.0.1";
 
-  if (!isLocalHost || url.port !== TEST_DB_PORT || url.pathname !== TEST_DB_PATH) {
+  if (
+    !isLocalHost ||
+    url.port !== TEST_DB_PORT ||
+    url.pathname !== TEST_DB_PATH
+  ) {
     throw new Error(
       `DATABASE_URL de e2e debe apuntar a localhost:${TEST_DB_PORT}${TEST_DB_PATH} ` +
         "(el contenedor de api/docker-compose.e2e.yml), nunca a la base de desarrollo.",

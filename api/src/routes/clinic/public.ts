@@ -1,7 +1,7 @@
 import { getClinicDoctorsParamsSchema } from "@/application/queries/clinic/get-clinic-doctors.query";
 import { GetClinicDoctorsQuery } from "@/infrastructure/postgres/queries/clinic/get-clinic-doctors.query";
-import { ZodTypeProvider } from "@fastify/type-provider-zod";
-import { FastifyInstance } from "fastify";
+import type { ZodTypeProvider } from "@fastify/type-provider-zod";
+import type { FastifyInstance } from "fastify";
 import { policy } from "@/plugins/policy";
 
 export default async function clinicPublicRoutes(fastify: FastifyInstance) {

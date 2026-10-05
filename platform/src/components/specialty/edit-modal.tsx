@@ -11,7 +11,7 @@ import {
 import { useParams } from "next/navigation";
 import { SpecialtyBaseForm } from "./base-form";
 import { updateSpecialtyAction } from "@/lib/actions/specialty/update-specialty.action";
-import { Specialty } from "@/lib/api/specialty/types";
+import type { Specialty } from "@/lib/api/specialty/types";
 import { useFormAction } from "@/hooks/useFormAction";
 
 interface Props {
@@ -31,7 +31,12 @@ export const EditSpecialtyModal = ({ isOpen, setIsOpen, specialty }: Props) => {
 
   const { submit, isPending, fieldErrors } = useFormAction<SpecialtyFields>(
     (formData) =>
-      updateSpecialtyAction(resourceId, specialty.id, { status: "idle" }, formData),
+      updateSpecialtyAction(
+        resourceId,
+        specialty.id,
+        { status: "idle" },
+        formData,
+      ),
     {
       successMessage: "Especialidad actualizada",
       onSuccess: () => setIsOpen(false),

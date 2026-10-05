@@ -50,7 +50,9 @@ export interface TestPrismaSubscriptionRow {
 
 export interface TestPrisma {
   user: {
-    findUnique(args: { where: Record<string, unknown> }): Promise<TestPrismaUserRow | null>;
+    findUnique(args: {
+      where: Record<string, unknown>;
+    }): Promise<TestPrismaUserRow | null>;
     update(args: {
       where: Record<string, unknown>;
       data: Record<string, unknown>;
@@ -58,7 +60,9 @@ export interface TestPrisma {
   };
   account: {
     count(args: { where: Record<string, unknown> }): Promise<number>;
-    findFirst(args: { where: Record<string, unknown> }): Promise<TestPrismaAccountRow | null>;
+    findFirst(args: {
+      where: Record<string, unknown>;
+    }): Promise<TestPrismaAccountRow | null>;
   };
   subscription: {
     count(args: { where: Record<string, unknown> }): Promise<number>;
@@ -71,12 +75,18 @@ export interface TestPrisma {
     }): Promise<TestPrismaSubscriptionRow>;
   };
   organization: {
-    findFirst(args: { where: Record<string, unknown> }): Promise<{ resourceId: string } | null>;
+    findFirst(args: {
+      where: Record<string, unknown>;
+    }): Promise<{ resourceId: string } | null>;
     count(args: { where: Record<string, unknown> }): Promise<number>;
   };
   clinic: {
-    findFirst(args: { where: Record<string, unknown> }): Promise<{ resourceId: string } | null>;
-    create(args: { data: Record<string, unknown> }): Promise<{ resourceId: string }>;
+    findFirst(args: {
+      where: Record<string, unknown>;
+    }): Promise<{ resourceId: string } | null>;
+    create(args: {
+      data: Record<string, unknown>;
+    }): Promise<{ resourceId: string }>;
   };
   resource: {
     create(args: { data: Record<string, unknown> }): Promise<{ id: string }>;
@@ -105,7 +115,9 @@ export interface TestPrisma {
     findFirst(args: {
       where: Record<string, unknown>;
     }): Promise<{ id: string } | null>;
-    findUniqueOrThrow(args: { where: Record<string, unknown> }): Promise<{ id: string }>;
+    findUniqueOrThrow(args: {
+      where: Record<string, unknown>;
+    }): Promise<{ id: string }>;
   };
   authAccount: {
     findMany(args: {
@@ -124,8 +136,12 @@ export interface TestPrisma {
   userInvitation: {
     count(args: { where: Record<string, unknown> }): Promise<number>;
     findMany(args: { where: Record<string, unknown> }): Promise<unknown[]>;
-    findFirst(args: { where: Record<string, unknown> }): Promise<TestPrismaInvitationRow | null>;
-    findUnique(args: { where: Record<string, unknown> }): Promise<TestPrismaInvitationRow | null>;
+    findFirst(args: {
+      where: Record<string, unknown>;
+    }): Promise<TestPrismaInvitationRow | null>;
+    findUnique(args: {
+      where: Record<string, unknown>;
+    }): Promise<TestPrismaInvitationRow | null>;
     update(args: {
       where: Record<string, unknown>;
       data: Record<string, unknown>;
@@ -136,7 +152,10 @@ export interface TestPrisma {
       where: Record<string, unknown>;
     }): Promise<{ id: string; name: string; organizationId: string } | null>;
   };
-  $queryRaw<T = unknown>(query: TemplateStringsArray, ...values: unknown[]): Promise<T>;
+  $queryRaw<T = unknown>(
+    query: TemplateStringsArray,
+    ...values: unknown[]
+  ): Promise<T>;
   $disconnect(): Promise<void>;
 }
 
@@ -144,7 +163,9 @@ let testPrismaPromise: Promise<TestPrisma> | undefined;
 
 export function getTestPrisma(): Promise<TestPrisma> {
   if (!testPrismaPromise) {
-    testPrismaPromise = import(clientModulePath).then((clientModule) => clientModule.prisma);
+    testPrismaPromise = import(clientModulePath).then(
+      (clientModule) => clientModule.prisma,
+    );
   }
   return testPrismaPromise;
 }

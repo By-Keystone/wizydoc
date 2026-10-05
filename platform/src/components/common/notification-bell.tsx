@@ -116,7 +116,9 @@ export function NotificationBell() {
                       <span className="h-2 w-2 shrink-0 rounded-full bg-brand-teal" />
                     )}
                   </div>
-                  <span className="text-xs text-brand-gray">{n.description}</span>
+                  <span className="text-xs text-brand-gray">
+                    {n.description}
+                  </span>
                   <span className="text-xs text-brand-gray">{n.createdAt}</span>
                 </button>
               ))

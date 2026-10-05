@@ -1,38 +1,43 @@
-import Link from "next/link"
-import Image from "next/image"
-import { Linkedin, Instagram } from "lucide-react"
-import logo from "@/images/logo.png"
+import Link from "next/link";
+import Image from "next/image";
+import { Linkedin, Instagram } from "lucide-react";
+import logo from "@/images/logo.png";
 
 const links = {
   Producto: [
     { label: "Funcionalidades", href: "#features" },
-    { label: "Precios",         href: "#pricing" },
-    { label: "Cómo funciona",   href: "#how-it-works" },
+    { label: "Precios", href: "#pricing" },
+    { label: "Cómo funciona", href: "#how-it-works" },
   ],
-  Legal: [
-    { label: "Términos y condiciones", href: "/terminos-y-condiciones" },
-  ],
-}
+  Legal: [{ label: "Términos y condiciones", href: "/terminos-y-condiciones" }],
+};
 
 const socials = [
-  { label: "LinkedIn", href: "https://www.linkedin.com/company/137494267", icon: Linkedin },
-  { label: "Instagram (@wizydoc.app)", href: "https://www.instagram.com/wizydoc.app", icon: Instagram },
-]
+  {
+    label: "LinkedIn",
+    href: "https://www.linkedin.com/company/137494267",
+    icon: Linkedin,
+  },
+  {
+    label: "Instagram (@wizydoc.app)",
+    href: "https://www.instagram.com/wizydoc.app",
+    icon: Instagram,
+  },
+];
 
 export function Footer() {
   return (
     <footer className="border-t border-gray-200 bg-white">
       <div className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
         <div className="grid grid-cols-2 gap-10 md:grid-cols-4">
-
           {/* Brand */}
           <div className="col-span-2 md:col-span-1">
             <Link href="/" className="flex items-center">
               <Image src={logo} alt="WizyDoc" className="h-8 w-auto" />
             </Link>
             <p className="mt-4 text-sm leading-relaxed text-brand-gray max-w-xs">
-              Gestión de citas médicas para sedes médicas que quieren
-              operar sin fricciones.
+              Gestión de citas médicas para sedes médicas que quieren operar sin
+              fricciones.
             </p>
           </div>
 
@@ -90,5 +95,5 @@ export function Footer() {
         </div>
       </div>
     </footer>
-  )
+  );
 }

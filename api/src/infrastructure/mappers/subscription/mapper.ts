@@ -1,5 +1,5 @@
-import { Subscription } from "@/domain/entities/subscription/entity";
-import { Subscription as PrismaSubscription } from "@prisma/client";
+import type { Subscription } from "@/domain/entities/subscription/entity";
+import type { Subscription as PrismaSubscription } from "@prisma/client";
 
 export function toDomain(subscription: PrismaSubscription): Subscription {
   return {

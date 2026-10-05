@@ -1,9 +1,7 @@
 import { MembershipRole } from "@/lib/utils";
 import { StatisticsWrapper } from "@/components/app/dashboard/stats-wrapper";
-import { useApp } from "@/context/app/app.context";
 import { OrganizationStats } from "@/components/app/dashboard/organization/stats";
 import { userMembershipsApi } from "@/lib/api/memberships";
-import { useParams } from "next/navigation";
 
 interface PageProps {
   params: Promise<{ resourceId: string }>;

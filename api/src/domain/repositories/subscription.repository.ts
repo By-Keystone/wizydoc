@@ -1,5 +1,5 @@
-import { Plan, SubscriptionStatus } from "@prisma/client";
-import { Subscription } from "../entities/subscription/entity";
+import type { Plan, SubscriptionStatus } from "@prisma/client";
+import type { Subscription } from "../entities/subscription/entity";
 
 export interface PaymentProviderIds {
   customerId: string;

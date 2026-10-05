@@ -43,7 +43,9 @@ export default function RegisterPage() {
     <div className="w-full max-w-md">
       <div className="rounded-2xl border border-gray-200 bg-white p-8 shadow-xl">
         <div className="mb-8">
-          <h1 className="text-2xl font-bold text-brand-teal-dark">Crea tu cuenta</h1>
+          <h1 className="text-2xl font-bold text-brand-teal-dark">
+            Crea tu cuenta
+          </h1>
           <p className="mt-1 text-sm text-brand-gray">
             Empieza gratis, sin tarjeta de crédito
           </p>

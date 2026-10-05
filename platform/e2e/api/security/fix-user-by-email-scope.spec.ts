@@ -1,4 +1,4 @@
-import { type APIRequestContext } from "@playwright/test";
+import type { APIRequestContext } from "@playwright/test";
 import { test, expect } from "../../support/test";
 import { API_BASE_URL } from "../../support/env";
 import { createApiContext, createOnboardedAdmin } from "../../support/accounts";
@@ -17,8 +17,12 @@ function lookup(context: APIRequestContext, resourceId: string, email: string) {
 test.describe("Lo que deja de ser posible", () => {
   test("CA-1: la petición a GET /user/by-email es rechazada (401) y no recibe ningún dato", async () => {
     // 401 aquí es el genérico de "ruta no registrada" (policy.ts), no un chequeo real de sesión.
-    const reception = await createOnboardedAdmin({ emailPrefix: "recepcion-ca1" });
-    const member = await createOnboardedAdmin({ emailPrefix: "otra-cuenta-ca1" });
+    const reception = await createOnboardedAdmin({
+      emailPrefix: "recepcion-ca1",
+    });
+    const member = await createOnboardedAdmin({
+      emailPrefix: "otra-cuenta-ca1",
+    });
 
     const response = await member.context.get(
       `${API_BASE_URL}/user/by-email?email=${encodeURIComponent(reception.email)}`,
@@ -32,7 +36,11 @@ test.describe("Lo que deja de ser posible", () => {
   test("CA-2: un miembro de otra cuenta busca desde su propia sede y recibe user null", async () => {
     const fixture = await seedLookupFixture();
 
-    const response = await lookup(fixture.account2.context, fixture.clinicZId, fixture.reception.email);
+    const response = await lookup(
+      fixture.account2.context,
+      fixture.clinicZId,
+      fixture.reception.email,
+    );
 
     expect(response.status()).toBe(200);
     expect(await response.json()).toEqual({ user: null });
@@ -41,7 +49,11 @@ test.describe("Lo que deja de ser posible", () => {
   test("CA-3: un miembro de otra cuenta recibe 404 al buscar sobre una sede que no es suya", async () => {
     const fixture = await seedLookupFixture();
 
-    const response = await lookup(fixture.account2.context, fixture.clinicAId, fixture.reception.email);
+    const response = await lookup(
+      fixture.account2.context,
+      fixture.clinicAId,
+      fixture.reception.email,
+    );
 
     expect(response.status()).toBe(404);
   });
@@ -55,7 +67,9 @@ test.describe("Lo que deja de ser posible", () => {
       fixture.account1.email,
     );
     expect(responseFromReception.status()).toBe(403);
-    expect((await responseFromReception.json()).message).toBe("Insufficient role on this resource");
+    expect((await responseFromReception.json()).message).toBe(
+      "Insufficient role on this resource",
+    );
 
     const responseFromDoctor = await lookup(
       fixture.doctor.context,
@@ -63,7 +77,9 @@ test.describe("Lo que deja de ser posible", () => {
       fixture.account1.email,
     );
     expect(responseFromDoctor.status()).toBe(403);
-    expect((await responseFromDoctor.json()).message).toBe("Insufficient role on this resource");
+    expect((await responseFromDoctor.json()).message).toBe(
+      "Insufficient role on this resource",
+    );
   });
 
   test("CA-5: el administrador de sede (sólo de A) recibe 404 al buscar con el resourceId de B", async () => {
@@ -88,7 +104,11 @@ test.describe("Lo que deja de ser posible", () => {
     const fixture = await seedLookupFixture();
     const anonymous = await createApiContext();
 
-    const response = await lookup(anonymous, fixture.clinicAId, fixture.reception.email);
+    const response = await lookup(
+      anonymous,
+      fixture.clinicAId,
+      fixture.reception.email,
+    );
 
     expect(response.status()).toBe(401);
     const body = await response.json();
@@ -111,7 +131,11 @@ test.describe("Lo que deja de ser posible", () => {
   test("CA-8: el administrador busca con el resourceId de su organización el correo de otra cuenta", async () => {
     const fixture = await seedLookupFixture();
 
-    const response = await lookup(fixture.account1.context, fixture.organizationId, fixture.account2.email);
+    const response = await lookup(
+      fixture.account1.context,
+      fixture.organizationId,
+      fixture.account2.email,
+    );
 
     expect(response.status()).toBe(200);
     expect(await response.json()).toEqual({ user: null });
@@ -127,11 +151,19 @@ test.describe("Lo que deja de ser posible", () => {
     });
 
     try {
-      const responseFromZ = await lookup(fixture.account2.context, fixture.clinicZId, fixture.reception.email);
+      const responseFromZ = await lookup(
+        fixture.account2.context,
+        fixture.clinicZId,
+        fixture.reception.email,
+      );
       expect(responseFromZ.status()).toBe(200);
       expect(await responseFromZ.json()).toEqual({ user: null });
 
-      const responseFromA = await lookup(fixture.account2.context, fixture.clinicAId, fixture.reception.email);
+      const responseFromA = await lookup(
+        fixture.account2.context,
+        fixture.clinicAId,
+        fixture.reception.email,
+      );
       expect(responseFromA.status()).toBe(404);
     } finally {
       await prisma.user.update({
@@ -144,7 +176,11 @@ test.describe("Lo que deja de ser posible", () => {
   test("CA-10: buscar un texto que no es un correo responde 400", async () => {
     const fixture = await seedLookupFixture();
 
-    const response = await lookup(fixture.account1.context, fixture.clinicAId, "no-es-un-correo");
+    const response = await lookup(
+      fixture.account1.context,
+      fixture.clinicAId,
+      "no-es-un-correo",
+    );
 
     expect(response.status()).toBe(400);
   });
@@ -176,7 +212,11 @@ test.describe("Lo que no debe filtrarse", () => {
   test("CA-12: la respuesta sólo trae name, lastName y phone, nunca id/email/accountId/role/confirmed/onboardingCompleted", async () => {
     const fixture = await seedLookupFixture();
 
-    const response = await lookup(fixture.account1.context, fixture.clinicAId, fixture.reception.email);
+    const response = await lookup(
+      fixture.account1.context,
+      fixture.clinicAId,
+      fixture.reception.email,
+    );
 
     expect(response.status()).toBe(200);
     const body = await response.json();
@@ -195,7 +235,11 @@ test.describe("Lo que debe seguir funcionando", () => {
     const fixture = await seedLookupFixture();
 
     // El admin de organización tiene acceso heredado a B: la búsqueda es por cuenta, no por membership.
-    const responseOnB = await lookup(fixture.account1.context, fixture.clinicBId, fixture.reception.email);
+    const responseOnB = await lookup(
+      fixture.account1.context,
+      fixture.clinicBId,
+      fixture.reception.email,
+    );
     expect(responseOnB.status()).toBe(200);
     expect(await responseOnB.json()).toEqual({
       user: {

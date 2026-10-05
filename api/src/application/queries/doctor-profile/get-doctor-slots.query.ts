@@ -1,8 +1,8 @@
 import z from "zod";
 
-const dateKey = z
-  .string()
-  .regex(/^\d{4}-\d{2}-\d{2}$/, { error: "La fecha debe tener formato YYYY-MM-DD" });
+const dateKey = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, {
+  error: "La fecha debe tener formato YYYY-MM-DD",
+});
 
 export const getDoctorSlotsParamsSchema = z.object({
   doctorProfileId: z.string(),

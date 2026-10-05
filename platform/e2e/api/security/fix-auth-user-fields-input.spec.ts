@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { type APIResponse } from "@playwright/test";
+import type { APIResponse } from "@playwright/test";
 import { test, expect } from "../../support/test";
 import { API_BASE_URL, PLATFORM_BASE_URL } from "../../support/env";
 import { getTestPrisma } from "../../support/db";
@@ -44,7 +44,10 @@ test.describe("Lo que deja de ser posible", () => {
     const email = uniqueEmail("intruso-accountid");
 
     const attacker = await createApiContext();
-    const response = await signUpRaw(attacker, signUpBody(email, { accountId: victim.accountId }));
+    const response = await signUpRaw(
+      attacker,
+      signUpBody(email, { accountId: victim.accountId }),
+    );
 
     expect(response.status()).toBe(400);
     expect(await response.json()).toEqual({
@@ -54,10 +57,15 @@ test.describe("Lo que deja de ser posible", () => {
     await expectUserRowAbsent(email);
   });
 
-  test('CA-2: sign-up con role: "ADMIN" se rechaza y no crea el usuario', async ({ request }) => {
+  test('CA-2: sign-up con role: "ADMIN" se rechaza y no crea el usuario', async ({
+    request,
+  }) => {
     const email = uniqueEmail("intruso-role");
 
-    const response = await signUpRaw(request, signUpBody(email, { role: "ADMIN" }));
+    const response = await signUpRaw(
+      request,
+      signUpBody(email, { role: "ADMIN" }),
+    );
 
     expect(response.status()).toBe(400);
     expect(await response.json()).toEqual({
@@ -67,7 +75,7 @@ test.describe("Lo que deja de ser posible", () => {
     await expectUserRowAbsent(email);
   });
 
-  test("CA-3: sign-up con onboardingCompleted true o con el texto \"false\" se rechaza en ambos casos", async () => {
+  test('CA-3: sign-up con onboardingCompleted true o con el texto "false" se rechaza en ambos casos', async () => {
     const contextForBoolean = await createApiContext();
     const emailForBoolean = uniqueEmail("intruso-onboarding-bool");
     const responseForBoolean = await signUpRaw(
@@ -95,12 +103,16 @@ test.describe("Lo que deja de ser posible", () => {
     await expectUserRowAbsent(emailForString);
   });
 
-  test("CA-4: el mismo rechazo ocurre a través del rewrite de platform", async ({ request }) => {
+  test("CA-4: el mismo rechazo ocurre a través del rewrite de platform", async ({
+    request,
+  }) => {
     const email = uniqueEmail("intruso-platform");
 
     const responseViaApi = await signUpRaw(
       request,
-      signUpBody(uniqueEmail("intruso-platform-control"), { accountId: randomUUID() }),
+      signUpBody(uniqueEmail("intruso-platform-control"), {
+        accountId: randomUUID(),
+      }),
     );
     const responseViaPlatform = await signUpRaw(
       request,
@@ -109,7 +121,9 @@ test.describe("Lo que deja de ser posible", () => {
     );
 
     expect(responseViaPlatform.status()).toBe(responseViaApi.status());
-    expect(await responseViaPlatform.json()).toEqual(await responseViaApi.json());
+    expect(await responseViaPlatform.json()).toEqual(
+      await responseViaApi.json(),
+    );
     await expectUserRowAbsent(email);
   });
 
@@ -151,7 +165,9 @@ test.describe("Lo que deja de ser posible", () => {
     const victim = await createOnboardedAdmin({ emailPrefix: "victima-ca6" });
 
     const attackerContext = await createApiContext();
-    const { userId } = await createConfirmedUser(attackerContext, { emailPrefix: "atacante-ca6" });
+    const { userId } = await createConfirmedUser(attackerContext, {
+      emailPrefix: "atacante-ca6",
+    });
 
     const bodies: Record<string, unknown>[] = [
       { accountId: victim.accountId },
@@ -163,7 +179,11 @@ test.describe("Lo que deja de ser posible", () => {
     ];
 
     for (const body of bodies) {
-      const response = await authPost(attackerContext, "/api/auth/update-user", body);
+      const response = await authPost(
+        attackerContext,
+        "/api/auth/update-user",
+        body,
+      );
       expect(response.status(), `cuerpo: ${JSON.stringify(body)}`).toBe(404);
     }
 
@@ -179,28 +199,35 @@ test.describe("Lo que deja de ser posible", () => {
     const context = await createApiContext();
     await createConfirmedUser(context, { emailPrefix: "atacante-ca7" });
 
-    const attempts: Array<{ label: string; call: () => Promise<APIResponse> }> = [
-      {
-        label: "/api/auth/update-user/ (barra final)",
-        call: () =>
-          context.post(`${API_BASE_URL}/api/auth/update-user/`, {
-            headers: { Origin: PLATFORM_BASE_URL },
-            data: { accountId: randomUUID() },
-          }),
-      },
-      {
-        label: "/api/auth//update-user (doble barra)",
-        call: () =>
-          context.post(`${API_BASE_URL}/api/auth//update-user`, {
-            headers: { Origin: PLATFORM_BASE_URL },
-            data: { accountId: randomUUID() },
-          }),
-      },
-      {
-        label: "update-user vía rewrite de platform",
-        call: () => authPost(context, "/api/auth/update-user", { accountId: randomUUID() }, PLATFORM_BASE_URL),
-      },
-    ];
+    const attempts: Array<{ label: string; call: () => Promise<APIResponse> }> =
+      [
+        {
+          label: "/api/auth/update-user/ (barra final)",
+          call: () =>
+            context.post(`${API_BASE_URL}/api/auth/update-user/`, {
+              headers: { Origin: PLATFORM_BASE_URL },
+              data: { accountId: randomUUID() },
+            }),
+        },
+        {
+          label: "/api/auth//update-user (doble barra)",
+          call: () =>
+            context.post(`${API_BASE_URL}/api/auth//update-user`, {
+              headers: { Origin: PLATFORM_BASE_URL },
+              data: { accountId: randomUUID() },
+            }),
+        },
+        {
+          label: "update-user vía rewrite de platform",
+          call: () =>
+            authPost(
+              context,
+              "/api/auth/update-user",
+              { accountId: randomUUID() },
+              PLATFORM_BASE_URL,
+            ),
+        },
+      ];
 
     for (const attempt of attempts) {
       const response = await attempt.call();
@@ -211,13 +238,19 @@ test.describe("Lo que deja de ser posible", () => {
   test("CA-8: update-user sin sesión responde 404, no 401", async () => {
     const anonymous = await createApiContext();
 
-    const response = await authPost(anonymous, "/api/auth/update-user", { name: "x" });
+    const response = await authPost(anonymous, "/api/auth/update-user", {
+      name: "x",
+    });
 
     expect(response.status()).toBe(404);
   });
 
-  test("CA-9: tras los intentos de CA-6 y CA-7, GET /user/me no cambió", async ({ request }) => {
-    const { userId } = await createConfirmedUser(request, { emailPrefix: "atacante-ca9" });
+  test("CA-9: tras los intentos de CA-6 y CA-7, GET /user/me no cambió", async ({
+    request,
+  }) => {
+    const { userId } = await createConfirmedUser(request, {
+      emailPrefix: "atacante-ca9",
+    });
 
     const meBeforeResponse = await request.get(`${API_BASE_URL}/user/me`, {
       headers: { Origin: PLATFORM_BASE_URL },
@@ -236,7 +269,12 @@ test.describe("Lo que deja de ser posible", () => {
       headers: { Origin: PLATFORM_BASE_URL },
       data: { accountId: randomUUID() },
     });
-    await authPost(request, "/api/auth/update-user", { accountId: randomUUID() }, PLATFORM_BASE_URL);
+    await authPost(
+      request,
+      "/api/auth/update-user",
+      { accountId: randomUUID() },
+      PLATFORM_BASE_URL,
+    );
 
     const meAfterResponse = await request.get(`${API_BASE_URL}/user/me`, {
       headers: { Origin: PLATFORM_BASE_URL },
@@ -251,20 +289,33 @@ test.describe("Lo que deja de ser posible", () => {
 
   test("CA-10: el atacante no puede ver la sede de la víctima por GET /clinic/:resourceId/users ni por GET /clinic", async () => {
     const victim = await createOnboardedAdmin({ emailPrefix: "victima-ca10" });
-    const organizationId = await createOrganizationResource(victim, uniqueName("ORG-CA10"));
+    const organizationId = await createOrganizationResource(
+      victim,
+      uniqueName("ORG-CA10"),
+    );
     const clinicId = await createClinicResource(victim, organizationId, {
       name: uniqueName("Sede víctima"),
     });
 
-    const attacker = await createOnboardedAdmin({ emailPrefix: "atacante-ca10" });
+    const attacker = await createOnboardedAdmin({
+      emailPrefix: "atacante-ca10",
+    });
 
-    const usersResponse = await attacker.context.get(`${API_BASE_URL}/clinic/${clinicId}/users`);
+    const usersResponse = await attacker.context.get(
+      `${API_BASE_URL}/clinic/${clinicId}/users`,
+    );
     expect(usersResponse.status()).toBe(404);
 
-    const clinicsResponse = await attacker.context.get(`${API_BASE_URL}/clinic`);
+    const clinicsResponse = await attacker.context.get(
+      `${API_BASE_URL}/clinic`,
+    );
     expect(clinicsResponse.status()).toBe(200);
-    const clinics = (await clinicsResponse.json()) as Array<{ resourceId: string }>;
-    expect(clinics.some((clinic) => clinic.resourceId === clinicId)).toBe(false);
+    const clinics = (await clinicsResponse.json()) as Array<{
+      resourceId: string;
+    }>;
+    expect(clinics.some((clinic) => clinic.resourceId === clinicId)).toBe(
+      false,
+    );
   });
 });
 
@@ -292,7 +343,9 @@ test.describe("Lo que no debe filtrarse", () => {
     const bodyForExistingEmail = await responseForExistingEmail.json();
 
     expect(responseForNewEmail.status()).toBe(400);
-    expect(responseForExistingEmail.status()).toBe(responseForNewEmail.status());
+    expect(responseForExistingEmail.status()).toBe(
+      responseForNewEmail.status(),
+    );
     expect(bodyForExistingEmail).toEqual(bodyForNewEmail);
   });
 });
@@ -318,7 +371,9 @@ test.describe("Lo que debe seguir funcionando", () => {
   test("un usuario normal obtiene su accountId en GET /user/me tras completar el onboarding (control, no es un CA)", async ({
     request,
   }) => {
-    const { userId } = await createConfirmedUser(request, { emailPrefix: "usuario-normal" });
+    const { userId } = await createConfirmedUser(request, {
+      emailPrefix: "usuario-normal",
+    });
 
     const accountResponse = await request.post(`${API_BASE_URL}/account`, {
       headers: { Origin: PLATFORM_BASE_URL },

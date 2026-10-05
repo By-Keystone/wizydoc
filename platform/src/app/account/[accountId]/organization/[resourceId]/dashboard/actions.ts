@@ -1,5 +1,3 @@
-import z from "zod";
-
 export type GetStatisticsState =
   | { status: "idle" }
   | {
@@ -9,7 +7,7 @@ export type GetStatisticsState =
     }
   | {
       status: "success";
-      data: Record<string, any>;
+      data: Record<string, unknown>;
     };
 
 export async function getStatistics(_prevState: GetStatisticsState) {}

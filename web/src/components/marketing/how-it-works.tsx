@@ -1,4 +1,4 @@
-import { UserPlus, CalendarDays, CheckCircle2 } from "lucide-react"
+import { UserPlus, CalendarDays, CheckCircle2 } from "lucide-react";
 
 const steps = [
   {
@@ -22,13 +22,12 @@ const steps = [
     description:
       "Los pacientes eligen médico, fecha y horario desde el enlace de reserva, y WizyDoc les envía la confirmación automáticamente.",
   },
-]
+];
 
 export function HowItWorks() {
   return (
     <section id="how-it-works" className="bg-brand-surface py-24">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-
         {/* Header */}
         <div className="mx-auto max-w-2xl text-center">
           <p className="text-sm font-semibold uppercase tracking-widest text-brand-teal">
@@ -45,9 +44,12 @@ export function HowItWorks() {
         {/* Steps */}
         <div className="mt-16 grid grid-cols-1 gap-8 md:grid-cols-3">
           {steps.map((step, index) => {
-            const Icon = step.icon
+            const Icon = step.icon;
             return (
-              <div key={step.number} className="relative flex flex-col items-center text-center">
+              <div
+                key={step.number}
+                className="relative flex flex-col items-center text-center"
+              >
                 {/* Connector line */}
                 {index < steps.length - 1 && (
                   <div className="absolute top-10 left-[calc(50%+2.5rem)] hidden h-px w-[calc(100%-5rem)] border-t-2 border-dashed border-gray-300 md:block" />
@@ -61,15 +63,17 @@ export function HowItWorks() {
                   </span>
                 </div>
 
-                <h3 className="mt-6 text-lg font-semibold text-brand-teal-dark">{step.title}</h3>
+                <h3 className="mt-6 text-lg font-semibold text-brand-teal-dark">
+                  {step.title}
+                </h3>
                 <p className="mt-2 text-sm leading-relaxed text-brand-gray max-w-xs">
                   {step.description}
                 </p>
               </div>
-            )
+            );
           })}
         </div>
       </div>
     </section>
-  )
+  );
 }

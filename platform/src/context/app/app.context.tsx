@@ -1,8 +1,8 @@
 "use client";
 
-import { UserMembership } from "@/lib/api/memberships/types";
-import { Me } from "@/lib/auth/me";
-import { createContext, ReactNode, useContext, useMemo } from "react";
+import type { UserMembership } from "@/lib/api/memberships/types";
+import type { Me } from "@/lib/auth/me";
+import { createContext, type ReactNode, useContext } from "react";
 
 type AppContextType = {
   membership: UserMembership;

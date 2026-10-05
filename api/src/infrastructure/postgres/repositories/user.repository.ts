@@ -22,11 +22,6 @@ export class PrismaUserRepository implements IUserRepository {
     return user ? toDomain(user) : null;
   }
 
-  async update(id: string, data: Partial<User>): Promise<User> {
-    const user = await getClient().user.update({ where: { id }, data });
-    return toDomain(user);
-  }
-
   async assignAccountIfNone(
     userId: string,
     accountId: string,

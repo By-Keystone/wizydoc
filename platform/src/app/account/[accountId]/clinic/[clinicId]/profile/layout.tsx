@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import type { ReactNode } from "react";
 import { SettingsSidebar } from "@/components/clinic/settings/settings-sidebar";
 
 export default function ClinicSettingsLayout({

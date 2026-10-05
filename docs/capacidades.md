@@ -55,18 +55,21 @@ la visión, sin fecha · **Fuera** = fuera de alcance por ahora.
 | --- | --- | --- |
 | Varias sedes por cuenta | Hoy | Según plan |
 | Varios médicos con especialidades | Hoy | Según plan |
+| Especialidades por organización | Hoy | Nombre único dentro de cada organización; el booking de una sede muestra sólo las de su organización |
 | Roles: administrador, doctor, usuario (recepción) | Hoy | |
-| Invitaciones al equipo por correo | Hoy | |
+| Crear organizaciones y sedes | Hoy | Organización: un ADMIN de una organización (la primera, el dueño de la cuenta). Sede: un ADMIN de su organización |
+| Invitaciones al equipo por correo | Hoy | Sólo un ADMIN del recurso al que invita. El invitado define su contraseña desde el link; si ya tiene una, sólo acepta |
 | Métricas por sede | Hoy | Plan Clínica |
 | Exportación de datos | Parcial | Está en el plan Red, sin implementar |
 
 ## Planes y cobro
 | Capacidad | Estado | Nota |
 | --- | --- | --- |
-| Plan gratis sin tarjeta | Hoy | |
+| Plan gratis sin tarjeta | Hoy | Único plan que ofrece el onboarding durante la beta |
+| Tope de 10 pacientes en Gratis | Próximo | Ver PRODUCT.md |
 | Límites de médicos y sedes por plan | Hoy | |
 | Función fuera del plan muestra la mejora de plan | Hoy | Responde 402, no un error |
-| Suscripción mensual con Culqi en soles | Parcial | Congelada en la beta: el onboarding sólo ofrece Gratis |
+| Suscripción mensual con Culqi en soles | Parcial | Congelada en la beta: el api rechaza planes de pago al registrarse y no llama a Culqi; los planes de pago se asignan a mano |
 | Médicos y sedes adicionales (add-ons) | Parcial | Médico S/ 25 (Consultorio) o S/ 20 (Clínica), sede S/ 40: se anuncian y el modelo los contempla, pero no se cobran |
 
 ## Desajustes entre la landing y el código

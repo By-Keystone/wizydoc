@@ -1,4 +1,4 @@
-import { MembershipRole } from "@/lib/utils";
+import type { MembershipRole } from "@/lib/utils";
 
 export type Doctor = {
   doctorId: string;

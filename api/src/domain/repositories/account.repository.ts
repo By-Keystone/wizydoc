@@ -1,4 +1,4 @@
-import { Account } from "../entities/account/entity";
+import type { Account } from "../entities/account/entity";
 
 export interface CreateAccountDto {
   name: string;

@@ -7,8 +7,8 @@ import {
   getDoctorSlotsQuerySchema,
 } from "@/application/queries/doctor-profile/get-doctor-slots.query";
 import { GetDoctorSlotsQuery } from "@/infrastructure/postgres/queries/doctor-profile/get-doctor-slots.query";
-import { ZodTypeProvider } from "@fastify/type-provider-zod";
-import { FastifyInstance } from "fastify";
+import type { ZodTypeProvider } from "@fastify/type-provider-zod";
+import type { FastifyInstance } from "fastify";
 import { policy } from "@/plugins/policy";
 
 export default async function doctorProfileRoutes(fastify: FastifyInstance) {

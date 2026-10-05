@@ -19,7 +19,10 @@ test("CA-9: un USER de una organización no ve el botón Crear organización ni 
   page,
 }) => {
   const admin = await createOnboardedAdmin({ emailPrefix: "admin-ca9" });
-  const organizationId = await createOrganizationResource(admin, uniqueName("ORG-CA9"));
+  const organizationId = await createOrganizationResource(
+    admin,
+    uniqueName("ORG-CA9"),
+  );
   const user = await createMemberWithRole({
     accountId: admin.accountId,
     resourceId: organizationId,
@@ -28,16 +31,27 @@ test("CA-9: un USER de una organización no ve el botón Crear organización ni 
     emailPrefix: "user-ca9",
   });
 
-  await loginViaUi(page, user.email, new RegExp(`/account/${admin.accountId}/select$`));
+  await loginViaUi(
+    page,
+    user.email,
+    new RegExp(`/account/${admin.accountId}/select$`),
+  );
 
-  await expect(page.getByRole("button", { name: "Crear organización" })).not.toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Crear organización" }),
+  ).not.toBeVisible();
   // Sin botón no hay cómo abrir el modal: el campo "Nombre" de su formulario tampoco aparece.
   await expect(page.getByLabel("Nombre")).not.toBeVisible();
 });
 
-test("CA-20: un ADMIN sólo de una sede no ve el botón Crear organización", async ({ page }) => {
+test("CA-20: un ADMIN sólo de una sede no ve el botón Crear organización", async ({
+  page,
+}) => {
   const admin = await createOnboardedAdmin({ emailPrefix: "admin-ca20" });
-  const organizationId = await createOrganizationResource(admin, uniqueName("ORG-CA20"));
+  const organizationId = await createOrganizationResource(
+    admin,
+    uniqueName("ORG-CA20"),
+  );
   const clinicId = await createClinicResource(admin, organizationId, {
     name: uniqueName("Sede CA-20"),
   });
@@ -49,9 +63,15 @@ test("CA-20: un ADMIN sólo de una sede no ve el botón Crear organización", as
     emailPrefix: "adminsede-ca20",
   });
 
-  await loginViaUi(page, adminOfClinic.email, new RegExp(`/account/${admin.accountId}/select$`));
+  await loginViaUi(
+    page,
+    adminOfClinic.email,
+    new RegExp(`/account/${admin.accountId}/select$`),
+  );
 
-  await expect(page.getByRole("button", { name: "Crear organización" })).not.toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Crear organización" }),
+  ).not.toBeVisible();
 });
 
 test("CA-21: en una cuenta sin organizaciones, sólo el dueño ve el botón Crear organización", async ({
@@ -60,27 +80,49 @@ test("CA-21: en una cuenta sin organizaciones, sólo el dueño ve el botón Crea
   const owner = await createOnboardedAdmin({ emailPrefix: "owner-ca21" });
 
   const intruderContext = await createApiContext();
-  const intruder = await createConfirmedUser(intruderContext, { emailPrefix: "intruso-ca21" });
+  const intruder = await createConfirmedUser(intruderContext, {
+    emailPrefix: "intruso-ca21",
+  });
   const prisma = await getTestPrisma();
   await prisma.user.update({
     where: { email: intruder.email },
     data: { accountId: owner.accountId, onboardingCompleted: true },
   });
 
-  await loginViaUi(page, intruder.email, new RegExp(`/account/${owner.accountId}/select$`));
-  await expect(page.getByRole("button", { name: "Crear organización" })).not.toBeVisible();
+  await loginViaUi(
+    page,
+    intruder.email,
+    new RegExp(`/account/${owner.accountId}/select$`),
+  );
+  await expect(
+    page.getByRole("button", { name: "Crear organización" }),
+  ).not.toBeVisible();
 
   await page.context().clearCookies();
-  await loginViaUi(page, owner.email, new RegExp(`/account/${owner.accountId}/select$`));
-  await expect(page.getByRole("button", { name: "Crear organización" })).toBeVisible();
+  await loginViaUi(
+    page,
+    owner.email,
+    new RegExp(`/account/${owner.accountId}/select$`),
+  );
+  await expect(
+    page.getByRole("button", { name: "Crear organización" }),
+  ).toBeVisible();
 });
 
-test("CA-10: el dueño nuevo crea su organización y una sede desde /select", async ({ page }) => {
+test("CA-10: el dueño nuevo crea su organización y una sede desde /select", async ({
+  page,
+}) => {
   const owner = await createOnboardedAdmin({ emailPrefix: "owner-ca10" });
 
-  await loginViaUi(page, owner.email, new RegExp(`/account/${owner.accountId}/select$`));
+  await loginViaUi(
+    page,
+    owner.email,
+    new RegExp(`/account/${owner.accountId}/select$`),
+  );
 
-  await expect(page.getByRole("button", { name: "Crear organización" })).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Crear organización" }),
+  ).toBeVisible();
   await page.getByRole("button", { name: "Crear organización" }).click();
 
   const organizationName = uniqueName("Consultorio CA-10");
@@ -91,7 +133,9 @@ test("CA-10: el dueño nuevo crea su organización y una sede desde /select", as
   await expect(page.getByText(organizationName)).toBeVisible();
 
   await page.getByText("Entrar").click();
-  await expect(page).toHaveURL(new RegExp(`/account/${owner.accountId}/organization/[^/]+$`));
+  await expect(page).toHaveURL(
+    new RegExp(`/account/${owner.accountId}/organization/[^/]+$`),
+  );
 
   await page.getByRole("link", { name: "Sedes" }).click();
   await expect(page).toHaveURL(/\/clinics$/);

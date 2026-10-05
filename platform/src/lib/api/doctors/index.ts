@@ -1,5 +1,5 @@
 import { doFetchJson } from "../fetch";
-import { ClinicDoctor } from "./types";
+import type { ClinicDoctor } from "./types";
 
 export const doctorsApi = {
   // Endpoint público (sin sesión) — usado por el wizard de reserva.

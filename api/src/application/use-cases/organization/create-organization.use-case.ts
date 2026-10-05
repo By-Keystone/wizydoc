@@ -1,6 +1,5 @@
 import { Forbidden } from "@/application/errors/forbidden.error";
-import { IOrganizationRepository } from "@/domain/repositories/organization.repository";
-import { IUserRepository } from "@/domain/repositories/user.repository";
+import type { IOrganizationRepository } from "@/domain/repositories/organization.repository";
 import { getClient } from "@/infrastructure/postgres/transaction-context";
 import z from "zod";
 
@@ -16,7 +15,6 @@ export type CreateOrganizationDto = z.infer<typeof createOrganizationSchema> & {
 export class CreateOrganizationUseCase {
   constructor(
     private readonly organizationRepository: IOrganizationRepository,
-    private readonly userRepository: IUserRepository,
   ) {}
 
   // Sólo el dueño sin organizaciones o un ADMIN vivo de una ya existente puede crear otra.
@@ -45,15 +43,9 @@ export class CreateOrganizationUseCase {
       throw new Forbidden("Sólo un administrador puede crear organizaciones");
   }
 
-  async execute(data: CreateOrganizationDto, isOnboarding: boolean = false) {
+  async execute(data: CreateOrganizationDto) {
     await this.assertCanCreateOrganization(data.userId, data.accountId);
 
-    const organization = await this.organizationRepository.save(data);
-
-    if (organization && isOnboarding) {
-      await this.userRepository.update(data.userId, {
-        onboardingCompleted: true,
-      });
-    }
+    await this.organizationRepository.save(data);
   }
 }

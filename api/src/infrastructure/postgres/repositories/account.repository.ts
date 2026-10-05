@@ -1,5 +1,5 @@
-import { Account } from "@/domain/entities/account/entity";
-import {
+import type { Account } from "@/domain/entities/account/entity";
+import type {
   CreateAccountDto,
   IAccountRepository,
 } from "@/domain/repositories/account.repository";

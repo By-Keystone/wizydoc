@@ -48,7 +48,9 @@ export async function invitePendingUser(
     where: { membership: { userId: user.id, resourceId: params.resourceId } },
   });
   if (!invitation) {
-    throw new Error(`No se encontró la invitación de ${email} en ${params.resourceId}`);
+    throw new Error(
+      `No se encontró la invitación de ${email} en ${params.resourceId}`,
+    );
   }
 
   return {
@@ -69,15 +71,23 @@ export async function countCredentialAccounts(userId: string): Promise<number> {
 
 export async function getInvitationByToken(token: string) {
   const prisma = await getTestPrisma();
-  const invitation = await prisma.userInvitation.findUnique({ where: { token } });
-  if (!invitation) throw new Error(`No se encontró la invitación con token ${token}`);
+  const invitation = await prisma.userInvitation.findUnique({
+    where: { token },
+  });
+  if (!invitation)
+    throw new Error(`No se encontró la invitación con token ${token}`);
   return invitation;
 }
 
 /** Simula el estado `EXPIRED` con fecha futura (distinto de caducada por fecha). */
-export async function markInvitationExpiredStatus(token: string): Promise<void> {
+export async function markInvitationExpiredStatus(
+  token: string,
+): Promise<void> {
   const prisma = await getTestPrisma();
-  await prisma.userInvitation.update({ where: { token }, data: { status: "EXPIRED" } });
+  await prisma.userInvitation.update({
+    where: { token },
+    data: { status: "EXPIRED" },
+  });
 }
 
 /** Simula una invitación caducada por fecha, con `status` aún `INVITED`. */
@@ -89,7 +99,9 @@ export async function backdateInvitationExpiry(token: string): Promise<void> {
   });
 }
 
-export async function softDeleteMembership(membershipId: string): Promise<void> {
+export async function softDeleteMembership(
+  membershipId: string,
+): Promise<void> {
   const prisma = await getTestPrisma();
   await prisma.userResourceMembership.update({
     where: { id: membershipId },
@@ -98,7 +110,9 @@ export async function softDeleteMembership(membershipId: string): Promise<void> 
 }
 
 /** Reproduce el dato heredado del flujo anterior: aceptada sin credencial. */
-export async function markInvitationAcceptedWithoutCredential(token: string): Promise<void> {
+export async function markInvitationAcceptedWithoutCredential(
+  token: string,
+): Promise<void> {
   const prisma = await getTestPrisma();
   await prisma.userInvitation.update({
     where: { token },

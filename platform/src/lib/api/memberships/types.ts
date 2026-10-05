@@ -1,4 +1,4 @@
-import { MembershipRole } from "@/lib/utils";
+import type { MembershipRole } from "@/lib/utils";
 
 export interface OrganizationMembership {
   membershipId: string;
@@ -22,7 +22,3 @@ export interface ClinicMembership {
 }
 
 export type UserMembership = OrganizationMembership | ClinicMembership;
-
-const tags = {
-  membersjips: () => ''
-}

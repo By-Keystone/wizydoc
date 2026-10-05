@@ -1,8 +1,8 @@
-import {
+import type {
   AppointmentHistoryEntry,
   PatientMetrics,
 } from "@/lib/api/patients/types";
-import { Column, Table } from "../common/table";
+import { type Column, Table } from "../common/table";
 import {
   formatDateTime,
   formatShortDate,

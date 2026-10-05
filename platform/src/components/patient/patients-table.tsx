@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { PatientListEntry } from "@/lib/api/patients/types";
-import { Column, Table } from "../common/table";
+import type { PatientListEntry } from "@/lib/api/patients/types";
+import { type Column, Table } from "../common/table";
 import { formatDocument, formatShortDate } from "./format";
 
 interface Props {
