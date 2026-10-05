@@ -15,7 +15,8 @@ import z from "zod";
 
 export const inviteUserSchema = z
   .object({
-    email: z.string("Email is required"),
+    // Better Auth busca al usuario en minúsculas al iniciar sesión.
+    email: z.email({ error: "Correo inválido" }).toLowerCase(),
     name: z.string("Name is required"),
     lastName: z.string("Lastname is required"),
     phone: z.string("Phone is required"),
@@ -98,7 +99,7 @@ export class InviteUserUseCase {
   }
 
   async execute(data: InviteUserDto) {
-    const result = await this.tx.runInTransaction(async () => {
+    await this.tx.runInTransaction(async () => {
       const client = getClient();
 
       // El recurso llega en el cuerpo de la petición, así que se acota a la
@@ -175,28 +176,20 @@ export class InviteUserUseCase {
         },
       });
 
-      return {
-        fullName: `${user.name} ${user.lastName}`,
-        email: user.email,
-        resourceId: resource.resourceId,
+      const url = `${process.env.FRONTEND_URL}/invite/accept?token=${invitation.token}`;
+
+      const html = await renderTemplate("invite-user", {
+        inviteUrl: url,
+        name: `${user.name} ${user.lastName}`,
         resourceName: resource.name,
-        token: invitation.token,
-      };
-    });
+      });
 
-    // Should send an invitation to the user
-    const url = `${process.env.FRONTEND_URL}/invite/accept?token=${result.token}`;
-
-    const html = await renderTemplate("invite-user", {
-      inviteUrl: url,
-      name: result.fullName,
-      resourceName: result.resourceName,
-    });
-
-    this.services.emailService.send({
-      html,
-      subject: "WizyDoc - Invitación",
-      to: result.email,
+      // Dentro de la transacción: si el correo falla, no queda una membership que impida reintentar.
+      await this.services.emailService.send({
+        html,
+        subject: "WizyDoc - Invitación",
+        to: user.email,
+      });
     });
   }
 }

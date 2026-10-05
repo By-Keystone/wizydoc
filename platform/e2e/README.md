@@ -55,6 +55,7 @@ Playwright arranca el api en `:4100` y platform en `:3100` (nunca reutiliza el
 | Sesión | `api/smoke.spec.ts` | Un usuario confirmado lee su sesión en `GET /user/me` |
 | Campos de usuario no editables | `api/security/fix-auth-user-fields-input.spec.ts` | El registro con `accountId`, `role` u `onboardingCompleted` se rechaza, también vía platform; `update-user` responde 404 en todas sus variantes; el atacante no ve las sedes de otra cuenta; no se puede saber si un correo existe |
 | Búsqueda de usuarios por correo | `api/security/fix-user-by-email-scope.spec.ts` | La ruta vieja `GET /user/by-email` no devuelve datos; `POST /clinic/:resourceId/users/lookup` sólo para ADMIN (DOCTOR/USER 403, otra cuenta 404, sin sesión 401), acotada a la cuenta de la sede, misma respuesta para correo inexistente y de otra cuenta, y sólo `name`/`lastName`/`phone` |
+| Envío del correo de invitación | `api/security/fix-invite-email-send.spec.ts` | `POST /user/invite` con un correo inválido responde 400 sin crear usuario, membership, perfil de doctor ni invitación, y el api sigue vivo después; un correo con mayúsculas se guarda y se envía en minúsculas; las mayúsculas del correo de un usuario de otra cuenta se rechazan igual que en minúsculas y sin duplicarlo (422) |
 
 Las pruebas de seguridad llevan el ID del criterio de aceptación en el título
 (`CA-3: …`); los criterios están al final de cada `docs/features/<slug>/plan.md`.
