@@ -25,6 +25,7 @@ interface Props {
   formId: string;
   action: (formData: FormData) => void;
   organizationId: string;
+  clinicId: string;
   specialties: Specialty[];
   isPending: boolean;
   onCancel: () => void;
@@ -35,6 +36,7 @@ export const InviteUserForm = ({
   formId,
   action,
   organizationId,
+  clinicId,
   specialties,
   isPending,
   onCancel,
@@ -62,7 +64,7 @@ export const InviteUserForm = ({
     setEmailError(null);
     setEmail(value);
     startLookup(async () => {
-      const user = await lookupUserByEmailAction(value);
+      const user = await lookupUserByEmailAction(clinicId, value);
       setExistingUser(user);
       setStep("details");
     });
@@ -145,14 +147,14 @@ export const InviteUserForm = ({
 
           <div className="grid grid-cols-2 gap-3">
             <Input
-              key={`name-${existingUser?.id ?? "new"}`}
+              key={`name-${existingUser ? email : "new"}`}
               label="Nombre"
               name="name"
               value={existingUser?.name}
               error={fieldError(fieldErrors, "name")}
             />
             <Input
-              key={`lastName-${existingUser?.id ?? "new"}`}
+              key={`lastName-${existingUser ? email : "new"}`}
               label="Apellido"
               name="lastName"
               value={existingUser?.lastName}
@@ -161,7 +163,7 @@ export const InviteUserForm = ({
           </div>
 
           <Input
-            key={`phone-${existingUser?.id ?? "new"}`}
+            key={`phone-${existingUser ? email : "new"}`}
             label="Teléfono"
             name="phone"
             value={existingUser?.phone}

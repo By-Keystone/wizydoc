@@ -69,6 +69,7 @@ export const InviteUserModal = ({ isOpen, setIsOpen, specialties }: Props) => {
           formId={FORM_ID}
           action={submit}
           organizationId={resourceId}
+          clinicId={clinicId}
           specialties={specialties}
           fieldErrors={fieldErrors}
           isPending={isPending}
