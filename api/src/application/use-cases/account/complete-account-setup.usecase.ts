@@ -16,7 +16,12 @@ const BILLING_COUNTRY_CODE = "PE";
 export const completeAccountSetupSchema = z
   .object({
     accountName: z.string().min(1),
-    plan: z.enum(Plan).default("FREE"),
+    // Cobro con Culqi congelado en la beta: sin renovación ni cancelación (docs/PRODUCT.md, "Estado").
+    plan: z
+      .literal(Plan.FREE, {
+        error: "Durante la beta sólo está disponible el plan Gratis",
+      })
+      .default(Plan.FREE),
     // Token de un solo uso emitido por el checkout de Culqi en el navegador.
     cardToken: z.string().min(1).optional(),
     // Culqi exige dirección y ciudad para crear el cliente.
