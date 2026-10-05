@@ -1,11 +1,13 @@
-import {
+import type {
   GetOrganizationClinicsDto,
   GetOrganizationClinicsQueryResult,
   IGetOrganizationClinicsQuery,
 } from "@/application/queries/organization/get-organization-clinics.query";
 import { getClient } from "../../transaction-context";
 
-export class GetOrganizationClinicsQuery implements IGetOrganizationClinicsQuery {
+export class GetOrganizationClinicsQuery
+  implements IGetOrganizationClinicsQuery
+{
   async execute(
     dto: GetOrganizationClinicsDto,
   ): Promise<GetOrganizationClinicsQueryResult[]> {

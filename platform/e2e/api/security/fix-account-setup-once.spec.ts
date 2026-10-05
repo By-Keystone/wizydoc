@@ -1,4 +1,4 @@
-import { type APIRequestContext } from "@playwright/test";
+import type { APIRequestContext } from "@playwright/test";
 import { test, expect } from "../../support/test";
 import { API_BASE_URL, PLATFORM_BASE_URL } from "../../support/env";
 import {
@@ -12,7 +12,10 @@ import { getTestPrisma } from "../../support/db";
 
 /** docs/features/fix-account-setup-once/plan.md — CA-1 a CA-6 ([e2e]); CA-7 es [manual]. */
 
-function postAccount(context: APIRequestContext, accountName: string = uniqueName("Consultorio")) {
+function postAccount(
+  context: APIRequestContext,
+  accountName: string = uniqueName("Consultorio"),
+) {
   return context.post(`${API_BASE_URL}/account`, { data: { accountName } });
 }
 
@@ -36,13 +39,21 @@ test.describe("Lo que deja de ser posible", () => {
     expect((await meResponse.json()).accountId).toBe(admin.accountId);
 
     const prisma = await getTestPrisma();
-    expect(await prisma.account.count({ where: { ownerId: admin.userId } })).toBe(1);
-    expect(await prisma.subscription.count({ where: { accountId: admin.accountId } })).toBe(1);
+    expect(
+      await prisma.account.count({ where: { ownerId: admin.userId } }),
+    ).toBe(1);
+    expect(
+      await prisma.subscription.count({
+        where: { accountId: admin.accountId },
+      }),
+    ).toBe(1);
   });
 
   for (const role of ["USER", "DOCTOR"] as const) {
     test(`CA-2: un miembro ${role} invitado recibe 409 al llamar a POST /account y no se vuelve dueño de nada`, async () => {
-      const admin = await createOnboardedAdmin({ emailPrefix: `owner-ca2-${role.toLowerCase()}` });
+      const admin = await createOnboardedAdmin({
+        emailPrefix: `owner-ca2-${role.toLowerCase()}`,
+      });
       const organizationId = await createOrganizationResource(admin);
       const member = await createMemberWithRole({
         accountId: admin.accountId,
@@ -60,15 +71,21 @@ test.describe("Lo que deja de ser posible", () => {
       expect((await meResponse.json()).accountId).toBe(admin.accountId);
 
       const prisma = await getTestPrisma();
-      expect(await prisma.account.count({ where: { ownerId: member.userId } })).toBe(0);
-      const originalAccount = await prisma.account.findFirst({ where: { id: admin.accountId } });
+      expect(
+        await prisma.account.count({ where: { ownerId: member.userId } }),
+      ).toBe(0);
+      const originalAccount = await prisma.account.findFirst({
+        where: { id: admin.accountId },
+      });
       expect(originalAccount?.ownerId).toBe(admin.userId);
     });
   }
 
   test("CA-3: dos POST /account simultáneos del mismo usuario dejan un 201 y un 409, y una sola cuenta con una sola suscripción", async () => {
     const context = await createApiContext();
-    const { userId } = await createConfirmedUser(context, { emailPrefix: "race-ca3" });
+    const { userId } = await createConfirmedUser(context, {
+      emailPrefix: "race-ca3",
+    });
 
     const [first, second] = await Promise.all([
       postAccount(context, uniqueName("Carrera A")),
@@ -80,15 +97,21 @@ test.describe("Lo que deja de ser posible", () => {
     const prisma = await getTestPrisma();
     expect(await prisma.account.count({ where: { ownerId: userId } })).toBe(1);
 
-    const account = await prisma.account.findFirst({ where: { ownerId: userId } });
-    expect(await prisma.subscription.count({ where: { accountId: account!.id } })).toBe(1);
+    const account = await prisma.account.findFirst({
+      where: { ownerId: userId },
+    });
+    expect(
+      await prisma.subscription.count({ where: { accountId: account!.id } }),
+    ).toBe(1);
   });
 });
 
 test.describe("Lo que sigue funcionando", () => {
   test("CA-4: un usuario confirmado sin cuenta sigue creando la suya en un solo POST /account", async () => {
     const context = await createApiContext();
-    const { userId } = await createConfirmedUser(context, { emailPrefix: "onboarding-ca4" });
+    const { userId } = await createConfirmedUser(context, {
+      emailPrefix: "onboarding-ca4",
+    });
 
     const response = await postAccount(context, uniqueName("Consultorio CA-4"));
 
@@ -103,9 +126,12 @@ test.describe("Lo que sigue funcionando", () => {
   test("CA-5: un usuario con cuenta que abre /onboarding es redirigido fuera del formulario", async () => {
     const admin = await createOnboardedAdmin({ emailPrefix: "owner-ca5" });
 
-    const response = await admin.context.get(`${PLATFORM_BASE_URL}/onboarding`, {
-      maxRedirects: 0,
-    });
+    const response = await admin.context.get(
+      `${PLATFORM_BASE_URL}/onboarding`,
+      {
+        maxRedirects: 0,
+      },
+    );
 
     expect(response.status()).toBeGreaterThanOrEqual(300);
     expect(response.status()).toBeLessThan(400);

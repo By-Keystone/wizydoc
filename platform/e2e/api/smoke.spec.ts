@@ -3,7 +3,9 @@ import { API_BASE_URL, PLATFORM_BASE_URL } from "../support/env";
 import { readLatestEmailTo } from "../support/email";
 import { createConfirmedUser } from "../support/users";
 
-test("un usuario confirmado puede leer su sesión en GET /user/me", async ({ request }) => {
+test("un usuario confirmado puede leer su sesión en GET /user/me", async ({
+  request,
+}) => {
   const { email, userId } = await createConfirmedUser(request);
 
   const response = await request.get(`${API_BASE_URL}/user/me`, {

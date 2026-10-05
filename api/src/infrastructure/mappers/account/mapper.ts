@@ -1,5 +1,5 @@
-import { Account } from "@/domain/entities/account/entity";
-import { Account as PrismaAccount } from "@prisma/client";
+import type { Account } from "@/domain/entities/account/entity";
+import type { Account as PrismaAccount } from "@prisma/client";
 
 export function toDomain(account: PrismaAccount): Account {
   return {

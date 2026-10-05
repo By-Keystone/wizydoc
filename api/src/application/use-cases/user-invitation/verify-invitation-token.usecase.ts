@@ -71,7 +71,9 @@ export class VerifyInvitationTokenUseCase {
   }
 
   // Igual que Better Auth: basta con `providerId === "credential"`, sin mirar `password`.
-  private hasPasswordCredential(authAccounts: { providerId: string }[]): boolean {
+  private hasPasswordCredential(
+    authAccounts: { providerId: string }[],
+  ): boolean {
     return authAccounts.some((account) => account.providerId === "credential");
   }
 }

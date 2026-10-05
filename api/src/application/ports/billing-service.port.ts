@@ -28,5 +28,7 @@ export interface BillingService {
    * Da de alta el cobro recurrente de un plan: cliente, tarjeta y suscripción
    * en el proveedor. Aquí ocurre el primer cargo.
    */
-  startSubscription(input: StartSubscriptionInput): Promise<StartSubscriptionResult>;
+  startSubscription(
+    input: StartSubscriptionInput,
+  ): Promise<StartSubscriptionResult>;
 }

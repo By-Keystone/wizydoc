@@ -1,4 +1,4 @@
-import { Prisma } from "@prisma/client";
+import type { Prisma } from "@prisma/client";
 import { prisma } from "./client";
 import { AsyncLocalStorage } from "node:async_hooks";
 

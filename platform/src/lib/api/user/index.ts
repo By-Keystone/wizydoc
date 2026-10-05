@@ -1,4 +1,4 @@
-import { Me } from "@/lib/auth/me";
+import type { Me } from "@/lib/auth/me";
 import { doFetchJson } from "../fetch";
 
 export const usersApi = {

@@ -1,6 +1,6 @@
 import { Forbidden } from "@/application/errors/forbidden.error";
-import { IOrganizationRepository } from "@/domain/repositories/organization.repository";
-import { IUserRepository } from "@/domain/repositories/user.repository";
+import type { IOrganizationRepository } from "@/domain/repositories/organization.repository";
+import type { IUserRepository } from "@/domain/repositories/user.repository";
 import { getClient } from "@/infrastructure/postgres/transaction-context";
 import z from "zod";
 

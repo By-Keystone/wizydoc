@@ -1,4 +1,7 @@
-import { request as apiRequestFactory, type APIRequestContext } from "@playwright/test";
+import {
+  request as apiRequestFactory,
+  type APIRequestContext,
+} from "@playwright/test";
 import { API_BASE_URL, PLATFORM_BASE_URL } from "./env";
 import { getTestPrisma } from "./db";
 import { createConfirmedUser, uniqueName } from "./users";
@@ -38,18 +41,23 @@ export async function createOnboardedAdmin(
   options: CreateOnboardedAdminOptions = {},
 ): Promise<OnboardedAdmin> {
   const context = await createApiContext();
-  const { email, userId, name, lastName, phone } = await createConfirmedUser(context, {
-    emailPrefix: options.emailPrefix ?? "admin",
-    name: options.name,
-    lastName: options.lastName,
-    phone: options.phone,
-  });
+  const { email, userId, name, lastName, phone } = await createConfirmedUser(
+    context,
+    {
+      emailPrefix: options.emailPrefix ?? "admin",
+      name: options.name,
+      lastName: options.lastName,
+      phone: options.phone,
+    },
+  );
 
   const response = await context.post(`${API_BASE_URL}/account`, {
     data: { accountName: options.accountName ?? uniqueName("Consultorio") },
   });
   if (!response.ok()) {
-    throw new Error(`POST /account falló (${response.status()}): ${await response.text()}`);
+    throw new Error(
+      `POST /account falló (${response.status()}): ${await response.text()}`,
+    );
   }
 
   const { accountId } = (await response.json()) as { accountId: string };
@@ -66,7 +74,9 @@ export async function createOrganizationResource(
     data: { name },
   });
   if (!response.ok()) {
-    throw new Error(`POST /organization falló (${response.status()}): ${await response.text()}`);
+    throw new Error(
+      `POST /organization falló (${response.status()}): ${await response.text()}`,
+    );
   }
 
   const prisma = await getTestPrisma();
@@ -103,12 +113,20 @@ export async function createClinicResource(
     },
   });
   if (!response.ok()) {
-    throw new Error(`POST /clinic falló (${response.status()}): ${await response.text()}`);
+    throw new Error(
+      `POST /clinic falló (${response.status()}): ${await response.text()}`,
+    );
   }
 
   const prisma = await getTestPrisma();
   const clinic = await prisma.clinic.findFirst({
-    where: { name, resource: { accountId: admin.accountId, parentResourceId: organizationId } },
+    where: {
+      name,
+      resource: {
+        accountId: admin.accountId,
+        parentResourceId: organizationId,
+      },
+    },
   });
   if (!clinic) {
     throw new Error(`No se encontró la sede "${name}" recién creada`);
@@ -171,12 +189,15 @@ export async function createMemberWithRole(
   params: CreateMemberWithRoleParams,
 ): Promise<SeededMember> {
   const context = await createApiContext();
-  const { email, userId, name, lastName, phone } = await createConfirmedUser(context, {
-    emailPrefix: params.emailPrefix ?? params.role.toLowerCase(),
-    name: params.name,
-    lastName: params.lastName,
-    phone: params.phone,
-  });
+  const { email, userId, name, lastName, phone } = await createConfirmedUser(
+    context,
+    {
+      emailPrefix: params.emailPrefix ?? params.role.toLowerCase(),
+      name: params.name,
+      lastName: params.lastName,
+      phone: params.phone,
+    },
+  );
 
   const prisma = await getTestPrisma();
   await prisma.userResourceMembership.create({
@@ -202,14 +223,21 @@ export async function createSpecialty(
   organizationId: string,
   name: string = uniqueName("Especialidad"),
 ): Promise<string> {
-  const response = await admin.context.post(`${API_BASE_URL}/${organizationId}/specialty`, {
-    data: { name },
-  });
+  const response = await admin.context.post(
+    `${API_BASE_URL}/${organizationId}/specialty`,
+    {
+      data: { name },
+    },
+  );
   if (!response.ok()) {
-    throw new Error(`POST /:resourceId/specialty falló (${response.status()}): ${await response.text()}`);
+    throw new Error(
+      `POST /:resourceId/specialty falló (${response.status()}): ${await response.text()}`,
+    );
   }
 
-  const listResponse = await admin.context.get(`${API_BASE_URL}/${organizationId}/specialties`);
+  const listResponse = await admin.context.get(
+    `${API_BASE_URL}/${organizationId}/specialties`,
+  );
   if (!listResponse.ok()) {
     throw new Error(
       `GET /:resourceId/specialties falló (${listResponse.status()}): ${await listResponse.text()}`,
@@ -237,12 +265,17 @@ export interface InviteUserViaApiParams {
 }
 
 /** Invita a un usuario de verdad, vía `POST /user/invite` (no por Prisma). */
-export async function inviteUserViaApi(admin: OnboardedAdmin, params: InviteUserViaApiParams) {
+export async function inviteUserViaApi(
+  admin: OnboardedAdmin,
+  params: InviteUserViaApiParams,
+) {
   const response = await admin.context.post(`${API_BASE_URL}/user/invite`, {
     data: params,
   });
   if (!response.ok()) {
-    throw new Error(`POST /user/invite falló (${response.status()}): ${await response.text()}`);
+    throw new Error(
+      `POST /user/invite falló (${response.status()}): ${await response.text()}`,
+    );
   }
   return response;
 }

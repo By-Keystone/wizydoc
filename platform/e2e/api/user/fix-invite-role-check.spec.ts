@@ -5,7 +5,10 @@ import { API_BASE_URL } from "../../support/env";
 import { createApiContext, createSpecialty } from "../../support/accounts";
 import { getTestPrisma } from "../../support/db";
 import { uniqueEmail, uniqueName } from "../../support/users";
-import { seedLookupFixture, type LookupFixture } from "../../support/lookup-fixture";
+import {
+  seedLookupFixture,
+  type LookupFixture,
+} from "../../support/lookup-fixture";
 
 /**
  * docs/features/fix-invite-role-check/plan.md:
@@ -33,9 +36,13 @@ async function countAccountWrites(fixture: LookupFixture) {
   const clinicIds = [fixture.clinicAId, fixture.clinicBId];
 
   const [memberships, doctorProfiles, invitations] = await Promise.all([
-    prisma.userResourceMembership.count({ where: { accountId: fixture.account1.accountId } }),
+    prisma.userResourceMembership.count({
+      where: { accountId: fixture.account1.accountId },
+    }),
     prisma.doctorProfile.count({ where: { clinicId: { in: clinicIds } } }),
-    prisma.userInvitation.count({ where: { membership: { accountId: fixture.account1.accountId } } }),
+    prisma.userInvitation.count({
+      where: { membership: { accountId: fixture.account1.accountId } },
+    }),
   ]);
 
   return { memberships, doctorProfiles, invitations };
@@ -275,9 +282,13 @@ test.describe("Lo que deja de ser posible", () => {
     const prisma = await getTestPrisma();
 
     const membership = await prisma.userResourceMembership.findFirst({
-      where: { userId: fixture.adminOfClinicA.userId, resourceId: fixture.clinicAId },
+      where: {
+        userId: fixture.adminOfClinicA.userId,
+        resourceId: fixture.clinicAId,
+      },
     });
-    if (!membership) throw new Error("No se encontró la membership ADMIN de control");
+    if (!membership)
+      throw new Error("No se encontró la membership ADMIN de control");
 
     await prisma.userResourceMembership.update({
       where: { id: membership.id },
@@ -333,7 +344,9 @@ test.describe("Lo que deja de ser posible", () => {
       resourceId: fixture.organizationId,
     });
     expect(organizationResponse.status()).toBe(404);
-    expect((await organizationResponse.json()).message).toBe("Sede no encontrada");
+    expect((await organizationResponse.json()).message).toBe(
+      "Sede no encontrada",
+    );
 
     const missingResponse = await inviteRaw(fixture.account1.context, {
       email: uniqueEmail("ca16-missing"),
@@ -371,7 +384,9 @@ test.describe("Lo que no debe filtrarse", () => {
       ),
     );
 
-    const bodies = await Promise.all(responses.map((response) => response.json()));
+    const bodies = await Promise.all(
+      responses.map((response) => response.json()),
+    );
     for (const response of responses) {
       expect(response.status()).toBe(403);
     }
@@ -381,7 +396,9 @@ test.describe("Lo que no debe filtrarse", () => {
 
     expect(await countAccountWrites(fixture)).toEqual(before);
     const prisma = await getTestPrisma();
-    expect(await prisma.user.findUnique({ where: { email: nonExistentEmail } })).toBeNull();
+    expect(
+      await prisma.user.findUnique({ where: { email: nonExistentEmail } }),
+    ).toBeNull();
   });
 
   test("CA-19 (parcial): un error interno no filtra detalles de Prisma en la respuesta", async () => {
@@ -399,7 +416,9 @@ test.describe("Lo que no debe filtrarse", () => {
 
     expect(response.status()).toBe(500);
     const body = await response.json();
-    expect(body).toEqual({ message: "Ha ocurrido un error al invitar al usuario" });
+    expect(body).toEqual({
+      message: "Ha ocurrido un error al invitar al usuario",
+    });
     const rawBody = JSON.stringify(body);
     expect(rawBody).not.toContain(fixture.reception.email);
     expect(rawBody).not.toContain(fixture.reception.phone);

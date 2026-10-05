@@ -1,11 +1,13 @@
-import { IGetOrganizationsClinicCountQuery } from "@/application/queries/organization/get-organizations-clinic-count.query";
-import {
+import type { IGetOrganizationsClinicCountQuery } from "@/application/queries/organization/get-organizations-clinic-count.query";
+import type {
   GetOrganizationsClinicCountQueryResult,
   GetOrganizationsClinicCountDto,
 } from "../../../../application/queries/organization/get-organizations-clinic-count.query";
 import { getClient } from "../../transaction-context";
 
-export class GetOrganizationsClinicCountQuery implements IGetOrganizationsClinicCountQuery {
+export class GetOrganizationsClinicCountQuery
+  implements IGetOrganizationsClinicCountQuery
+{
   constructor() {}
 
   async execute(

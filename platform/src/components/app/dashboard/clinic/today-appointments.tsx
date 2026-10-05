@@ -1,6 +1,6 @@
 import { CalendarDays } from "lucide-react";
 import { clinicApi } from "@/lib/api/clinic";
-import { AppointmentStatus } from "@/lib/api/clinic/types";
+import type { AppointmentStatus } from "@/lib/api/clinic/types";
 
 const statusStyles: Record<
   AppointmentStatus,
@@ -56,8 +56,8 @@ export async function TodayAppointments({ resourceId }: Props) {
                     {appointment.patientName} {appointment.patientLastName}
                   </p>
                   <p className="truncate text-sm text-brand-gray">
-                    {appointment.specialty} · {appointment.durationMinutes} min ·{" "}
-                    {appointment.doctor.name} {appointment.doctor.lastName}
+                    {appointment.specialty} · {appointment.durationMinutes} min
+                    · {appointment.doctor.name} {appointment.doctor.lastName}
                   </p>
                 </div>
 

@@ -1,4 +1,4 @@
-import {
+import type {
   DoctorSlots,
   GetDoctorSlotsDto,
   IGetDoctorSlotsQuery,
@@ -67,11 +67,7 @@ export class GetDoctorSlotsQuery implements IGetDoctorSlotsQuery {
     const now = Date.now();
     const days: Record<string, string[]> = {};
 
-    for (
-      let date = dto.from;
-      date <= dto.to;
-      date = addDays(date, 1)
-    ) {
+    for (let date = dto.from; date <= dto.to; date = addDays(date, 1)) {
       const dayOfWeek = new Date(`${date}T00:00:00Z`).getUTCDay();
       const slots = new Set<string>();
 

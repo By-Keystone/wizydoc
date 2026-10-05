@@ -13,7 +13,9 @@ export const test = base.extend<{ closeTrackedApiContexts: void }>({
   closeTrackedApiContexts: [
     async ({}, use) => {
       await use();
-      await Promise.all(pendingApiContexts.splice(0).map((context) => context.dispose()));
+      await Promise.all(
+        pendingApiContexts.splice(0).map((context) => context.dispose()),
+      );
     },
     { auto: true },
   ],

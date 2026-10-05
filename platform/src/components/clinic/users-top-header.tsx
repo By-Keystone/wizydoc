@@ -4,7 +4,7 @@ import { useState } from "react";
 import { UserPlus } from "lucide-react";
 import { Button } from "../ui/button";
 import { InviteUserModal } from "./invite-user/modal";
-import { Specialty } from "@/lib/api/specialty/types";
+import type { Specialty } from "@/lib/api/specialty/types";
 
 interface Props {
   specialties: Specialty[];

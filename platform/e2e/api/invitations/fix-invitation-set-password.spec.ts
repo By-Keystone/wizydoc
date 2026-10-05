@@ -11,7 +11,12 @@ import {
   createSpecialty,
   inviteUserViaApi,
 } from "../../support/accounts";
-import { authPost, E2E_PASSWORD, uniqueEmail, uniqueName } from "../../support/users";
+import {
+  authPost,
+  E2E_PASSWORD,
+  uniqueEmail,
+  uniqueName,
+} from "../../support/users";
 import { getTestPrisma } from "../../support/db";
 import {
   backdateInvitationExpiry,
@@ -56,7 +61,10 @@ function acceptInvitation(context: APIRequestContext, token: string) {
 test.describe("Lo que debe seguir funcionando", () => {
   test("CA-6: la sesión creada por set-password guarda ipAddress y userAgent", async () => {
     const admin = await createOnboardedAdmin({ emailPrefix: "admin-ca6" });
-    const organizationId = await createOrganizationResource(admin, uniqueName("ORG-CA6"));
+    const organizationId = await createOrganizationResource(
+      admin,
+      uniqueName("ORG-CA6"),
+    );
     const clinicId = await createClinicResource(admin, organizationId, {
       name: uniqueName("Sede CA6"),
     });
@@ -67,14 +75,17 @@ test.describe("Lo que debe seguir funcionando", () => {
     });
 
     const context = await createApiContext();
-    const response = await context.post(`${API_BASE_URL}/invitations/set-password`, {
-      headers: {
-        Origin: PLATFORM_BASE_URL,
-        "Content-Type": "application/json",
-        "User-Agent": "verificacion-qa-ca6",
+    const response = await context.post(
+      `${API_BASE_URL}/invitations/set-password`,
+      {
+        headers: {
+          Origin: PLATFORM_BASE_URL,
+          "Content-Type": "application/json",
+          "User-Agent": "verificacion-qa-ca6",
+        },
+        data: { token: invited.token, password: E2E_PASSWORD },
       },
-      data: { token: invited.token, password: E2E_PASSWORD },
-    });
+    );
     expect(response.status()).toBe(200);
 
     const session = await getLatestSessionTrace(invited.userId);
@@ -86,11 +97,18 @@ test.describe("Lo que debe seguir funcionando", () => {
 test.describe("Lo que deja de ser posible", () => {
   test("CA-8: GET /clinic/:clinicId/doctors no devuelve userId", async () => {
     const admin = await createOnboardedAdmin({ emailPrefix: "admin-ca8" });
-    const organizationId = await createOrganizationResource(admin, uniqueName("ORG-CA8"));
+    const organizationId = await createOrganizationResource(
+      admin,
+      uniqueName("ORG-CA8"),
+    );
     const clinicId = await createClinicResource(admin, organizationId, {
       name: uniqueName("Sede CA8"),
     });
-    const specialtyId = await createSpecialty(admin, organizationId, uniqueName("Traumatología"));
+    const specialtyId = await createSpecialty(
+      admin,
+      organizationId,
+      uniqueName("Traumatología"),
+    );
     await invitePendingUser(admin, {
       resourceId: clinicId,
       role: "DOCTOR",
@@ -99,7 +117,9 @@ test.describe("Lo que deja de ser posible", () => {
     });
 
     const anonymous = await createApiContext();
-    const response = await anonymous.get(`${API_BASE_URL}/clinic/${clinicId}/doctors`);
+    const response = await anonymous.get(
+      `${API_BASE_URL}/clinic/${clinicId}/doctors`,
+    );
 
     expect(response.status()).toBe(200);
     const doctors = (await response.json()) as Record<string, unknown>[];
@@ -111,7 +131,10 @@ test.describe("Lo que deja de ser posible", () => {
 
   test("CA-9: userId sin token se rechaza por validación, sin set-cookie ni credencial, también vía platform", async () => {
     const admin = await createOnboardedAdmin({ emailPrefix: "admin-ca9" });
-    const organizationId = await createOrganizationResource(admin, uniqueName("ORG-CA9"));
+    const organizationId = await createOrganizationResource(
+      admin,
+      uniqueName("ORG-CA9"),
+    );
     const clinicId = await createClinicResource(admin, organizationId, {
       name: uniqueName("Sede CA9"),
     });
@@ -144,7 +167,10 @@ test.describe("Lo que deja de ser posible", () => {
 
   test("CA-10: un userId ajeno en el cuerpo no roba la credencial de otro invitado", async () => {
     const admin = await createOnboardedAdmin({ emailPrefix: "admin-ca10" });
-    const organizationId = await createOrganizationResource(admin, uniqueName("ORG-CA10"));
+    const organizationId = await createOrganizationResource(
+      admin,
+      uniqueName("ORG-CA10"),
+    );
     const clinicId = await createClinicResource(admin, organizationId, {
       name: uniqueName("Sede CA10"),
     });
@@ -193,7 +219,10 @@ test.describe("Lo que deja de ser posible", () => {
 
   test("CA-12 y CA-19: token caducado por fecha responde igual en set-password y en accept", async () => {
     const admin = await createOnboardedAdmin({ emailPrefix: "admin-ca19-exp" });
-    const organizationId = await createOrganizationResource(admin, uniqueName("ORG-CA19-EXP"));
+    const organizationId = await createOrganizationResource(
+      admin,
+      uniqueName("ORG-CA19-EXP"),
+    );
     const clinicId = await createClinicResource(admin, organizationId, {
       name: uniqueName("Sede CA19 EXP"),
     });
@@ -209,7 +238,10 @@ test.describe("Lo que deja de ser posible", () => {
 
   test("CA-12 y CA-19: token con estado EXPIRED responde igual en set-password y en accept", async () => {
     const admin = await createOnboardedAdmin({ emailPrefix: "admin-ca19-sts" });
-    const organizationId = await createOrganizationResource(admin, uniqueName("ORG-CA19-STS"));
+    const organizationId = await createOrganizationResource(
+      admin,
+      uniqueName("ORG-CA19-STS"),
+    );
     const clinicId = await createClinicResource(admin, organizationId, {
       name: uniqueName("Sede CA19 STS"),
     });
@@ -225,7 +257,10 @@ test.describe("Lo que deja de ser posible", () => {
 
   test("CA-12 y CA-19: token de membership borrada responde igual en set-password y en accept", async () => {
     const admin = await createOnboardedAdmin({ emailPrefix: "admin-ca19-del" });
-    const organizationId = await createOrganizationResource(admin, uniqueName("ORG-CA19-DEL"));
+    const organizationId = await createOrganizationResource(
+      admin,
+      uniqueName("ORG-CA19-DEL"),
+    );
     const clinicId = await createClinicResource(admin, organizationId, {
       name: uniqueName("Sede CA19 DEL"),
     });
@@ -241,7 +276,10 @@ test.describe("Lo que deja de ser posible", () => {
 
   test("CA-12 y CA-19: token ya usado responde igual en set-password y en accept", async () => {
     const admin = await createOnboardedAdmin({ emailPrefix: "admin-ca19-usd" });
-    const organizationId = await createOrganizationResource(admin, uniqueName("ORG-CA19-USD"));
+    const organizationId = await createOrganizationResource(
+      admin,
+      uniqueName("ORG-CA19-USD"),
+    );
     const clinicId = await createClinicResource(admin, organizationId, {
       name: uniqueName("Sede CA19 USD"),
     });
@@ -262,7 +300,10 @@ test.describe("Lo que deja de ser posible", () => {
 
   test("CA-14: cinco peticiones simultáneas con el mismo token dejan exactamente una credencial", async () => {
     const admin = await createOnboardedAdmin({ emailPrefix: "admin-ca14" });
-    const organizationId = await createOrganizationResource(admin, uniqueName("ORG-CA14"));
+    const organizationId = await createOrganizationResource(
+      admin,
+      uniqueName("ORG-CA14"),
+    );
     const clinicId = await createClinicResource(admin, organizationId, {
       name: uniqueName("Sede CA14"),
     });
@@ -272,7 +313,9 @@ test.describe("Lo que deja de ser posible", () => {
       emailPrefix: "carrera-ca14",
     });
 
-    const contexts = await Promise.all(Array.from({ length: 5 }, () => createApiContext()));
+    const contexts = await Promise.all(
+      Array.from({ length: 5 }, () => createApiContext()),
+    );
     const responses = await Promise.all(
       contexts.map((context) =>
         setPassword(context, { token: invited.token, password: E2E_PASSWORD }),
@@ -286,7 +329,10 @@ test.describe("Lo que deja de ser posible", () => {
 
   test("CA-15: dos invitaciones pendientes del mismo usuario en paralelo dejan una sola credencial y la otra sigue en 'login'", async () => {
     const admin = await createOnboardedAdmin({ emailPrefix: "admin-ca15" });
-    const organizationId = await createOrganizationResource(admin, uniqueName("ORG-CA15"));
+    const organizationId = await createOrganizationResource(
+      admin,
+      uniqueName("ORG-CA15"),
+    );
     const clinicA = await createClinicResource(admin, organizationId, {
       name: uniqueName("Sede A CA15"),
     });
@@ -315,13 +361,20 @@ test.describe("Lo que deja de ser posible", () => {
     const invitationB = await prisma.userInvitation.findFirst({
       where: { membership: { userId: user.id, resourceId: clinicB } },
     });
-    if (!invitationA || !invitationB) throw new Error("No se encontraron ambas invitaciones");
+    if (!invitationA || !invitationB)
+      throw new Error("No se encontraron ambas invitaciones");
 
     const contextA = await createApiContext();
     const contextB = await createApiContext();
     const [responseA, responseB] = await Promise.all([
-      setPassword(contextA, { token: invitationA.token, password: E2E_PASSWORD }),
-      setPassword(contextB, { token: invitationB.token, password: E2E_PASSWORD }),
+      setPassword(contextA, {
+        token: invitationA.token,
+        password: E2E_PASSWORD,
+      }),
+      setPassword(contextB, {
+        token: invitationB.token,
+        password: E2E_PASSWORD,
+      }),
     ]);
 
     const statuses = [responseA.status(), responseB.status()].sort();
@@ -337,7 +390,9 @@ test.describe("Lo que deja de ser posible", () => {
     expect((await getInvitationByToken(loserToken)).status).toBe("INVITED");
 
     const anonymous = await createApiContext();
-    const stepResponse = await anonymous.get(`${API_BASE_URL}/invitations/${loserToken}`);
+    const stepResponse = await anonymous.get(
+      `${API_BASE_URL}/invitations/${loserToken}`,
+    );
     expect(stepResponse.status()).toBe(200);
     expect((await stepResponse.json()).data.step).toBe("login");
 
@@ -351,7 +406,10 @@ test.describe("Lo que deja de ser posible", () => {
 
   test("CA-16 y CA-24: accept sin contraseña no consume el token y el mismo link deja fijarla después", async () => {
     const admin = await createOnboardedAdmin({ emailPrefix: "admin-ca16" });
-    const organizationId = await createOrganizationResource(admin, uniqueName("ORG-CA16"));
+    const organizationId = await createOrganizationResource(
+      admin,
+      uniqueName("ORG-CA16"),
+    );
     const clinicId = await createClinicResource(admin, organizationId, {
       name: uniqueName("Sede CA16"),
     });
@@ -381,7 +439,10 @@ test.describe("Lo que deja de ser posible", () => {
 
   test("CA-17: una contraseña fuera de rango se rechaza y la invitación sigue pendiente", async () => {
     const admin = await createOnboardedAdmin({ emailPrefix: "admin-ca17" });
-    const organizationId = await createOrganizationResource(admin, uniqueName("ORG-CA17"));
+    const organizationId = await createOrganizationResource(
+      admin,
+      uniqueName("ORG-CA17"),
+    );
     const clinicId = await createClinicResource(admin, organizationId, {
       name: uniqueName("Sede CA17"),
     });
@@ -410,7 +471,10 @@ test.describe("Lo que deja de ser posible", () => {
 
   test("CA-18: invitación ACCEPTED sin credencial (dato heredado) queda bloqueada", async () => {
     const admin = await createOnboardedAdmin({ emailPrefix: "admin-ca18" });
-    const organizationId = await createOrganizationResource(admin, uniqueName("ORG-CA18"));
+    const organizationId = await createOrganizationResource(
+      admin,
+      uniqueName("ORG-CA18"),
+    );
     const clinicId = await createClinicResource(admin, organizationId, {
       name: uniqueName("Sede CA18"),
     });
@@ -459,7 +523,10 @@ test.describe("Lo que no debe filtrarse", () => {
 
   test("CA-21: las respuestas exitosas de set-password y accept no incluyen userId ni email", async () => {
     const admin = await createOnboardedAdmin({ emailPrefix: "admin-ca21" });
-    const organizationId = await createOrganizationResource(admin, uniqueName("ORG-CA21"));
+    const organizationId = await createOrganizationResource(
+      admin,
+      uniqueName("ORG-CA21"),
+    );
     const clinicId = await createClinicResource(admin, organizationId, {
       name: uniqueName("Sede CA21"),
     });
@@ -508,10 +575,14 @@ test.describe("Lo que no debe filtrarse", () => {
     const secondInvitation = await prisma.userInvitation.findFirst({
       where: { membership: { userId: forAccept.userId, resourceId: clinicB } },
     });
-    if (!secondInvitation) throw new Error("No se encontró la segunda invitación");
+    if (!secondInvitation)
+      throw new Error("No se encontró la segunda invitación");
 
     const acceptContext = await createApiContext();
-    const acceptResponse = await acceptInvitation(acceptContext, secondInvitation.token);
+    const acceptResponse = await acceptInvitation(
+      acceptContext,
+      secondInvitation.token,
+    );
     expect(acceptResponse.status()).toBe(200);
     expect(await acceptResponse.json()).toEqual({
       message: "Invitation accepted",

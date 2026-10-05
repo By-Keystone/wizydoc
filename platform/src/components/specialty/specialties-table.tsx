@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import { Pencil } from "lucide-react";
-import { Specialty } from "@/lib/api/specialty/types";
-import { Column, Table } from "../common/table";
+import type { Specialty } from "@/lib/api/specialty/types";
+import { type Column, Table } from "../common/table";
 import { EditSpecialtyModal } from "./edit-modal";
 import { useApp } from "@/context/app/app.context";
 import { MembershipRole } from "@/lib/utils";

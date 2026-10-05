@@ -5,7 +5,7 @@ import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { getDoctorSlotsAction } from "@/lib/actions/doctor-profile/get-slots.action";
-import { DoctorSlots } from "@/lib/api/doctor-profile/types";
+import type { DoctorSlots } from "@/lib/api/doctor-profile/types";
 import {
   addDays,
   dayLabel,
@@ -72,7 +72,7 @@ export function DateTimeStep({ doctorProfileId, onNext, onBack }: Props) {
     };
   }, [doctorProfileId, from, to]);
 
-  const daySlots = selectedDate ? slots?.days[selectedDate] ?? [] : [];
+  const daySlots = selectedDate ? (slots?.days[selectedDate] ?? []) : [];
 
   return (
     <div>
@@ -144,7 +144,9 @@ export function DateTimeStep({ doctorProfileId, onNext, onBack }: Props) {
           </div>
 
           <div className="mt-6">
-            <span className="text-sm font-medium text-brand-gray">Horarios</span>
+            <span className="text-sm font-medium text-brand-gray">
+              Horarios
+            </span>
 
             {!slots ? (
               <div className="mt-2 flex items-center gap-2 text-sm text-brand-gray">

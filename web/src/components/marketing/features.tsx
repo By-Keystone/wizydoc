@@ -1,5 +1,5 @@
-import { Calendar, CheckCircle2, Building2, Clock } from "lucide-react"
-import { Card, CardHeader, CardContent } from "@/components/ui/card"
+import { Calendar, CheckCircle2, Building2, Clock } from "lucide-react";
+import { Card, CardHeader, CardContent } from "@/components/ui/card";
 
 /**
  * Una sola tarjeta lleva el coral. Es la que responde a por qué alguien cambia
@@ -35,13 +35,12 @@ const features = [
     description:
       "Tus pacientes reservan cuando quieren, desde cualquier dispositivo. Tu agenda se actualiza en tiempo real.",
   },
-]
+];
 
 export function Features() {
   return (
     <section id="features" className="bg-white py-24">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-
         {/* Header */}
         <div className="mx-auto max-w-2xl text-center">
           <p className="text-sm font-semibold uppercase tracking-widest text-brand-teal">
@@ -51,15 +50,15 @@ export function Features() {
             Todo lo que tu sede necesita
           </h2>
           <p className="mt-4 text-lg text-brand-gray">
-            Diseñado para simplificar la operación diaria de médicos independientes
-            y sedes pequeñas y medianas.
+            Diseñado para simplificar la operación diaria de médicos
+            independientes y sedes pequeñas y medianas.
           </p>
         </div>
 
         {/* Grid */}
         <div className="mt-16 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {features.map((feature) => {
-            const Icon = feature.icon
+            const Icon = feature.icon;
             return (
               <Card
                 key={feature.title}
@@ -77,16 +76,20 @@ export function Features() {
                   >
                     <Icon className="h-5 w-5" />
                   </div>
-                  <h3 className="mt-4 font-semibold text-brand-teal-dark">{feature.title}</h3>
+                  <h3 className="mt-4 font-semibold text-brand-teal-dark">
+                    {feature.title}
+                  </h3>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-sm leading-relaxed text-brand-gray">{feature.description}</p>
+                  <p className="text-sm leading-relaxed text-brand-gray">
+                    {feature.description}
+                  </p>
                 </CardContent>
               </Card>
-            )
+            );
           })}
         </div>
       </div>
     </section>
-  )
+  );
 }

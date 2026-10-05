@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { doctorsApi } from "@/lib/api/doctors";
-import { ClinicDoctor } from "@/lib/api/doctors/types";
+import type { ClinicDoctor } from "@/lib/api/doctors/types";
 import { BookingWizard } from "./booking-wizard";
 
 interface Props {
@@ -22,7 +22,9 @@ export default async function CreateAppointmentPage({ params }: Props) {
       <div className="w-full max-w-md">
         <Card>
           <CardHeader>
-            <h1 className="text-2xl font-bold text-brand-teal-dark">Reservar cita</h1>
+            <h1 className="text-2xl font-bold text-brand-teal-dark">
+              Reservar cita
+            </h1>
           </CardHeader>
           <CardContent>
             <p className="text-sm text-brand-gray">

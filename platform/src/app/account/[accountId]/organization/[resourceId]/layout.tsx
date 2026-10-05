@@ -4,7 +4,7 @@ import { userMembershipsApi } from "@/lib/api/memberships";
 import { usersApi } from "@/lib/api/user";
 import { getActiveResource } from "@/lib/auth/guards";
 import { redirect } from "next/navigation";
-import { ReactNode } from "react";
+import type { ReactNode } from "react";
 
 export default async function OrganizationLayout({
   children,

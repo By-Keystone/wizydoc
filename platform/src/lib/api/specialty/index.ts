@@ -1,5 +1,5 @@
 import { doFetchJson } from "../fetch";
-import { Specialty } from "./types";
+import type { Specialty } from "./types";
 
 export const tags = {
   organizationSpecialties: (organizationId: string) =>

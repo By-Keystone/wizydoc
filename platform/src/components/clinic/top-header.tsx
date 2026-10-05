@@ -13,9 +13,7 @@ export const TopHeader = () => {
       <div>
         <h1 className="text-2xl font-bold text-brand-teal-dark">Sedes</h1>
       </div>
-      <Button onClick={() => setModalCreateClinicOpen(true)}>
-        Crear sede
-      </Button>
+      <Button onClick={() => setModalCreateClinicOpen(true)}>Crear sede</Button>
       <CreateClinicModal
         isOpen={modalCreateClinicOpen}
         setIsOpen={setModalCreateClinicOpen}

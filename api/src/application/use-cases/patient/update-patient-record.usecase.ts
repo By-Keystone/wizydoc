@@ -56,10 +56,13 @@ export class UpdatePatientRecordUseCase {
     if (!patient) throw new NotFound("Patient not found");
 
     if (this.touchesHealthData(input) && !(await this.isClinicalStaff(input))) {
-      throw new Forbidden("Solo el personal sanitario puede editar los datos de salud");
+      throw new Forbidden(
+        "Solo el personal sanitario puede editar los datos de salud",
+      );
     }
 
-    const { patientId, accountId, userId, allergiesReviewed, ...fields } = input;
+    const { patientId, accountId, userId, allergiesReviewed, ...fields } =
+      input;
 
     return client.patient.update({
       where: { id: patient.id },
@@ -105,7 +108,10 @@ export class UpdatePatientRecordUseCase {
   ) {
     const hasAllergies = (input.allergies?.length ?? 0) > 0;
 
-    if (input.allergiesReviewed === undefined && input.allergies === undefined) {
+    if (
+      input.allergiesReviewed === undefined &&
+      input.allergies === undefined
+    ) {
       return {};
     }
 

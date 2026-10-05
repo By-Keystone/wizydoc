@@ -3,7 +3,7 @@
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, X } from "lucide-react";
-import { Specialty } from "@/lib/api/specialty/types";
+import type { Specialty } from "@/lib/api/specialty/types";
 import { createSpecialtyAction } from "@/lib/actions/specialty/create-specialty.action";
 import { getOrganizationSpecialtiesAction } from "@/lib/actions/specialty/get-organization-specialties.action";
 import { toast } from "@/lib/toast";
@@ -24,7 +24,10 @@ export const SpecialtyMultiSelect = ({
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
 
-  const selectedIds = useMemo(() => new Set(selected.map((s) => s.id)), [selected]);
+  const selectedIds = useMemo(
+    () => new Set(selected.map((s) => s.id)),
+    [selected],
+  );
 
   const filtered = useMemo(
     () =>

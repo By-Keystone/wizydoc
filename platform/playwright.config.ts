@@ -17,13 +17,19 @@ export default defineConfig({
   globalSetup: "./e2e/support/global-setup.ts",
   fullyParallel: true,
   forbidOnly: true,
-  reporter: [["list"], ["html", { outputFolder: "playwright-report", open: "never" }]],
+  reporter: [
+    ["list"],
+    ["html", { outputFolder: "playwright-report", open: "never" }],
+  ],
   use: { trace: "retain-on-failure" },
   projects: [
     {
       name: "api",
       testDir: "./e2e/api",
-      use: { baseURL: API_BASE_URL, extraHTTPHeaders: { Origin: PLATFORM_BASE_URL } },
+      use: {
+        baseURL: API_BASE_URL,
+        extraHTTPHeaders: { Origin: PLATFORM_BASE_URL },
+      },
     },
     {
       name: "chromium",

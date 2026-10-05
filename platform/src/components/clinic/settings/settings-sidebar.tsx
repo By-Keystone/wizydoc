@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useParams } from "next/navigation";
 import { CalendarClock, UserRound, type LucideProps } from "lucide-react";
-import { ForwardRefExoticComponent, RefAttributes } from "react";
+import type { ForwardRefExoticComponent, RefAttributes } from "react";
 import { cn, MembershipRole } from "@/lib/utils";
 import { useApp } from "@/context/app/app.context";
 
@@ -14,12 +14,17 @@ type SettingsLink = {
   icon: ForwardRefExoticComponent<
     Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>
   >;
-  roleScope?: MembershipRole[]
+  roleScope?: MembershipRole[];
 };
 
 const settingsLinks: SettingsLink[] = [
   { segment: "", label: "Mi Perfil", icon: UserRound },
-  { segment: "availability", label: "Mi Disponibilidad", icon: CalendarClock, roleScope: [MembershipRole.DOCTOR] },
+  {
+    segment: "availability",
+    label: "Mi Disponibilidad",
+    icon: CalendarClock,
+    roleScope: [MembershipRole.DOCTOR],
+  },
 ];
 
 export function SettingsSidebar() {
@@ -40,21 +45,24 @@ export function SettingsSidebar() {
         {settingsLinks.map(({ segment, label, icon: Icon, roleScope }) => {
           const href = segment ? `${base}/${segment}` : base;
           const isActive = pathname === href;
-          const shouldRender = roleScope?.includes(membership.role) || !roleScope
-          return (shouldRender &&
-            <Link
-              key={label}
-              href={href}
-              className={cn(
-                "flex shrink-0 items-center gap-3 whitespace-nowrap rounded-lg px-3 py-2 text-sm transition-colors",
-                isActive
-                  ? "bg-brand-teal/10 font-medium text-brand-teal"
-                  : "text-brand-gray hover:bg-gray-100 hover:text-brand-ink",
-              )}
-            >
-              <Icon className="h-4 w-4 shrink-0" />
-              {label}
-            </Link>
+          const shouldRender =
+            roleScope?.includes(membership.role) || !roleScope;
+          return (
+            shouldRender && (
+              <Link
+                key={label}
+                href={href}
+                className={cn(
+                  "flex shrink-0 items-center gap-3 whitespace-nowrap rounded-lg px-3 py-2 text-sm transition-colors",
+                  isActive
+                    ? "bg-brand-teal/10 font-medium text-brand-teal"
+                    : "text-brand-gray hover:bg-gray-100 hover:text-brand-ink",
+                )}
+              >
+                <Icon className="h-4 w-4 shrink-0" />
+                {label}
+              </Link>
+            )
           );
         })}
       </nav>

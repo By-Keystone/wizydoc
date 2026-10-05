@@ -2,9 +2,9 @@ import { Forbidden } from "@/application/errors/forbidden.error";
 import { NotFound } from "@/application/errors/not-found.error";
 import { PaymentRequired } from "@/application/errors/payment-required.error";
 import { UnprocessableEntity } from "@/application/errors/unprocessable-entity.errors";
-import { IEmailService } from "@/application/ports/email-service.port";
+import type { IEmailService } from "@/application/ports/email-service.port";
 import { isWithinLimit } from "@/domain/entities/subscription/entitlements";
-import { ITransactionManager } from "@/domain/services/transaction-manager";
+import type { ITransactionManager } from "@/domain/services/transaction-manager";
 import { lockAccountQuota } from "@/infrastructure/postgres/lock-account-quota";
 import { GetAccountEntitlements } from "@/infrastructure/postgres/queries/subscription/get-account-entitlements.query";
 import { getClient } from "@/infrastructure/postgres/transaction-context";
@@ -43,16 +43,21 @@ export class InviteUserUseCase {
     private readonly tx: ITransactionManager,
     private readonly services: InviteUserUseCaseService,
     private readonly entitlementsQuery = new GetAccountEntitlements(),
-  ) { }
+  ) {}
 
   // Sin este filtro se podrían conectar especialidades de otra organización o cuenta.
-  private async assertSpecialtiesBelongToClinicOrganization(clinicResourceId: string, specialtyIds: string[]) {
+  private async assertSpecialtiesBelongToClinicOrganization(
+    clinicResourceId: string,
+    specialtyIds: string[],
+  ) {
     const uniqueSpecialtyIds = [...new Set(specialtyIds)];
 
     const ownSpecialtiesCount = await getClient().specialty.count({
       where: {
         id: { in: uniqueSpecialtyIds },
-        organization: { resource: { children: { some: { id: clinicResourceId } } } },
+        organization: {
+          resource: { children: { some: { id: clinicResourceId } } },
+        },
       },
     });
 
@@ -146,25 +151,29 @@ export class InviteUserUseCase {
       let user = await client.user.findUnique({ where: { email: data.email } });
 
       if (user && user.accountId !== data.accountId) {
-        throw new UnprocessableEntity("Ya existe una cuenta con este correo en otra cuenta");
+        throw new UnprocessableEntity(
+          "Ya existe una cuenta con este correo en otra cuenta",
+        );
       }
 
-      if (!user) user = await client.user.create({
-        data: {
-          email: data.email,
-          name: data.name,
-          lastName: data.lastName,
-          phone: data.phone,
-          accountId: data.accountId,
-        },
-      });
+      if (!user)
+        user = await client.user.create({
+          data: {
+            email: data.email,
+            name: data.name,
+            lastName: data.lastName,
+            phone: data.phone,
+            accountId: data.accountId,
+          },
+        });
 
       if (data.role === "DOCTOR") {
         await this.assertDoctorSeatAvailable(data.accountId, user.id);
-        const uniqueSpecialtyIds = await this.assertSpecialtiesBelongToClinicOrganization(
-          data.resourceId,
-          data.specialtyIds ?? [],
-        );
+        const uniqueSpecialtyIds =
+          await this.assertSpecialtiesBelongToClinicOrganization(
+            data.resourceId,
+            data.specialtyIds ?? [],
+          );
 
         await client.doctorProfile.create({
           data: {

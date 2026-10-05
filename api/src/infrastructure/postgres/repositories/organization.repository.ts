@@ -1,5 +1,5 @@
-import { Organization } from "@/domain/entities/organization/entity";
-import {
+import type { Organization } from "@/domain/entities/organization/entity";
+import type {
   CreateOrganizationData,
   IOrganizationRepository,
 } from "@/domain/repositories/organization.repository";

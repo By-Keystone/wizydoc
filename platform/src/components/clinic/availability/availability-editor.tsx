@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Plus, Trash2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { AvailabilityBlock } from "@/lib/api/availability/types";
+import type { AvailabilityBlock } from "@/lib/api/availability/types";
 import { saveAvailability } from "@/lib/actions/availability/save-availability.action";
 import { toast } from "@/lib/toast";
 
@@ -103,7 +103,9 @@ export function AvailabilityEditor({ initial }: Props) {
   return (
     <div className="max-w-2xl">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-brand-teal-dark">Mi Disponibilidad</h1>
+        <h1 className="text-2xl font-bold text-brand-teal-dark">
+          Mi Disponibilidad
+        </h1>
         <p className="mt-1 text-sm text-brand-gray">
           Define tus horarios de atención en esta sede. Puedes agregar varios
           rangos por día (por ejemplo, mañana y tarde).
@@ -112,9 +114,14 @@ export function AvailabilityEditor({ initial }: Props) {
 
       <div className="flex flex-col gap-4 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
         {DAYS.map(({ label, value }) => (
-          <div key={value} className="border-b border-gray-100 pb-4 last:border-0 last:pb-0">
+          <div
+            key={value}
+            className="border-b border-gray-100 pb-4 last:border-0 last:pb-0"
+          >
             <div className="mb-2 flex items-center justify-between">
-              <span className="text-sm font-medium text-brand-gray">{label}</span>
+              <span className="text-sm font-medium text-brand-gray">
+                {label}
+              </span>
               <button
                 type="button"
                 onClick={() => addSlot(value)}

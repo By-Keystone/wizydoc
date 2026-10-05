@@ -30,14 +30,21 @@ export async function seedLookupFixture(): Promise<LookupFixture> {
     lastName: "Administradora",
     phone: "+51900000001",
   });
-  const organizationId = await createOrganizationResource(account1, uniqueName("ORG"));
+  const organizationId = await createOrganizationResource(
+    account1,
+    uniqueName("ORG"),
+  );
   const clinicAId = await createClinicResource(account1, organizationId, {
     name: uniqueName("Sede A"),
   });
   // Por Prisma: el plan Gratis limita a una sede por cuenta; esta es sólo de control.
-  const clinicBId = await createClinicResourceViaPrisma(account1, organizationId, {
-    name: uniqueName("Sede B"),
-  });
+  const clinicBId = await createClinicResourceViaPrisma(
+    account1,
+    organizationId,
+    {
+      name: uniqueName("Sede B"),
+    },
+  );
 
   const reception = await createMemberWithRole({
     accountId: account1.accountId,
@@ -78,7 +85,10 @@ export async function seedLookupFixture(): Promise<LookupFixture> {
     lastName: "Otro",
     phone: "+51900000002",
   });
-  const organization2Id = await createOrganizationResource(account2, uniqueName("ORG-2"));
+  const organization2Id = await createOrganizationResource(
+    account2,
+    uniqueName("ORG-2"),
+  );
   const clinicZId = await createClinicResource(account2, organization2Id, {
     name: uniqueName("Sede Z"),
   });

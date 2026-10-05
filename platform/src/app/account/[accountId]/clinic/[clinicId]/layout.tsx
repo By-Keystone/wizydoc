@@ -2,7 +2,7 @@ import { Sidebar } from "@/components/common/sidebar";
 import { AppProvider } from "@/context/app/app.context";
 import { userMembershipsApi } from "@/lib/api/memberships";
 import { usersApi } from "@/lib/api/user";
-import { ReactNode } from "react";
+import type { ReactNode } from "react";
 
 export default async function ClinicLayout({
   children,
@@ -37,9 +37,7 @@ export default async function ClinicLayout({
     return (
       <div className="flex h-dvh items-center justify-center">
         <div className="text-center">
-          <h2 className="text-lg font-semibold">
-            No se pudo cargar la sede
-          </h2>
+          <h2 className="text-lg font-semibold">No se pudo cargar la sede</h2>
           {error instanceof Error && <p>{error.message}</p>}
         </div>
       </div>

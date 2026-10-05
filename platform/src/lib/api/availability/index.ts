@@ -1,5 +1,5 @@
 import { doFetchJson } from "../fetch";
-import { AvailabilityBlock } from "./types";
+import type { AvailabilityBlock } from "./types";
 
 export const tags = {
   clinicAvailability: (clinicId: string) => `clinic-${clinicId}/availability`,

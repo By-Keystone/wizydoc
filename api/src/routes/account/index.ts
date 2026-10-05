@@ -1,9 +1,9 @@
-import { FastifyInstance } from "fastify";
-import { ZodTypeProvider } from "@fastify/type-provider-zod";
-import { IAccountRepository } from "@/domain/repositories/account.repository";
-import { ISubscriptionRepository } from "@/domain/repositories/subscription.repository";
-import { IUserRepository } from "@/domain/repositories/user.repository";
-import { ITransactionManager } from "@/domain/services/transaction-manager";
+import type { FastifyInstance } from "fastify";
+import type { ZodTypeProvider } from "@fastify/type-provider-zod";
+import type { IAccountRepository } from "@/domain/repositories/account.repository";
+import type { ISubscriptionRepository } from "@/domain/repositories/subscription.repository";
+import type { IUserRepository } from "@/domain/repositories/user.repository";
+import type { ITransactionManager } from "@/domain/services/transaction-manager";
 import type { BillingService } from "@/application/ports/billing-service.port";
 import {
   completeAccountSetupSchema,

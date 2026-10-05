@@ -2,13 +2,13 @@
 
 import { useMemo, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { ClinicDoctor } from "@/lib/api/doctors/types";
+import type { ClinicDoctor } from "@/lib/api/doctors/types";
 import { createAppointmentAction } from "@/lib/actions/appointment/create-appointment.action";
 import { StepperProgress } from "./steps/stepper-progress";
 import { SpecialtyStep } from "./steps/specialty-step";
 import { DoctorStep } from "./steps/doctor-step";
 import { DateTimeStep } from "./steps/datetime-step";
-import { PatientStep, BookingPatient } from "./steps/patient-step";
+import { PatientStep, type BookingPatient } from "./steps/patient-step";
 import { SuccessStep } from "./steps/success-step";
 
 interface Specialty {
@@ -55,7 +55,7 @@ export function BookingWizard({ doctors, clinicId }: Props) {
     setDoctor(null);
     setDateTime(null);
     setPatient(null);
-  }
+  };
 
   return (
     <div className="w-full max-w-md">

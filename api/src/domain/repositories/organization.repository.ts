@@ -1,4 +1,4 @@
-import { Organization } from "../entities/organization/entity";
+import type { Organization } from "../entities/organization/entity";
 
 export interface CreateOrganizationData {
   name: string;

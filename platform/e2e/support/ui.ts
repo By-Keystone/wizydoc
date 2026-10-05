@@ -11,7 +11,10 @@ export interface RegisterViaUiParams {
   password?: string;
 }
 
-export async function registerViaUi(page: Page, params: RegisterViaUiParams): Promise<void> {
+export async function registerViaUi(
+  page: Page,
+  params: RegisterViaUiParams,
+): Promise<void> {
   await page.goto("/register");
 
   await page.getByLabel("Nombre").fill(params.name);
@@ -27,13 +30,19 @@ export async function registerViaUi(page: Page, params: RegisterViaUiParams): Pr
 }
 
 // `autoSignInAfterVerification` deja la sesión iniciada tras confirmar.
-export async function confirmEmailViaLink(page: Page, email: string): Promise<void> {
+export async function confirmEmailViaLink(
+  page: Page,
+  email: string,
+): Promise<void> {
   await expect
     .poll(() => readLatestEmailTo(email)?.subject)
     .toBe("Confirma tu correo en WizyDoc");
 
   const verificationEmail = readLatestEmailTo(email);
-  const verificationLink = extractLink(verificationEmail!.html, "/api/auth/verify-email");
+  const verificationLink = extractLink(
+    verificationEmail!.html,
+    "/api/auth/verify-email",
+  );
 
   await page.goto(verificationLink);
 }
@@ -55,7 +64,10 @@ export async function loginViaUi(
   await expect(page).toHaveURL(expectedUrl);
 }
 
-export async function completeOnboardingViaUi(page: Page, accountName: string): Promise<void> {
+export async function completeOnboardingViaUi(
+  page: Page,
+  accountName: string,
+): Promise<void> {
   await expect(page).toHaveURL(/\/onboarding$/);
 
   await page.getByLabel("Nombre de la cuenta").fill(accountName);

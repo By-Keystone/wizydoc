@@ -1,4 +1,4 @@
-import {
+import type {
   LookedUpAccountUser,
   LookupAccountUserDto,
 } from "@/application/queries/user/lookup-account-user.query";

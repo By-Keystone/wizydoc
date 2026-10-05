@@ -3,7 +3,9 @@ import { getTestPrisma } from "../../support/db";
 import { uniqueEmail } from "../../support/users";
 import { confirmEmailViaLink, registerViaUi } from "../../support/ui";
 
-test("un usuario nuevo se registra, confirma su correo y llega al onboarding", async ({ page }) => {
+test("un usuario nuevo se registra, confirma su correo y llega al onboarding", async ({
+  page,
+}) => {
   const email = uniqueEmail("registro");
 
   await registerViaUi(page, {

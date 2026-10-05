@@ -8,11 +8,17 @@ import {
   createSpecialty,
   inviteUserViaApi,
 } from "../../support/accounts";
-import { authPost, createConfirmedUser, uniqueEmail, uniqueName } from "../../support/users";
+import {
+  authPost,
+  createConfirmedUser,
+  uniqueEmail,
+  uniqueName,
+} from "../../support/users";
 
 /** docs/features/beta-free-plan-only/plan.md — CA-1 a CA-7 y CA-15 ([e2e]). */
 
-const BETA_REJECTION_MESSAGE = "Durante la beta sólo está disponible el plan Gratis";
+const BETA_REJECTION_MESSAGE =
+  "Durante la beta sólo está disponible el plan Gratis";
 
 const PAID_PLAN_WITH_CARD = {
   cardToken: "tkn_test_fake",
@@ -22,7 +28,9 @@ const PAID_PLAN_WITH_CARD = {
 
 async function expectNoAccountCreated(accountName: string) {
   const prisma = await getTestPrisma();
-  const account = await prisma.account.findFirst({ where: { name: accountName } });
+  const account = await prisma.account.findFirst({
+    where: { name: accountName },
+  });
   expect(account).toBeNull();
 }
 
@@ -34,7 +42,9 @@ async function expectUserWithoutAccount(userId: string) {
 
 async function expectFreeActiveSubscription(accountId: string) {
   const prisma = await getTestPrisma();
-  const subscription = await prisma.subscription.findUnique({ where: { accountId } });
+  const subscription = await prisma.subscription.findUnique({
+    where: { accountId },
+  });
   expect(subscription?.plan).toBe("FREE");
   expect(subscription?.status).toBe("ACTIVE");
   expect(subscription?.paymentProviderCustomerId).toBeNull();
@@ -43,8 +53,12 @@ async function expectFreeActiveSubscription(accountId: string) {
 }
 
 test.describe("Ninguna cuenta nueva nace con un plan distinto de Gratis", () => {
-  test("CA-1: alta sin plan da Gratis, ACTIVE y sin datos de Culqi", async ({ request }) => {
-    const { userId } = await createConfirmedUser(request, { emailPrefix: "ca1" });
+  test("CA-1: alta sin plan da Gratis, ACTIVE y sin datos de Culqi", async ({
+    request,
+  }) => {
+    const { userId } = await createConfirmedUser(request, {
+      emailPrefix: "ca1",
+    });
     const accountName = uniqueName("Consultorio CA-1");
 
     const response = await authPost(request, "/account", { accountName });
@@ -60,11 +74,18 @@ test.describe("Ninguna cuenta nueva nace con un plan distinto de Gratis", () => 
     expect(user?.onboardingCompleted).toBe(true);
   });
 
-  test("CA-2: alta con plan Gratis explícito da el mismo resultado que CA-1", async ({ request }) => {
-    const { userId } = await createConfirmedUser(request, { emailPrefix: "ca2" });
+  test("CA-2: alta con plan Gratis explícito da el mismo resultado que CA-1", async ({
+    request,
+  }) => {
+    const { userId } = await createConfirmedUser(request, {
+      emailPrefix: "ca2",
+    });
     const accountName = uniqueName("Consultorio CA-2");
 
-    const response = await authPost(request, "/account", { accountName, plan: "FREE" });
+    const response = await authPost(request, "/account", {
+      accountName,
+      plan: "FREE",
+    });
 
     expect(response.status()).toBe(201);
     const { accountId } = (await response.json()) as { accountId: string };
@@ -79,7 +100,9 @@ test.describe("Ninguna cuenta nueva nace con un plan distinto de Gratis", () => 
   test("CA-3: Consultorio se rechaza aunque traiga tarjeta, dirección y ciudad válidas", async ({
     request,
   }) => {
-    const { userId } = await createConfirmedUser(request, { emailPrefix: "ca3" });
+    const { userId } = await createConfirmedUser(request, {
+      emailPrefix: "ca3",
+    });
     const accountName = uniqueName("Consultorio CA-3");
 
     const response = await authPost(request, "/account", {
@@ -99,7 +122,9 @@ test.describe("Ninguna cuenta nueva nace con un plan distinto de Gratis", () => 
   test("CA-4: Clínica se rechaza aunque traiga tarjeta, dirección y ciudad válidas", async ({
     request,
   }) => {
-    const { userId } = await createConfirmedUser(request, { emailPrefix: "ca4" });
+    const { userId } = await createConfirmedUser(request, {
+      emailPrefix: "ca4",
+    });
     const accountName = uniqueName("Consultorio CA-4");
 
     const response = await authPost(request, "/account", {
@@ -119,7 +144,9 @@ test.describe("Ninguna cuenta nueva nace con un plan distinto de Gratis", () => 
   test("CA-5: Red se rechaza con y sin datos de tarjeta (cierra el plan Red gratis)", async ({
     request,
   }) => {
-    const { userId } = await createConfirmedUser(request, { emailPrefix: "ca5" });
+    const { userId } = await createConfirmedUser(request, {
+      emailPrefix: "ca5",
+    });
 
     const accountNameWithCard = uniqueName("Red CA-5 con tarjeta");
     const responseWithCard = await authPost(request, "/account", {
@@ -128,7 +155,9 @@ test.describe("Ninguna cuenta nueva nace con un plan distinto de Gratis", () => 
       ...PAID_PLAN_WITH_CARD,
     });
     expect(responseWithCard.status()).toBe(400);
-    expect((await responseWithCard.json()).message).toContain(BETA_REJECTION_MESSAGE);
+    expect((await responseWithCard.json()).message).toContain(
+      BETA_REJECTION_MESSAGE,
+    );
     await expectNoAccountCreated(accountNameWithCard);
 
     const accountNameWithoutCard = uniqueName("Red CA-5 sin tarjeta");
@@ -137,7 +166,9 @@ test.describe("Ninguna cuenta nueva nace con un plan distinto de Gratis", () => 
       plan: "RED",
     });
     expect(responseWithoutCard.status()).toBe(400);
-    expect((await responseWithoutCard.json()).message).toContain(BETA_REJECTION_MESSAGE);
+    expect((await responseWithoutCard.json()).message).toContain(
+      BETA_REJECTION_MESSAGE,
+    );
     await expectNoAccountCreated(accountNameWithoutCard);
 
     await expectUserWithoutAccount(userId);
@@ -146,15 +177,22 @@ test.describe("Ninguna cuenta nueva nace con un plan distinto de Gratis", () => 
   test("CA-6: valores de plan desconocidos se rechazan sin crear cuenta ni suscripción", async ({
     request,
   }) => {
-    const { userId } = await createConfirmedUser(request, { emailPrefix: "ca6" });
+    const { userId } = await createConfirmedUser(request, {
+      emailPrefix: "ca6",
+    });
 
     const unknownPlanValues: unknown[] = ["free", "PREMIUM", null, 42];
 
     for (const plan of unknownPlanValues) {
       const accountName = uniqueName("Consultorio CA-6");
-      const response = await authPost(request, "/account", { accountName, plan });
+      const response = await authPost(request, "/account", {
+        accountName,
+        plan,
+      });
 
-      expect(response.status(), `plan enviado: ${JSON.stringify(plan)}`).toBe(400);
+      expect(response.status(), `plan enviado: ${JSON.stringify(plan)}`).toBe(
+        400,
+      );
       await expectNoAccountCreated(accountName);
     }
 
@@ -164,7 +202,9 @@ test.describe("Ninguna cuenta nueva nace con un plan distinto de Gratis", () => 
   test("CA-7: un rechazo no deja al usuario bloqueado; el siguiente alta sin plan da Gratis", async ({
     request,
   }) => {
-    const { userId } = await createConfirmedUser(request, { emailPrefix: "ca7" });
+    const { userId } = await createConfirmedUser(request, {
+      emailPrefix: "ca7",
+    });
 
     const rejectedResponse = await authPost(request, "/account", {
       accountName: uniqueName("Consultorio CA-7 rechazado"),
@@ -177,7 +217,9 @@ test.describe("Ninguna cuenta nueva nace con un plan distinto de Gratis", () => 
       accountName: uniqueName("Consultorio CA-7 aceptado"),
     });
     expect(acceptedResponse.status()).toBe(201);
-    const { accountId } = (await acceptedResponse.json()) as { accountId: string };
+    const { accountId } = (await acceptedResponse.json()) as {
+      accountId: string;
+    };
 
     await expectFreeActiveSubscription(accountId);
 
@@ -189,12 +231,21 @@ test.describe("Ninguna cuenta nueva nace con un plan distinto de Gratis", () => 
 
 test.describe("Las cuentas existentes no cambian", () => {
   test("CA-15: una cuenta de pago sembrada por Prisma conserva su plan, su suscripción de Culqi y sus capacidades", async () => {
-    const admin = await createOnboardedAdmin({ emailPrefix: "ca15-consultorio" });
-    const organizationId = await createOrganizationResource(admin, uniqueName("ORG-CA15"));
+    const admin = await createOnboardedAdmin({
+      emailPrefix: "ca15-consultorio",
+    });
+    const organizationId = await createOrganizationResource(
+      admin,
+      uniqueName("ORG-CA15"),
+    );
     const clinicId = await createClinicResource(admin, organizationId, {
       name: uniqueName("Sede CA-15"),
     });
-    const specialtyId = await createSpecialty(admin, organizationId, uniqueName("Especialidad CA-15"));
+    const specialtyId = await createSpecialty(
+      admin,
+      organizationId,
+      uniqueName("Especialidad CA-15"),
+    );
 
     const prisma = await getTestPrisma();
 
@@ -216,7 +267,9 @@ test.describe("Las cuentas existentes no cambian", () => {
     // comprobar que una acción ajena no cambia por accidente la fila de otra cuenta.
     const otherSeededAccountIds = await Promise.all(
       (["CLINICA", "RED"] as const).map(async (plan) => {
-        const otherAdmin = await createOnboardedAdmin({ emailPrefix: `ca15-${plan.toLowerCase()}` });
+        const otherAdmin = await createOnboardedAdmin({
+          emailPrefix: `ca15-${plan.toLowerCase()}`,
+        });
         await prisma.subscription.update({
           where: { accountId: otherAdmin.accountId },
           data: { plan, status: "ACTIVE", extraDoctors: 0, extraClinics: 0 },
@@ -227,7 +280,9 @@ test.describe("Las cuentas existentes no cambian", () => {
 
     const seededAccountIds = [admin.accountId, ...otherSeededAccountIds];
     const subscriptionsBefore = await Promise.all(
-      seededAccountIds.map((accountId) => prisma.subscription.findUnique({ where: { accountId } })),
+      seededAccountIds.map((accountId) =>
+        prisma.subscription.findUnique({ where: { accountId } }),
+      ),
     );
 
     // Gratis sólo incluye 1 médico (entitlements.ts): el segundo sólo entra porque la
@@ -253,7 +308,9 @@ test.describe("Las cuentas existentes no cambian", () => {
     expect(secondDoctorResponse.status()).toBe(200);
 
     const subscriptionsAfter = await Promise.all(
-      seededAccountIds.map((accountId) => prisma.subscription.findUnique({ where: { accountId } })),
+      seededAccountIds.map((accountId) =>
+        prisma.subscription.findUnique({ where: { accountId } }),
+      ),
     );
     expect(subscriptionsAfter).toEqual(subscriptionsBefore);
   });

@@ -2,7 +2,7 @@ import { Forbidden } from "@/application/errors/forbidden.error";
 import { NotFound } from "@/application/errors/not-found.error";
 import { PaymentRequired } from "@/application/errors/payment-required.error";
 import { isWithinLimit } from "@/domain/entities/subscription/entitlements";
-import { IClinicRepository } from "@/domain/repositories/clinic.repository";
+import type { IClinicRepository } from "@/domain/repositories/clinic.repository";
 import { lockAccountQuota } from "@/infrastructure/postgres/lock-account-quota";
 import { GetAccountEntitlements } from "@/infrastructure/postgres/queries/subscription/get-account-entitlements.query";
 import {

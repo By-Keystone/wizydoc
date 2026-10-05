@@ -25,11 +25,18 @@ test("CA-1, CA-2 y CA-3 (y CA-13/CA-14 de fix-auth-user-fields-input): la médic
     name: "Victoria",
     lastName: "Rojas",
   });
-  const organizationId = await createOrganizationResource(victim, uniqueName("ORG-CA13"));
+  const organizationId = await createOrganizationResource(
+    victim,
+    uniqueName("ORG-CA13"),
+  );
   const clinicId = await createClinicResource(victim, organizationId, {
     name: uniqueName("Sede CA-13"),
   });
-  const specialtyId = await createSpecialty(victim, organizationId, uniqueName("Cardiología"));
+  const specialtyId = await createSpecialty(
+    victim,
+    organizationId,
+    uniqueName("Cardiología"),
+  );
 
   const doctorEmail = uniqueEmail("doctora-ca13");
   await inviteUserViaApi(victim, {
@@ -42,7 +49,9 @@ test("CA-1, CA-2 y CA-3 (y CA-13/CA-14 de fix-auth-user-fields-input): la médic
     specialtyIds: [specialtyId],
   });
 
-  await expect.poll(() => readLatestEmailTo(doctorEmail)?.subject).toBe("WizyDoc - Invitación");
+  await expect
+    .poll(() => readLatestEmailTo(doctorEmail)?.subject)
+    .toBe("WizyDoc - Invitación");
   const invitationEmail = readLatestEmailTo(doctorEmail);
   const invitationLink = extractLink(invitationEmail!.html, "/invite/accept");
 
@@ -53,7 +62,9 @@ test("CA-1, CA-2 y CA-3 (y CA-13/CA-14 de fix-auth-user-fields-input): la médic
   await expect(
     page.getByText("Configura una contraseña para activar tu cuenta."),
   ).toBeVisible();
-  await expect(page.getByRole("button", { name: "Aceptar invitación" })).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Aceptar invitación" }),
+  ).toHaveCount(0);
 
   const passwordInput = page.getByLabel("Contraseña");
   await expect(passwordInput).toBeVisible();
@@ -61,7 +72,9 @@ test("CA-1, CA-2 y CA-3 (y CA-13/CA-14 de fix-auth-user-fields-input): la médic
   await page.getByRole("button", { name: "Activar cuenta" }).click();
 
   // CA-2: sesión iniciada directo a /select, sin pasar por /login.
-  await expect(page).toHaveURL(new RegExp(`/account/${victim.accountId}/select$`));
+  await expect(page).toHaveURL(
+    new RegExp(`/account/${victim.accountId}/select$`),
+  );
 
   const doctorMeResponse = await page.request.get(`${API_BASE_URL}/user/me`, {
     headers: { Origin: PLATFORM_BASE_URL },
@@ -87,5 +100,9 @@ test("CA-1, CA-2 y CA-3 (y CA-13/CA-14 de fix-auth-user-fields-input): la médic
   );
 
   await page.context().clearCookies();
-  await loginViaUi(page, victim.email, new RegExp(`/account/${victim.accountId}/select$`));
+  await loginViaUi(
+    page,
+    victim.email,
+    new RegExp(`/account/${victim.accountId}/select$`),
+  );
 });

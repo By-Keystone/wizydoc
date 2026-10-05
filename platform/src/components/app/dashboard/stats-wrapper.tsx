@@ -1,5 +1,5 @@
 import { Welcome } from "./welcome";
-import { ReactNode } from "react";
+import type { ReactNode } from "react";
 import { CopyButton } from "./copy-button";
 
 interface Props {

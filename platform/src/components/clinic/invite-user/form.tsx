@@ -4,9 +4,9 @@ import { useRef, useState, useTransition } from "react";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input, Select } from "@/components/common/form";
-import { Specialty } from "@/lib/api/specialty/types";
+import type { Specialty } from "@/lib/api/specialty/types";
 import {
-  LookedUpUser,
+  type LookedUpUser,
   lookupUserByEmailAction,
 } from "@/lib/actions/user/lookup-user-by-email.action";
 import { SpecialtyMultiSelect } from "./specialty-multi-select";
@@ -106,7 +106,11 @@ export const InviteUserForm = ({
             >
               Cancelar
             </Button>
-            <Button type="button" onClick={handleContinue} disabled={isLookingUp}>
+            <Button
+              type="button"
+              onClick={handleContinue}
+              disabled={isLookingUp}
+            >
               {isLookingUp ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />

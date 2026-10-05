@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { ClinicDoctor } from "@/lib/api/doctors/types";
+import type { ClinicDoctor } from "@/lib/api/doctors/types";
 
 interface Props {
   doctors: ClinicDoctor[];
@@ -51,7 +51,12 @@ export function DoctorStep({ doctors, onNext, onBack }: Props) {
       )}
 
       <div className="mt-8 flex gap-3">
-        <Button type="button" variant="outline" className="flex-1" onClick={onBack}>
+        <Button
+          type="button"
+          variant="outline"
+          className="flex-1"
+          onClick={onBack}
+        >
           Atrás
         </Button>
         <Button

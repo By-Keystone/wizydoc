@@ -1,5 +1,5 @@
 import { Input } from "@/components/common/form";
-import { Specialty } from "@/lib/api/specialty/types";
+import type { Specialty } from "@/lib/api/specialty/types";
 import { fieldError, type FieldErrors } from "@/lib/actions/types";
 
 interface SpecialtyFields extends Record<string, unknown> {

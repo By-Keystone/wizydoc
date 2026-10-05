@@ -40,7 +40,8 @@ const plans = [
     icon: ClipboardList,
     price: "S/ 79",
     period: "/ mes",
-    description: "Para consultorios que quieren llevar historia clínica de sus pacientes.",
+    description:
+      "Para consultorios que quieren llevar historia clínica de sus pacientes.",
     badge: "Más popular",
     highlight: true,
     features: [

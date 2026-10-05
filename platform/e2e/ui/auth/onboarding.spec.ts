@@ -1,7 +1,11 @@
 import { test, expect } from "@playwright/test";
 import { API_BASE_URL, PLATFORM_BASE_URL } from "../../support/env";
 import { uniqueEmail, uniqueName } from "../../support/users";
-import { completeOnboardingViaUi, confirmEmailViaLink, registerViaUi } from "../../support/ui";
+import {
+  completeOnboardingViaUi,
+  confirmEmailViaLink,
+  registerViaUi,
+} from "../../support/ui";
 
 /** docs/features/fix-auth-user-fields-input/plan.md — CA-12. */
 test("CA-12: registro, confirmación, login y onboarding dejan al médico en su cuenta nueva", async ({

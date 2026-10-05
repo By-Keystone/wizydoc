@@ -5,7 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import logo from "@/images/logo.png";
 import * as Dialog from "@radix-ui/react-dialog";
-import { FormEvent, useMemo, useState } from "react";
+import { type FormEvent, useMemo, useState } from "react";
 import { getNavLinks } from "./utils";
 import { authClient } from "@/lib/auth/client";
 import { useApp } from "@/context/app/app.context";
@@ -44,7 +44,7 @@ export function Sidebar() {
     router.push(`/account/${params.accountId}/select`);
     document.cookie = "resource_id=; path=/; max-age=0";
     document.cookie = "resource_type=; path=/; max-age=0";
-  }
+  };
 
   const basePath = `/account/${params.accountId}/${lowerResourceType}/${resourceId}`;
   const dashboardHref = `${basePath}/dashboard`;
@@ -76,13 +76,14 @@ export function Sidebar() {
   );
 
   const selectResourcesButton = (
-    <button className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-brand-gray transition-colors hover:bg-gray-100 hover:text-brand-ink"
+    <button
+      className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-brand-gray transition-colors hover:bg-gray-100 hover:text-brand-ink"
       onClick={handleChangeResource}
     >
       <ArrowLeftRight className="h-4 w-4 shrink-0" />
       Selección de recursos
     </button>
-  )
+  );
 
   return (
     <>
@@ -154,7 +155,10 @@ export function Sidebar() {
 
       {/* Sidebar fija en escritorio */}
       <aside className="hidden w-60 flex-col border-r border-gray-200 bg-white px-4 py-6 md:flex">
-        <Link href={dashboardHref} className="mb-8 flex items-center gap-2 px-2">
+        <Link
+          href={dashboardHref}
+          className="mb-8 flex items-center gap-2 px-2"
+        >
           <Image src={logo} alt="WizyDoc" className="h-7 w-auto" />
         </Link>
 

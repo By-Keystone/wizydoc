@@ -1,4 +1,4 @@
-import { AppointmentStatus, MembershipRole } from "@prisma/client";
+import type { AppointmentStatus, MembershipRole } from "@prisma/client";
 import z from "zod";
 
 export const getClinicAppointmentsParamsSchema = z.object({

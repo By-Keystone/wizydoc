@@ -20,7 +20,11 @@ export const CreateOrganizationForm = ({
 }: Props) => {
   return (
     <form id={formId} action={action}>
-      <Input label="Nombre" name="name" error={fieldError(fieldErrors, "name")} />
+      <Input
+        label="Nombre"
+        name="name"
+        error={fieldError(fieldErrors, "name")}
+      />
     </form>
   );
 };

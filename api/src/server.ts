@@ -1,5 +1,5 @@
 import "dotenv/config";
-import Fastify, { FastifyRequest } from "fastify";
+import Fastify, { type FastifyRequest } from "fastify";
 import cors from "@fastify/cors";
 import cookie from "@fastify/cookie";
 import sensible from "@fastify/sensible";

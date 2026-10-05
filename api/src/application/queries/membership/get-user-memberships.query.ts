@@ -1,4 +1,4 @@
-import { MembershipRole } from "@/domain/enums/membership-role";
+import type { MembershipRole } from "@/domain/enums/membership-role";
 import { z } from "zod";
 
 export const getUserMembershipsSchema = z.object({

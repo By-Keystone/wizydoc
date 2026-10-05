@@ -1,9 +1,9 @@
-import {
+import type {
   GetUserMembershipDto,
   IGetUserMembership,
   UserMembership,
 } from "@/application/queries/membership/get-user-membership.query";
-import { MembershipRole } from "@/domain/enums/membership-role";
+import type { MembershipRole } from "@/domain/enums/membership-role";
 import { getClient } from "../../transaction-context";
 
 const ROLE_RANK: Record<MembershipRole, number> = {

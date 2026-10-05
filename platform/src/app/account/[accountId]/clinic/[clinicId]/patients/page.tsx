@@ -12,7 +12,9 @@ export default async function ClinicPatientsPage({ params }: Props) {
 
   return (
     <div>
-      <h1 className="mb-6 text-2xl font-bold text-brand-teal-dark">Pacientes</h1>
+      <h1 className="mb-6 text-2xl font-bold text-brand-teal-dark">
+        Pacientes
+      </h1>
       <PatientsTable
         patients={patients}
         buildHref={(patientId) =>

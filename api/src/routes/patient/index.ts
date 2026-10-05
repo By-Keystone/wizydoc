@@ -13,8 +13,8 @@ import {
   UpdatePatientRecordUseCase,
 } from "@/application/use-cases/patient/update-patient-record.usecase";
 import { policy } from "@/plugins/policy";
-import { ZodTypeProvider } from "@fastify/type-provider-zod";
-import { FastifyInstance, FastifyReply } from "fastify";
+import type { ZodTypeProvider } from "@fastify/type-provider-zod";
+import type { FastifyInstance, FastifyReply } from "fastify";
 
 const patientPolicy = policy({
   account: true,

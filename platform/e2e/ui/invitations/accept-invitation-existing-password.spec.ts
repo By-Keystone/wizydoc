@@ -20,11 +20,18 @@ test("CA-4: médico que ya tiene contraseña e es invitado a otra sede ve 'Acept
   page,
 }) => {
   const admin = await createOnboardedAdmin({ emailPrefix: "admin-ca4" });
-  const organizationId = await createOrganizationResource(admin, uniqueName("ORG-CA4"));
+  const organizationId = await createOrganizationResource(
+    admin,
+    uniqueName("ORG-CA4"),
+  );
   const clinicA = await createClinicResource(admin, organizationId, {
     name: uniqueName("Sede A CA4"),
   });
-  const specialtyId = await createSpecialty(admin, organizationId, uniqueName("Pediatría"));
+  const specialtyId = await createSpecialty(
+    admin,
+    organizationId,
+    uniqueName("Pediatría"),
+  );
 
   const doctor = await invitePendingUser(admin, {
     resourceId: clinicA,
@@ -58,7 +65,10 @@ test("CA-4: médico que ya tiene contraseña e es invitado a otra sede ve 'Acept
     .poll(() => readLatestEmailTo(doctor.email)?.subject)
     .toBe("WizyDoc - Invitación");
   const secondInvitationEmail = readLatestEmailTo(doctor.email);
-  const secondInvitationLink = extractLink(secondInvitationEmail!.html, "/invite/accept");
+  const secondInvitationLink = extractLink(
+    secondInvitationEmail!.html,
+    "/invite/accept",
+  );
 
   await page.goto(secondInvitationLink);
 

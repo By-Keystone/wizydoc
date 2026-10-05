@@ -1,10 +1,10 @@
-import Link from "next/link"
-import { ArrowRight, Check } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { PLATFORM_URL } from "@/lib/platform-url"
+import Link from "next/link";
+import { ArrowRight, Check } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { PLATFORM_URL } from "@/lib/platform-url";
 
-const slots = ["09:00", "09:30", "10:30", "11:00", "11:30", "12:00"]
+const slots = ["09:00", "09:30", "10:30", "11:00", "11:30", "12:00"];
 
 export function Hero() {
   return (
@@ -15,7 +15,6 @@ export function Hero() {
 
       <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 gap-16 lg:grid-cols-2 lg:items-center">
-
           {/* Copy */}
           <div className="max-w-xl">
             <Badge variant="teal" className="mb-5">
@@ -42,7 +41,10 @@ export function Hero() {
                 "Cada reserva queda confirmada al instante",
                 "Sin llamadas ni agendas en papel",
               ].map((item) => (
-                <li key={item} className="flex items-center gap-2 text-sm text-brand-gray">
+                <li
+                  key={item}
+                  className="flex items-center gap-2 text-sm text-brand-gray"
+                >
                   <Check className="h-4 w-4 shrink-0 text-brand-teal" />
                   {item}
                 </li>
@@ -81,8 +83,12 @@ export function Hero() {
               {/* Doctor header */}
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs font-medium text-brand-gray">Reservar cita</p>
-                  <p className="mt-0.5 font-semibold text-brand-ink">Dr. García</p>
+                  <p className="text-xs font-medium text-brand-gray">
+                    Reservar cita
+                  </p>
+                  <p className="mt-0.5 font-semibold text-brand-ink">
+                    Dr. García
+                  </p>
                   <p className="text-xs text-brand-teal">Medicina General</p>
                 </div>
                 <div className="flex h-11 w-11 items-center justify-center rounded-full bg-brand-teal/10">
@@ -114,7 +120,9 @@ export function Hero() {
               {/* Patient data */}
               <div className="mt-5 rounded-xl bg-brand-surface p-3">
                 <p className="text-xs text-brand-gray">Paciente</p>
-                <p className="mt-0.5 text-sm font-medium text-brand-ink">María Rodríguez</p>
+                <p className="mt-0.5 text-sm font-medium text-brand-ink">
+                  María Rodríguez
+                </p>
                 <p className="text-xs text-brand-gray">+52 55 1234 5678</p>
               </div>
 
@@ -137,5 +145,5 @@ export function Hero() {
         </div>
       </div>
     </section>
-  )
+  );
 }

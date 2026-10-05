@@ -1,6 +1,6 @@
 import { NotFound } from "@/application/errors/not-found.error";
 import {
-  AppointmentForMetrics,
+  type AppointmentForMetrics,
   buildPatientMetrics,
 } from "@/domain/services/patient-metrics";
 import { getClient } from "@/infrastructure/postgres/transaction-context";

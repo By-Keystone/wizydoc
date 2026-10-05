@@ -1,7 +1,7 @@
 import { TopNav } from "@/components/common";
 import { getMe } from "@/lib/auth/me";
 import { redirect } from "next/navigation";
-import { ReactNode } from "react";
+import type { ReactNode } from "react";
 
 export default async ({ children }: { children: ReactNode }) => {
   const me = await getMe();

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Users } from "lucide-react";
-import { ClinicWithUser } from "@/lib/api/clinic/types";
-import { Column, Table } from "../common/table";
+import type { ClinicWithUser } from "@/lib/api/clinic/types";
+import { type Column, Table } from "../common/table";
 
 interface Props {
   clinics: ClinicWithUser[];
@@ -57,11 +57,7 @@ const buildColumns = (
   },
 ];
 
-export const ClinicsTable = ({
-  clinics,
-  accountId,
-  organizationId,
-}: Props) => {
+export const ClinicsTable = ({ clinics, accountId, organizationId }: Props) => {
   return (
     <Table
       getRowKey={(row) => row.id}

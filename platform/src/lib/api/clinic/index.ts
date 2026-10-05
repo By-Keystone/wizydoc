@@ -1,5 +1,5 @@
 import { doFetchJson } from "../fetch";
-import {
+import type {
   ClinicAppointment,
   ClinicMetrics,
   ClinicUser,

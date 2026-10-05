@@ -1,5 +1,5 @@
 import { TriangleAlert } from "lucide-react";
-import { PatientRecord } from "@/lib/api/patients/types";
+import type { PatientRecord } from "@/lib/api/patients/types";
 import { calculateAge, formatDocument } from "./format";
 
 const initials = (name: string, lastName: string) =>

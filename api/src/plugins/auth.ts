@@ -2,7 +2,7 @@ import type { FastifyInstance, FastifyRequest } from "fastify";
 import fp from "fastify-plugin";
 import { fromNodeHeaders } from "better-auth/node";
 import auth from "@/infrastructure/vendors/auth/better-auth/auth";
-import { UserRole } from "@prisma/client";
+import type { UserRole } from "@prisma/client";
 
 /**
  * Identidad resuelta desde la sesión de Better Auth e inyectada en la request.
@@ -46,7 +46,6 @@ async function authPlugin(fastify: FastifyInstance) {
       role: (sessionUser.role as UserRole) ?? null,
     };
   });
-
 }
 
 export default fp(authPlugin, { name: "auth" });

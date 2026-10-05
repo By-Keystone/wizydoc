@@ -14,13 +14,13 @@ import {
   verifyInvitationTokenParamsSchema,
   VerifyInvitationTokenUseCase,
 } from "@/application/use-cases/user-invitation/verify-invitation-token.usecase";
-import { ZodTypeProvider } from "@fastify/type-provider-zod";
-import { FastifyInstance, FastifyRequest } from "fastify";
+import type { ZodTypeProvider } from "@fastify/type-provider-zod";
+import type { FastifyInstance, FastifyRequest } from "fastify";
 import { policy } from "@/plugins/policy";
 import auth from "@/infrastructure/vendors/auth/better-auth/auth";
 import { fromNodeHeaders } from "better-auth/node";
 
-interface UserInvitationRoutesOptions {}
+type UserInvitationRoutesOptions = {};
 
 // Sólo se loguean errName/errCode: el error de Prisma puede incluir el token en los argumentos de la consulta.
 function logUnhandledError(
@@ -133,11 +133,7 @@ export default async function userInvitationRoutes(
           });
         } catch (signInError) {
           // La contraseña ya quedó guardada: un fallo al iniciar sesión no revierte nada; el usuario entra luego desde /login.
-          logUnhandledError(
-            request,
-            "[set-password:sign-in]",
-            signInError,
-          );
+          logUnhandledError(request, "[set-password:sign-in]", signInError);
 
           return reply.status(200).send({
             message: "Password successfully set",
@@ -154,9 +150,7 @@ export default async function userInvitationRoutes(
           return reply.status(422).send({ message: error.message });
 
         logUnhandledError(request, "[set-password]", error);
-        return reply.internalServerError(
-          "No se pudo configurar la contraseña",
-        );
+        return reply.internalServerError("No se pudo configurar la contraseña");
       }
     },
   );

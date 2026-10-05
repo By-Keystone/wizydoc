@@ -1,8 +1,12 @@
-import Link from "next/link"
-import Image from "next/image"
-import logo from "@/images/logo.png"
+import Link from "next/link";
+import Image from "next/image";
+import logo from "@/images/logo.png";
 
-export default function AuthLayout({ children }: { children: React.ReactNode }) {
+export default function AuthLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <div className="min-h-screen bg-gradient-to-br from-brand-surface via-white to-brand-surface flex flex-col">
       <header className="px-6 py-5">
@@ -19,5 +23,5 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         © {new Date().getFullYear()} WizyDoc. Todos los derechos reservados.
       </footer>
     </div>
-  )
+  );
 }

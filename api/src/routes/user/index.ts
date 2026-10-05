@@ -1,18 +1,18 @@
 import { ApplicationError } from "@/application/errors/application.errors";
-import { IEmailService } from "@/application/ports/email-service.port";
+import type { IEmailService } from "@/application/ports/email-service.port";
 import { getUserMembershipSchema } from "@/application/queries/membership/get-user-membership.query";
 import {
   inviteUserSchema,
   InviteUserUseCase,
 } from "@/application/use-cases/user/invite-user.usecase";
 import { policy } from "@/plugins/policy";
-import { IAccountRepository } from "@/domain/repositories/account.repository";
-import { IUserRepository } from "@/domain/repositories/user.repository";
-import { ITransactionManager } from "@/domain/services/transaction-manager";
+import type { IAccountRepository } from "@/domain/repositories/account.repository";
+import type { IUserRepository } from "@/domain/repositories/user.repository";
+import type { ITransactionManager } from "@/domain/services/transaction-manager";
 import { GetUserMembership } from "@/infrastructure/postgres/queries/membership/get-user-membership.query";
 import { UserMembershipsQuery } from "@/infrastructure/postgres/queries/membership/get-user-memberships.query";
-import { ZodTypeProvider } from "@fastify/type-provider-zod";
-import { FastifyInstance } from "fastify";
+import type { ZodTypeProvider } from "@fastify/type-provider-zod";
+import type { FastifyInstance } from "fastify";
 
 interface UserRoutesOptions {
   userRepository: IUserRepository;
