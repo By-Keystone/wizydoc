@@ -2,6 +2,8 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   reactStrictMode: false,
+  // Los e2e levantan otro `next dev` y no pueden compartir la carpeta del de desarrollo.
+  distDir: process.env.NEXT_DIST_DIR || ".next",
   experimental: {
     externalDir: true,
   },

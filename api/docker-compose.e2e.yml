@@ -1,0 +1,11 @@
+name: wizydoc-e2e
+services:
+  db:
+    image: postgres:17-alpine
+    container_name: wizydoc-db-test
+    environment:
+      POSTGRES_USER: wizydoc
+      POSTGRES_PASSWORD: wizydoc
+      POSTGRES_DB: wizydoc_test
+    ports:
+      - "127.0.0.1:5433:5432"
