@@ -1,5 +1,11 @@
 .open-next
 .next
+next-env.d.ts
 node_modules
 .env
+.env.e2e
+.next-e2e/
+e2e/.artifacts/
+test-results/
+playwright-report/
 tsconfig.tsbuildinfo

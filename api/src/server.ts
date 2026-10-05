@@ -11,7 +11,7 @@ import authPlugin from "./plugins/auth";
 import policyPlugin, { policy } from "./plugins/policy";
 import entitlementsPlugin from "./plugins/entitlements";
 import { PrismaUserRepository } from "./infrastructure/postgres/repositories/user.repository";
-import { SESEmailService } from "./infrastructure/services/email-service/ses.service";
+import { createEmailService } from "./infrastructure/services/email-service/factory";
 import { ClinicRepository } from "./infrastructure/postgres/repositories/clinic.repository";
 import clinicRoutes from "./routes/clinic/index";
 import clinicPublicRoutes from "./routes/clinic/public";
@@ -51,10 +51,7 @@ fastify.setSerializerCompiler(serializerCompiler);
 
 async function start() {
   const userRepository = new PrismaUserRepository();
-  const emailService = new SESEmailService({
-    region: process.env.AWS_REGION!,
-    from: process.env.EMAIL_FROM!,
-  });
+  const emailService = createEmailService();
 
   const clinicRepository = new ClinicRepository();
   const organizationRepository = new OrganizationRepository();
