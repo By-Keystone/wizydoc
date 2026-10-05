@@ -26,4 +26,15 @@ export class PrismaUserRepository implements IUserRepository {
     const user = await getClient().user.update({ where: { id }, data });
     return toDomain(user);
   }
+
+  async assignAccountIfNone(
+    userId: string,
+    accountId: string,
+  ): Promise<boolean> {
+    const { count } = await getClient().user.updateMany({
+      where: { id: userId, accountId: null },
+      data: { accountId, onboardingCompleted: true },
+    });
+    return count === 1;
+  }
 }

@@ -105,6 +105,13 @@ export interface TestPrisma {
       where: Record<string, unknown>;
     }): Promise<{ id: string; name: string; organizationId: string } | null>;
   };
+  account: {
+    count(args: { where: Record<string, unknown> }): Promise<number>;
+    findFirst(args: { where: Record<string, unknown> }): Promise<{ id: string; ownerId: string } | null>;
+  };
+  subscription: {
+    count(args: { where: Record<string, unknown> }): Promise<number>;
+  };
   $queryRaw<T = unknown>(query: TemplateStringsArray, ...values: unknown[]): Promise<T>;
   $disconnect(): Promise<void>;
 }
