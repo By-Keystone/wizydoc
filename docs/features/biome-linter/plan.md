@@ -112,9 +112,9 @@ Base: las recomendadas de Biome 2. Ajustes:
   tipos**, sin cambiar comportamiento:
   `api/src/routes/organization/index.ts` (`request.params as any`) y
   `platform/src/components/clinic/base-form.tsx` (`clinic?: any`).
-- **`style/noNonNullAssertion`**: en Biome 2 no está en las recomendadas; se
-  deja así. Hay 3 usos en `api/src` y varios en `platform/e2e` después de
-  comprobar que el dato existe.
+- **`style/noNonNullAssertion`**: en Biome 2.4.13 es recomendada con severidad
+  de aviso; se deja así. Hay 20 usos en api y 11 en platform, casi todos
+  después de comprobar que el dato existe.
 - **`security/noDangerouslySetInnerHtml`**: 1 caso legítimo, el JSON-LD
   estático de `web/src/app/layout.tsx`. Se suprime en esa línea con
   `// biome-ignore lint/security/noDangerouslySetInnerHtml: JSON-LD estático, sin datos del usuario`.
