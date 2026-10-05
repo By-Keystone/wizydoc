@@ -4,6 +4,10 @@ import { getClinicAppointmentsParamsSchema } from "@/application/queries/clinic/
 import { getClinicMetricsParamsSchema } from "@/application/queries/clinic/get-clinic-metrics.query";
 import { getClinicUsersSchema } from "@/application/queries/clinic/get-clinic-users.query";
 import {
+  lookupAccountUserBodySchema,
+  lookupAccountUserParamsSchema,
+} from "@/application/queries/user/lookup-account-user.query";
+import {
   GetDoctorAvailabilityDto,
   getDoctorAvailabilityParamsSchema,
   GetDoctorAvailabilityUseCase,
@@ -24,6 +28,7 @@ import { IClinicRepository } from "@/domain/repositories/clinic.repository";
 import { GetClinicAppointmentsQuery } from "@/infrastructure/postgres/queries/clinic/get-clinic-appointments.query";
 import { GetClinicMetricsQuery } from "@/infrastructure/postgres/queries/clinic/get-clinic-metrics.query";
 import { GetClinicUsersQuery } from "@/infrastructure/postgres/queries/clinic/get-clinic-users.query";
+import { LookupAccountUserQuery } from "@/infrastructure/postgres/queries/user/lookup-account-user.query";
 import { policy, requireMembership } from "@/plugins/policy";
 import { ZodTypeProvider } from "@fastify/type-provider-zod";
 import { FastifyInstance } from "fastify";
@@ -123,6 +128,47 @@ export default async function clinicRoutes(
         console.error("Error ocurred when getting clinic users:", error);
         return reply.internalServerError(
           "Error ocurred when getting clinic users",
+        );
+      }
+    },
+  );
+
+  // Toda la cuenta, no sólo esta sede (reinvitar entre sedes); POST para que el correo no quede en logs de acceso.
+  app.post(
+    "/clinic/:resourceId/users/lookup",
+    {
+      schema: {
+        params: lookupAccountUserParamsSchema,
+        body: lookupAccountUserBodySchema,
+      },
+      ...policy({
+        account: true,
+        confirmed: true,
+        onboarded: true,
+        roles: ["ADMIN"],
+      }),
+    },
+    async (request, reply) => {
+      try {
+        const query = new LookupAccountUserQuery();
+
+        const { resourceId } = request.params;
+        const { email } = request.body;
+
+        const user = await query.execute({ resourceId, email });
+
+        return reply.status(200).send({ user });
+      } catch (error) {
+        const errName = error instanceof Error ? error.name : "UnknownError";
+        const errCode =
+          error && typeof error === "object" && "code" in error
+            ? error.code
+            : undefined;
+
+        request.log.error({ errName, errCode }, "[lookup-account-user]");
+
+        return reply.internalServerError(
+          "Ocurrió un error al buscar el usuario",
         );
       }
     },

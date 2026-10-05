@@ -1,10 +1,6 @@
 import { IEmailService } from "@/application/ports/email-service.port";
 import { getUserMembershipSchema } from "@/application/queries/membership/get-user-membership.query";
 import {
-  GetUserByEmailQuery,
-  getUserByEmailQueryParamsSchema,
-} from "@/application/queries/user/get-user-by-email.query";
-import {
   inviteUserSchema,
   InviteUserUseCase,
 } from "@/application/use-cases/user/invite-user.usecase";
@@ -14,7 +10,6 @@ import { ITransactionManager } from "@/domain/services/transaction-manager";
 import { GetUserMembership } from "@/infrastructure/postgres/queries/membership/get-user-membership.query";
 import { UserMembershipsQuery } from "@/infrastructure/postgres/queries/membership/get-user-memberships.query";
 import { ZodTypeProvider } from "@fastify/type-provider-zod";
-import { PrismaClientKnownRequestError } from "@prisma/client/runtime/client";
 import { FastifyInstance } from "fastify";
 
 interface UserRoutesOptions {
@@ -156,35 +151,6 @@ export default async function userRoutes(
         return reply
           .status(500)
           .send({ message: "Ha ocurrido un error al invitar al usuario" });
-      }
-    },
-  );
-
-  app.get(
-    "/by-email",
-    {
-      schema: { querystring: getUserByEmailQueryParamsSchema },
-      ...policy({ account: true, confirmed: true, onboarded: true }),
-    },
-    async (request, reply) => {
-      try {
-        const query = new GetUserByEmailQuery();
-
-        const user = await query.execute({ email: request.query.email });
-
-        return reply.status(200).send({ user });
-      } catch (error) {
-        if (
-          error instanceof PrismaClientKnownRequestError &&
-          error.code === "P2025"
-        )
-          return reply.status(404).send({ user: null });
-
-        console.error("Ocurrió un error buscando usuario por correo: ", error);
-
-        return reply
-          .status(500)
-          .send({ message: "Ocurrió un error al buscar usuario por correo" });
       }
     },
   );
