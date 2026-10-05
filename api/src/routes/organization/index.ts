@@ -46,8 +46,7 @@ export default async function organizationRoutes(
 
   const app = fastify.withTypeProvider<ZodTypeProvider>();
 
-  // Crea la organización raíz de la cuenta: todavía no hay recurso sobre el que
-  // comprobar membership, así que la política sólo cubre el estado del usuario.
+  // Sin recurso en la URL: el rol lo comprueba el caso de uso.
   app.post(
     "/organization",
     {
@@ -63,7 +62,6 @@ export default async function organizationRoutes(
 
         const params = request.params as any;
 
-        console.log(request.user);
         const body: CreateOrganizationDto = {
           accountId: request.user.accountId!,
           name: request.body.name,
@@ -79,7 +77,14 @@ export default async function organizationRoutes(
             message:
               error.message ?? "Ha ocurrido un error al crear la organización",
           });
-        console.error("An error occurred when creating organization:", error);
+
+        const errName = error instanceof Error ? error.name : "UnknownError";
+        const errCode =
+          error && typeof error === "object" && "code" in error
+            ? error.code
+            : undefined;
+
+        request.log.error({ errName, errCode }, "[create-organization]");
 
         return reply.internalServerError(
           "An error occurred when creating organization",

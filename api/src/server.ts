@@ -144,6 +144,7 @@ async function start() {
   await fastify.register(userRoutes, {
     prefix: "/user",
     userRepository,
+    accountRepository,
     transactionManager,
     emailService,
   });

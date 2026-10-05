@@ -8,4 +8,5 @@ export interface CreateAccountDto {
 export interface IAccountRepository {
   save(dto: CreateAccountDto): Promise<Account>;
   findByOwnerId(ownerId: string): Promise<Account | undefined>;
+  findById(id: string): Promise<Account | undefined>;
 }
