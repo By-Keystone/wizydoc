@@ -152,6 +152,20 @@ export interface TestPrisma {
       where: Record<string, unknown>;
     }): Promise<{ id: string; name: string; organizationId: string } | null>;
   };
+  patient: {
+    count(args: { where: Record<string, unknown> }): Promise<number>;
+    findFirst(args: { where: Record<string, unknown> }): Promise<{
+      id: string;
+      name: string;
+      lastName: string;
+      email: string;
+      phone: string;
+      birthDate: string | null;
+    } | null>;
+  };
+  appointment: {
+    count(args: { where: Record<string, unknown> }): Promise<number>;
+  };
   $queryRaw<T = unknown>(
     query: TemplateStringsArray,
     ...values: unknown[]

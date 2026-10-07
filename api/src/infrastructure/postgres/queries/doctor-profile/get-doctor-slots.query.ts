@@ -3,6 +3,7 @@ import type {
   GetDoctorSlotsDto,
   IGetDoctorSlotsQuery,
 } from "@/application/queries/doctor-profile/get-doctor-slots.query";
+import { SLOT_DURATION_MINUTES } from "@/domain/entities/availability/entity";
 import {
   addDays,
   startOfDay,
@@ -10,8 +11,6 @@ import {
   toWallTime,
 } from "@/domain/services/clinic-time";
 import { getClient } from "../../transaction-context";
-
-export const SLOT_DURATION_MINUTES = 30;
 
 /**
  * Una cita ocupa el hueco salvo que se haya cancelado o el paciente no se haya
