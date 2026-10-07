@@ -1,10 +1,12 @@
 import { NotFound } from "@/application/errors/not-found.error";
-import { UnprocessableEntity } from "@/application/errors/unprocessable-entity.errors";
 import type { IEmailService } from "@/application/ports/email-service.port";
 import { CLINIC_TIME_ZONE, toInstant } from "@/domain/services/clinic-time";
 import { getClient } from "@/infrastructure/postgres/transaction-context";
 import { renderTemplate } from "@/infrastructure/services/email-service/template-renderer";
 import z from "zod";
+
+const BOOKING_OPTION_UNAVAILABLE =
+  "Ese médico o especialidad ya no está disponible en esta sede. Recarga la página y vuelve a elegirlos.";
 
 export const createAppointmentSchema = z.object({
   patientName: z.string(),
@@ -30,8 +32,8 @@ export const createAppointmentSchema = z.object({
   scheduledAt: z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/, {
     error: "scheduledAt debe tener formato YYYY-MM-DDTHH:mm",
   }),
-  doctorProfileId: z.string(),
-  clinicId: z.string(),
+  doctorProfileId: z.uuid(),
+  clinicId: z.uuid(),
 });
 
 export type CreateAppointmentDto = z.infer<typeof createAppointmentSchema>;
@@ -42,24 +44,45 @@ interface Props {
 export class CreateApointmentUseCase {
   constructor(private readonly props: Props) {}
 
+  private async findBookableDoctor(
+    dto: CreateAppointmentDto,
+    organizationId: string,
+  ) {
+    return getClient().doctorProfile.findFirst({
+      where: {
+        id: dto.doctorProfileId,
+        clinicId: dto.clinicId,
+        specialties: { some: { name: dto.specialty, organizationId } },
+        user: {
+          resourceMemberships: {
+            // DoctorProfile no tiene deletedAt: quitar al médico de la sede se registra en su membership.
+            some: { resourceId: dto.clinicId, deletedAt: null },
+          },
+        },
+      },
+      select: { user: { select: { name: true, lastName: true } } },
+    });
+  }
+
   async execute(dto: CreateAppointmentDto) {
     const client = getClient();
 
-    const clinic = await client.clinic.findFirst({
+    const clinic = await client.clinic.findUnique({
       where: { resourceId: dto.clinicId },
-      include: { resource: { select: { accountId: true } } },
+      include: {
+        resource: { select: { accountId: true, parentResourceId: true } },
+      },
     });
 
-    if (!clinic?.resource)
-      throw new UnprocessableEntity("La clínica no pertenece a ningún recurso");
+    if (!clinic?.resource.parentResourceId)
+      throw new NotFound(BOOKING_OPTION_UNAVAILABLE);
 
-    const profile = await client.doctorProfile.findUnique({
-      where: { id: dto.doctorProfileId },
-      select: { user: { select: { name: true, lastName: true } } },
-    });
+    const profile = await this.findBookableDoctor(
+      dto,
+      clinic.resource.parentResourceId,
+    );
 
-    if (!clinic) throw new NotFound("Resource does not exist");
-    if (!profile) throw new NotFound("User is not a doctor");
+    if (!profile) throw new NotFound(BOOKING_OPTION_UNAVAILABLE);
 
     const [date, time] = dto.scheduledAt.split("T");
 
