@@ -45,7 +45,12 @@ export default async function appointmentRoutes(
             .status(error.statusCode)
             .send({ message: error.message });
 
-        console.error("Ocurrio un error al crear appointment", error);
+        const errName = error instanceof Error ? error.name : "UnknownError";
+        const errCode =
+          error && typeof error === "object" && "code" in error
+            ? error.code
+            : undefined;
+        request.log.error({ errName, errCode }, "[create-appointment]");
 
         return reply
           .status(500)

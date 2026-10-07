@@ -144,21 +144,34 @@ export class CreateApointmentUseCase {
       timeZone: CLINIC_TIME_ZONE,
     }).format(appointment.scheduledAt);
 
-    const html = await renderTemplate("confirm-appointment", {
-      patientName: patient.name,
-      patientLastName: patient.lastName,
-      scheduledAt,
-      durationMinutes: appointment.durationMinutes,
-      specialty: appointment.specialty,
-      doctorName: `${profile.user.name} ${profile.user.lastName}`,
-      clinicName: clinic.name,
-      clinicAddress: clinic.address,
-    });
+    try {
+      const html = await renderTemplate("confirm-appointment", {
+        patientName: patient.name,
+        patientLastName: patient.lastName,
+        scheduledAt,
+        durationMinutes: appointment.durationMinutes,
+        specialty: appointment.specialty,
+        doctorName: `${profile.user.name} ${profile.user.lastName}`,
+        clinicName: clinic.name,
+        clinicAddress: clinic.address,
+      });
 
-    await this.props.emailService.send({
-      subject: `Tu cita en ${clinic.name} está reservada`,
-      to: patient.email,
-      html,
-    });
+      await this.props.emailService.send({
+        subject: `Tu cita en ${clinic.name} está reservada`,
+        to: patient.email,
+        html,
+      });
+    } catch (error) {
+      // La cita ya existe: un 500 haría que el paciente reintente y choque con su propia reserva.
+      const errName = error instanceof Error ? error.name : "UnknownError";
+      const errCode =
+        error && typeof error === "object" && "code" in error
+          ? error.code
+          : undefined;
+      console.error(
+        { appointmentId: appointment.id, errName, errCode },
+        "[create-appointment-email]",
+      );
+    }
   }
 }
