@@ -39,20 +39,24 @@ export class GetDoctorSlotsQuery implements IGetDoctorSlotsQuery {
     const from = startOfDay(dto.from);
     const to = startOfDay(addDays(dto.to, 1));
 
-    const [availabilities, appointments] = await Promise.all([
-      client.availability.findMany({
-        where: { doctorProfileId: dto.doctorProfileId },
-        select: { dayOfWeek: true, startTime: true, endTime: true },
-      }),
-      client.appointment.findMany({
-        where: {
-          doctorProfileId: dto.doctorProfileId,
-          scheduledAt: { gte: from, lt: to },
-          status: { in: [...BLOCKING_STATUSES] },
-        },
-        select: { scheduledAt: true },
-      }),
-    ]);
+    const isBookable = await this.isBookable(dto.doctorProfileId);
+
+    const [availabilities, appointments] = isBookable
+      ? await Promise.all([
+          client.availability.findMany({
+            where: { doctorProfileId: dto.doctorProfileId },
+            select: { dayOfWeek: true, startTime: true, endTime: true },
+          }),
+          client.appointment.findMany({
+            where: {
+              doctorProfileId: dto.doctorProfileId,
+              scheduledAt: { gte: from, lt: to },
+              status: { in: [...BLOCKING_STATUSES] },
+            },
+            select: { scheduledAt: true },
+          }),
+        ])
+      : [[], []];
 
     // Cada cita se lleva a la hora de reloj de la clínica para poder cruzarla
     // con los horarios del doctor, que están en esa misma referencia.
@@ -95,5 +99,28 @@ export class GetDoctorSlotsQuery implements IGetDoctorSlotsQuery {
     }
 
     return { durationMinutes: SLOT_DURATION_MINUTES, days };
+  }
+
+  private async isBookable(doctorProfileId: string): Promise<boolean> {
+    const client = getClient();
+
+    const profile = await client.doctorProfile.findUnique({
+      where: { id: doctorProfileId },
+      select: { userId: true, clinicId: true },
+    });
+    if (!profile) return false;
+
+    const membership = await client.userResourceMembership.findUnique({
+      where: {
+        userId_resourceId: {
+          userId: profile.userId,
+          resourceId: profile.clinicId,
+        },
+        deletedAt: null,
+      },
+      select: { id: true },
+    });
+
+    return membership !== null;
   }
 }

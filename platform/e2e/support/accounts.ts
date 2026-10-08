@@ -168,6 +168,7 @@ export interface SeededMember {
   context: APIRequestContext;
   email: string;
   userId: string;
+  membershipId: string;
   name: string;
   lastName: string;
   phone: string;
@@ -200,7 +201,7 @@ export async function createMemberWithRole(
   );
 
   const prisma = await getTestPrisma();
-  await prisma.userResourceMembership.create({
+  const membership = await prisma.userResourceMembership.create({
     data: {
       userId,
       resourceId: params.resourceId,
@@ -214,7 +215,15 @@ export async function createMemberWithRole(
     data: { accountId: params.accountId, onboardingCompleted: true },
   });
 
-  return { context, email, userId, name, lastName, phone };
+  return {
+    context,
+    email,
+    userId,
+    membershipId: membership.id,
+    name,
+    lastName,
+    phone,
+  };
 }
 
 /** `POST /:resourceId/specialty` no devuelve id: se lee de `GET /:resourceId/specialties`. */

@@ -11,11 +11,7 @@ import {
   createSpecialty,
   inviteUserViaApi,
 } from "../../support/accounts";
-import {
-  createConfirmedUser,
-  uniqueEmail,
-  uniqueName,
-} from "../../support/users";
+import { uniqueEmail, uniqueName } from "../../support/users";
 import { getTestPrisma } from "../../support/db";
 
 /**
@@ -875,17 +871,17 @@ test.describe("Consecuencia del arreglo en el booking público", () => {
     // Vínculo que la app ya no deja crear (ver CA-6 a CA-8): se simula con
     // Prisma para comprobar que, si existiera por datos previos al arreglo, el
     // doctor desaparece del booking en vez de filtrar el nombre ajeno.
-    const corruptedUserContext = await createApiContext();
-    const { userId: corruptedUserId } = await createConfirmedUser(
-      corruptedUserContext,
-      {
-        emailPrefix: "doctor-corrupto-extra",
-      },
-    );
+    const corruptedDoctor = await createMemberWithRole({
+      accountId: admin.accountId,
+      resourceId: clinicA,
+      role: "DOCTOR",
+      createdBy: admin.userId,
+      emailPrefix: "doctor-corrupto-extra",
+    });
     const prisma = await getTestPrisma();
     await prisma.doctorProfile.create({
       data: {
-        userId: corruptedUserId,
+        userId: corruptedDoctor.userId,
         clinicId: clinicA,
         specialties: { connect: [{ id: foreignSpecialtyId }] },
       },

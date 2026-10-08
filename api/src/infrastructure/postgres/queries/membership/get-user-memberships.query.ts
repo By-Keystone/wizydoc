@@ -22,7 +22,7 @@ export class UserMembershipsQuery implements IUserMembershipsQuery {
     accountId: string,
   ): Promise<OrganizationGroup[]> {
     const memberships = await getClient().userResourceMembership.findMany({
-      where: { userId, accountId },
+      where: { userId, accountId, deletedAt: null },
       include: {
         user: true,
         resource: {

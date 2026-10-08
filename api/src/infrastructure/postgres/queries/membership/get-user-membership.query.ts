@@ -28,7 +28,7 @@ export class GetUserMembership implements IGetUserMembership {
     } as const;
 
     const direct = await getClient().userResourceMembership.findUnique({
-      where: { userId_resourceId: { userId, resourceId } },
+      where: { userId_resourceId: { userId, resourceId }, deletedAt: null },
       include: { resource: { include: resourceInclude } },
     });
 
@@ -60,6 +60,7 @@ export class GetUserMembership implements IGetUserMembership {
     const inherited = await getClient().userResourceMembership.findUnique({
       where: {
         userId_resourceId: { userId, resourceId: organizationId },
+        deletedAt: null,
       },
     });
 
