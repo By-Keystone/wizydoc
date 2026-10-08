@@ -1,34 +1,28 @@
 "use server";
 
-import { tags } from "@/lib/api/clinic";
+import { tags } from "@/lib/api/organizations";
 import { doFetchJson } from "@/lib/api/fetch";
 import { toActionState } from "@/lib/actions/to-action-state";
 import { getSession } from "@/lib/auth/session";
 import { revalidateTag } from "next/cache";
 import z, { treeifyError } from "zod";
 
-const inviteUserSchema = z
-  .object({
-    name: z.string().min(1),
-    lastName: z.string().min(1),
-    email: z.string().email(),
-    phone: z.string().min(1),
-    role: z.enum(["DOCTOR", "USER"]),
-    specialtyIds: z.array(z.string()).optional(),
-  })
-  .refine((data) => data.role !== "DOCTOR" || !!data.specialtyIds?.length, {
-    message: "Selecciona al menos una especialidad",
-    path: ["specialtyIds"],
-  });
+const inviteOrganizationUserSchema = z.object({
+  name: z.string().min(1, "Ingresa el nombre"),
+  lastName: z.string().min(1, "Ingresa el apellido"),
+  email: z.string().email("Ingresa un correo electrónico válido"),
+  phone: z.string().min(1, "Ingresa el teléfono"),
+  role: z.enum(["ADMIN", "USER"], { error: "Elige un rol" }),
+});
 
-export type InviteUserState =
+export type InviteOrganizationUserState =
   | { status: "idle" }
   | {
       status: "error";
       message: string;
       fieldErrors?: Partial<
         Record<
-          keyof z.infer<typeof inviteUserSchema>,
+          keyof z.infer<typeof inviteOrganizationUserSchema>,
           { errors: string[] } | undefined
         >
       >;
@@ -36,21 +30,20 @@ export type InviteUserState =
   | { status: "success" }
   | { status: "auth-expired" };
 
-export async function inviteUserAction(
-  clinicId: string,
-  _prevState: InviteUserState,
+export async function inviteOrganizationUserAction(
+  organizationId: string,
+  _prevState: InviteOrganizationUserState,
   data: FormData,
-): Promise<InviteUserState> {
+): Promise<InviteOrganizationUserState> {
   const session = await getSession();
   if (!session) return { status: "auth-expired" };
 
-  const parsed = inviteUserSchema.safeParse({
+  const parsed = inviteOrganizationUserSchema.safeParse({
     name: data.get("name"),
     lastName: data.get("lastName"),
     email: data.get("email"),
     phone: data.get("phone"),
     role: data.get("role"),
-    specialtyIds: data.getAll("specialtyIds"),
   });
 
   if (!parsed.success) {
@@ -62,12 +55,15 @@ export async function inviteUserAction(
   }
 
   try {
-    await doFetchJson(`/clinic/${encodeURIComponent(clinicId)}/invitations`, {
-      method: "POST",
-      body: JSON.stringify(parsed.data),
-    });
+    await doFetchJson(
+      `/organization/${encodeURIComponent(organizationId)}/invitations`,
+      {
+        method: "POST",
+        body: JSON.stringify(parsed.data),
+      },
+    );
 
-    revalidateTag(tags.clinicUsers(clinicId));
+    revalidateTag(tags.organizationUsers(organizationId));
     return { status: "success" };
   } catch (error) {
     return toActionState(error);

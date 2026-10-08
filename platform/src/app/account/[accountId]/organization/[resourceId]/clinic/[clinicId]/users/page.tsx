@@ -18,7 +18,10 @@ export default async function ClinicUsersPage({ params }: Props) {
   return (
     <div>
       <UsersTopHeader specialties={specialties} />
-      <UsersTable users={users} />
+      <UsersTable
+        users={users}
+        emptyMessage="Esta sede aún no tiene usuarios."
+      />
     </div>
   );
 }

@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { InviteUserForm } from "./form";
 import { inviteUserAction } from "@/lib/actions/user/invite-user.action";
+import { lookupUserByEmailAction } from "@/lib/actions/user/lookup-user-by-email.action";
 import type { Specialty } from "@/lib/api/specialty/types";
 import { useFormAction } from "@/hooks/useFormAction";
 import { toast } from "@/lib/toast";
@@ -29,6 +30,11 @@ interface InviteUserFields extends Record<string, unknown> {
 }
 
 const FORM_ID = "invite-user-form";
+
+const CLINIC_ROLE_OPTIONS = [
+  { label: "Usuario", value: "USER" },
+  { label: "Doctor", value: "DOCTOR" },
+];
 
 export const InviteUserModal = ({ isOpen, setIsOpen, specialties }: Props) => {
   const { resourceId, clinicId } = useParams<{
@@ -69,7 +75,8 @@ export const InviteUserModal = ({ isOpen, setIsOpen, specialties }: Props) => {
           formId={FORM_ID}
           action={submit}
           organizationId={resourceId}
-          clinicId={clinicId}
+          roleOptions={CLINIC_ROLE_OPTIONS}
+          lookupUser={(email) => lookupUserByEmailAction(clinicId, email)}
           specialties={specialties}
           fieldErrors={fieldErrors}
           isPending={isPending}

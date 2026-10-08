@@ -12,13 +12,16 @@ import { MembershipRole } from "@prisma/client";
 import { randomBytes } from "node:crypto";
 import z from "zod";
 
-export const inviteUserBodySchema = z
-  .object({
-    // Better Auth busca al usuario en minúsculas al iniciar sesión.
-    email: z.email({ error: "Correo inválido" }).toLowerCase(),
-    name: z.string("Name is required"),
-    lastName: z.string("Lastname is required"),
-    phone: z.string("Phone is required"),
+const inviteeFieldsSchema = z.object({
+  // Better Auth busca al usuario en minúsculas al iniciar sesión.
+  email: z.email({ error: "Correo inválido" }).toLowerCase(),
+  name: z.string("Name is required"),
+  lastName: z.string("Lastname is required"),
+  phone: z.string("Phone is required"),
+});
+
+export const inviteUserBodySchema = inviteeFieldsSchema
+  .extend({
     role: z.enum(MembershipRole, { error: "Membership role is required" }),
     specialtyIds: z.array(z.string()).optional(),
   })
@@ -27,15 +30,28 @@ export const inviteUserBodySchema = z
     path: ["specialtyIds"],
   });
 
+export const inviteOrganizationUserBodySchema = inviteeFieldsSchema.extend({
+  role: z.enum(["ADMIN", "USER"], { error: "Membership role is required" }),
+});
+
 export const inviteUserParamsSchema = z.object({
   resourceId: z.uuid(),
 });
 
-export type InviteUserDto = z.infer<typeof inviteUserBodySchema> & {
+type InviteeFields = z.infer<typeof inviteeFieldsSchema>;
+
+export type InviteUserDto = InviteeFields & {
   resourceId: string;
   createdBy: string;
   accountId: string;
-};
+} & (
+    | {
+        resourceType: "CLINIC";
+        role: MembershipRole;
+        specialtyIds?: string[];
+      }
+    | { resourceType: "ORGANIZATION"; role: "ADMIN" | "USER" }
+  );
 
 interface InviteUserUseCaseService {
   emailService: IEmailService;
@@ -96,21 +112,32 @@ export class InviteUserUseCase {
     }
   }
 
+  // La política acepta cualquier recurso donde el usuario es ADMIN (también una sede por herencia): se exige el tipo de la ruta y la cuenta de la sesión.
+  private async findInvitationResource(
+    data: InviteUserDto,
+  ): Promise<{ name: string }> {
+    const client = getClient();
+    const where = {
+      resourceId: data.resourceId,
+      resource: { accountId: data.accountId },
+    };
+
+    if (data.resourceType === "ORGANIZATION") {
+      const organization = await client.organization.findFirst({ where });
+      if (!organization) throw new NotFound("Organización no encontrada");
+      return organization;
+    }
+
+    const clinic = await client.clinic.findFirst({ where });
+    if (!clinic) throw new NotFound("Sede no encontrada");
+    return clinic;
+  }
+
   async execute(data: InviteUserDto) {
     await this.tx.runInTransaction(async () => {
       const client = getClient();
 
-      // La política también acepta el id de una organización donde el usuario es ADMIN: esto la rechaza como sede y acota por la cuenta de la sesión.
-      const resource = await client.clinic.findFirst({
-        where: {
-          resourceId: data.resourceId,
-          resource: { accountId: data.accountId },
-        },
-      });
-
-      if (!resource) {
-        throw new NotFound("Sede no encontrada");
-      }
+      const resource = await this.findInvitationResource(data);
 
       let user = await client.user.findUnique({ where: { email: data.email } });
 
@@ -131,7 +158,7 @@ export class InviteUserUseCase {
           },
         });
 
-      if (data.role === "DOCTOR") {
+      if (data.resourceType === "CLINIC" && data.role === "DOCTOR") {
         await this.assertDoctorSeatAvailable(data.accountId, user.id);
         const uniqueSpecialtyIds =
           await this.assertSpecialtiesBelongToClinicOrganization(
@@ -142,7 +169,7 @@ export class InviteUserUseCase {
         await client.doctorProfile.create({
           data: {
             userId: user.id,
-            clinicId: resource.resourceId,
+            clinicId: data.resourceId,
             specialties: {
               connect: uniqueSpecialtyIds.map((id) => ({ id })),
             },

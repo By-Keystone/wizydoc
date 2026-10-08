@@ -1,14 +1,11 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { type ReactNode, useId, useRef, useState, useTransition } from "react";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input, Select } from "@/components/common/form";
 import type { Specialty } from "@/lib/api/specialty/types";
-import {
-  type LookedUpUser,
-  lookupUserByEmailAction,
-} from "@/lib/actions/user/lookup-user-by-email.action";
+import type { LookedUpUser } from "@/lib/actions/user/lookup-user-by-email.action";
 import { SpecialtyMultiSelect } from "./specialty-multi-select";
 import { fieldError, type FieldErrors } from "@/lib/actions/types";
 
@@ -25,8 +22,10 @@ interface Props {
   formId: string;
   action: (formData: FormData) => void;
   organizationId: string;
-  clinicId: string;
-  specialties: Specialty[];
+  roleOptions: { label: string; value: string }[];
+  lookupUser: (email: string) => Promise<LookedUpUser | null>;
+  roleNotice?: (role: string) => ReactNode;
+  specialties?: Specialty[];
   isPending: boolean;
   onCancel: () => void;
   fieldErrors?: FieldErrors<InviteUserFields>;
@@ -36,17 +35,20 @@ export const InviteUserForm = ({
   formId,
   action,
   organizationId,
-  clinicId,
-  specialties,
+  roleOptions,
+  lookupUser,
+  roleNotice,
+  specialties = [],
   isPending,
   onCancel,
   fieldErrors,
 }: Props) => {
+  const roleNoticeId = useId();
   const formRef = useRef<HTMLFormElement>(null);
   const [step, setStep] = useState<"email" | "details">("email");
   const [email, setEmail] = useState("");
   const [emailError, setEmailError] = useState<string | null>(null);
-  const [role, setRole] = useState<"USER" | "DOCTOR">("USER");
+  const [role, setRole] = useState(roleOptions[0].value);
   const [existingUser, setExistingUser] = useState<LookedUpUser | null>(null);
   const [isLookingUp, startLookup] = useTransition();
 
@@ -64,7 +66,7 @@ export const InviteUserForm = ({
     setEmailError(null);
     setEmail(value);
     startLookup(async () => {
-      const user = await lookupUserByEmailAction(clinicId, value);
+      const user = await lookupUser(value);
       setExistingUser(user);
       setStep("details");
     });
@@ -149,13 +151,14 @@ export const InviteUserForm = ({
               : "Usuario nuevo — completa sus datos."}
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 min-[420px]:grid-cols-2">
             <Input
               key={`name-${existingUser ? email : "new"}`}
               label="Nombre"
               name="name"
               value={existingUser?.name}
               error={fieldError(fieldErrors, "name")}
+              disabled={isPending}
             />
             <Input
               key={`lastName-${existingUser ? email : "new"}`}
@@ -163,6 +166,7 @@ export const InviteUserForm = ({
               name="lastName"
               value={existingUser?.lastName}
               error={fieldError(fieldErrors, "lastName")}
+              disabled={isPending}
             />
           </div>
 
@@ -172,18 +176,24 @@ export const InviteUserForm = ({
             name="phone"
             value={existingUser?.phone}
             error={fieldError(fieldErrors, "phone")}
+            disabled={isPending}
           />
 
           <Select
             label="Rol"
             name="role"
             value={role}
-            onChange={(e) => setRole(e.target.value as "USER" | "DOCTOR")}
-            options={[
-              { label: "Usuario", value: "USER" },
-              { label: "Doctor", value: "DOCTOR" },
-            ]}
+            onChange={(e) => setRole(e.target.value)}
+            options={roleOptions}
+            disabled={isPending}
+            aria-describedby={roleNotice ? roleNoticeId : undefined}
           />
+
+          {roleNotice && (
+            <div id={roleNoticeId} aria-live="polite">
+              {roleNotice(role)}
+            </div>
+          )}
 
           {role === "DOCTOR" && (
             <SpecialtyMultiSelect

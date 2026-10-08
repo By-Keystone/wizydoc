@@ -1,11 +1,12 @@
 import z from "zod";
 
 export const lookupAccountUserParamsSchema = z.object({
-  resourceId: z.string(),
+  resourceId: z.uuid(),
 });
 
 export const lookupAccountUserBodySchema = z.object({
-  email: z.email({ error: "Correo inválido" }),
+  // Los correos se guardan en minúsculas y la invitación también las normaliza.
+  email: z.email({ error: "Correo inválido" }).toLowerCase(),
 });
 
 export type LookupAccountUserDto = { resourceId: string; email: string };

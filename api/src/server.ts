@@ -142,6 +142,8 @@ async function start() {
   await fastify.register(clinicPublicRoutes);
   await fastify.register(organizationRoutes, {
     organizationRepository,
+    transactionManager,
+    emailService,
   });
 
   await fastify.register(userRoutes, {
