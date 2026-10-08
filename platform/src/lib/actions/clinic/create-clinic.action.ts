@@ -51,9 +51,9 @@ export async function createClinicAction(
   }
 
   try {
-    await doFetchJson("/clinic", {
+    await doFetchJson(`/organization/${organizationId}/clinics`, {
       method: "POST",
-      body: JSON.stringify({ ...parsed.data, organizationId }),
+      body: JSON.stringify(parsed.data),
     });
 
     revalidateTag(tags.organizationClinics(organizationId));

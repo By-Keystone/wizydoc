@@ -1,5 +1,6 @@
 import { ApplicationError } from "@/application/errors/application.errors";
 import { NotFound } from "@/application/errors/not-found.error";
+import type { IEmailService } from "@/application/ports/email-service.port";
 import { getClinicAppointmentsParamsSchema } from "@/application/queries/clinic/get-clinic-appointments.query";
 import { getClinicMetricsParamsSchema } from "@/application/queries/clinic/get-clinic-metrics.query";
 import { getClinicUsersSchema } from "@/application/queries/clinic/get-clinic-users.query";
@@ -20,11 +21,18 @@ import {
 } from "@/application/use-cases/availability/insert-availability.usecase";
 import {
   type CreateClinicDto,
-  createClinicSchema,
+  createClinicBodySchema,
+  createClinicParamsSchema,
   CreateClinicUseCase,
 } from "@/application/use-cases/clinic/create-clinic.usecase";
 import { GetClinicsUseCase } from "@/application/use-cases/clinic/get-clinics.usecase";
+import {
+  inviteUserBodySchema,
+  inviteUserParamsSchema,
+  InviteUserUseCase,
+} from "@/application/use-cases/user/invite-user.usecase";
 import type { IClinicRepository } from "@/domain/repositories/clinic.repository";
+import type { ITransactionManager } from "@/domain/services/transaction-manager";
 import { GetClinicAppointmentsQuery } from "@/infrastructure/postgres/queries/clinic/get-clinic-appointments.query";
 import { GetClinicMetricsQuery } from "@/infrastructure/postgres/queries/clinic/get-clinic-metrics.query";
 import { GetClinicUsersQuery } from "@/infrastructure/postgres/queries/clinic/get-clinic-users.query";
@@ -36,22 +44,31 @@ import type { FastifyInstance } from "fastify";
 
 export interface ClinicRoutesOptions {
   clinicRepository: IClinicRepository;
+  transactionManager: ITransactionManager;
+  emailService: IEmailService;
 }
 
 export default async function clinicRoutes(
   fastify: FastifyInstance,
   opts: ClinicRoutesOptions,
 ) {
-  const { clinicRepository } = opts;
+  const { clinicRepository, transactionManager, emailService } = opts;
 
   const app = fastify.withTypeProvider<ZodTypeProvider>();
 
-  // organizationId llega en el cuerpo: cuenta y rol los comprueba el caso de uso.
   app.post(
-    "/clinic",
+    "/organization/:resourceId/clinics",
     {
-      schema: { body: createClinicSchema },
-      ...policy({ account: true, confirmed: true, onboarded: true }),
+      schema: {
+        params: createClinicParamsSchema,
+        body: createClinicBodySchema,
+      },
+      ...policy({
+        account: true,
+        confirmed: true,
+        onboarded: true,
+        roles: ["ADMIN"],
+      }),
     },
     async (request, reply) => {
       try {
@@ -61,6 +78,7 @@ export default async function clinicRoutes(
           accountId: request.user.accountId!,
           createdBy: request.user.userId,
           ...request.body,
+          organizationId: request.params.resourceId,
         };
 
         const result = await useCase.execute(dto);
@@ -137,6 +155,58 @@ export default async function clinicRoutes(
         return reply.internalServerError(
           "Error ocurred when getting clinic users",
         );
+      }
+    },
+  );
+
+  app.post(
+    "/clinic/:resourceId/invitations",
+    {
+      schema: {
+        params: inviteUserParamsSchema,
+        body: inviteUserBodySchema,
+      },
+      ...policy({
+        account: true,
+        confirmed: true,
+        onboarded: true,
+        roles: ["ADMIN"],
+      }),
+    },
+    async (request, reply) => {
+      try {
+        const useCase = new InviteUserUseCase(transactionManager, {
+          emailService,
+        });
+
+        await useCase.execute({
+          ...request.body,
+          resourceId: request.params.resourceId,
+          createdBy: request.user.userId,
+          accountId: request.user.accountId!,
+        });
+
+        return reply
+          .status(200)
+          .send({ message: "Se ha enviado la invitación al usuario" });
+      } catch (error) {
+        if (error instanceof ApplicationError) {
+          return reply
+            .status(error.statusCode)
+            .send({ message: error.message });
+        }
+
+        const errName = error instanceof Error ? error.name : "UnknownError";
+        const errCode =
+          error && typeof error === "object" && "code" in error
+            ? error.code
+            : undefined;
+
+        request.log.error({ errName, errCode }, "[invite-user]");
+
+        return reply
+          .status(500)
+          .send({ message: "Ha ocurrido un error al invitar al usuario" });
       }
     },
   );

@@ -1,4 +1,3 @@
-import { Forbidden } from "@/application/errors/forbidden.error";
 import { NotFound } from "@/application/errors/not-found.error";
 import { PaymentRequired } from "@/application/errors/payment-required.error";
 import { isWithinLimit } from "@/domain/entities/subscription/entitlements";
@@ -11,14 +10,18 @@ import {
 } from "@/infrastructure/postgres/transaction-context";
 import z from "zod";
 
-export const createClinicSchema = z.object({
+export const createClinicBodySchema = z.object({
   name: z.string("Name  s required"),
   phone: z.string(),
   address: z.string(),
-  organizationId: z.uuid(),
 });
 
-export type CreateClinicDto = z.infer<typeof createClinicSchema> & {
+export const createClinicParamsSchema = z.object({
+  resourceId: z.uuid(),
+});
+
+export type CreateClinicDto = z.infer<typeof createClinicBodySchema> & {
+  organizationId: string;
   accountId: string;
   createdBy: string;
 };
@@ -29,35 +32,19 @@ export class CreateClinicUseCase {
     private readonly entitlementsQuery = new GetAccountEntitlements(),
   ) {}
 
-  // La organización llega en el cuerpo: sin esto, un ADMIN de otra organización de la misma cuenta podría colgarle sedes a ésta.
-  private async assertCanCreateClinic(dto: CreateClinicDto) {
+  // La política también acepta el id de una sede donde el usuario es ADMIN: esto la rechaza como organización y acota por la cuenta de la sesión.
+  private async assertOrganizationInAccount(dto: CreateClinicDto) {
     const organization = await getClient().organization.findFirst({
       where: { resourceId: dto.organizationId, accountId: dto.accountId },
       select: { resourceId: true },
     });
 
     if (!organization) throw new NotFound("Organización no encontrada");
-
-    const adminMembership = await getClient().userResourceMembership.findFirst({
-      where: {
-        userId: dto.createdBy,
-        accountId: dto.accountId,
-        resourceId: dto.organizationId,
-        role: "ADMIN",
-        deletedAt: null,
-      },
-      select: { id: true },
-    });
-
-    if (!adminMembership)
-      throw new Forbidden(
-        "Sólo un administrador de la organización puede crear sedes",
-      );
   }
 
   async execute(dto: CreateClinicDto) {
     return inTransaction(async () => {
-      await this.assertCanCreateClinic(dto);
+      await this.assertOrganizationInAccount(dto);
 
       await lockAccountQuota(dto.accountId);
 

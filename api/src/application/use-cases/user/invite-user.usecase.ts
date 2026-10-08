@@ -1,4 +1,3 @@
-import { Forbidden } from "@/application/errors/forbidden.error";
 import { NotFound } from "@/application/errors/not-found.error";
 import { PaymentRequired } from "@/application/errors/payment-required.error";
 import { UnprocessableEntity } from "@/application/errors/unprocessable-entity.errors";
@@ -13,7 +12,7 @@ import { MembershipRole } from "@prisma/client";
 import { randomBytes } from "node:crypto";
 import z from "zod";
 
-export const inviteUserSchema = z
+export const inviteUserBodySchema = z
   .object({
     // Better Auth busca al usuario en minúsculas al iniciar sesión.
     email: z.email({ error: "Correo inválido" }).toLowerCase(),
@@ -21,7 +20,6 @@ export const inviteUserSchema = z
     lastName: z.string("Lastname is required"),
     phone: z.string("Phone is required"),
     role: z.enum(MembershipRole, { error: "Membership role is required" }),
-    resourceId: z.string("Resource ID is required"),
     specialtyIds: z.array(z.string()).optional(),
   })
   .refine((data) => data.role !== "DOCTOR" || !!data.specialtyIds?.length, {
@@ -29,7 +27,12 @@ export const inviteUserSchema = z
     path: ["specialtyIds"],
   });
 
-export type InviteUserDto = z.infer<typeof inviteUserSchema> & {
+export const inviteUserParamsSchema = z.object({
+  resourceId: z.uuid(),
+});
+
+export type InviteUserDto = z.infer<typeof inviteUserBodySchema> & {
+  resourceId: string;
   createdBy: string;
   accountId: string;
 };
@@ -93,59 +96,21 @@ export class InviteUserUseCase {
     }
   }
 
-  private async assertInviterIsAdmin(
-    createdBy: string,
-    accountId: string,
-    clinicResourceId: string,
-    organizationResourceId: string | null,
-  ) {
-    const resourceIds = organizationResourceId
-      ? [clinicResourceId, organizationResourceId]
-      : [clinicResourceId];
-
-    const membership = await getClient().userResourceMembership.findFirst({
-      where: {
-        userId: createdBy,
-        accountId,
-        deletedAt: null,
-        role: "ADMIN",
-        resourceId: { in: resourceIds },
-      },
-      select: { id: true },
-    });
-
-    if (!membership) {
-      throw new Forbidden(
-        "Sólo un administrador de la sede puede invitar usuarios",
-      );
-    }
-  }
-
   async execute(data: InviteUserDto) {
     await this.tx.runInTransaction(async () => {
       const client = getClient();
 
-      // El recurso llega en el cuerpo de la petición, así que se acota a la
-      // cuenta del invitador: sin este filtro se podría invitar gente a una
-      // clínica de otra cuenta.
+      // La política también acepta el id de una organización donde el usuario es ADMIN: esto la rechaza como sede y acota por la cuenta de la sesión.
       const resource = await client.clinic.findFirst({
         where: {
           resourceId: data.resourceId,
           resource: { accountId: data.accountId },
         },
-        include: { resource: { select: { parentResourceId: true } } },
       });
 
       if (!resource) {
         throw new NotFound("Sede no encontrada");
       }
-
-      await this.assertInviterIsAdmin(
-        data.createdBy,
-        data.accountId,
-        data.resourceId,
-        resource.resource.parentResourceId,
-      );
 
       let user = await client.user.findUnique({ where: { email: data.email } });
 

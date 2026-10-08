@@ -96,7 +96,7 @@ export interface CreateClinicResourceOptions {
   address?: string;
 }
 
-/** `POST /clinic` responde 201 sin cuerpo (bug ajeno, se reporta y no se toca): el `resourceId` se lee de la base. */
+/** `POST /organization/:resourceId/clinics` responde 201 sin cuerpo (bug ajeno, se reporta y no se toca): el `resourceId` se lee de la base. */
 export async function createClinicResource(
   admin: OnboardedAdmin,
   organizationId: string,
@@ -104,17 +104,19 @@ export async function createClinicResource(
 ): Promise<string> {
   const name = options.name ?? uniqueName("Sede");
 
-  const response = await admin.context.post(`${API_BASE_URL}/clinic`, {
-    data: {
-      name,
-      phone: options.phone ?? "+51999888777",
-      address: options.address ?? "Av. Siempre Viva 123",
-      organizationId,
+  const response = await admin.context.post(
+    `${API_BASE_URL}/organization/${organizationId}/clinics`,
+    {
+      data: {
+        name,
+        phone: options.phone ?? "+51999888777",
+        address: options.address ?? "Av. Siempre Viva 123",
+      },
     },
-  });
+  );
   if (!response.ok()) {
     throw new Error(
-      `POST /clinic falló (${response.status()}): ${await response.text()}`,
+      `POST /organization/:resourceId/clinics falló (${response.status()}): ${await response.text()}`,
     );
   }
 
@@ -135,7 +137,7 @@ export async function createClinicResource(
   return clinic.resourceId;
 }
 
-/** Bypassa `POST /clinic` (el plan Gratis limita a una sede) para crear una segunda sede de control. */
+/** Bypassa `POST /organization/:resourceId/clinics` (el plan Gratis limita a una sede) para crear una segunda sede de control. */
 export async function createClinicResourceViaPrisma(
   admin: OnboardedAdmin,
   organizationId: string,
@@ -273,17 +275,19 @@ export interface InviteUserViaApiParams {
   specialtyIds?: string[];
 }
 
-/** Invita a un usuario de verdad, vía `POST /user/invite` (no por Prisma). */
+/** Invita a un usuario de verdad, vía `POST /clinic/:resourceId/invitations` (no por Prisma). */
 export async function inviteUserViaApi(
   admin: OnboardedAdmin,
   params: InviteUserViaApiParams,
 ) {
-  const response = await admin.context.post(`${API_BASE_URL}/user/invite`, {
-    data: params,
-  });
+  const { resourceId, ...body } = params;
+  const response = await admin.context.post(
+    `${API_BASE_URL}/clinic/${resourceId}/invitations`,
+    { data: body },
+  );
   if (!response.ok()) {
     throw new Error(
-      `POST /user/invite falló (${response.status()}): ${await response.text()}`,
+      `POST /clinic/:resourceId/invitations falló (${response.status()}): ${await response.text()}`,
     );
   }
   return response;

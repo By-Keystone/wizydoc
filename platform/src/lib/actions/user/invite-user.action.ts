@@ -62,9 +62,9 @@ export async function inviteUserAction(
   }
 
   try {
-    await doFetchJson("/user/invite", {
+    await doFetchJson(`/clinic/${clinicId}/invitations`, {
       method: "POST",
-      body: JSON.stringify({ ...parsed.data, resourceId: clinicId }),
+      body: JSON.stringify(parsed.data),
     });
 
     revalidateTag(tags.clinicUsers(clinicId));

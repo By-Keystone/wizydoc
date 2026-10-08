@@ -102,8 +102,11 @@ interface InviteRawParams {
 }
 
 /** A diferencia de `inviteUserViaApi`, no lanza si la respuesta no es ok: hace falta para probar los rechazos. */
-function inviteRaw(context: APIRequestContext, params: InviteRawParams) {
-  return context.post(`${API_BASE_URL}/user/invite`, {
+function inviteRaw(
+  context: APIRequestContext,
+  { resourceId, ...params }: InviteRawParams,
+) {
+  return context.post(`${API_BASE_URL}/clinic/${resourceId}/invitations`, {
     data: {
       name: "Intento",
       lastName: "Invitado",

@@ -134,6 +134,8 @@ async function start() {
 
   await fastify.register(clinicRoutes, {
     clinicRepository,
+    transactionManager,
+    emailService,
   });
   // Hermano de clinicRoutes, no anidado dentro: así no puede heredar el
   // requireAccount/authorize que clinicRoutes le agrega a su propio contexto.
@@ -146,8 +148,6 @@ async function start() {
     prefix: "/user",
     userRepository,
     accountRepository,
-    transactionManager,
-    emailService,
   });
 
   await fastify.register(accountRoutes, {

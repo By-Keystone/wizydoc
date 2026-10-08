@@ -1,14 +1,7 @@
-import { ApplicationError } from "@/application/errors/application.errors";
-import type { IEmailService } from "@/application/ports/email-service.port";
 import { getUserMembershipSchema } from "@/application/queries/membership/get-user-membership.query";
-import {
-  inviteUserSchema,
-  InviteUserUseCase,
-} from "@/application/use-cases/user/invite-user.usecase";
 import { policy } from "@/plugins/policy";
 import type { IAccountRepository } from "@/domain/repositories/account.repository";
 import type { IUserRepository } from "@/domain/repositories/user.repository";
-import type { ITransactionManager } from "@/domain/services/transaction-manager";
 import { GetUserMembership } from "@/infrastructure/postgres/queries/membership/get-user-membership.query";
 import { UserMembershipsQuery } from "@/infrastructure/postgres/queries/membership/get-user-memberships.query";
 import type { ZodTypeProvider } from "@fastify/type-provider-zod";
@@ -17,19 +10,12 @@ import type { FastifyInstance } from "fastify";
 interface UserRoutesOptions {
   userRepository: IUserRepository;
   accountRepository: IAccountRepository;
-  transactionManager: ITransactionManager;
-  emailService: IEmailService;
 }
 export default async function userRoutes(
   fastify: FastifyInstance,
   opts: UserRoutesOptions,
 ) {
-  const {
-    userRepository,
-    accountRepository,
-    transactionManager,
-    emailService,
-  } = opts;
+  const { userRepository, accountRepository } = opts;
 
   const app = fastify.withTypeProvider<ZodTypeProvider>();
 
@@ -135,50 +121,6 @@ export default async function userRoutes(
         return reply.internalServerError(
           "No se pudo obtener tu acceso a esta sede",
         );
-      }
-    },
-  );
-
-  app.post(
-    "/invite",
-    {
-      schema: { body: inviteUserSchema },
-      // resourceId llega en el cuerpo: cuenta y rol ADMIN los comprueba el caso de uso.
-      ...policy({ account: true, confirmed: true, onboarded: true }),
-    },
-    async (request, reply) => {
-      try {
-        const useCase = new InviteUserUseCase(transactionManager, {
-          emailService,
-        });
-
-        await useCase.execute({
-          ...request.body,
-          createdBy: request.user.userId,
-          accountId: request.user.accountId!,
-        });
-
-        return reply
-          .status(200)
-          .send({ message: "Se ha enviado la invitación al usuario" });
-      } catch (error) {
-        if (error instanceof ApplicationError) {
-          return reply
-            .status(error.statusCode)
-            .send({ message: error.message });
-        }
-
-        const errName = error instanceof Error ? error.name : "UnknownError";
-        const errCode =
-          error && typeof error === "object" && "code" in error
-            ? error.code
-            : undefined;
-
-        request.log.error({ errName, errCode }, "[invite-user]");
-
-        return reply
-          .status(500)
-          .send({ message: "Ha ocurrido un error al invitar al usuario" });
       }
     },
   );

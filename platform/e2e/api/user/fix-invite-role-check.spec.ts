@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { APIRequestContext } from "@playwright/test";
+import type { APIRequestContext, APIResponse } from "@playwright/test";
 import { test, expect } from "../../support/test";
 import { API_BASE_URL } from "../../support/env";
 import { createApiContext, createSpecialty } from "../../support/accounts";
@@ -27,8 +27,24 @@ import {
  *   respuesta, así que esa parte queda [manual].
  */
 
-function inviteRaw(context: APIRequestContext, body: Record<string, unknown>) {
-  return context.post(`${API_BASE_URL}/user/invite`, { data: body });
+const RESOURCE_NOT_FOUND_MESSAGE = "Resource not found";
+
+function inviteRaw(
+  context: APIRequestContext,
+  { resourceId, ...body }: Record<string, unknown> & { resourceId: string },
+) {
+  return context.post(`${API_BASE_URL}/clinic/${resourceId}/invitations`, {
+    data: body,
+  });
+}
+
+async function expectResourceNotFound(response: APIResponse) {
+  expect(response.status()).toBe(404);
+  expect(await response.json()).toEqual({
+    statusCode: 404,
+    error: "Not Found",
+    message: RESOURCE_NOT_FOUND_MESSAGE,
+  });
 }
 
 async function countAccountWrites(fixture: LookupFixture) {
@@ -161,7 +177,7 @@ test.describe("Lo que debe seguir funcionando", () => {
 });
 
 test.describe("Lo que deja de ser posible", () => {
-  test("CA-8: recepción (USER) se autoinvita a otra sede como ADMIN, DOCTOR o USER: 403 en los tres y sin escrituras", async () => {
+  test("CA-8: recepción (USER) se autoinvita a otra sede, donde no tiene membership, como ADMIN, DOCTOR o USER: 404 en los tres y sin escrituras", async () => {
     const fixture = await seedLookupFixture();
     const specialtyId = await createSpecialty(
       fixture.account1,
@@ -178,14 +194,10 @@ test.describe("Lo que deja de ser posible", () => {
         phone: fixture.reception.phone,
         role,
         resourceId: fixture.clinicBId,
-        // DOCTOR exige specialtyIds en la validación del body, antes de
-        // llegar al caso de uso: sin esto, ese intento daría 400, no 403.
+        // DOCTOR exige specialtyIds en la validación del body: sin esto daría 400.
         specialtyIds: role === "DOCTOR" ? [specialtyId] : undefined,
       });
-      expect(response.status(), role).toBe(403);
-      expect((await response.json()).message, role).toBe(
-        "Sólo un administrador de la sede puede invitar usuarios",
-      );
+      await expectResourceNotFound(response);
     }
 
     expect(await countAccountWrites(fixture)).toEqual(before);
@@ -213,7 +225,7 @@ test.describe("Lo que deja de ser posible", () => {
     expect(await countAccountWrites(fixture)).toEqual(before);
   });
 
-  test("CA-10: el médico (DOCTOR) se autoinvita como ADMIN de otra sede, e invita a un tercero como USER de la suya: 403 en ambos y sin escrituras", async () => {
+  test("CA-10: el médico (DOCTOR) recibe 404 al autoinvitarse como ADMIN de otra sede y 403 al invitar a un tercero como USER de la suya y sin escrituras", async () => {
     const fixture = await seedLookupFixture();
     const before = await countAccountWrites(fixture);
 
@@ -225,7 +237,7 @@ test.describe("Lo que deja de ser posible", () => {
       role: "ADMIN",
       resourceId: fixture.clinicBId,
     });
-    expect(selfAdminResponse.status()).toBe(403);
+    await expectResourceNotFound(selfAdminResponse);
 
     const thirdPartyResponse = await inviteRaw(fixture.doctor.context, {
       email: uniqueEmail("tercero-ca10"),
@@ -240,7 +252,7 @@ test.describe("Lo que deja de ser posible", () => {
     expect(await countAccountWrites(fixture)).toEqual(before);
   });
 
-  test("CA-11: un administrador de la sede A, que no lo es de B ni de la organización, invita a alguien a B: 403 y sin escrituras", async () => {
+  test("CA-11: un administrador de la sede A, que no lo es de B ni de la organización, invita a alguien a B: 404 y sin escrituras", async () => {
     const fixture = await seedLookupFixture();
     const before = await countAccountWrites(fixture);
 
@@ -253,17 +265,15 @@ test.describe("Lo que deja de ser posible", () => {
       resourceId: fixture.clinicBId,
     });
 
-    expect(response.status()).toBe(403);
+    await expectResourceNotFound(response);
     expect(await countAccountWrites(fixture)).toEqual(before);
   });
 
-  test("CA-12: un miembro con rol heredado de la organización (sin membership directa en la sede destino) se autoinvita como ADMIN: 403 y sin escrituras", async () => {
+  test("CA-12: un miembro sin membership en la sede destino se autoinvita como ADMIN: 404 y sin escrituras", async () => {
     const fixture = await seedLookupFixture();
     const before = await countAccountWrites(fixture);
 
-    // El doctor sólo tiene membership directa en A; en B no tiene ninguna
-    // (ni directa ni ADMIN), sólo el acceso heredado de ser miembro de la
-    // organización que no cuenta para `assertInviterIsAdmin`.
+    // El doctor sólo tiene membership directa en A; en B no tiene ninguna.
     const response = await inviteRaw(fixture.doctor.context, {
       email: fixture.doctor.email,
       name: fixture.doctor.name,
@@ -273,11 +283,11 @@ test.describe("Lo que deja de ser posible", () => {
       resourceId: fixture.clinicBId,
     });
 
-    expect(response.status()).toBe(403);
+    await expectResourceNotFound(response);
     expect(await countAccountWrites(fixture)).toEqual(before);
   });
 
-  test("CA-13: una membership ADMIN borrada (deletedAt) ya no autoriza a invitar: 403", async () => {
+  test("CA-13: una membership ADMIN borrada (deletedAt) ya no autoriza a invitar: 404", async () => {
     const fixture = await seedLookupFixture();
     const prisma = await getTestPrisma();
 
@@ -305,7 +315,7 @@ test.describe("Lo que deja de ser posible", () => {
         resourceId: fixture.clinicAId,
       });
 
-      expect(response.status()).toBe(403);
+      await expectResourceNotFound(response);
     } finally {
       await prisma.userResourceMembership.update({
         where: { id: membership.id },
@@ -327,12 +337,11 @@ test.describe("Lo que deja de ser posible", () => {
       resourceId: fixture.clinicAId,
     });
 
-    expect(response.status()).toBe(404);
-    expect((await response.json()).message).toBe("Sede no encontrada");
+    await expectResourceNotFound(response);
     expect(await countAccountWrites(fixture)).toEqual(before);
   });
 
-  test("CA-16: un resourceId que es una organización o que no existe responde 404", async () => {
+  test("CA-16: el id de una organización responde 404 Sede no encontrada y el de un recurso inexistente 404 Resource not found", async () => {
     const fixture = await seedLookupFixture();
 
     const organizationResponse = await inviteRaw(fixture.account1.context, {
@@ -356,8 +365,7 @@ test.describe("Lo que deja de ser posible", () => {
       role: "USER",
       resourceId: randomUUID(),
     });
-    expect(missingResponse.status()).toBe(404);
-    expect((await missingResponse.json()).message).toBe("Sede no encontrada");
+    await expectResourceNotFound(missingResponse);
   });
 });
 
