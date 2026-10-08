@@ -7,6 +7,13 @@ import { Button } from "@/components/ui/button";
 import type { AvailabilityBlock } from "@/lib/api/availability/types";
 import { saveAvailability } from "@/lib/actions/availability/save-availability.action";
 import { toast } from "@/lib/toast";
+import { cn } from "@/lib/utils";
+import {
+  hasScheduleErrors,
+  type ScheduleByDay,
+  type Slot,
+  validateSchedule,
+} from "./validate-schedule";
 
 const DAYS = [
   { label: "Lunes", value: 1 },
@@ -18,9 +25,6 @@ const DAYS = [
   { label: "Domingo", value: 0 },
 ];
 
-type Slot = { startTime: string; endTime: string };
-type ScheduleByDay = Record<number, Slot[]>;
-
 function toScheduleByDay(blocks: AvailabilityBlock[]): ScheduleByDay {
   return blocks.reduce<ScheduleByDay>((acc, b) => {
     const slots = acc[b.dayOfWeek] ?? [];
@@ -28,6 +32,15 @@ function toScheduleByDay(blocks: AvailabilityBlock[]): ScheduleByDay {
     acc[b.dayOfWeek] = slots;
     return acc;
   }, {});
+}
+
+function inputClassName(hasError: boolean) {
+  return cn(
+    "rounded-lg border px-3 py-1.5 text-sm outline-none focus:ring-2",
+    hasError
+      ? "border-red-500 focus:border-red-500 focus:ring-red-500/20"
+      : "border-gray-300 focus:border-brand-teal focus:ring-brand-teal/20",
+  );
 }
 
 interface Props {
@@ -41,6 +54,8 @@ export function AvailabilityEditor({ initial }: Props) {
     toScheduleByDay(initial),
   );
   const [pending, setPending] = useState(false);
+  const [hasAttemptedSave, setHasAttemptedSave] = useState(false);
+  const errors = hasAttemptedSave ? validateSchedule(schedule) : { rows: {} };
 
   function addSlot(day: number) {
     setSchedule((prev) => ({
@@ -71,6 +86,8 @@ export function AvailabilityEditor({ initial }: Props) {
   }
 
   async function handleSave() {
+    setHasAttemptedSave(true);
+    if (hasScheduleErrors(validateSchedule(schedule))) return;
     setPending(true);
 
     const blocks: AvailabilityBlock[] = Object.entries(schedule).flatMap(
@@ -135,39 +152,68 @@ export function AvailabilityEditor({ initial }: Props) {
               <p className="text-xs text-brand-gray">Sin disponibilidad</p>
             ) : (
               <div className="flex flex-col gap-2">
-                {schedule[value].map((slot, i) => (
-                  <div key={i} className="flex items-center gap-2">
-                    <input
-                      type="time"
-                      value={slot.startTime}
-                      onChange={(e) =>
-                        updateSlot(value, i, "startTime", e.target.value)
-                      }
-                      className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm outline-none focus:border-brand-teal focus:ring-2 focus:ring-brand-teal/20"
-                    />
-                    <span className="text-sm text-brand-gray">—</span>
-                    <input
-                      type="time"
-                      value={slot.endTime}
-                      onChange={(e) =>
-                        updateSlot(value, i, "endTime", e.target.value)
-                      }
-                      className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm outline-none focus:border-brand-teal focus:ring-2 focus:ring-brand-teal/20"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => removeSlot(value, i)}
-                      className="text-brand-gray transition-colors hover:text-red-500"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
-                ))}
+                {schedule[value].map((slot, i) => {
+                  const rowError = errors.rows[value]?.[i];
+                  const errorId = `availability-error-${value}-${i}`;
+                  const dayName = label.toLowerCase();
+                  return (
+                    <div key={i} className="flex flex-col gap-1">
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="time"
+                          aria-label={`Hora de inicio del ${dayName}`}
+                          aria-describedby={rowError ? errorId : undefined}
+                          aria-invalid={Boolean(rowError)}
+                          value={slot.startTime}
+                          onChange={(e) =>
+                            updateSlot(value, i, "startTime", e.target.value)
+                          }
+                          className={inputClassName(Boolean(rowError))}
+                        />
+                        <span className="text-sm text-brand-gray">—</span>
+                        <input
+                          type="time"
+                          aria-label={`Hora de fin del ${dayName}`}
+                          aria-describedby={rowError ? errorId : undefined}
+                          aria-invalid={Boolean(rowError)}
+                          value={slot.endTime}
+                          onChange={(e) =>
+                            updateSlot(value, i, "endTime", e.target.value)
+                          }
+                          className={inputClassName(Boolean(rowError))}
+                        />
+                        <button
+                          type="button"
+                          aria-label={`Eliminar rango del ${dayName}`}
+                          onClick={() => removeSlot(value, i)}
+                          className="text-brand-gray transition-colors hover:text-red-500"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                      {rowError && (
+                        <p
+                          id={errorId}
+                          className="text-xs text-red-500"
+                          role="alert"
+                        >
+                          {rowError}
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
         ))}
       </div>
+
+      {errors.total && (
+        <p className="mt-4 text-sm text-red-500" role="alert">
+          {errors.total}
+        </p>
+      )}
 
       <Button onClick={handleSave} disabled={pending} className="mt-6">
         {pending ? (
