@@ -112,7 +112,7 @@ test("CA-26: desde el celular, el paciente ve los médicos y especialidades de l
   await page.getByLabel("Apellido").fill("Paciente");
   await page.getByLabel("N° de documento").fill("45678912");
   await page.getByLabel("Fecha de nacimiento").fill("1990-05-15");
-  await page.getByLabel("Teléfono").fill("+51988888888");
+  await page.getByLabel("Teléfono").fill("988888888");
   await page.getByLabel("Email").fill(uniqueEmail("paciente-ca26"));
 
   await page.getByRole("button", { name: "Confirmar reserva" }).click();

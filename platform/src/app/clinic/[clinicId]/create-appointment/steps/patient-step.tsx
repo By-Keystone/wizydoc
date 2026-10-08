@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input, Select } from "@/components/common/form";
+import { Field, Input, Select } from "@/components/common/form";
+import { PhoneInput } from "@/components/ui/phone-input";
 import { toast } from "@/lib/toast";
 
 const DOCUMENT_TYPES = [
@@ -11,6 +12,10 @@ const DOCUMENT_TYPES = [
   { value: "CE", label: "Carné de extranjería" },
   { value: "PASSPORT", label: "Pasaporte" },
 ];
+
+const PERU_COUNTRY_CODE = "+51";
+const MAX_NAME_LENGTH = 80;
+const MAX_DOCUMENT_NUMBER_LENGTH = 20;
 
 export interface BookingPatient {
   name: string;
@@ -42,6 +47,8 @@ export function PatientStep({
   onBack,
 }: Props) {
   const [pending, setPending] = useState(false);
+  const [documentType, setDocumentType] = useState(DOCUMENT_TYPES[0].value);
+  const isNumericDocument = documentType === "DNI";
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -93,12 +100,14 @@ export function PatientStep({
             label="Nombre"
             name="name"
             autoComplete="given-name"
+            maxLength={MAX_NAME_LENGTH}
             required
           />
           <Input
             label="Apellido"
             name="lastName"
             autoComplete="family-name"
+            maxLength={MAX_NAME_LENGTH}
             required
           />
         </div>
@@ -108,13 +117,15 @@ export function PatientStep({
             label="Tipo de documento"
             name="documentType"
             options={DOCUMENT_TYPES}
+            onChange={(event) => setDocumentType(event.target.value)}
           />
           {/* Sin token estándar para documentos de identidad: `off` evita que el
               navegador ofrezca aquí un valor de otro campo. */}
           <Input
             label="N° de documento"
             name="documentNumber"
-            inputMode="numeric"
+            inputMode={isNumericDocument ? "numeric" : "text"}
+            maxLength={MAX_DOCUMENT_NUMBER_LENGTH}
             autoComplete="off"
             required
           />
@@ -128,13 +139,15 @@ export function PatientStep({
           required
         />
 
-        <Input
-          label="Teléfono"
-          name="phone"
-          type="tel"
-          autoComplete="tel"
-          required
-        />
+        <Field label="Teléfono" htmlFor="phone">
+          <PhoneInput
+            id="phone"
+            name="phone"
+            autoComplete="tel-national"
+            defaultCountryCode={PERU_COUNTRY_CODE}
+            required
+          />
+        </Field>
 
         <Input
           label="Email"

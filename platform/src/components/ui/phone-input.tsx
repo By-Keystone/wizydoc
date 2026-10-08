@@ -29,6 +29,7 @@ interface PhoneInputProps {
   id?: string;
   required?: boolean;
   placeholder?: string;
+  autoComplete?: string;
   defaultValue?: string;
   defaultCountryCode?: string;
   className?: string;
@@ -39,6 +40,7 @@ export function PhoneInput({
   id,
   required,
   placeholder = "999 888 777",
+  autoComplete,
   defaultValue = "",
   defaultCountryCode = "+52",
   className,
@@ -58,6 +60,7 @@ export function PhoneInput({
       <input type="hidden" ref={hiddenRef} name={name} />
       <select
         value={countryCode}
+        aria-label="Código de país"
         onChange={(e) => {
           setCountryCode(e.target.value);
           updateHiddenValue(e.target.value, number);
@@ -73,6 +76,7 @@ export function PhoneInput({
       <input
         id={id}
         type="tel"
+        autoComplete={autoComplete}
         value={number}
         required={required}
         placeholder={placeholder}

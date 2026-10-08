@@ -16,6 +16,7 @@ import {
   softDeleteMembership,
 } from "../../support/invitations";
 import { uniqueName } from "../../support/users";
+import { seedFullDayAvailability } from "../../support/availability";
 import { getTestPrisma } from "../../support/db";
 
 /**
@@ -89,6 +90,7 @@ async function inviteDoctor(
     where: { userId: invitation.userId },
   });
   if (!profile) throw new Error("La invitación no creó el perfil de médico");
+  await seedFullDayAvailability(invitation.userId, clinicId);
   return {
     doctorProfileId: profile.id,
     membershipId: invitation.membershipId,
@@ -122,7 +124,7 @@ async function postAppointment(data: Record<string, unknown>) {
 }
 
 function newDocumentNumber(): string {
-  return randomUUID().replaceAll("-", "").slice(0, 12);
+  return randomUUID().replaceAll("-", "").slice(0, 12).toUpperCase();
 }
 
 async function countAppointments(doctorProfileId: string): Promise<number> {

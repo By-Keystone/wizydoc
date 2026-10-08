@@ -8,6 +8,8 @@ import {
   createOrganizationResource,
   createSpecialty,
 } from "../../support/accounts";
+import { seedFullDayAvailability } from "../../support/availability";
+import { daysFromToday } from "../../support/dates";
 import { getTestPrisma } from "../../support/db";
 import { readLatestEmailTo } from "../../support/email";
 import { invitePendingUser } from "../../support/invitations";
@@ -15,6 +17,7 @@ import { uniqueEmail, uniqueName } from "../../support/users";
 
 const DOCUMENT_TYPE = "DNI";
 const SLOT_DURATION_MINUTES = 30;
+const BOOKING_DATE = daysFromToday(14);
 const SPECIALTY_NAME = "Medicina general";
 
 async function seedBookableDoctor(prefix: string) {
@@ -39,16 +42,15 @@ async function seedBookableDoctor(prefix: string) {
     specialtyIds: [specialtyId],
   });
 
-  const prisma = await getTestPrisma();
-  const doctorProfile = await prisma.doctorProfile.findFirst({
-    where: { userId: doctor.userId, clinicId },
-  });
-  if (!doctorProfile) throw new Error("No se encontró el perfil del médico");
+  const doctorProfileId = await seedFullDayAvailability(
+    doctor.userId,
+    clinicId,
+  );
 
   return {
     accountId: admin.accountId,
     clinicId,
-    doctorProfileId: doctorProfile.id,
+    doctorProfileId,
     specialtyName,
   };
 }
@@ -75,7 +77,7 @@ function bookingBody(
     patientBirthDate: "1990-05-20",
     specialty: seed.specialtyName,
     durationMinutes: SLOT_DURATION_MINUTES,
-    scheduledAt: "2030-03-04T09:00",
+    scheduledAt: `${BOOKING_DATE}T09:00`,
     doctorProfileId: seed.doctorProfileId,
     clinicId: seed.clinicId,
     ...overrides,
@@ -140,7 +142,7 @@ test.describe("Reservar con un documento que ya tiene ficha", () => {
         patientDocumentNumber: documentNumber,
         patientEmail: originalEmail,
         patientPhone: originalPhone,
-        scheduledAt: "2030-03-04T09:00",
+        scheduledAt: `${BOOKING_DATE}T09:00`,
       }),
     });
     expect(firstResponse.status()).toBe(200);
@@ -169,7 +171,7 @@ test.describe("Reservar con un documento que ya tiene ficha", () => {
         patientBirthDate: "1985-01-01",
         patientEmail: newEmail,
         patientPhone: "+51922222222",
-        scheduledAt: "2030-03-04T10:00",
+        scheduledAt: `${BOOKING_DATE}T10:00`,
       }),
     });
     expect(secondResponse.status()).toBe(200);
@@ -216,7 +218,7 @@ test.describe("Una reserva fallida no deja ficha", () => {
     const prisma = await getTestPrisma();
 
     const firstResponse = await api.post(`${API_BASE_URL}/appointment`, {
-      data: bookingBody(seed, { scheduledAt: "2030-03-04T09:00" }),
+      data: bookingBody(seed, { scheduledAt: `${BOOKING_DATE}T09:00` }),
     });
     expect(firstResponse.status()).toBe(200);
 
@@ -226,13 +228,13 @@ test.describe("Una reserva fallida no deja ficha", () => {
       data: bookingBody(seed, {
         patientDocumentNumber: documentNumber,
         patientEmail: secondEmail,
-        scheduledAt: "2030-03-04T09:00",
+        scheduledAt: `${BOOKING_DATE}T09:00`,
       }),
     });
 
     expect(response.status()).toBe(409);
     expect(await response.json()).toMatchObject({
-      message: "Ese horario ya no está disponible",
+      message: "Ese horario ya no está disponible. Vuelve atrás y elige otro.",
     });
     expect(
       await prisma.patient.count({
