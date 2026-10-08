@@ -1,7 +1,18 @@
+import type { IGetDoctorSlotsQuery } from "@/application/queries/doctor-profile/get-doctor-slots.query";
+import { Conflict } from "@/application/errors/conflict.error";
 import { NotFound } from "@/application/errors/not-found.error";
 import type { IEmailService } from "@/application/ports/email-service.port";
-import { SLOT_DURATION_MINUTES } from "@/domain/entities/availability/entity";
-import { CLINIC_TIME_ZONE, toInstant } from "@/domain/services/clinic-time";
+import {
+  MAX_DAYS_AHEAD,
+  SLOT_DURATION_MINUTES,
+} from "@/domain/entities/availability/entity";
+import {
+  addDays,
+  CLINIC_TIME_ZONE,
+  toInstant,
+  today,
+} from "@/domain/services/clinic-time";
+import { GetDoctorSlotsQuery } from "@/infrastructure/postgres/queries/doctor-profile/get-doctor-slots.query";
 import {
   getClient,
   inTransaction,
@@ -11,19 +22,51 @@ import z from "zod";
 
 const BOOKING_OPTION_UNAVAILABLE =
   "Ese médico o especialidad ya no está disponible en esta sede. Recarga la página y vuelve a elegirlos.";
+export const SLOT_UNAVAILABLE =
+  "Ese horario ya no está disponible. Vuelve atrás y elige otro.";
+const DOCUMENT_TYPES = ["DNI", "CE", "PASSPORT"] as const;
+const MAX_NAME_LENGTH = 80;
+const MAX_DOCUMENT_NUMBER_LENGTH = 20;
+const MAX_EMAIL_LENGTH = 254;
 const DURATION_ERROR = `durationMinutes debe ser un entero entre 1 y ${SLOT_DURATION_MINUTES}`;
 
+const personName = (messages: { empty: string; tooLong: string }) =>
+  z
+    .string()
+    .overwrite((text) => text.trim().replace(/\s+/g, " "))
+    .min(1, { error: messages.empty })
+    .max(MAX_NAME_LENGTH, { error: messages.tooLong });
+
 export const createAppointmentSchema = z.object({
-  patientName: z.string(),
-  patientLastName: z.string(),
-  patientPhone: z.string(),
-  patientEmail: z.email({ error: "Correo inválido" }),
-  patientDocumentNumber: z.string(),
-  patientDocumentType: z.string(),
+  patientName: personName({
+    empty: "Escribe tu nombre",
+    tooLong: "Tu nombre es demasiado largo",
+  }),
+  patientLastName: personName({
+    empty: "Escribe tu apellido",
+    tooLong: "Tu apellido es demasiado largo",
+  }),
+  patientPhone: z
+    .string()
+    .overwrite((text) => text.replace(/[\s\-()]/g, ""))
+    .regex(/^\+\d{7,15}$/, { error: "Revisa tu número de teléfono" }),
+  patientEmail: z
+    .email({ error: "Correo inválido" })
+    .max(MAX_EMAIL_LENGTH, { error: "Correo inválido" }),
+  patientDocumentNumber: z
+    .string()
+    .overwrite((text) => text.replace(/[\s.-]/g, "").toUpperCase())
+    .min(1, { error: "El número de documento no es válido" })
+    .max(MAX_DOCUMENT_NUMBER_LENGTH, {
+      error: "El número de documento no es válido",
+    }),
+  patientDocumentType: z.enum(DOCUMENT_TYPES, {
+    error: "El tipo de documento no es válido",
+  }),
   // `z.iso.date()` y no una regex de forma: la columna es `text`, así que esta
   // validación es lo único que impide guardar un 2026-02-30.
   patientBirthDate: z.iso.date({
-    error: "patientBirthDate debe ser una fecha válida con formato YYYY-MM-DD",
+    error: "Revisa tu fecha de nacimiento",
   }),
   specialty: z.string(),
   durationMinutes: z
@@ -54,7 +97,27 @@ interface Props {
   readonly emailService: IEmailService;
 }
 export class CreateApointmentUseCase {
-  constructor(private readonly props: Props) {}
+  constructor(
+    private readonly props: Props,
+    private readonly doctorSlots: IGetDoctorSlotsQuery = new GetDoctorSlotsQuery(),
+  ) {}
+
+  private async assertSlotIsOffered(
+    dto: CreateAppointmentDto,
+    date: string,
+    time: string,
+  ) {
+    if (date > addDays(today(), MAX_DAYS_AHEAD))
+      throw new Conflict(SLOT_UNAVAILABLE);
+
+    const { days } = await this.doctorSlots.execute({
+      doctorProfileId: dto.doctorProfileId,
+      from: date,
+      to: date,
+    });
+
+    if (!days[date]?.includes(time)) throw new Conflict(SLOT_UNAVAILABLE);
+  }
 
   private async findBookableDoctor(
     dto: CreateAppointmentDto,
@@ -97,6 +160,8 @@ export class CreateApointmentUseCase {
     if (!profile) throw new NotFound(BOOKING_OPTION_UNAVAILABLE);
 
     const [date, time] = dto.scheduledAt.split("T");
+
+    await this.assertSlotIsOffered(dto, date, time);
 
     const { patient, appointment } = await inTransaction(async () => {
       // El booking es anónimo: reutiliza la ficha del documento pero nunca la modifica.

@@ -1,6 +1,7 @@
 import {
   CreateApointmentUseCase,
   createAppointmentSchema,
+  SLOT_UNAVAILABLE,
 } from "@/application/use-cases/appointment/create-appointment.usecase";
 import { Prisma } from "@prisma/client";
 import type { ZodTypeProvider } from "@fastify/type-provider-zod";
@@ -23,7 +24,12 @@ export default async function appointmentRoutes(
 
   app.post(
     "",
-    { schema: { body: createAppointmentSchema }, ...policy({ public: true }) },
+    {
+      schema: { body: createAppointmentSchema },
+      // El paciente ve este texto en el wizard: sin el prefijo "body/campo" de Fastify.
+      schemaErrorFormatter: (errors) => new Error(errors[0].message),
+      ...policy({ public: true }),
+    },
     async (request, reply) => {
       try {
         const command = new CreateApointmentUseCase({ emailService });
@@ -37,9 +43,7 @@ export default async function appointmentRoutes(
           error instanceof Prisma.PrismaClientKnownRequestError &&
           error.code === "P2002"
         ) {
-          return reply
-            .status(409)
-            .send({ message: "Ese horario ya no está disponible" });
+          return reply.status(409).send({ message: SLOT_UNAVAILABLE });
         } else if (error instanceof ApplicationError)
           return reply
             .status(error.statusCode)

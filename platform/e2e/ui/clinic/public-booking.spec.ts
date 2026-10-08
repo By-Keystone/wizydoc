@@ -75,7 +75,7 @@ test("CA-5: el paciente reserva una cita de punta a punta con un médico invitad
   await page.getByLabel("Apellido").fill("Rivas");
   await page.getByLabel("N° de documento").fill("45678912");
   await page.getByLabel("Fecha de nacimiento").fill("1990-05-20");
-  await page.getByLabel("Teléfono").fill("+51988888888");
+  await page.getByLabel("Teléfono").fill("988888888");
   await page.getByLabel("Email").fill(patientEmail);
 
   await page.getByRole("button", { name: "Confirmar reserva" }).click();
