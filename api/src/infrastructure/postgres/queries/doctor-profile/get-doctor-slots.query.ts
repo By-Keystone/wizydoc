@@ -1,13 +1,14 @@
-import type {
-  DoctorSlots,
-  GetDoctorSlotsDto,
-  IGetDoctorSlotsQuery,
+import {
+  daysInclusive,
+  type DoctorSlots,
+  type GetDoctorSlotsDto,
+  type IGetDoctorSlotsQuery,
 } from "@/application/queries/doctor-profile/get-doctor-slots.query";
 import { SLOT_DURATION_MINUTES } from "@/domain/entities/availability/entity";
 import {
   addDays,
   startOfDay,
-  toInstant,
+  today,
   toWallTime,
 } from "@/domain/services/clinic-time";
 import { getClient } from "../../transaction-context";
@@ -18,10 +19,18 @@ import { getClient } from "../../transaction-context";
  */
 const BLOCKING_STATUSES = ["PENDING", "CONFIRMED", "COMPLETED"] as const;
 
-/** `"09:00"` → minutos desde medianoche. */
-function toMinutes(time: string): number {
-  const [hours, minutes] = time.split(":").map(Number);
-  return hours * 60 + minutes;
+const STRICT_TIME_PATTERN = /^([01]\d|2[0-3]):([0-5]\d)$/;
+const END_OF_DAY = "24:00";
+const MINUTES_PER_DAY = 24 * 60;
+
+/** `"09:00"` → minutos desde medianoche; `null` si el dato guardado no es una hora válida. */
+function toMinutes(time: string, allowEndOfDay = false): number | null {
+  if (allowEndOfDay && time === END_OF_DAY) return MINUTES_PER_DAY;
+
+  const match = STRICT_TIME_PATTERN.exec(time);
+  if (!match) return null;
+
+  return Number(match[1]) * 60 + Number(match[2]);
 }
 
 /** Minutos desde medianoche → `"09:00"`. */
@@ -67,29 +76,37 @@ export class GetDoctorSlotsQuery implements IGetDoctorSlotsQuery {
       }),
     );
 
-    const now = Date.now();
+    const todayKey = today();
+    const nowTime = toWallTime(new Date()).time;
     const days: Record<string, string[]> = {};
+    const dayCount = daysInclusive(dto.from, dto.to);
 
-    for (let date = dto.from; date <= dto.to; date = addDays(date, 1)) {
+    for (let offset = 0; offset < dayCount; offset++) {
+      const date = addDays(dto.from, offset);
       const dayOfWeek = new Date(`${date}T00:00:00Z`).getUTCDay();
       const slots = new Set<string>();
+
+      if (date < todayKey) {
+        days[date] = [];
+        continue;
+      }
 
       for (const availability of availabilities) {
         if (availability.dayOfWeek !== dayOfWeek) continue;
 
-        const end = toMinutes(availability.endTime);
+        const start = toMinutes(availability.startTime);
+        const end = toMinutes(availability.endTime, true);
+        if (start === null || end === null || start >= end) continue;
 
         for (
-          let minute = toMinutes(availability.startTime);
+          let minute = start;
           minute + SLOT_DURATION_MINUTES <= end;
           minute += SLOT_DURATION_MINUTES
         ) {
           const time = toTime(minute);
 
           if (taken.has(`${date} ${time}`)) continue;
-          // Comparación entre instantes: la hora de reloj se convierte al
-          // momento real en que ocurre antes de mirar si ya pasó.
-          if (toInstant(date, time).getTime() <= now) continue;
+          if (date === todayKey && time <= nowTime) continue;
 
           slots.add(time);
         }

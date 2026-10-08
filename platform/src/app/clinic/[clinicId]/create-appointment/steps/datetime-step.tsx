@@ -16,6 +16,9 @@ import {
   todayKey,
 } from "../lib/week";
 
+// El api rechaza fechas a más de 366 días de hoy; la semana 52 puede pasarse.
+const MAX_WEEK_OFFSET = 51;
+
 interface Props {
   doctorProfileId: string;
   onNext: (selection: {
@@ -103,7 +106,8 @@ export function DateTimeStep({ doctorProfileId, onNext, onBack }: Props) {
             <button
               type="button"
               onClick={() => setWeekOffset((w) => w + 1)}
-              className="rounded-lg p-1.5 text-brand-gray transition-colors hover:bg-gray-100"
+              disabled={weekOffset >= MAX_WEEK_OFFSET}
+              className="rounded-lg p-1.5 text-brand-gray transition-colors hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-30"
               aria-label="Semana siguiente"
             >
               <ChevronRight className="h-4 w-4" />

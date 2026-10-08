@@ -21,22 +21,51 @@ interface WallTime {
   time: string;
 }
 
+const offsetFormatters = new Map<string, Intl.DateTimeFormat>();
+const wallTimeFormatters = new Map<string, Intl.DateTimeFormat>();
+
+function offsetFormatter(timeZone: string): Intl.DateTimeFormat {
+  let formatter = offsetFormatters.get(timeZone);
+  if (!formatter) {
+    formatter = new Intl.DateTimeFormat("en-US", {
+      timeZone,
+      hourCycle: "h23",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    });
+    offsetFormatters.set(timeZone, formatter);
+  }
+  return formatter;
+}
+
+function wallTimeFormatter(timeZone: string): Intl.DateTimeFormat {
+  let formatter = wallTimeFormatters.get(timeZone);
+  if (!formatter) {
+    formatter = new Intl.DateTimeFormat("en-CA", {
+      timeZone,
+      hourCycle: "h23",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+    wallTimeFormatters.set(timeZone, formatter);
+  }
+  return formatter;
+}
+
 /**
  * Desfase de la zona respecto a UTC, en milisegundos, para un instante dado.
  * Se calcula leyendo ese instante en la zona y comparándolo con su lectura en
  * UTC, que es la única forma de obtenerlo sin dependencias externas.
  */
 function zoneOffsetMs(instant: Date, timeZone: string): number {
-  const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone,
-    hourCycle: "h23",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-  }).formatToParts(instant);
+  const parts = offsetFormatter(timeZone).formatToParts(instant);
 
   const read = (type: string) =>
     Number(parts.find((part) => part.type === type)?.value);
@@ -81,15 +110,7 @@ export function toWallTime(
   instant: Date,
   timeZone: string = CLINIC_TIME_ZONE,
 ): WallTime {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone,
-    hourCycle: "h23",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).formatToParts(instant);
+  const parts = wallTimeFormatter(timeZone).formatToParts(instant);
 
   const read = (type: string) =>
     parts.find((part) => part.type === type)?.value ?? "";
