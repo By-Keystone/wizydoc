@@ -93,7 +93,7 @@ export interface TestPrisma {
     count(args: { where: Record<string, unknown> }): Promise<number>;
   };
   userResourceMembership: {
-    create(args: { data: Record<string, unknown> }): Promise<unknown>;
+    create(args: { data: Record<string, unknown> }): Promise<{ id: string }>;
     update(args: {
       where: Record<string, unknown>;
       data: Record<string, unknown>;

@@ -17,6 +17,7 @@ export class GetClinicUsersQuery {
           ON urm.resource_id = ${resourceId}
         INNER JOIN public.user u ON u.id = urm.user_id
         WHERE c.resource_id = ${resourceId}
+          AND urm.deleted_at IS NULL
     `;
 
     return users;

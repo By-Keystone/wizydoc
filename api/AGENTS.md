@@ -44,6 +44,9 @@ los puertos de `domain`/`application`.
 - En endpoints públicos (booking) valida que todos los ids recibidos estén
   relacionados entre sí (doctor ∈ clínica, especialidad ∈ doctor, etc.).
 - Recurso de otra cuenta → 404, no 403 (no revelar su existencia).
+- Toda lectura de `UserResourceMembership` filtra `deletedAt: null` (en SQL,
+  `deleted_at IS NULL`), salvo que necesite ver las borradas para rechazarlas
+  (invitaciones).
 
 ## Prisma y migraciones
 

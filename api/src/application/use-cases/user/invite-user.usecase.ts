@@ -93,7 +93,6 @@ export class InviteUserUseCase {
     }
   }
 
-  // No se reutiliza GetUserMembership: ignora deletedAt.
   private async assertInviterIsAdmin(
     createdBy: string,
     accountId: string,
