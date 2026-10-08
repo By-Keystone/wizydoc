@@ -309,13 +309,8 @@ test.describe("Lo que deja de ser posible", () => {
     const clinicsResponse = await attacker.context.get(
       `${API_BASE_URL}/clinic`,
     );
-    expect(clinicsResponse.status()).toBe(200);
-    const clinics = (await clinicsResponse.json()) as Array<{
-      resourceId: string;
-    }>;
-    expect(clinics.some((clinic) => clinic.resourceId === clinicId)).toBe(
-      false,
-    );
+    expect(clinicsResponse.status()).toBe(404);
+    expect(await clinicsResponse.text()).not.toContain(clinicId);
   });
 });
 
