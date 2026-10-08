@@ -36,7 +36,7 @@ export interface CreateOnboardedAdminOptions {
   emailPrefix?: string;
 }
 
-/** `POST /account` deja al usuario ADMIN de su propia organización en cuanto la crea. */
+/** `POST /account` crea la cuenta pero no ninguna membership: el usuario sólo es ADMIN tras crear su organización. */
 export async function createOnboardedAdmin(
   options: CreateOnboardedAdminOptions = {},
 ): Promise<OnboardedAdmin> {

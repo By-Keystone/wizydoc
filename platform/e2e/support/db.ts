@@ -153,6 +153,7 @@ export interface TestPrisma {
     }): Promise<{ id: string; name: string; organizationId: string } | null>;
   };
   patient: {
+    create(args: { data: Record<string, unknown> }): Promise<{ id: string }>;
     count(args: { where: Record<string, unknown> }): Promise<number>;
     findFirst(args: { where: Record<string, unknown> }): Promise<{
       id: string;

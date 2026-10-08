@@ -30,6 +30,7 @@ import { GetClinicMetricsQuery } from "@/infrastructure/postgres/queries/clinic/
 import { GetClinicUsersQuery } from "@/infrastructure/postgres/queries/clinic/get-clinic-users.query";
 import { LookupAccountUserQuery } from "@/infrastructure/postgres/queries/user/lookup-account-user.query";
 import { policy, requireMembership } from "@/plugins/policy";
+import { requireLiveMembership } from "@/routes/hooks/require-live-membership";
 import type { ZodTypeProvider } from "@fastify/type-provider-zod";
 import type { FastifyInstance } from "fastify";
 
@@ -88,7 +89,10 @@ export default async function clinicRoutes(
 
   app.get(
     "/clinic",
-    { ...policy({ account: true, confirmed: true, onboarded: true }) },
+    {
+      ...policy({ account: true, confirmed: true, onboarded: true }),
+      preHandler: requireLiveMembership(fastify),
+    },
     async (request, reply) => {
       try {
         const useCase = new GetClinicsUseCase(clinicRepository);

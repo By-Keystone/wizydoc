@@ -13,6 +13,7 @@ import {
   UpdatePatientRecordUseCase,
 } from "@/application/use-cases/patient/update-patient-record.usecase";
 import { policy } from "@/plugins/policy";
+import { requireLiveMembership } from "@/routes/hooks/require-live-membership";
 import type { ZodTypeProvider } from "@fastify/type-provider-zod";
 import type { FastifyInstance, FastifyReply } from "fastify";
 
@@ -36,6 +37,7 @@ export default async function patientRoutes(fastify: FastifyInstance) {
   // La ficha del paciente es un módulo entero, no un endpoint suelto: el plan
   // se comprueba una vez para todas las rutas de este scope. Al registrarse sin
   // `fastify-plugin`, el hook no se escapa al resto de la API.
+  fastify.addHook("preHandler", requireLiveMembership(fastify));
   fastify.addHook("preHandler", fastify.requireFeature("PATIENT_RECORD"));
 
   const app = fastify.withTypeProvider<ZodTypeProvider>();
