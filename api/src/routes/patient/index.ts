@@ -15,7 +15,7 @@ import {
 import { policy } from "@/plugins/policy";
 import { requireLiveMembership } from "@/routes/hooks/require-live-membership";
 import type { ZodTypeProvider } from "@fastify/type-provider-zod";
-import type { FastifyInstance, FastifyReply } from "fastify";
+import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 
 const patientPolicy = policy({
   account: true,
@@ -23,12 +23,23 @@ const patientPolicy = policy({
   onboarded: true,
 });
 
-function handleError(error: unknown, reply: FastifyReply, context: string) {
+function handleError(
+  error: unknown,
+  request: FastifyRequest,
+  reply: FastifyReply,
+  context: string,
+) {
   if (error instanceof ApplicationError) {
     return reply.status(error.statusCode).send({ message: error.message });
   }
 
-  console.error(context, error);
+  const errName = error instanceof Error ? error.name : "UnknownError";
+  const errCode =
+    error && typeof error === "object" && "code" in error
+      ? error.code
+      : undefined;
+
+  request.log.error({ errName, errCode }, `[patient] ${context}`);
 
   return reply.status(500).send({ message: context });
 }
@@ -69,6 +80,7 @@ export default async function patientRoutes(fastify: FastifyInstance) {
       } catch (error) {
         return handleError(
           error,
+          request,
           reply,
           "Ocurrió un error al obtener pacientes",
         );
@@ -100,6 +112,7 @@ export default async function patientRoutes(fastify: FastifyInstance) {
       } catch (error) {
         return handleError(
           error,
+          request,
           reply,
           "Ocurrió un error al obtener el paciente",
         );
@@ -136,6 +149,7 @@ export default async function patientRoutes(fastify: FastifyInstance) {
       } catch (error) {
         return handleError(
           error,
+          request,
           reply,
           "Ocurrió un error al actualizar el paciente",
         );

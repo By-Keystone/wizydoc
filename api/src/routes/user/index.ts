@@ -122,16 +122,18 @@ export default async function userRoutes(
           resourceId,
         });
 
-        console.log(JSON.stringify(membership, null, 2));
-
         return reply.status(200).send(membership);
       } catch (error) {
-        console.error("Error occured when getting membership:", error);
+        const errName = error instanceof Error ? error.name : "UnknownError";
+        const errCode =
+          error && typeof error === "object" && "code" in error
+            ? error.code
+            : undefined;
+
+        request.log.error({ errName, errCode }, "[get-user-membership]");
 
         return reply.internalServerError(
-          error instanceof Error
-            ? error.message
-            : "Ocurrió un error al obtener membership",
+          "No se pudo obtener tu acceso a esta sede",
         );
       }
     },
