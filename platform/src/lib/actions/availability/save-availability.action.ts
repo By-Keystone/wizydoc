@@ -7,6 +7,8 @@ import type { AvailabilityBlock } from "@/lib/api/availability/types";
 import { getSession } from "@/lib/auth/session";
 import { revalidateTag } from "next/cache";
 
+const VALIDATION_PATH_PREFIX = /(^|, )(body|params|querystring|headers)\/\S* /g;
+
 export type SaveAvailabilityState =
   | { status: "idle" }
   | { status: "success" }
@@ -33,6 +35,11 @@ export async function saveAvailability(
     revalidateTag(tags.clinicAvailability(clinicId));
     return { status: "success" };
   } catch (error) {
-    return toActionState(error);
+    const state = toActionState(error);
+    if (state.status !== "error") return state;
+    return {
+      status: "error",
+      message: state.message.replace(VALIDATION_PATH_PREFIX, "$1"),
+    };
   }
 }
