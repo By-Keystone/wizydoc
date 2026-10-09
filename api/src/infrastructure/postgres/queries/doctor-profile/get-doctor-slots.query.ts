@@ -4,6 +4,7 @@ import {
   type GetDoctorSlotsDto,
   type IGetDoctorSlotsQuery,
 } from "@/application/queries/doctor-profile/get-doctor-slots.query";
+import { BLOCKING_APPOINTMENT_STATUSES } from "@/domain/entities/appointment/self-service";
 import { SLOT_DURATION_MINUTES } from "@/domain/entities/availability/entity";
 import {
   addDays,
@@ -12,12 +13,6 @@ import {
   toWallTime,
 } from "@/domain/services/clinic-time";
 import { getClient } from "../../transaction-context";
-
-/**
- * Una cita ocupa el hueco salvo que se haya cancelado o el paciente no se haya
- * presentado: en esos dos casos vuelve a estar libre.
- */
-const BLOCKING_STATUSES = ["PENDING", "CONFIRMED", "COMPLETED"] as const;
 
 const STRICT_TIME_PATTERN = /^([01]\d|2[0-3]):([0-5]\d)$/;
 const END_OF_DAY = "24:00";
@@ -60,7 +55,7 @@ export class GetDoctorSlotsQuery implements IGetDoctorSlotsQuery {
             where: {
               doctorProfileId: dto.doctorProfileId,
               scheduledAt: { gte: from, lt: to },
-              status: { in: [...BLOCKING_STATUSES] },
+              status: { in: [...BLOCKING_APPOINTMENT_STATUSES] },
             },
             select: { scheduledAt: true },
           }),

@@ -1,0 +1,687 @@
+<!doctype html>
+<html lang="es-PE">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototipo: autogestión de la cita por enlace</title>
+<style>
+  :root {
+    --teal: #0E8C82;
+    --teal-dark: #0B4F49;
+    --ink: #1F2A2A;
+    --gray: #5C6B6A;
+    --surface: #EFF5F4;
+    --coral: #FF6F59;
+    --border: hsl(214 32% 91%);
+    --ring: hsl(175 82% 30%);
+    --radius: 0.625rem;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    color: hsl(222 47% 11%);
+    background: #e5e7eb;
+    -webkit-font-smoothing: antialiased;
+  }
+  button { font: inherit; }
+  a { color: inherit; }
+  :focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+
+  /* ---------- Barra del prototipo (no es parte de la app) ---------- */
+  .proto { display: grid; grid-template-columns: 300px 1fr; min-height: 100vh; }
+  .proto-panel { background: #fff; border-right: 1px solid #d1d5db; padding: 20px; overflow-y: auto; max-height: 100vh; position: sticky; top: 0; }
+  .proto-panel h1 { font-size: 15px; margin: 0; color: var(--teal-dark); }
+  .proto-panel p.lead { font-size: 12px; color: var(--gray); margin: 6px 0 16px; line-height: 1.45; }
+  .proto-panel h2 { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--teal); margin: 18px 0 8px; }
+  .proto-panel label { display: flex; gap: 8px; align-items: flex-start; font-size: 13px; color: var(--ink); padding: 5px 0; cursor: pointer; line-height: 1.35; }
+  .proto-panel input { margin-top: 2px; accent-color: var(--teal); }
+  .jump { display: block; width: 100%; text-align: left; border: 1px solid #e5e7eb; background: #fff; border-radius: 8px; padding: 6px 10px; margin-bottom: 4px; font-size: 12.5px; color: var(--gray); cursor: pointer; }
+  .jump:hover { background: #f9fafb; }
+  .jump[aria-current="true"] { border-color: var(--teal); color: var(--teal); background: rgba(14,140,130,.06); }
+  .seg { display: flex; border: 1px solid #d1d5db; border-radius: 8px; overflow: hidden; }
+  .seg button { flex: 1; border: 0; background: #fff; padding: 6px; font-size: 12.5px; color: var(--gray); cursor: pointer; }
+  .seg button[aria-pressed="true"] { background: var(--teal); color: #fff; }
+  .note { font-size: 11.5px; color: var(--gray); background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 8px 10px; margin-top: 12px; line-height: 1.45; }
+  .stage { display: flex; justify-content: center; align-items: flex-start; padding: 32px 16px; }
+  .frame { background: #fff; box-shadow: 0 10px 30px rgba(0,0,0,.12); overflow: hidden; transition: width .2s; }
+  .frame.mobile { width: 375px; min-height: 740px; border-radius: 28px; border: 8px solid #1f2937; }
+  .frame.desktop { width: 1024px; min-height: 720px; border-radius: 10px; border: 1px solid #cbd5e1; }
+  .frame-caption { text-align: center; font-size: 12px; color: var(--gray); margin-bottom: 8px; }
+
+  /* ---------- Shell público (= create-appointment/layout.tsx) ---------- */
+  .shell { display: flex; flex-direction: column; min-height: 724px; background: linear-gradient(135deg, var(--surface), #fff 50%, var(--surface)); }
+  .shell header { padding: 20px 24px; }
+  .logo { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; font-size: 20px; color: var(--teal-dark); text-decoration: none; }
+  .logo-mark { width: 28px; height: 28px; border-radius: 8px; background: var(--teal); color: #fff; display: grid; place-items: center; font-size: 15px; }
+  .shell main { flex: 1; display: flex; justify-content: center; align-items: flex-start; padding: 8px 16px 32px; }
+  .desktop .shell main { align-items: center; padding: 48px 16px; }
+  .shell footer { padding: 24px; text-align: center; font-size: 12px; color: var(--gray); }
+
+  /* ---------- Componentes de la app (ui/card, ui/button, ui/badge) ---------- */
+  .card { width: 100%; max-width: 28rem; border-radius: 16px; border: 1px solid #e5e7eb; background: var(--surface); box-shadow: 0 1px 2px rgba(0,0,0,.05); padding: 24px; }
+  .desktop .card { padding: 32px; }
+  h1.title { font-size: 20px; font-weight: 700; color: var(--teal-dark); margin: 0; outline: none; }
+  .sub { margin: 4px 0 0; font-size: 14px; color: var(--gray); line-height: 1.5; }
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 44px; padding: 0 20px; border-radius: var(--radius); font-size: 14px; font-weight: 600; border: 0; cursor: pointer; transition: background .15s, transform .05s; text-decoration: none; white-space: nowrap; }
+  .btn:active:not(:disabled) { transform: scale(.98); }
+  .btn:disabled { opacity: .5; cursor: not-allowed; }
+  .btn-default { background: var(--teal); color: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+  .btn-default:hover:not(:disabled) { background: var(--teal-dark); }
+  .btn-outline { background: #fff; color: var(--gray); border: 1px solid #e5e7eb; }
+  .btn-outline:hover:not(:disabled) { background: #f9fafb; }
+  .btn-coral { background: var(--coral); color: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+  .btn-coral:hover:not(:disabled) { background: rgba(255,111,89,.9); }
+  .btn-block { width: 100%; }
+  .stack { display: flex; flex-direction: column; gap: 12px; margin-top: 24px; }
+  .row { display: flex; gap: 12px; margin-top: 24px; }
+  .row .btn { flex: 1; }
+  .badge { display: inline-flex; align-items: center; border-radius: 999px; padding: 2px 10px; font-size: 12px; font-weight: 600; }
+  .badge-pending { background: #fffbeb; color: #b45309; }
+  .badge-cancelled { background: #f3f4f6; color: var(--gray); }
+
+  .summary { margin-top: 20px; border-radius: 12px; border: 1px solid #e5e7eb; background: #fff; padding: 14px 16px; font-size: 14px; color: var(--gray); }
+  .summary.muted { opacity: .65; }
+  .summary dl { margin: 0; display: grid; grid-template-columns: 92px 1fr; row-gap: 8px; column-gap: 12px; }
+  .summary dt { color: var(--gray); font-size: 13px; }
+  .summary dd { margin: 0; color: var(--ink); font-weight: 500; }
+  .summary .when { font-size: 16px; font-weight: 700; color: var(--teal-dark); margin: 0 0 12px; padding-bottom: 12px; border-bottom: 1px solid #f1f5f9; }
+  .summary .when small { display: block; font-size: 12px; font-weight: 500; color: var(--gray); margin-top: 2px; }
+
+  .hint { margin-top: 8px; font-size: 13px; color: var(--gray); line-height: 1.45; }
+  .alert { margin-top: 16px; border-radius: 10px; padding: 10px 12px; font-size: 13.5px; line-height: 1.45; display: flex; gap: 8px; }
+  .alert svg { flex: none; margin-top: 1px; }
+  .alert-red { background: #fef2f2; border: 1px solid #fecaca; color: #b91c1c; }
+  .icon-tile { width: 56px; height: 56px; border-radius: 16px; display: grid; place-items: center; margin: 0 auto 16px; }
+  .center { text-align: center; }
+  .linkbtn { background: none; border: 0; color: var(--teal); font-weight: 600; font-size: 14px; cursor: pointer; padding: 0; text-decoration: underline; text-underline-offset: 3px; }
+  .spinner { width: 16px; height: 16px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: spin .7s linear infinite; display: inline-block; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ---------- DateTimeStep (copia visual de datetime-step.tsx) ---------- */
+  .weeknav { margin-top: 20px; display: flex; align-items: center; justify-content: space-between; }
+  .iconbtn { border: 0; background: none; border-radius: 8px; padding: 6px; color: var(--gray); cursor: pointer; display: grid; place-items: center; }
+  .iconbtn:hover:not(:disabled) { background: #f3f4f6; }
+  .iconbtn:disabled { opacity: .3; cursor: not-allowed; }
+  .weeklabel { font-size: 14px; font-weight: 500; color: var(--gray); }
+  .days { margin-top: 12px; display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+  .day { display: flex; flex-direction: column; align-items: center; gap: 4px; border-radius: 8px; border: 1px solid #e5e7eb; background: #fff; padding: 8px 2px; font-size: 12px; font-weight: 500; color: var(--gray); cursor: pointer; }
+  .day span:last-child { font-size: 14px; }
+  .day:hover:not(:disabled) { background: #f9fafb; }
+  .day:disabled { border-color: #f3f4f6; color: #d1d5db; cursor: not-allowed; background: transparent; }
+  .day[aria-pressed="true"] { border-color: var(--teal); background: rgba(14,140,130,.1); color: var(--teal); }
+  .slots-label { margin-top: 20px; font-size: 14px; font-weight: 500; color: var(--gray); }
+  .slots { margin-top: 8px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .slot { border-radius: 8px; border: 1px solid #e5e7eb; background: #fff; padding: 9px 4px; font-size: 14px; font-weight: 500; color: var(--gray); cursor: pointer; }
+  .slot:hover { background: #f9fafb; }
+  .slot[aria-pressed="true"] { border-color: var(--teal); background: rgba(14,140,130,.1); color: var(--teal); }
+  .current { margin-top: 16px; border-radius: 10px; background: #fff; border: 1px dashed #cbd5e1; padding: 10px 12px; font-size: 13px; color: var(--gray); }
+  .current strong { color: var(--ink); }
+
+  .compare { margin-top: 20px; display: grid; gap: 10px; }
+  .compare div { border-radius: 12px; padding: 12px 14px; background: #fff; border: 1px solid #e5e7eb; }
+  .compare .label { font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--gray); font-weight: 600; }
+  .compare .old .value { text-decoration: line-through; color: var(--gray); }
+  .compare .new { border-color: var(--teal); background: rgba(14,140,130,.06); }
+  .compare .new .value { color: var(--teal-dark); font-weight: 700; }
+  .compare .value { margin-top: 2px; font-size: 15px; }
+
+  /* ---------- Toast (sonner) ---------- */
+  .toast { position: absolute; left: 50%; bottom: 20px; transform: translateX(-50%); background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,.12); padding: 10px 14px; font-size: 13.5px; color: var(--ink); display: flex; gap: 8px; align-items: center; white-space: nowrap; }
+  .frame-inner { position: relative; }
+
+  /* ---------- Correo ---------- */
+  .mail { background: #f4f4f4; min-height: 724px; padding: 0 0 24px; }
+  .mail-head { background: #fff; border-bottom: 1px solid #e5e7eb; padding: 12px 16px; font-size: 13px; color: var(--gray); }
+  .mail-head strong { color: var(--ink); display: block; font-size: 15px; margin-bottom: 2px; }
+  .mail-body { background: #fff; margin: 16px; padding: 24px 20px; font-size: 15px; color: #000; line-height: 1.5; }
+  .desktop .mail-body { max-width: 600px; margin: 24px auto; padding: 40px; }
+  .mail-body h2 { font-size: 20px; margin: 0 0 10px; }
+  .mail-body table { border-collapse: collapse; font-size: 15px; margin: 12px 0; }
+  .mail-body td { padding: 6px 16px 6px 0; vertical-align: top; }
+  .mail-body td:first-child { color: var(--gray); white-space: nowrap; }
+  .mail-btn { display: inline-block; background: var(--teal); color: #fff; font-weight: 600; text-decoration: none; padding: 12px 22px; border-radius: 8px; margin: 8px 0 4px; border: 0; cursor: pointer; font-size: 15px; }
+  .mail-small { font-size: 14px; color: var(--gray); }
+
+  @media (max-width: 900px) {
+    .proto { grid-template-columns: 1fr; }
+    .proto-panel { position: static; max-height: none; border-right: 0; border-bottom: 1px solid #d1d5db; }
+  }
+</style>
+</head>
+<body>
+<div class="proto">
+  <aside class="proto-panel" aria-label="Controles del prototipo">
+    <h1>autogestion-paciente · prototipo</h1>
+    <p class="lead">
+      Ruta <code>/appointment/[token]</code>. Hoy en el prototipo: <strong>jueves 8 de octubre de 2026, 09:40</strong> (hora de Lima).
+      Todas las horas son de la sede (America/Lima). Datos ficticios. Lo que está en esta barra no es parte de la app.
+    </p>
+
+    <h2>Vista</h2>
+    <div class="seg" role="group" aria-label="Tamaño">
+      <button type="button" data-view="mobile" aria-pressed="true">Móvil 375 px</button>
+      <button type="button" data-view="desktop" aria-pressed="false">Escritorio</button>
+    </div>
+
+    <h2>Escenario al abrir el enlace</h2>
+    <div id="scenarios">
+      <label><input type="radio" name="scenario" value="normal" checked> Cita en 7 días (jue 15 oct, 10:00)</label>
+      <label><input type="radio" name="scenario" value="deadline"> Cita hoy a las 18:30 (menos de 12 h: no se puede reprogramar)</label>
+      <label><input type="radio" name="scenario" value="limit"> Ya reprogramada 3 veces</label>
+      <label><input type="radio" name="scenario" value="cancelled"> Cita ya cancelada</label>
+      <label><input type="radio" name="scenario" value="gone"> Cita ya pasada, enlace inválido o expirado</label>
+      <label><input type="radio" name="scenario" value="error"> Error al cargar (api caído)</label>
+    </div>
+
+    <h2>Simular al confirmar el cambio</h2>
+    <label><input type="radio" name="outcome" value="ok" checked> Todo bien</label>
+    <label><input type="radio" name="outcome" value="taken"> Otro paciente tomó el horario (409)</label>
+    <label><input type="radio" name="outcome" value="race"> La cita cambió en otra pestaña (409)</label>
+
+    <h2>Ir a una pantalla</h2>
+    <div id="jumps"></div>
+
+    <p class="note">
+      El modelo actual no tiene <strong>motivo de consulta</strong> (es una feature posterior en <code>PRODUCT.md</code>): el resumen muestra la especialidad en su lugar. Cuando exista el motivo, va como una fila más del resumen.
+    </p>
+    <p class="note">
+      Decisiones aplicadas: tope de 3 reprogramaciones por cita; el aviso al consultorio va sólo al médico de la cita; cancelar es igual a cualquier antelación.
+    </p>
+  </aside>
+
+  <div class="stage">
+    <div>
+      <p class="frame-caption" id="caption"></p>
+      <div id="frame" class="frame mobile">
+        <div class="frame-inner" id="frame-inner"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  var DAYS_LONG = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
+  var MONTHS_LONG = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
+  var MONTHS_SHORT = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+  var DAY_LABELS = ["Lu", "Ma", "Mi", "Ju", "Vi", "Sá", "Do"];
+  var TODAY = "2026-10-08";
+  var NOW_TIME = "09:40";
+  var MAX_WEEK_OFFSET = 4;
+  var DEMO_NEW_DATE = "2026-10-16";
+  var DEMO_NEW_TIME = "11:00";
+  var DEMO_NEW_WEEK_OFFSET = 1;
+
+  var ICON = {
+    check: '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></svg>',
+    x: '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#5C6B6A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6M9 9l6 6"/></svg>',
+    link: '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#5C6B6A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 17H7A5 5 0 0 1 7 7h2M15 7h2a5 5 0 1 1 0 10h-2M8 12h8"/><path d="m3 3 18 18"/></svg>',
+    warn: '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4M12 17h.01"/></svg>',
+    alert: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>',
+    left: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>',
+    right: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>'
+  };
+
+  var SCENARIOS = {
+    normal: { status: "PENDING", date: "2026-10-15", time: "10:00", rescheduleBlockedBy: null },
+    deadline: { status: "PENDING", date: "2026-10-08", time: "18:30", rescheduleBlockedBy: "DEADLINE" },
+    limit: { status: "PENDING", date: "2026-10-15", time: "10:00", rescheduleBlockedBy: "LIMIT" },
+    cancelled: { status: "CANCELLED", date: "2026-10-15", time: "10:00", rescheduleBlockedBy: null }
+  };
+
+  var BLOCKED_REASON = {
+    DEADLINE: "Ya no se puede reprogramar porque faltan menos de 12 horas para tu cita. Si no puedes asistir, cancélala y reserva otro horario.",
+    LIMIT: "Ya reprogramaste esta cita 3 veces. Si necesitas otro horario, cancélala y reserva de nuevo."
+  };
+
+  var BASE = {
+    patientFirstName: "Rosa",
+    specialty: "Dermatología",
+    doctorName: "Dra. Lucía Paredes Quispe",
+    clinicName: "Consultorio Paredes · Sede Miraflores",
+    clinicAddress: "Av. José Larco 812, of. 304, Miraflores, Lima",
+    durationMinutes: 30
+  };
+
+  var AVAILABILITY = {
+    1: [["09:00", "13:00"]],
+    2: [["09:00", "13:00"]],
+    3: [["09:00", "13:00"], ["15:00", "18:00"]],
+    4: [["09:00", "13:00"], ["15:00", "19:00"]],
+    5: [["09:00", "13:00"]],
+    6: [["09:00", "12:00"]]
+  };
+  var TAKEN = ["2026-10-08 10:00", "2026-10-08 11:30", "2026-10-09 09:00", "2026-10-09 09:30", "2026-10-12 09:00", "2026-10-13 10:30", "2026-10-13 11:00", "2026-10-14 15:00", "2026-10-15 09:30"];
+
+  var SCREENS = [
+    ["email", "Correo de confirmación"],
+    ["loading", "Cargando"],
+    ["summary", "Ver la cita"],
+    ["summary-deadline", "Menos de 12 h: no se puede reprogramar"],
+    ["summary-limit", "Tope de reprogramaciones"],
+    ["confirm-cancel", "Confirmar cancelación"],
+    ["cancelled", "Cancelada"],
+    ["pick", "Elegir otro horario"],
+    ["pick-taken", "Horario ya tomado"],
+    ["confirm-reschedule", "Confirmar cambio"],
+    ["rescheduled", "Reprogramada"],
+    ["race", "La cita cambió"],
+    ["not-found", "Enlace no disponible"],
+    ["error", "Error al cargar"],
+    ["doctor-email", "Aviso al médico"]
+  ];
+
+  var state = {
+    view: "mobile",
+    scenario: "normal",
+    outcome: "ok",
+    screen: "email",
+    appointment: null,
+    weekOffset: 0,
+    selectedDate: null,
+    selectedTime: null,
+    pickError: null,
+    pending: false,
+    toast: null,
+    extraTaken: []
+  };
+
+  function pad(n) { return String(n).padStart(2, "0"); }
+  function parse(date) { return new Date(date + "T00:00:00Z"); }
+  function addDays(date, days) { var d = parse(date); d.setUTCDate(d.getUTCDate() + days); return d.toISOString().slice(0, 10); }
+  function dayOfWeek(date) { return parse(date).getUTCDay(); }
+  function startOfWeek(date) { var dow = dayOfWeek(date); return addDays(date, dow === 0 ? -6 : 1 - dow); }
+  function dayNumber(date) { return Number(date.slice(8, 10)); }
+  function longDate(date) { var d = parse(date); return DAYS_LONG[d.getUTCDay()] + " " + d.getUTCDate() + " de " + MONTHS_LONG[d.getUTCMonth()]; }
+  function capitalize(text) { return text.charAt(0).toUpperCase() + text.slice(1); }
+  function when(date, time) { return capitalize(longDate(date)) + ", " + time; }
+  function toMinutes(t) { return Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5)); }
+  function toTime(m) { return pad(Math.floor(m / 60)) + ":" + pad(m % 60); }
+
+  function slotsFor(date) {
+    if (date < TODAY) return [];
+    var ranges = AVAILABILITY[dayOfWeek(date)] || [];
+    var occupied = TAKEN.concat(state.extraTaken);
+    if (state.appointment) occupied.push(state.appointment.date + " " + state.appointment.time);
+    var slots = [];
+    ranges.forEach(function (range) {
+      for (var m = toMinutes(range[0]); m + 30 <= toMinutes(range[1]); m += 30) {
+        var t = toTime(m);
+        if (occupied.indexOf(date + " " + t) !== -1) continue;
+        if (date === TODAY && t <= NOW_TIME) continue;
+        slots.push(t);
+      }
+    });
+    return slots;
+  }
+
+  function loadScenario() {
+    var s = SCENARIOS[state.scenario];
+    state.appointment = s ? Object.assign({}, BASE, s) : null;
+    state.extraTaken = [];
+    state.weekOffset = 0;
+    state.selectedDate = null;
+    state.selectedTime = null;
+    state.pickError = null;
+    if (state.scenario === "gone") return "not-found";
+    if (state.scenario === "error") return "error";
+    if (state.appointment.status === "CANCELLED") return "cancelled";
+    return "summary";
+  }
+
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+
+  function summaryHtml(a, muted) {
+    return '<div class="summary' + (muted ? " muted" : "") + '">' +
+      '<p class="when">' + esc(when(a.date, a.time)) + '<small>Hora de Lima · ' + a.durationMinutes + ' minutos</small></p>' +
+      '<dl>' +
+      '<dt>Especialidad</dt><dd>' + esc(a.specialty) + '</dd>' +
+      '<dt>Profesional</dt><dd>' + esc(a.doctorName) + '</dd>' +
+      '<dt>Sede</dt><dd>' + esc(a.clinicName) + '</dd>' +
+      '<dt>Dirección</dt><dd>' + esc(a.clinicAddress) + '</dd>' +
+      '</dl></div>';
+  }
+
+  function statusBadge(a) {
+    if (a.status === "CANCELLED") return '<span class="badge badge-cancelled">Cancelada</span>';
+    return '<span class="badge badge-pending">Pendiente</span>';
+  }
+
+  function pendingLabel(label) {
+    return state.pending ? '<span class="spinner" aria-hidden="true"></span> Procesando...' : label;
+  }
+
+  var render = {
+    loading: function () {
+      return '<div class="center" style="padding:120px 0;color:var(--gray)" role="status">' +
+        '<span class="spinner" style="width:24px;height:24px"></span>' +
+        '<p style="font-size:14px;margin-top:12px">Cargando tu cita...</p></div>';
+    },
+
+    summary: function () {
+      var a = state.appointment;
+      var blocked = a.rescheduleBlockedBy;
+      return '<div class="card">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px">' +
+        '<h1 class="title" tabindex="-1">Hola, ' + esc(a.patientFirstName) + '</h1>' + statusBadge(a) + '</div>' +
+        '<p class="sub">Esta es tu cita. Puedes cancelarla hasta la hora de inicio y reprogramarla hasta 12 horas antes.</p>' +
+        summaryHtml(a) +
+        '<div class="stack">' +
+        '<button type="button" class="btn btn-default btn-block" data-action="reschedule"' + (blocked ? ' disabled aria-describedby="blocked-reason"' : "") + '>Reprogramar</button>' +
+        (blocked ? '<p class="hint" id="blocked-reason" style="margin-top:-4px">' + BLOCKED_REASON[blocked] + '</p>' : "") +
+        '<button type="button" class="btn btn-outline btn-block" data-action="cancel">Cancelar cita</button>' +
+        '</div></div>';
+    },
+
+    "confirm-cancel": function () {
+      var a = state.appointment;
+      return '<div class="card">' +
+        '<h1 class="title" tabindex="-1">¿Cancelar tu cita?</h1>' +
+        '<p class="sub">El horario quedará libre para otro paciente. Esta acción no se puede deshacer.</p>' +
+        summaryHtml(a, true) +
+        '<div class="row">' +
+        '<button type="button" class="btn btn-outline" data-action="back-summary"' + (state.pending ? " disabled" : "") + '>Volver</button>' +
+        '<button type="button" class="btn btn-coral" data-action="do-cancel"' + (state.pending ? " disabled" : "") + '>' + pendingLabel("Sí, cancelar") + '</button>' +
+        '</div></div>';
+    },
+
+    cancelled: function () {
+      var a = state.appointment;
+      return '<div class="card">' +
+        '<div class="icon-tile" style="background:#f3f4f6">' + ICON.x + '</div>' +
+        '<div class="center"><h1 class="title" tabindex="-1">Tu cita está cancelada</h1>' +
+        '<p class="sub">El horario quedó libre para otro paciente.</p></div>' +
+        summaryHtml(a, true) +
+        '<p class="hint center" style="margin-top:16px">Te enviamos la confirmación por correo.</p>' +
+        '<div class="stack"><a class="btn btn-default btn-block" href="#" data-action="book-again">Reservar otro horario</a></div></div>';
+    },
+
+    pick: function () {
+      var a = state.appointment;
+      var monday = addDays(startOfWeek(TODAY), state.weekOffset * 7);
+      var days = [];
+      for (var i = 0; i < 7; i++) days.push(addDays(monday, i));
+      var first = days[0], last = days[6];
+      var range = dayNumber(first) + " " + MONTHS_SHORT[parse(first).getUTCMonth()] + " – " + dayNumber(last) + " " + MONTHS_SHORT[parse(last).getUTCMonth()];
+      var daySlots = state.selectedDate ? slotsFor(state.selectedDate) : [];
+      var slotsHtml;
+      if (!state.selectedDate) slotsHtml = '<p class="hint">Elige un día para ver los horarios disponibles.</p>';
+      else if (daySlots.length === 0) slotsHtml = '<p class="hint">El doctor no tiene horarios disponibles ese día.</p>';
+      else slotsHtml = '<div class="slots" role="group" aria-label="Horarios disponibles">' + daySlots.map(function (t) {
+        return '<button type="button" class="slot" data-time="' + t + '" aria-pressed="' + (state.selectedTime === t) + '">' + t + '</button>';
+      }).join("") + '</div>';
+
+      return '<div class="card">' +
+        '<h1 class="title" tabindex="-1" style="font-size:18px">Elige fecha y horario</h1>' +
+        '<p class="sub">Selecciona el día y un horario disponible.</p>' +
+        '<div class="current">Tu cita actual: <strong>' + esc(when(a.date, a.time)) + '</strong></div>' +
+        (state.pickError ? '<div class="alert alert-red" role="alert">' + ICON.alert + '<span>' + esc(state.pickError) + '</span></div>' : "") +
+        '<div class="weeknav">' +
+        '<button type="button" class="iconbtn" data-action="prev-week" aria-label="Semana anterior"' + (state.weekOffset === 0 ? " disabled" : "") + '>' + ICON.left + '</button>' +
+        '<span class="weeklabel">' + range + '</span>' +
+        '<button type="button" class="iconbtn" data-action="next-week" aria-label="Semana siguiente"' + (state.weekOffset >= MAX_WEEK_OFFSET ? " disabled" : "") + '>' + ICON.right + '</button>' +
+        '</div>' +
+        '<div class="days" role="group" aria-label="Días">' + days.map(function (d, i) {
+          var disabled = slotsFor(d).length === 0;
+          return '<button type="button" class="day" data-date="' + d + '"' + (disabled ? " disabled" : "") + ' aria-pressed="' + (state.selectedDate === d) + '" aria-label="' + esc(longDate(d)) + '"><span>' + DAY_LABELS[i] + '</span><span>' + dayNumber(d) + '</span></button>';
+        }).join("") + '</div>' +
+        '<p class="slots-label">Horarios</p>' + slotsHtml +
+        '<p class="hint" style="margin-top:16px">¿No encuentras un horario? Puedes <button type="button" class="linkbtn" data-action="cancel">cancelar tu cita</button> y reservar más adelante.</p>' +
+        '<div class="row">' +
+        '<button type="button" class="btn btn-outline" data-action="back-summary">Atrás</button>' +
+        '<button type="button" class="btn btn-default" data-action="to-confirm"' + (state.selectedDate && state.selectedTime ? "" : " disabled") + '>Siguiente</button>' +
+        '</div></div>';
+    },
+
+    "confirm-reschedule": function () {
+      var a = state.appointment;
+      return '<div class="card">' +
+        '<h1 class="title" tabindex="-1">¿Cambiar tu cita a este horario?</h1>' +
+        '<p class="sub">' + esc(a.specialty) + ' con ' + esc(a.doctorName) + ', en ' + esc(a.clinicName) + '.</p>' +
+        '<div class="compare">' +
+        '<div class="old"><div class="label">Antes</div><div class="value">' + esc(when(a.date, a.time)) + '</div></div>' +
+        '<div class="new"><div class="label">Ahora</div><div class="value">' + esc(when(state.selectedDate, state.selectedTime)) + '</div></div>' +
+        '</div>' +
+        '<p class="hint">El horario anterior quedará libre para otro paciente.</p>' +
+        '<div class="row">' +
+        '<button type="button" class="btn btn-outline" data-action="back-pick"' + (state.pending ? " disabled" : "") + '>Elegir otro</button>' +
+        '<button type="button" class="btn btn-default" data-action="do-reschedule"' + (state.pending ? " disabled" : "") + '>' + pendingLabel("Confirmar cambio") + '</button>' +
+        '</div></div>';
+    },
+
+    rescheduled: function () {
+      var a = state.appointment;
+      return '<div class="card">' +
+        '<div class="icon-tile" style="background:#dcfce7">' + ICON.check + '</div>' +
+        '<div class="center"><h1 class="title" tabindex="-1">Listo, tu cita cambió</h1>' +
+        '<p class="sub">Te enviamos los detalles por correo. Este mismo enlace sigue sirviendo para tu nueva cita.</p></div>' +
+        summaryHtml(a) +
+        '<div class="stack"><button type="button" class="btn btn-outline btn-block" data-action="back-summary">Ver mi cita</button></div></div>';
+    },
+
+    race: function () {
+      return '<div class="card">' +
+        '<div class="icon-tile" style="background:#fef2f2">' + ICON.warn + '</div>' +
+        '<div class="center"><h1 class="title" tabindex="-1">Tu cita cambió mientras elegías</h1>' +
+        '<p class="sub" role="alert">Alguien canceló o reprogramó esta cita desde otra pestaña o dispositivo. Recarga para ver cómo quedó.</p></div>' +
+        '<div class="stack"><button type="button" class="btn btn-default btn-block" data-action="reload">Recargar</button></div></div>';
+    },
+
+    "not-found": function () {
+      return '<div class="card">' +
+        '<div class="icon-tile" style="background:#f3f4f6">' + ICON.link + '</div>' +
+        '<div class="center"><h1 class="title" tabindex="-1">Este enlace ya no está disponible</h1>' +
+        '<p class="sub">Puede que tu cita ya haya pasado o que el enlace esté incompleto. Revisa que lo hayas abierto desde el último correo que te enviamos.</p></div></div>';
+    },
+
+    error: function () {
+      return '<div class="center" style="padding:80px 16px">' +
+        '<div class="icon-tile" style="background:#fef2f2">' + ICON.warn + '</div>' +
+        '<h1 class="title" tabindex="-1" style="font-size:18px">Algo salió mal</h1>' +
+        '<p class="sub" style="max-width:24rem;margin:4px auto 0">No pudimos cargar tu cita. Vuelve a intentarlo.</p>' +
+        '<button type="button" class="btn btn-outline" style="margin-top:16px;height:40px" data-action="retry">Reintentar</button></div>';
+    },
+
+    email: function () {
+      return '<div class="mail">' +
+        '<div class="mail-head"><strong>Tu cita en Consultorio Paredes · Sede Miraflores está reservada</strong>De: WizyDoc &lt;citas@wizydoc.app&gt; · Para: rosa.huaman@gmail.com</div>' +
+        '<div class="mail-body">' +
+        '<h2 tabindex="-1" class="title" style="color:#000;font-size:20px">Hola Rosa Huamán,</h2>' +
+        '<p>Tu cita ya está reservada. Estos son los detalles:</p>' +
+        '<table>' +
+        '<tr><td>Fecha y hora</td><td><strong>jueves, 15 de octubre de 2026, 10:00</strong></td></tr>' +
+        '<tr><td>Duración</td><td>30 minutos</td></tr>' +
+        '<tr><td>Especialidad</td><td>' + esc(BASE.specialty) + '</td></tr>' +
+        '<tr><td>Profesional</td><td>Lucía Paredes Quispe</td></tr>' +
+        '<tr><td>Sede</td><td>' + esc(BASE.clinicName) + '</td></tr>' +
+        '<tr><td>Dirección</td><td>' + esc(BASE.clinicAddress) + '</td></tr>' +
+        '</table>' +
+        '<p class="mail-small">Te recomendamos llegar unos minutos antes de la hora indicada.</p>' +
+        '<button type="button" class="mail-btn" data-action="open-link">Cancelar o reprogramar</button>' +
+        '<p class="mail-small">Puedes cancelar hasta la hora de tu cita y reprogramar hasta 12 horas antes. No compartas este enlace: da acceso a tu cita.</p>' +
+        '</div></div>';
+    },
+
+    "doctor-email": function () {
+      return '<div class="mail">' +
+        '<div class="mail-head"><strong>Rosa Huamán canceló su cita del jueves 15 de octubre, 10:00</strong>De: WizyDoc &lt;citas@wizydoc.app&gt; · Para: lucia.paredes@consultorioparedes.pe</div>' +
+        '<div class="mail-body">' +
+        '<h2 tabindex="-1" class="title" style="color:#000;font-size:20px">Hola Lucía,</h2>' +
+        '<p>Una paciente canceló su cita desde el enlace de autogestión. El horario ya quedó libre para otra reserva.</p>' +
+        '<table>' +
+        '<tr><td>Paciente</td><td><strong>Rosa Huamán</strong></td></tr>' +
+        '<tr><td>Fecha y hora</td><td>jueves, 15 de octubre de 2026, 10:00</td></tr>' +
+        '<tr><td>Especialidad</td><td>Dermatología</td></tr>' +
+        '<tr><td>Sede</td><td>Consultorio Paredes · Sede Miraflores</td></tr>' +
+        '</table>' +
+        '<p class="mail-small">No tienes que hacer nada. Si la paciente reserva otro horario, te llegará el aviso de la nueva cita.</p>' +
+        '</div></div>';
+    }
+  };
+
+  function shell(content) {
+    return '<div class="shell"><header><a class="logo" href="#" data-action="noop"><span class="logo-mark">W</span>WizyDoc</a></header>' +
+      '<main>' + content + '</main>' +
+      '<footer>© 2026 WizyDoc. Todos los derechos reservados.</footer></div>';
+  }
+
+  var OUTSIDE_SHELL = ["email", "doctor-email"];
+
+  function currentJumpKey() {
+    if (state.screen === "pick" && state.pickError) return "pick-taken";
+    if (state.screen === "summary" && state.appointment && state.appointment.rescheduleBlockedBy === "DEADLINE") return "summary-deadline";
+    if (state.screen === "summary" && state.appointment && state.appointment.rescheduleBlockedBy === "LIMIT") return "summary-limit";
+    return state.screen;
+  }
+
+  function draw(focus) {
+    var screenKey = state.screen;
+    var html = render[screenKey]();
+    var inner = document.getElementById("frame-inner");
+    inner.innerHTML = (OUTSIDE_SHELL.indexOf(screenKey) !== -1 ? html : shell(html)) +
+      (state.toast ? '<div class="toast" role="status">' + state.toast + '</div>' : "");
+    document.getElementById("frame").className = "frame " + state.view;
+    var jumpKey = currentJumpKey();
+    var label = SCREENS.filter(function (s) { return s[0] === jumpKey; })[0];
+    document.getElementById("caption").textContent = (label ? label[1] : screenKey) + " · " + (state.view === "mobile" ? "375 px" : "escritorio");
+    document.querySelectorAll("#jumps .jump").forEach(function (b) {
+      b.setAttribute("aria-current", String(b.dataset.jump === jumpKey));
+    });
+    if (focus) {
+      var heading = inner.querySelector("h1, h2");
+      if (heading) heading.focus({ preventScroll: true });
+    }
+  }
+
+  function go(screen) {
+    state.screen = screen;
+    state.toast = null;
+    draw(true);
+  }
+
+  function showToast(text) {
+    state.toast = text;
+    draw(false);
+    setTimeout(function () { state.toast = null; draw(false); }, 2600);
+  }
+
+  function withPending(next) {
+    state.pending = true;
+    draw(false);
+    setTimeout(function () { state.pending = false; next(); }, 800);
+  }
+
+  function openLink() {
+    state.screen = "loading";
+    draw(true);
+    setTimeout(function () { go(loadScenario()); }, 700);
+  }
+
+  function syncScenarioRadio() {
+    document.querySelectorAll('input[name="scenario"]').forEach(function (r) { r.checked = r.value === state.scenario; });
+  }
+
+  function selectDemoSlot(time) {
+    state.weekOffset = DEMO_NEW_WEEK_OFFSET;
+    state.selectedDate = DEMO_NEW_DATE;
+    state.selectedTime = time;
+  }
+
+  var SCENARIO_FOR_JUMP = { "summary-deadline": "deadline", "summary-limit": "limit" };
+
+  function jumpTo(key) {
+    if (key === "email" || key === "doctor-email" || key === "loading") { go(key); return; }
+    if (key === "not-found" || key === "error") { state.appointment = null; go(key); return; }
+    state.scenario = SCENARIO_FOR_JUMP[key] || "normal";
+    syncScenarioRadio();
+    loadScenario();
+    var a = state.appointment;
+    if (key === "summary-deadline" || key === "summary-limit") key = "summary";
+    if (key === "cancelled") a.status = "CANCELLED";
+    if (key === "pick-taken") {
+      selectDemoSlot(null);
+      state.extraTaken = [DEMO_NEW_DATE + " " + DEMO_NEW_TIME];
+      state.pickError = "Otro paciente acaba de tomar el horario del " + longDate(DEMO_NEW_DATE) + ", " + DEMO_NEW_TIME + ". Elige otro.";
+      key = "pick";
+    }
+    if (key === "confirm-reschedule" || key === "rescheduled") selectDemoSlot(DEMO_NEW_TIME);
+    if (key === "rescheduled") { a.date = DEMO_NEW_DATE; a.time = DEMO_NEW_TIME; }
+    go(key);
+  }
+
+  document.addEventListener("click", function (event) {
+    var target = event.target.closest("[data-action], [data-date], [data-time], [data-view], [data-jump]");
+    if (!target) return;
+    if (target.tagName === "A") event.preventDefault();
+
+    if (target.dataset.view) {
+      state.view = target.dataset.view;
+      document.querySelectorAll("[data-view]").forEach(function (b) { b.setAttribute("aria-pressed", String(b === target)); });
+      draw(false);
+      return;
+    }
+    if (target.dataset.jump) { jumpTo(target.dataset.jump); return; }
+    if (target.dataset.date) { state.selectedDate = target.dataset.date; state.selectedTime = null; draw(false); return; }
+    if (target.dataset.time) { state.selectedTime = target.dataset.time; draw(false); return; }
+
+    var a = state.appointment;
+    switch (target.dataset.action) {
+      case "open-link": openLink(); break;
+      case "retry": openLink(); break;
+      case "reload": openLink(); break;
+      case "cancel": go("confirm-cancel"); break;
+      case "back-summary": go(a && a.status === "CANCELLED" ? "cancelled" : "summary"); break;
+      case "do-cancel":
+        withPending(function () {
+          a.status = "CANCELLED";
+          go("cancelled");
+          showToast("Tu cita fue cancelada");
+        });
+        break;
+      case "reschedule":
+        state.weekOffset = 0; state.selectedDate = null; state.selectedTime = null; state.pickError = null;
+        go("pick");
+        break;
+      case "prev-week": state.weekOffset--; state.selectedDate = null; state.selectedTime = null; draw(false); break;
+      case "next-week": state.weekOffset++; state.selectedDate = null; state.selectedTime = null; draw(false); break;
+      case "to-confirm": state.pickError = null; go("confirm-reschedule"); break;
+      case "back-pick": go("pick"); break;
+      case "do-reschedule":
+        withPending(function () {
+          if (state.outcome === "taken") {
+            state.extraTaken.push(state.selectedDate + " " + state.selectedTime);
+            state.pickError = "Otro paciente acaba de tomar el horario del " + longDate(state.selectedDate) + ", " + state.selectedTime + ". Elige otro.";
+            state.selectedTime = null;
+            go("pick");
+            return;
+          }
+          if (state.outcome === "race") { go("race"); return; }
+          a.date = state.selectedDate;
+          a.time = state.selectedTime;
+          go("rescheduled");
+          showToast("Tu cita cambió de horario");
+        });
+        break;
+      case "book-again":
+        showToast("Abre /clinic/[clinicId]/create-appointment (booking actual)");
+        break;
+    }
+  });
+
+  document.querySelectorAll('input[name="scenario"]').forEach(function (r) {
+    r.addEventListener("change", function () { state.scenario = r.value; openLink(); });
+  });
+  document.querySelectorAll('input[name="outcome"]').forEach(function (r) {
+    r.addEventListener("change", function () { state.outcome = r.value; });
+  });
+
+  document.getElementById("jumps").innerHTML = SCREENS.map(function (s) {
+    return '<button type="button" class="jump" data-jump="' + s[0] + '">' + s[1] + '</button>';
+  }).join("");
+
+  draw(false);
+})();
+</script>
+</body>
+</html>
