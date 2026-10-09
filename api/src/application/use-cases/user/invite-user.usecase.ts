@@ -1,5 +1,7 @@
+import { Conflict } from "@/application/errors/conflict.error";
 import { NotFound } from "@/application/errors/not-found.error";
 import { PaymentRequired } from "@/application/errors/payment-required.error";
+import { TooManyRequests } from "@/application/errors/too-many-requests.error";
 import { UnprocessableEntity } from "@/application/errors/unprocessable-entity.errors";
 import type { IEmailService } from "@/application/ports/email-service.port";
 import { isWithinLimit } from "@/domain/entities/subscription/entitlements";
@@ -8,9 +10,12 @@ import { lockAccountQuota } from "@/infrastructure/postgres/lock-account-quota";
 import { GetAccountEntitlements } from "@/infrastructure/postgres/queries/subscription/get-account-entitlements.query";
 import { getClient } from "@/infrastructure/postgres/transaction-context";
 import { renderTemplate } from "@/infrastructure/services/email-service/template-renderer";
-import { MembershipRole } from "@prisma/client";
+import { type InvitationStatus, MembershipRole } from "@prisma/client";
 import { randomBytes } from "node:crypto";
 import z from "zod";
+
+export const INVITATION_TTL_MS = 24 * 60 * 60 * 1000;
+export const INVITATION_RESEND_COOLDOWN_MS = 5 * 60 * 1000;
 
 const inviteeFieldsSchema = z.object({
   // Better Auth busca al usuario en minúsculas al iniciar sesión.
@@ -52,6 +57,12 @@ export type InviteUserDto = InviteeFields & {
       }
     | { resourceType: "ORGANIZATION"; role: "ADMIN" | "USER" }
   );
+
+interface ExistingMembership {
+  id: string;
+  deletedAt: Date | null;
+  invitation: { status: InvitationStatus; expiresAt: Date } | null;
+}
 
 interface InviteUserUseCaseService {
   emailService: IEmailService;
@@ -133,6 +144,120 @@ export class InviteUserUseCase {
     return clinic;
   }
 
+  private async findMembershipWithInvitation(
+    userId: string,
+    resourceId: string,
+  ) {
+    return await getClient().userResourceMembership.findUnique({
+      where: { userId_resourceId: { userId, resourceId } },
+      include: { invitation: { select: { status: true, expiresAt: true } } },
+    });
+  }
+
+  private assertInvitationCanBeRenewed(membership: ExistingMembership) {
+    if (membership.deletedAt) {
+      throw new Conflict(
+        "Esta persona fue eliminada de este recurso y no se puede volver a invitar.",
+      );
+    }
+
+    if (!membership.invitation || membership.invitation.status === "ACCEPTED") {
+      throw new Conflict("Esta persona ya es miembro.");
+    }
+
+    if (this.wasIssuedRecently(membership.invitation)) {
+      throw new TooManyRequests(
+        "Ya se envió una invitación hace poco. Espera unos minutos antes de volver a enviarla.",
+      );
+    }
+  }
+
+  // Una fecha de emisión futura sale de las invitaciones de 7 días: se pueden renovar siempre.
+  private wasIssuedRecently(invitation: {
+    status: InvitationStatus;
+    expiresAt: Date;
+  }) {
+    if (invitation.status !== "INVITED") return false;
+
+    const issuedAt = invitation.expiresAt.getTime() - INVITATION_TTL_MS;
+    const elapsedMs = Date.now() - issuedAt;
+
+    return elapsedMs >= 0 && elapsedMs < INVITATION_RESEND_COOLDOWN_MS;
+  }
+
+  private async createMembershipWithInvitation(
+    data: InviteUserDto,
+    userId: string,
+  ) {
+    const client = getClient();
+
+    if (data.resourceType === "CLINIC" && data.role === "DOCTOR") {
+      await this.assertDoctorSeatAvailable(data.accountId, userId);
+      const uniqueSpecialtyIds =
+        await this.assertSpecialtiesBelongToClinicOrganization(
+          data.resourceId,
+          data.specialtyIds ?? [],
+        );
+
+      await client.doctorProfile.create({
+        data: {
+          userId,
+          clinicId: data.resourceId,
+          specialties: {
+            connect: uniqueSpecialtyIds.map((id) => ({ id })),
+          },
+        },
+      });
+    }
+
+    const membership = await client.userResourceMembership.create({
+      data: {
+        role: data.role,
+        accountId: data.accountId,
+        userId,
+        resourceId: data.resourceId,
+        createdBy: data.createdBy,
+      },
+    });
+
+    return await client.userInvitation.create({
+      data: {
+        ...this.freshInvitationFields(),
+        membershipId: membership.id,
+        invitedBy: data.createdBy,
+      },
+    });
+  }
+
+  private async renewExistingInvitation(
+    membership: ExistingMembership,
+    invitedBy: string,
+  ) {
+    this.assertInvitationCanBeRenewed(membership);
+    return await this.renewInvitation(membership.id, invitedBy);
+  }
+
+  // El filtro de estado evita revertir una invitación que se aceptó entre la lectura y esta escritura.
+  private async renewInvitation(membershipId: string, invitedBy: string) {
+    const fields = this.freshInvitationFields();
+
+    const { count } = await getClient().userInvitation.updateMany({
+      where: { membershipId, status: { not: "ACCEPTED" }, acceptedAt: null },
+      data: { ...fields, status: "INVITED", invitedBy },
+    });
+
+    if (count !== 1) throw new Conflict("Esta persona ya es miembro.");
+
+    return fields;
+  }
+
+  private freshInvitationFields() {
+    return {
+      token: randomBytes(32).toString("hex"),
+      expiresAt: new Date(Date.now() + INVITATION_TTL_MS),
+    };
+  }
+
   async execute(data: InviteUserDto) {
     await this.tx.runInTransaction(async () => {
       const client = getClient();
@@ -158,46 +283,14 @@ export class InviteUserUseCase {
           },
         });
 
-      if (data.resourceType === "CLINIC" && data.role === "DOCTOR") {
-        await this.assertDoctorSeatAvailable(data.accountId, user.id);
-        const uniqueSpecialtyIds =
-          await this.assertSpecialtiesBelongToClinicOrganization(
-            data.resourceId,
-            data.specialtyIds ?? [],
-          );
+      const existingMembership = await this.findMembershipWithInvitation(
+        user.id,
+        data.resourceId,
+      );
 
-        await client.doctorProfile.create({
-          data: {
-            userId: user.id,
-            clinicId: data.resourceId,
-            specialties: {
-              connect: uniqueSpecialtyIds.map((id) => ({ id })),
-            },
-          },
-        });
-      }
-
-      const membership = await client.userResourceMembership.create({
-        data: {
-          role: data.role,
-          accountId: data.accountId,
-          userId: user.id,
-          resourceId: data.resourceId,
-          createdBy: data.createdBy,
-        },
-      });
-
-      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days from now
-      const invitationToken = randomBytes(32).toString("hex");
-
-      const invitation = await client.userInvitation.create({
-        data: {
-          expiresAt,
-          token: invitationToken,
-          membershipId: membership.id,
-          invitedBy: data.createdBy,
-        },
-      });
+      const invitation = existingMembership
+        ? await this.renewExistingInvitation(existingMembership, data.createdBy)
+        : await this.createMembershipWithInvitation(data, user.id);
 
       const url = `${process.env.FRONTEND_URL}/invite/accept?token=${invitation.token}`;
 

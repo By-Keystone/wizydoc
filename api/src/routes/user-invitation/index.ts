@@ -58,6 +58,9 @@ export default async function userInvitationRoutes(fastify: FastifyInstance) {
           if (error.statusCode === 422)
             return reply.status(422).send({ message: error.message });
 
+          if (error.statusCode === 410)
+            return reply.status(410).send({ message: error.message });
+
           if (error.statusCode === 400 || error.statusCode === 404)
             return reply
               .status(error.statusCode)

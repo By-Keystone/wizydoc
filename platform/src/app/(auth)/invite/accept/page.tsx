@@ -10,9 +10,11 @@ interface Props {
 export default async function AcceptInvitePage({ searchParams }: Props) {
   const { token } = await searchParams;
 
-  const invitation = token ? await getInvitation(token) : null;
+  const lookup = token ? await getInvitation(token) : null;
 
-  if (!token || !invitation) {
+  if (!token || lookup?.status !== "valid") {
+    const isExpired = lookup?.status === "expired";
+
     return (
       <div className="w-full max-w-md">
         <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-xl">
@@ -20,10 +22,12 @@ export default async function AcceptInvitePage({ searchParams }: Props) {
             <XCircle className="h-7 w-7 text-red-500" />
           </div>
           <h1 className="text-2xl font-bold text-brand-teal-dark">
-            Invitación inválida
+            {isExpired ? "Invitación expirada" : "Invitación inválida"}
           </h1>
           <p className="mt-2 text-sm text-brand-gray">
-            Este enlace de invitación no es válido o ya expiró.
+            {isExpired
+              ? "Este link expiró. Pide al administrador que te envíe una invitación nueva."
+              : "Este enlace de invitación no es válido o ya expiró."}
           </p>
           <Link
             href="/login"
@@ -35,6 +39,8 @@ export default async function AcceptInvitePage({ searchParams }: Props) {
       </div>
     );
   }
+
+  const { invitation } = lookup;
 
   return (
     <AcceptInviteForm

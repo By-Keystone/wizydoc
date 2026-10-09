@@ -8,8 +8,9 @@ import {
   type OnboardedAdmin,
   type SeededMember,
 } from "../../support/accounts";
-import { PLATFORM_BASE_URL } from "../../support/env";
+import { API_BASE_URL, PLATFORM_BASE_URL } from "../../support/env";
 import { getTestPrisma } from "../../support/db";
+import { backdateInvitationExpiry } from "../../support/invitations";
 import { uniqueEmail, uniqueName } from "../../support/users";
 import { loginViaUi } from "../../support/ui";
 
@@ -329,6 +330,57 @@ test("invitar a un USER cierra el modal, muestra Invitación enviada y la fila n
     page
       .getByRole("row", { name: /Nueva Persona/ })
       .getByText("Invitación pendiente"),
+  ).toHaveCount(0);
+});
+
+test("la tabla de la organización marca Invitación expirada a quien no aceptó a tiempo y Invitación pendiente a quien aún está a tiempo; al aceptar la etiqueta desaparece", async ({
+  page,
+}) => {
+  const fixture = await setupFixture();
+  const prisma = await getTestPrisma();
+  const people = [
+    { email: uniqueEmail("vigente-orgui"), name: "Vigente" },
+    { email: uniqueEmail("vencida-orgui"), name: "Vencida" },
+  ];
+  for (const person of people) {
+    const response = await fixture.admin.context.post(
+      `${API_BASE_URL}/organization/${fixture.organizationId}/invitations`,
+      {
+        data: {
+          email: person.email,
+          name: person.name,
+          lastName: "Prueba",
+          phone: "+51900000002",
+          role: "USER",
+        },
+      },
+    );
+    expect(response.status()).toBe(200);
+  }
+  const expiredInvitation = await prisma.userInvitation.findFirst({
+    where: { membership: { user: { email: people[1].email } } },
+  });
+  if (!expiredInvitation) throw new Error("No se encontró la invitación");
+  await backdateInvitationExpiry(expiredInvitation.token);
+
+  await goToUsersPage(page, fixture);
+
+  const pendingRow = page.getByRole("row", { name: /Vigente Prueba/ });
+  const expiredRow = page.getByRole("row", { name: /Vencida Prueba/ });
+  await expect(pendingRow.getByText("Invitación pendiente")).toBeVisible();
+  await expect(pendingRow.getByText("Invitación expirada")).toHaveCount(0);
+  await expect(expiredRow.getByText("Invitación expirada")).toBeVisible();
+  await expect(expiredRow.getByText("Invitación pendiente")).toHaveCount(0);
+
+  await prisma.userInvitation.update({
+    where: { id: expiredInvitation.id },
+    data: { status: "ACCEPTED", acceptedAt: new Date() },
+  });
+  await page.reload();
+  await expect(
+    page
+      .getByRole("row", { name: /Vencida Prueba/ })
+      .getByText("Invitación expirada"),
   ).toHaveCount(0);
 });
 

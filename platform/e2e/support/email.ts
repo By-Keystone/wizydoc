@@ -9,21 +9,23 @@ export interface CapturedEmail {
   sentAt: string;
 }
 
-export function readLatestEmailTo(email: string): CapturedEmail | undefined {
+export function readEmailsTo(email: string): CapturedEmail[] {
   let capturedEmailsFile: string;
   try {
     capturedEmailsFile = readFileSync(EMAIL_CAPTURE_PATH, "utf-8");
   } catch {
-    return undefined;
+    return [];
   }
 
-  const emailsSentToAddress = capturedEmailsFile
+  return capturedEmailsFile
     .split("\n")
     .filter(Boolean)
     .map((line) => JSON.parse(line) as CapturedEmail)
     .filter((capturedEmail) => capturedEmail.to === email);
+}
 
-  return emailsSentToAddress.at(-1);
+export function readLatestEmailTo(email: string): CapturedEmail | undefined {
+  return readEmailsTo(email).at(-1);
 }
 
 // Handlebars escapa el href como HTML; el regex no lo decodifica solo, como haría un navegador.

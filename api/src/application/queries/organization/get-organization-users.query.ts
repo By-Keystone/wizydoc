@@ -10,7 +10,7 @@ export interface OrganizationUserRow {
   email: string;
   phone: string;
   role: string;
-  hasPendingInvitation: boolean;
+  invitationStatus: "pending" | "expired" | null;
 }
 
 export interface IGetOrganizationUsersQuery {
