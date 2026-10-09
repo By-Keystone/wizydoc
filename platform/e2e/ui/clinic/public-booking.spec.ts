@@ -59,7 +59,7 @@ test("CA-5: el paciente reserva una cita de punta a punta con un médico invitad
   await page.getByRole("button", { name: "Semana siguiente" }).click();
   await page
     .getByRole("button", {
-      name: /^(Lu|Ma|Mi|Ju|Vi|Sá|Do)\s*\d{1,2}$/,
+      name: /^(lunes|martes|miércoles|jueves|viernes|sábado|domingo) \d{1,2} de [a-zé]+$/,
       disabled: false,
     })
     .first()
