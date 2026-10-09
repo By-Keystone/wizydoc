@@ -1,9 +1,11 @@
 import z from "zod";
+import {
+  MAX_DAYS_AHEAD,
+  MAX_DAYS_IN_THE_PAST,
+} from "@/domain/entities/availability/entity";
 import { addDays, today } from "@/domain/services/clinic-time";
 
 const MAX_RANGE_DAYS = 31;
-const MAX_DAYS_IN_THE_PAST = 7;
-const MAX_DAYS_AHEAD = 366;
 const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
 
 const dateKey = z.iso.date({
