@@ -6,6 +6,7 @@ import {
   PLATFORM_DIR,
   apiEnv,
   platformEnv,
+  rateLimitE2eEnv,
   assertE2eEnvironment,
 } from "./e2e/support/env";
 
@@ -43,7 +44,7 @@ export default defineConfig({
       command: "./node_modules/.bin/tsx src/server.ts",
       cwd: API_DIR,
       url: `${API_BASE_URL}/health`,
-      env: { ...apiEnv, DOTENV_CONFIG_PATH: ".env.e2e" },
+      env: { ...apiEnv, ...rateLimitE2eEnv, DOTENV_CONFIG_PATH: ".env.e2e" },
       reuseExistingServer: false,
       timeout: 60_000,
     },

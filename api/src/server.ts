@@ -8,6 +8,7 @@ import {
   validatorCompiler,
 } from "@fastify/type-provider-zod";
 import authPlugin from "./plugins/auth";
+import rateLimitPlugin from "./plugins/rate-limit";
 import policyPlugin, { policy } from "./plugins/policy";
 import entitlementsPlugin from "./plugins/entitlements";
 import { PrismaUserRepository } from "./infrastructure/postgres/repositories/user.repository";
@@ -85,6 +86,7 @@ async function start() {
   });
 
   await fastify.register(cookie);
+  await fastify.register(rateLimitPlugin);
   await fastify.register(sensible);
   await fastify.register(authPlugin);
   await fastify.register(policyPlugin, {
