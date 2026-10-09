@@ -16,6 +16,9 @@ export const RATE_LIMITS = {
   readClinicDoctors: { max: 60, timeWindow: ONE_MINUTE_MS },
   readInvitation: { max: 20, timeWindow: ONE_MINUTE_MS },
   answerInvitation: { max: 10, timeWindow: ONE_MINUTE_MS },
+  readManagedAppointment: { max: 30, timeWindow: ONE_MINUTE_MS },
+  cancelManagedAppointment: { max: 10, timeWindow: ONE_MINUTE_MS },
+  rescheduleManagedAppointment: { max: 10, timeWindow: ONE_MINUTE_MS },
 };
 
 export function limitedBy(limit: { max: number; timeWindow: number }) {

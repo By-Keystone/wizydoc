@@ -31,18 +31,25 @@ import appointmentRoutes from "./routes/appointment/index";
 import patientRoutes from "./routes/patient";
 import { CulqiBillingService } from "./infrastructure/vendors/billing/culqi/culqi-billing.service";
 
-// Tapa el token de invitación en el log de acceso (GET y POST /accept lo llevan en la URL).
+// Tapa los tokens de invitación y de autogestión de cita en el log de acceso: viajan en la URL.
 const INVITATION_TOKEN_IN_URL = /(\/invitations\/)[0-9a-f]{64}/;
+const APPOINTMENT_TOKEN_IN_URL = /(\/appointment\/manage\/)[^/?]+/;
 
 function requestSerializer(request: FastifyRequest) {
   return {
     method: request.method,
-    url: request.url.replace(INVITATION_TOKEN_IN_URL, "$1[token]"),
+    url: request.url
+      .replace(INVITATION_TOKEN_IN_URL, "$1[token]")
+      .replace(APPOINTMENT_TOKEN_IN_URL, "$1[token]"),
     remoteAddress: request.ip,
   };
 }
 
+// Pasado este largo el parámetro no casa ninguna ruta y responde 401 por el hook global; platform no llama al api con tokens mal formados.
+const MAX_ROUTE_PARAM_LENGTH = 2048;
+
 const fastify = Fastify({
+  routerOptions: { maxParamLength: MAX_ROUTE_PARAM_LENGTH },
   logger:
     process.env.NODE_ENV === "production"
       ? { serializers: { req: requestSerializer } }
