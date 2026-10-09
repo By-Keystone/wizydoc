@@ -9,19 +9,13 @@ const VISITOR_IP_HEADER = "x-wizydoc-visitor-ip";
 
 const ONE_MINUTE_MS = 60 * 1000;
 const TEN_MINUTES_MS = 10 * ONE_MINUTE_MS;
-const ONE_HOUR_MS = 60 * ONE_MINUTE_MS;
-
-const GLOBAL_LIMIT = { max: 300, timeWindow: ONE_MINUTE_MS };
 
 export const RATE_LIMITS = {
   bookAppointment: { max: 10, timeWindow: TEN_MINUTES_MS },
   readSlots: { max: 60, timeWindow: ONE_MINUTE_MS },
   readClinicDoctors: { max: 60, timeWindow: ONE_MINUTE_MS },
-  lookupAccountUser: { max: 60, timeWindow: ONE_MINUTE_MS },
   readInvitation: { max: 20, timeWindow: ONE_MINUTE_MS },
   answerInvitation: { max: 10, timeWindow: ONE_MINUTE_MS },
-  sendInvitation: { max: 20, timeWindow: ONE_HOUR_MS },
-  authentication: { max: 10, timeWindow: ONE_MINUTE_MS },
 };
 
 export function limitedBy(limit: { max: number; timeWindow: number }) {
@@ -30,8 +24,6 @@ export function limitedBy(limit: { max: number; timeWindow: number }) {
 
 const TOO_MANY_REQUESTS_MESSAGE =
   "Demasiadas solicitudes. Espera un momento e inténtalo de nuevo.";
-const SIGN_OUT_PATH = "/api/auth/sign-out";
-const HEALTH_PATH = "/health";
 
 function secretsMatch(received: string, expected: string): boolean {
   const receivedBuffer = Buffer.from(received);
@@ -84,15 +76,10 @@ async function rateLimitPlugin(fastify: FastifyInstance) {
   }
 
   await fastify.register(rateLimit, {
-    global: true,
-    ...GLOBAL_LIMIT,
-    // Sin la ruta en la clave, todas las rutas sin límite propio compartirían un solo cupo por IP.
+    global: false,
     keyGenerator: (request) =>
       `${clientIp(request)}|${request.routeOptions.url}`,
-    allowList: (request) =>
-      request.routeOptions.url === HEALTH_PATH ||
-      request.url.split("?")[0] === SIGN_OUT_PATH ||
-      exemptIps.includes(clientIp(request)),
+    allowList: (request) => exemptIps.includes(clientIp(request)),
     errorResponseBuilder: () => new TooManyRequests(TOO_MANY_REQUESTS_MESSAGE),
   });
 }

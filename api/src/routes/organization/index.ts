@@ -43,7 +43,6 @@ import { GetOrganizationsClinicCountQuery } from "@/infrastructure/postgres/quer
 import { GetOrganizationsDoctorCountQuery } from "@/infrastructure/postgres/queries/organization/get-organizations-doctor-count.query";
 import { LookupAccountUserQuery } from "@/infrastructure/postgres/queries/user/lookup-account-user.query";
 import { policy } from "@/plugins/policy";
-import { RATE_LIMITS, limitedBy } from "@/plugins/rate-limit";
 import type { ZodTypeProvider } from "@fastify/type-provider-zod";
 import type { FastifyInstance } from "fastify";
 
@@ -208,15 +207,12 @@ export default async function organizationRoutes(
         params: inviteUserParamsSchema,
         body: inviteOrganizationUserBodySchema,
       },
-      config: {
-        ...policy({
-          account: true,
-          confirmed: true,
-          onboarded: true,
-          roles: ["ADMIN"],
-        }).config,
-        ...limitedBy(RATE_LIMITS.sendInvitation),
-      },
+      ...policy({
+        account: true,
+        confirmed: true,
+        onboarded: true,
+        roles: ["ADMIN"],
+      }),
     },
     async (request, reply) => {
       try {
@@ -295,15 +291,12 @@ export default async function organizationRoutes(
         params: lookupAccountUserParamsSchema,
         body: lookupAccountUserBodySchema,
       },
-      config: {
-        ...policy({
-          account: true,
-          confirmed: true,
-          onboarded: true,
-          roles: ["ADMIN"],
-        }).config,
-        ...limitedBy(RATE_LIMITS.lookupAccountUser),
-      },
+      ...policy({
+        account: true,
+        confirmed: true,
+        onboarded: true,
+        roles: ["ADMIN"],
+      }),
     },
     async (request, reply) => {
       try {

@@ -23,7 +23,7 @@ const PUBLIC_PATH_PATTERNS = [
 
 // Rutas que next.config.ts reenvía al api: el navegador las llama directo, sin pasar por doFetch.
 function isProxiedToApi(pathname: string) {
-  return /^\/api\/(auth|invitations)(\/|$)/.test(pathname);
+  return /^\/api\/invitations(\/|$)/.test(pathname);
 }
 
 function isPublicPath(pathname: string) {
@@ -67,5 +67,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\..*).*)"],
+  matcher: ["/((?!api/auth|_next/static|_next/image|favicon.ico|.*\\..*).*)"],
 };

@@ -1,17 +1,7 @@
 import { redirect } from "next/navigation";
-import { ApiError } from "@/lib/api/errors";
 import { getSession } from "@/lib/auth/session";
 import { getActiveResource } from "@/lib/auth/guards";
 import { LoginForm } from "./login-form";
-
-async function getSessionOrNullWhenThrottled() {
-  try {
-    return await getSession();
-  } catch (error) {
-    if (error instanceof ApiError && error.status === 429) return null;
-    throw error;
-  }
-}
 
 export default async function LoginPage({
   searchParams,
@@ -24,7 +14,7 @@ export default async function LoginPage({
       ? callbackUrl
       : null;
 
-  const session = await getSessionOrNullWhenThrottled();
+  const session = await getSession();
 
   // Ya autenticado: no mostrar el formulario, redirigir a donde corresponda.
   if (session) {

@@ -1,5 +1,5 @@
 import "dotenv/config";
-import Fastify, { type FastifyRequest, type RouteHandlerMethod } from "fastify";
+import Fastify, { type FastifyRequest } from "fastify";
 import cors from "@fastify/cors";
 import cookie from "@fastify/cookie";
 import sensible from "@fastify/sensible";
@@ -8,7 +8,7 @@ import {
   validatorCompiler,
 } from "@fastify/type-provider-zod";
 import authPlugin from "./plugins/auth";
-import rateLimitPlugin, { RATE_LIMITS, limitedBy } from "./plugins/rate-limit";
+import rateLimitPlugin from "./plugins/rate-limit";
 import policyPlugin, { policy } from "./plugins/policy";
 import entitlementsPlugin from "./plugins/entitlements";
 import { PrismaUserRepository } from "./infrastructure/postgres/repositories/user.repository";
@@ -99,51 +99,39 @@ async function start() {
   // lugar de dejarla abierta.
   fastify.addHook("preHandler", fastify.enforcePolicy);
 
-  const authHandler: RouteHandlerMethod = async (request, reply) => {
-    try {
-      // Construct request URL
-      const url = new URL(request.url, `http://${request.headers.host}`);
-
-      // Convert Fastify headers to standard Headers object
-      const headers = fromNodeHeaders(request.headers);
-      // Create Fetch API-compatible request
-      const req = new Request(url.toString(), {
-        method: request.method,
-        headers,
-        ...(request.body ? { body: JSON.stringify(request.body) } : {}),
-      });
-      // Process authentication request
-      const response = await auth.handler(req);
-      // Forward response to client
-      reply.status(response.status);
-      response.headers.forEach((value, key) => {
-        reply.header(key, value);
-      });
-      return reply.send(response.body ? await response.text() : null);
-    } catch (error) {
-      fastify.log.error(`Authentication Error: ${error}`);
-      return reply.status(500).send({
-        error: "Internal authentication error",
-        code: "AUTH_FAILURE",
-      });
-    }
-  };
-
   fastify.route({
-    method: "GET",
+    method: ["GET", "POST"],
     url: "/api/auth/*",
     ...policy({ public: true }),
-    handler: authHandler,
-  });
+    async handler(request, reply) {
+      try {
+        // Construct request URL
+        const url = new URL(request.url, `http://${request.headers.host}`);
 
-  fastify.route({
-    method: "POST",
-    url: "/api/auth/*",
-    config: {
-      ...policy({ public: true }).config,
-      ...limitedBy(RATE_LIMITS.authentication),
+        // Convert Fastify headers to standard Headers object
+        const headers = fromNodeHeaders(request.headers);
+        // Create Fetch API-compatible request
+        const req = new Request(url.toString(), {
+          method: request.method,
+          headers,
+          ...(request.body ? { body: JSON.stringify(request.body) } : {}),
+        });
+        // Process authentication request
+        const response = await auth.handler(req);
+        // Forward response to client
+        reply.status(response.status);
+        response.headers.forEach((value, key) => {
+          reply.header(key, value);
+        });
+        return reply.send(response.body ? await response.text() : null);
+      } catch (error) {
+        fastify.log.error(`Authentication Error: ${error}`);
+        return reply.status(500).send({
+          error: "Internal authentication error",
+          code: "AUTH_FAILURE",
+        });
+      }
     },
-    handler: authHandler,
   });
 
   await fastify.register(clinicRoutes, {
