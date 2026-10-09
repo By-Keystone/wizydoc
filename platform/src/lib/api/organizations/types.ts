@@ -9,5 +9,5 @@ export type GetDoctorCountResult = {
 };
 
 export type OrganizationUser = ClinicUser & {
-  hasPendingInvitation: boolean;
+  invitationStatus: "pending" | "expired" | null;
 };

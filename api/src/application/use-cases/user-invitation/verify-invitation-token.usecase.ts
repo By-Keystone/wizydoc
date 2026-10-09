@@ -1,4 +1,5 @@
 import { BadRequest } from "@/application/errors/bad-request.errors";
+import { Gone } from "@/application/errors/gone.error";
 import { NotFound } from "@/application/errors/not-found.error";
 import { UnprocessableEntity } from "@/application/errors/unprocessable-entity.errors";
 import { getClient } from "@/infrastructure/postgres/transaction-context";
@@ -8,6 +9,9 @@ import z from "zod";
 export const invitationTokenSchema = z
   .string()
   .regex(/^[0-9a-f]{64}$/, { error: "Token inválido" });
+
+const EXPIRED_INVITATION_MESSAGE =
+  "Este link expiró. Pide al administrador que te envíe una invitación nueva.";
 
 export const verifyInvitationTokenParamsSchema = z.object({
   token: invitationTokenSchema,
@@ -40,18 +44,20 @@ export class VerifyInvitationTokenUseCase {
       throw new UnprocessableEntity("User has already accepted the invite");
     }
 
-    // EXPIRED o con la membership borrada se trata igual que un token inválido.
-    if (invitation.status !== "INVITED" || invitation.membership.deletedAt) {
+    if (invitation.membership.deletedAt) {
       throw new BadRequest("Token has expired");
     }
 
+    if (invitation.status === "EXPIRED")
+      throw new Gone(EXPIRED_INVITATION_MESSAGE);
+
     if (invitation.expiresAt < new Date()) {
-      await client.userInvitation.update({
-        where: { token: data.token },
+      await client.userInvitation.updateMany({
+        where: { token: data.token, status: "INVITED" },
         data: { status: "EXPIRED" },
       });
 
-      throw new BadRequest("Token has expired");
+      throw new Gone(EXPIRED_INVITATION_MESSAGE);
     }
 
     const user = invitation.membership.user;

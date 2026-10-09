@@ -1,5 +1,6 @@
 import "server-only";
 
+import { ApiError } from "../errors";
 import { doFetchJson } from "../fetch";
 
 /** Paso que el usuario debe seguir tras aceptar la invitación. */
@@ -11,20 +12,27 @@ export interface InvitationDetails {
   step: InvitationStep;
 }
 
+export type InvitationLookup =
+  | { status: "valid"; invitation: InvitationDetails }
+  | { status: "expired" }
+  | { status: "invalid" };
+
+const EXPIRED_INVITATION_STATUS = 410;
+
 /**
  * Obtiene los detalles de una invitación por su token. No requiere sesión: el
- * token es la credencial. Devuelve `null` si el token es inválido o expiró.
+ * token es la credencial.
  */
-export async function getInvitation(
-  token: string,
-): Promise<InvitationDetails | null> {
+export async function getInvitation(token: string): Promise<InvitationLookup> {
   try {
     const { data } = await doFetchJson<{ data: InvitationDetails }>(
       `/invitations/${token}`,
       { cache: "no-store" },
     );
-    return data;
-  } catch {
-    return null;
+    return { status: "valid", invitation: data };
+  } catch (error) {
+    if (error instanceof ApiError && error.status === EXPIRED_INVITATION_STATUS)
+      return { status: "expired" };
+    return { status: "invalid" };
   }
 }

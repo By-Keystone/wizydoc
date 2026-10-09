@@ -2,7 +2,9 @@ import { Badge, type BadgeProps } from "@/components/ui/badge";
 import type { ClinicUser } from "@/lib/api/clinic/types";
 import { type Column, Table } from "../common/table";
 
-type UserRow = ClinicUser & { hasPendingInvitation?: boolean };
+type UserRow = ClinicUser & {
+  invitationStatus?: "pending" | "expired" | null;
+};
 
 interface Props {
   users: UserRow[];
@@ -22,6 +24,17 @@ const roleDisplay: Record<
 const statusTagClass =
   "inline-flex items-center whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-semibold";
 
+const invitationTag = {
+  pending: {
+    label: "Invitación pendiente",
+    className: "bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-200",
+  },
+  expired: {
+    label: "Invitación expirada",
+    className: "bg-gray-100 text-brand-gray ring-1 ring-inset ring-gray-200",
+  },
+};
+
 const buildColumns = (currentUserEmail?: string): Column<UserRow>[] => [
   {
     key: "name",
@@ -32,7 +45,7 @@ const buildColumns = (currentUserEmail?: string): Column<UserRow>[] => [
         <span className="font-medium text-brand-ink">
           {row.name} {row.lastName}
         </span>
-        {(row.email === currentUserEmail || row.hasPendingInvitation) && (
+        {(row.email === currentUserEmail || row.invitationStatus) && (
           <span className="mt-1 flex flex-wrap items-center justify-center gap-1">
             {row.email === currentUserEmail && (
               <span
@@ -41,11 +54,11 @@ const buildColumns = (currentUserEmail?: string): Column<UserRow>[] => [
                 Tú
               </span>
             )}
-            {row.hasPendingInvitation && (
+            {row.invitationStatus && (
               <span
-                className={`${statusTagClass} bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-200`}
+                className={`${statusTagClass} ${invitationTag[row.invitationStatus].className}`}
               >
-                Invitación pendiente
+                {invitationTag[row.invitationStatus].label}
               </span>
             )}
           </span>

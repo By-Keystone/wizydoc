@@ -8,7 +8,11 @@ export class GetOrganizationUsersQuery implements IGetOrganizationUsersQuery {
   async execute(resourceId: string) {
     return await getClient().$queryRaw<OrganizationUserRow[]>`
         SELECT u.name, u.last_name AS "lastName", u.email, u.phone, urm.role,
-          COALESCE(ui.status = 'INVITED' AND ui.expires_at > now(), false) AS "hasPendingInvitation"
+          CASE
+            WHEN ui.id IS NULL OR ui.status = 'ACCEPTED' THEN NULL
+            WHEN ui.status = 'INVITED' AND ui.expires_at > (now() AT TIME ZONE 'UTC') THEN 'pending'
+            ELSE 'expired'
+          END AS "invitationStatus"
         FROM organization o
         INNER JOIN user_resource_membership urm
           ON urm.resource_id = o.resource_id

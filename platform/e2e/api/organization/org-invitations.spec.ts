@@ -552,7 +552,7 @@ test.describe("Plan", () => {
 });
 
 test.describe("Lista de usuarios de la organización", () => {
-  test("el ADMIN ve sólo memberships directas y vivas, con el indicador de invitación pendiente y sin datos de la invitación", async () => {
+  test("el ADMIN ve sólo memberships directas y vivas, con el estado de su invitación", async () => {
     const fixture = await setupFixture();
     const deletedAdmin = await createMemberWithRole({
       accountId: fixture.admin.accountId,
@@ -599,7 +599,7 @@ test.describe("Lista de usuarios de la organización", () => {
     for (const row of rows) {
       expect(Object.keys(row).sort()).toEqual([
         "email",
-        "hasPendingInvitation",
+        "invitationStatus",
         "lastName",
         "name",
         "phone",
@@ -608,9 +608,9 @@ test.describe("Lista de usuarios de la organización", () => {
     }
 
     const byEmail = (email: string) => rows.find((row) => row.email === email);
-    expect(byEmail(pendingEmail)?.hasPendingInvitation).toBe(true);
-    expect(byEmail(acceptedEmail)?.hasPendingInvitation).toBe(false);
-    expect(byEmail(fixture.admin.email)?.hasPendingInvitation).toBe(false);
+    expect(byEmail(pendingEmail)?.invitationStatus).toBe("pending");
+    expect(byEmail(acceptedEmail)?.invitationStatus).toBeNull();
+    expect(byEmail(fixture.admin.email)?.invitationStatus).toBeNull();
     expect(byEmail(fixture.admin.email)?.role).toBe("ADMIN");
   });
 

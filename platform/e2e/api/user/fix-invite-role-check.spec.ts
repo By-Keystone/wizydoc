@@ -21,8 +21,8 @@ import {
  *   fusionado en main (`fix-auth-user-fields-input`, PR #37 — ver
  *   `api/security/fix-auth-user-fields-input.spec.ts` CA-6); no hay forma de
  *   reproducir el escenario en este entorno.
- * - CA-19 sólo se comprueba hasta donde da una respuesta HTTP (500 genérico
- *   sin detalles de Prisma); la redacción exacta de la línea `[invite-user]`
+ * - CA-19 (un 500 sin detalles de Prisma) ya no tiene un camino HTTP
+ *   razonable de reproducir: reinvitar da 409. La redacción exacta de la línea `[invite-user]`
  *   en el log del api depende de leer la salida del proceso, no de una
  *   respuesta, así que esa parte queda [manual].
  */
@@ -409,10 +409,9 @@ test.describe("Lo que no debe filtrarse", () => {
     ).toBeNull();
   });
 
-  test("CA-19 (parcial): un error interno no filtra detalles de Prisma en la respuesta", async () => {
+  test("reinvitar a un miembro que ya aceptó responde 409 sin filtrar datos del usuario", async () => {
     const fixture = await seedLookupFixture();
 
-    // Reinvitar a la misma persona a la misma sede choca con el único (userId, resourceId): P2002 → 500 genérico.
     const response = await inviteRaw(fixture.account1.context, {
       email: fixture.reception.email,
       name: fixture.reception.name,
@@ -422,11 +421,9 @@ test.describe("Lo que no debe filtrarse", () => {
       resourceId: fixture.clinicAId,
     });
 
-    expect(response.status()).toBe(500);
+    expect(response.status()).toBe(409);
     const body = await response.json();
-    expect(body).toEqual({
-      message: "Ha ocurrido un error al invitar al usuario",
-    });
+    expect(body).toEqual({ message: "Esta persona ya es miembro." });
     const rawBody = JSON.stringify(body);
     expect(rawBody).not.toContain(fixture.reception.email);
     expect(rawBody).not.toContain(fixture.reception.phone);

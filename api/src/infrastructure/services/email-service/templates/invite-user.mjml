@@ -10,6 +10,9 @@
           Aceptar invitación
         </mj-button>
         <mj-text font-size="14px" color="#5C6B6A">
+          Este enlace vence en 1 día. Si expira, pide al administrador que te envíe una invitación nueva.
+        </mj-text>
+        <mj-text font-size="14px" color="#5C6B6A">
           Si no esperabas esta invitación, puedes ignorar este correo.
         </mj-text>
       </mj-column>

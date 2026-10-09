@@ -61,6 +61,22 @@ export async function invitePendingUser(
   };
 }
 
+export async function getInvitationTokenOf(
+  email: string,
+  resourceId: string,
+): Promise<string> {
+  const prisma = await getTestPrisma();
+  const invitation = await prisma.userInvitation.findFirst({
+    where: { membership: { resourceId, user: { email } } },
+  });
+  if (!invitation) {
+    throw new Error(
+      `No se encontró la invitación de ${email} en ${resourceId}`,
+    );
+  }
+  return invitation.token;
+}
+
 export async function countCredentialAccounts(userId: string): Promise<number> {
   const prisma = await getTestPrisma();
   const accounts = await prisma.authAccount.findMany({
@@ -96,6 +112,17 @@ export async function backdateInvitationExpiry(token: string): Promise<void> {
   await prisma.userInvitation.update({
     where: { token },
     data: { expiresAt: new Date(Date.now() - 1000) },
+  });
+}
+
+/** Simula una invitación emitida hace 10 minutos y aún vigente. */
+export async function ageInvitationIssuance(token: string): Promise<void> {
+  const prisma = await getTestPrisma();
+  const tenMinutesMs = 10 * 60 * 1000;
+  const oneDayMs = 24 * 60 * 60 * 1000;
+  await prisma.userInvitation.update({
+    where: { token },
+    data: { expiresAt: new Date(Date.now() + oneDayMs - tenMinutesMs) },
   });
 }
 
