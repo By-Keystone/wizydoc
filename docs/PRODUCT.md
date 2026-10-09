@@ -54,12 +54,12 @@ de consulta (ver `docs/ficha-paciente-historial.md`).
   correo.
 
 ## Política de cancelación
-- **Cancelar:** siempre, desde el link, hasta que empiece la cita. Si faltan
-  menos de 12 horas queda registrada como **cancelación tardía**. Bloquearla no
-  hace que el paciente asista: convierte un aviso en una inasistencia y lo
-  empuja a escribirle al médico.
-- **Reprogramar:** desde el link sólo hasta 12 horas antes. Pasado ese plazo,
-  el paciente puede cancelar y reservar otro horario.
+- **Cancelar:** siempre, desde el link, hasta que empiece la cita, sin importar
+  cuánto falte. Bloquearla no hace que el paciente asista: convierte un aviso
+  en una inasistencia y lo empuja a escribirle al médico.
+- **Reprogramar:** desde el link sólo hasta 12 horas antes y como máximo 3
+  veces por cita. Pasado el plazo o el tope, el paciente puede cancelar y
+  reservar otro horario.
 - **Confirmar:** hasta que empiece la cita.
 - El personal del consultorio puede cancelar o mover cualquier cita desde el
   panel.
@@ -68,7 +68,7 @@ de consulta (ver `docs/ficha-paciente-historial.md`).
 
 ## Estados de cita
 Pendiente → confirmada (por el paciente) → **atendida** o **no asistió**; o
-cancelada (por el paciente o el consultorio; tardía si faltaban menos de 12 h).
+cancelada (por el paciente o el consultorio).
 
 **Atendida por defecto:** al terminar la hora de la cita pasa sola a atendida.
 El médico sólo marca "no asistió" cuando el paciente no vino. Así el médico no
@@ -159,7 +159,11 @@ Beta. Mercado inicial: Perú.
   registrarse; no hay renovación, pagos fallidos ni cancelación. El onboarding
   sólo ofrece Gratis y los planes de pago se asignan a mano. No es prioridad
   hasta que exista lo que justifica pagar (autogestión, recordatorios, WhatsApp).
-- **No existe todavía:** autogestión por link, política de cancelación,
-  estados de cita (toda cita queda pendiente), agenda semanal, recordatorios
+- **Autogestión por link:** el paciente cancela y reprograma desde el enlace
+  del correo de confirmación. La cita queda pendiente o cancelada; confirmar,
+  atendida y no asistió aún no existen, y el panel no puede cancelar ni mover
+  citas.
+- **No existe todavía:** confirmación por el paciente, estados atendida y no
+  asistió, cancelar o mover citas desde el panel, agenda semanal, recordatorios
   (hoy solo el correo de confirmación al reservar), WhatsApp, tope de pacientes,
   importación desde Excel y exportación CSV.
