@@ -11,7 +11,7 @@ const ONE_MINUTE_MS = 60 * 1000;
 const TEN_MINUTES_MS = 10 * ONE_MINUTE_MS;
 
 export const RATE_LIMITS = {
-  bookAppointment: { max: 10, timeWindow: TEN_MINUTES_MS },
+  bookAppointment: { max: 100, timeWindow: TEN_MINUTES_MS },
   readSlots: { max: 60, timeWindow: ONE_MINUTE_MS },
   readClinicDoctors: { max: 60, timeWindow: ONE_MINUTE_MS },
   readInvitation: { max: 20, timeWindow: ONE_MINUTE_MS },
