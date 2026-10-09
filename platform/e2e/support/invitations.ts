@@ -23,7 +23,7 @@ export interface InvitePendingUserParams {
   specialtyIds?: string[];
 }
 
-/** Invita por `POST /user/invite` y lee el token real de la base (nunca del cuerpo de la respuesta: no lo expone). */
+/** Invita por `POST /clinic/:resourceId/invitations` y lee el token real de la base (nunca del cuerpo de la respuesta: no lo expone). */
 export async function invitePendingUser(
   admin: OnboardedAdmin,
   params: InvitePendingUserParams,

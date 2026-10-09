@@ -14,7 +14,6 @@ import { uniqueName } from "../../support/users";
 /** docs/features/fix-invite-email-send/plan.md — CA-1 a CA-5 ([e2e]); CA-6 y CA-7 son [manual] (requieren SES real). */
 
 function inviteBody(
-  resourceId: string,
   overrides: Record<string, unknown>,
 ): Record<string, unknown> {
   return {
@@ -22,7 +21,6 @@ function inviteBody(
     lastName: "Pérez",
     phone: "+51999777666",
     role: "USER",
-    resourceId,
     ...overrides,
   };
 }
@@ -33,7 +31,7 @@ function uniqueMixedCaseEmail(prefix: string): string {
 }
 
 test.describe("Lo que deja de ser posible", () => {
-  test("CA-1 y CA-2: un correo inválido en POST /user/invite responde 400 sin crear nada, y el api sigue vivo", async () => {
+  test("CA-1 y CA-2: un correo inválido en POST /clinic/:resourceId/invitations responde 400 sin crear nada, y el api sigue vivo", async () => {
     const admin = await createOnboardedAdmin({ emailPrefix: "admin-ca1" });
     const organizationId = await createOrganizationResource(
       admin,
@@ -49,13 +47,16 @@ test.describe("Lo que deja de ser posible", () => {
     );
 
     const invalidEmail = "no-es-un-correo";
-    const response = await admin.context.post(`${API_BASE_URL}/user/invite`, {
-      data: inviteBody(clinicId, {
-        email: invalidEmail,
-        role: "DOCTOR",
-        specialtyIds: [specialtyId],
-      }),
-    });
+    const response = await admin.context.post(
+      `${API_BASE_URL}/clinic/${clinicId}/invitations`,
+      {
+        data: inviteBody({
+          email: invalidEmail,
+          role: "DOCTOR",
+          specialtyIds: [specialtyId],
+        }),
+      },
+    );
 
     expect(response.status()).toBe(400);
 
@@ -101,9 +102,12 @@ test.describe("Normalización de correo", () => {
     const mixedCaseEmail = uniqueMixedCaseEmail("Ana.Perez");
     const normalizedEmail = mixedCaseEmail.toLowerCase();
 
-    const response = await admin.context.post(`${API_BASE_URL}/user/invite`, {
-      data: inviteBody(clinicId, { email: mixedCaseEmail }),
-    });
+    const response = await admin.context.post(
+      `${API_BASE_URL}/clinic/${clinicId}/invitations`,
+      {
+        data: inviteBody({ email: mixedCaseEmail }),
+      },
+    );
 
     expect(response.status()).toBe(200);
 
@@ -135,16 +139,16 @@ test.describe("Normalización de correo", () => {
     });
 
     const lowercaseResponse = await admin.context.post(
-      `${API_BASE_URL}/user/invite`,
+      `${API_BASE_URL}/clinic/${clinicId}/invitations`,
       {
-        data: inviteBody(clinicId, { email: victim.email }),
+        data: inviteBody({ email: victim.email }),
       },
     );
     const upperCaseEmail = victim.email.toUpperCase();
     const uppercaseResponse = await admin.context.post(
-      `${API_BASE_URL}/user/invite`,
+      `${API_BASE_URL}/clinic/${clinicId}/invitations`,
       {
-        data: inviteBody(clinicId, { email: upperCaseEmail }),
+        data: inviteBody({ email: upperCaseEmail }),
       },
     );
 

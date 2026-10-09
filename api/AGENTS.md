@@ -31,9 +31,9 @@ los puertos de `domain`/`application`.
   `member: true` o `roles: [...]`. Lee la membership con
   `requireMembership(request)`.
 - Identidad, cuenta y rol salen siempre de la sesión (`request.user`) o de
-  una membership validada, nunca del cuerpo de la petición. Si un id de
-  recurso llega en el cuerpo (`resourceId`, `organizationId`), el caso de uso
-  comprueba la membership y el rol de quien llama sobre ese recurso.
+  una membership validada, nunca del cuerpo de la petición. En rutas
+  autenticadas, el id de la organización o sede va siempre en `:resourceId`,
+  nunca en el cuerpo.
 - En Better Auth, todo campo adicional que el usuario no deba fijar (rol,
   cuenta, estado del onboarding) lleva `input: false`.
 - Funciones de pago: `fastify.requireFeature("FEATURE")` (responde 402).

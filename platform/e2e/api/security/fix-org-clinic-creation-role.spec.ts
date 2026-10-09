@@ -23,8 +23,8 @@ import { createConfirmedUser, uniqueName } from "../../support/users";
 const NONEXISTENT_ORGANIZATION_ID = "00000000-0000-7000-8000-000000000000";
 const FORBIDDEN_ORGANIZATION_MESSAGE =
   "Sólo un administrador puede crear organizaciones";
-const FORBIDDEN_CLINIC_MESSAGE =
-  "Sólo un administrador de la organización puede crear sedes";
+const FORBIDDEN_CLINIC_MESSAGE = "Insufficient role on this resource";
+const NOT_FOUND_RESOURCE_MESSAGE = "Resource not found";
 const NOT_FOUND_ORGANIZATION_MESSAGE = "Organización no encontrada";
 
 function postOrganization(context: APIRequestContext, name: string) {
@@ -36,14 +36,16 @@ function postClinic(
   organizationId: string,
   overrides: { name?: string; phone?: string; address?: string } = {},
 ) {
-  return context.post(`${API_BASE_URL}/clinic`, {
-    data: {
-      name: overrides.name ?? uniqueName("Sede"),
-      phone: overrides.phone ?? "+51999888777",
-      address: overrides.address ?? "Av. Siempre Viva 123",
-      organizationId,
+  return context.post(
+    `${API_BASE_URL}/organization/${organizationId}/clinics`,
+    {
+      data: {
+        name: overrides.name ?? uniqueName("Sede"),
+        phone: overrides.phone ?? "+51999888777",
+        address: overrides.address ?? "Av. Siempre Viva 123",
+      },
     },
-  });
+  );
 }
 
 async function structureCounts(accountId: string) {
@@ -211,7 +213,7 @@ test.describe("Lo que deja de ser posible", () => {
     );
   });
 
-  test("CA-5: un USER, un DOCTOR y un ADMIN sólo de una sede reciben 403 (no 402) al crear una sede y el número de sedes no cambia", async () => {
+  test("CA-5: un USER y un DOCTOR reciben 403 (no 402) y un ADMIN sólo de una sede recibe 404 al crear una sede, y el número de sedes no cambia", async () => {
     const admin = await createOnboardedAdmin({ emailPrefix: "admin-ca5" });
     const organizationId = await createOrganizationResource(
       admin,
@@ -234,7 +236,7 @@ test.describe("Lo que deja de ser posible", () => {
     });
 
     // Sede de control vía Prisma, sólo para que exista un recurso del que ser
-    // ADMIN de sede (no de la organización); el 403 por rol se comprueba antes
+    // ADMIN de sede (no de la organización); el rechazo por rol se comprueba antes
     // que el cupo, así que da igual que esta sede ya lo haya consumido.
     const controlClinicId = await createClinicResourceViaPrisma(
       admin,
@@ -253,16 +255,25 @@ test.describe("Lo que deja de ser posible", () => {
 
     const before = await clinicCount(admin.accountId);
 
-    for (const caller of [user, doctor, adminOfClinic]) {
+    for (const caller of [user, doctor]) {
       const response = await postClinic(caller.context, organizationId);
       expect(response.status()).toBe(403);
       expect((await response.json()).message).toBe(FORBIDDEN_CLINIC_MESSAGE);
     }
 
+    const adminOfClinicResponse = await postClinic(
+      adminOfClinic.context,
+      organizationId,
+    );
+    expect(adminOfClinicResponse.status()).toBe(404);
+    expect((await adminOfClinicResponse.json()).message).toBe(
+      NOT_FOUND_RESOURCE_MESSAGE,
+    );
+
     expect(await clinicCount(admin.accountId)).toBe(before);
   });
 
-  test("CA-6: un ADMIN de la organización A recibe 403 al crear una sede bajo la organización B de la misma cuenta y no se crea la sede", async () => {
+  test("CA-6: un ADMIN de la organización A recibe 404 al crear una sede bajo la organización B de la misma cuenta y no se crea la sede", async () => {
     const admin = await createOnboardedAdmin({ emailPrefix: "admin-ca6" });
     const organizationAId = await createOrganizationResource(
       admin,
@@ -284,13 +295,13 @@ test.describe("Lo que deja de ser posible", () => {
     const before = await clinicCount(admin.accountId);
 
     const response = await postClinic(adminOfA.context, organizationBId);
-    expect(response.status()).toBe(403);
-    expect((await response.json()).message).toBe(FORBIDDEN_CLINIC_MESSAGE);
+    expect(response.status()).toBe(404);
+    expect((await response.json()).message).toBe(NOT_FOUND_RESOURCE_MESSAGE);
 
     expect(await clinicCount(admin.accountId)).toBe(before);
   });
 
-  test("CA-7: una membership ADMIN de organización con deleted_at recibe 403 al crear una sede sobre esa organización y al crear otra organización", async () => {
+  test("CA-7: una membership ADMIN de organización con deleted_at recibe 404 al crear una sede sobre esa organización y 403 al crear otra organización", async () => {
     const admin = await createOnboardedAdmin({ emailPrefix: "admin-ca7" });
     const organizationId = await createOrganizationResource(
       admin,
@@ -308,9 +319,9 @@ test.describe("Lo que deja de ser posible", () => {
     });
 
     const clinicResponse = await postClinic(admin.context, organizationId);
-    expect(clinicResponse.status()).toBe(403);
+    expect(clinicResponse.status()).toBe(404);
     expect((await clinicResponse.json()).message).toBe(
-      FORBIDDEN_CLINIC_MESSAGE,
+      NOT_FOUND_RESOURCE_MESSAGE,
     );
 
     // La cuenta ya tiene una organización: sin la membership viva, el dueño
@@ -325,7 +336,7 @@ test.describe("Lo que deja de ser posible", () => {
     );
   });
 
-  test("CA-8: organizationId que no es UUID responde 400 y no 500", async () => {
+  test("CA-8: un :resourceId de organización que no es UUID responde 400 y no 500", async () => {
     const admin = await createOnboardedAdmin({ emailPrefix: "admin-ca8" });
 
     const response = await postClinic(admin.context, "no-es-uuid");
@@ -443,7 +454,7 @@ test.describe("Lo que sigue funcionando", () => {
     );
   });
 
-  test("CA-15: los 403 de CA-5 y CA-6 no consumen cupo; el ADMIN legítimo crea la sede con el último cupo libre", async () => {
+  test("CA-15: el 403 de CA-5 y el 404 de CA-6 no consumen cupo; el ADMIN legítimo crea la sede con el último cupo libre", async () => {
     const admin = await createOnboardedAdmin({ emailPrefix: "admin-ca15" });
     const organizationAId = await createOrganizationResource(
       admin,
@@ -476,7 +487,7 @@ test.describe("Lo que sigue funcionando", () => {
       adminOfA.context,
       organizationBId,
     );
-    expect(rejectedByWrongOrganization.status()).toBe(403);
+    expect(rejectedByWrongOrganization.status()).toBe(404);
 
     expect(await clinicCount(admin.accountId)).toBe(0);
 
@@ -493,7 +504,7 @@ test.describe("Lo que sigue funcionando", () => {
 });
 
 test.describe("Lo que no debe filtrarse", () => {
-  test("CA-17: una organización de otra cuenta, el id de una sede propia o un UUID inexistente responden 404 con el mismo cuerpo, nunca 403 ni 500, y no se escribe nada", async () => {
+  test("CA-17: el id de una sede propia como organización da 404 al dueño y 403 a un USER; una organización de otra cuenta y un UUID inexistente dan 404; nunca 500 y no se escribe nada", async () => {
     const admin = await createOnboardedAdmin({ emailPrefix: "admin-ca17" });
     const ownOrganizationId = await createOrganizationResource(
       admin,
@@ -520,9 +531,20 @@ test.describe("Lo que no debe filtrarse", () => {
 
     const before = await structureCounts(admin.accountId);
 
+    const ownerOnOwnClinic = await postClinic(admin.context, ownClinicId);
+    expect(ownerOnOwnClinic.status()).toBe(404);
+    expect(await ownerOnOwnClinic.json()).toEqual({
+      message: NOT_FOUND_ORGANIZATION_MESSAGE,
+    });
+
+    const userOnOwnClinic = await postClinic(user.context, ownClinicId);
+    expect(userOnOwnClinic.status()).toBe(403);
+    expect((await userOnOwnClinic.json()).message).toBe(
+      FORBIDDEN_CLINIC_MESSAGE,
+    );
+
     for (const rejectedOrganizationId of [
       otherOrganizationId,
-      ownClinicId,
       NONEXISTENT_ORGANIZATION_ID,
     ]) {
       for (const caller of [admin, user]) {
@@ -531,16 +553,16 @@ test.describe("Lo que no debe filtrarse", () => {
           rejectedOrganizationId,
         );
         expect(response.status()).toBe(404);
-        expect(await response.json()).toEqual({
-          message: NOT_FOUND_ORGANIZATION_MESSAGE,
-        });
+        expect((await response.json()).message).toBe(
+          NOT_FOUND_RESOURCE_MESSAGE,
+        );
       }
     }
 
     expect(await structureCounts(admin.accountId)).toEqual(before);
   });
 
-  test("CA-18: los 403 y 404 de POST /organization y POST /clinic sólo traen message", async () => {
+  test("CA-18: los 403 y 404 de POST /organization sólo traen message y los de crear sede no traen ids, nombres ni correos", async () => {
     const admin = await createOnboardedAdmin({ emailPrefix: "admin-ca18" });
     const organizationId = await createOrganizationResource(
       admin,
@@ -565,13 +587,38 @@ test.describe("Lo que no debe filtrarse", () => {
 
     const clinicForbidden = await postClinic(user.context, organizationId);
     expect(clinicForbidden.status()).toBe(403);
-    expect(Object.keys(await clinicForbidden.json())).toEqual(["message"]);
+    const clinicForbiddenBody = await clinicForbidden.json();
+    expect(Object.keys(clinicForbiddenBody)).toEqual([
+      "statusCode",
+      "error",
+      "message",
+    ]);
+    for (const leaked of [
+      organizationId,
+      admin.accountId,
+      admin.email,
+      user.email,
+    ]) {
+      expect(JSON.stringify(clinicForbiddenBody)).not.toContain(leaked);
+    }
 
     const clinicNotFound = await postClinic(
       admin.context,
       NONEXISTENT_ORGANIZATION_ID,
     );
     expect(clinicNotFound.status()).toBe(404);
-    expect(Object.keys(await clinicNotFound.json())).toEqual(["message"]);
+    const clinicNotFoundBody = await clinicNotFound.json();
+    expect(Object.keys(clinicNotFoundBody)).toEqual([
+      "statusCode",
+      "error",
+      "message",
+    ]);
+    for (const leaked of [
+      NONEXISTENT_ORGANIZATION_ID,
+      admin.accountId,
+      admin.email,
+    ]) {
+      expect(JSON.stringify(clinicNotFoundBody)).not.toContain(leaked);
+    }
   });
 });
