@@ -46,9 +46,11 @@ export type ClinicAppointment = {
   durationMinutes: number;
   status: AppointmentStatus;
   specialty: string;
-  patientName: string;
-  patientLastName: string;
-  patientPhone: string;
+  patient: {
+    name: string;
+    lastName: string;
+    phone: string;
+  };
   doctor: {
     name: string;
     lastName: string;
