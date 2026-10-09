@@ -53,7 +53,7 @@ export async function TodayAppointments({ resourceId }: Props) {
 
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-medium text-brand-ink">
-                    {appointment.patientName} {appointment.patientLastName}
+                    {appointment.patient.name} {appointment.patient.lastName}
                   </p>
                   <p className="truncate text-sm text-brand-gray">
                     {appointment.specialty} · {appointment.durationMinutes} min
@@ -62,10 +62,10 @@ export async function TodayAppointments({ resourceId }: Props) {
                 </div>
 
                 <a
-                  href={`tel:${appointment.patientPhone}`}
+                  href={`tel:${appointment.patient.phone}`}
                   className="text-sm text-brand-gray hover:text-brand-ink"
                 >
-                  {appointment.patientPhone}
+                  {appointment.patient.phone}
                 </a>
 
                 <span
