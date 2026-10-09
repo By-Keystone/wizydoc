@@ -69,7 +69,9 @@ qué verificaste (typecheck, e2e, petición manual, navegador).
 Cada ticket va en su propia rama desde `origin/main`. Si se trabaja en un
 worktree (sólo cuando el humano lo pide), el plan vive en ese worktree.
 
-1. **planner** → `docs/features/<slug>/plan.md` (+ `mockup.html` con Lavish si hay UI).
+1. **planner** → `docs/features/<slug>/plan.md` (+ `mockup.html` si hay UI, que se
+   revisa con [Lavish](https://github.com/kunchenguid/lavish-axi):
+   `npx -y lavish-axi <archivo>`, sin instalar nada en el proyecto).
    El plan no incluye pasos en producción (auditorías, scripts contra datos reales).
 2. El humano aprueba el plan y el mockup.
 3. **product-manager** escribe los criterios de aceptación en el plan; los
