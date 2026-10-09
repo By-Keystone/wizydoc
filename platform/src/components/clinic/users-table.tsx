@@ -1,48 +1,106 @@
+import { Badge, type BadgeProps } from "@/components/ui/badge";
 import type { ClinicUser } from "@/lib/api/clinic/types";
 import { type Column, Table } from "../common/table";
 
+type UserRow = ClinicUser & { hasPendingInvitation?: boolean };
+
 interface Props {
-  users: ClinicUser[];
+  users: UserRow[];
+  emptyMessage: string;
+  currentUserEmail?: string;
 }
 
-const columns: Column<ClinicUser>[] = [
+const roleDisplay: Record<
+  string,
+  { label: string; variant: BadgeProps["variant"] }
+> = {
+  ADMIN: { label: "Administrador", variant: "teal" },
+  DOCTOR: { label: "Médico", variant: "blue" },
+  USER: { label: "Usuario", variant: "gray" },
+};
+
+const statusTagClass =
+  "inline-flex items-center whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-semibold";
+
+const buildColumns = (currentUserEmail?: string): Column<UserRow>[] => [
   {
     key: "name",
     header: "Nombre",
     align: "center",
     cell: (row) => (
-      <span>
-        {row.name} {row.lastName}
-      </span>
+      <>
+        <span className="font-medium text-brand-ink">
+          {row.name} {row.lastName}
+        </span>
+        {(row.email === currentUserEmail || row.hasPendingInvitation) && (
+          <span className="mt-1 flex flex-wrap items-center justify-center gap-1">
+            {row.email === currentUserEmail && (
+              <span
+                className={`${statusTagClass} bg-brand-teal/10 text-brand-teal`}
+              >
+                Tú
+              </span>
+            )}
+            {row.hasPendingInvitation && (
+              <span
+                className={`${statusTagClass} bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-200`}
+              >
+                Invitación pendiente
+              </span>
+            )}
+          </span>
+        )}
+        <span className="mt-0.5 block truncate text-xs text-brand-gray sm:hidden">
+          {row.email}
+        </span>
+      </>
     ),
   },
   {
     key: "email",
     header: "Correo electrónico",
     align: "center",
+    headerClassName: "hidden sm:table-cell",
+    cellClassName: "hidden sm:table-cell",
     cell: (row) => <span>{row.email}</span>,
   },
   {
     key: "phone",
     header: "Teléfono",
     align: "center",
+    headerClassName: "hidden md:table-cell",
+    cellClassName: "hidden md:table-cell",
     cell: (row) => <span>{row.phone}</span>,
   },
   {
     key: "role",
     header: "Rol",
     align: "center",
-    cell: (row) => <span>{row.role}</span>,
+    cell: (row) => {
+      const display = roleDisplay[row.role];
+      return (
+        <Badge
+          variant={display?.variant ?? "gray"}
+          className="whitespace-nowrap"
+        >
+          {display?.label ?? row.role}
+        </Badge>
+      );
+    },
   },
 ];
 
-export const UsersTable = ({ users }: Props) => {
+export const UsersTable = ({
+  users,
+  emptyMessage,
+  currentUserEmail,
+}: Props) => {
   return (
     <Table
       getRowKey={(row) => row.email}
       rows={users}
-      columns={columns}
-      empty="Esta sede aún no tiene usuarios."
+      columns={buildColumns(currentUserEmail)}
+      empty={emptyMessage}
     />
   );
 };

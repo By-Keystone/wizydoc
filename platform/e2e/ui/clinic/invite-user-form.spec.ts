@@ -11,6 +11,7 @@ import {
 } from "../../support/accounts";
 import { PLATFORM_BASE_URL } from "../../support/env";
 import { uniqueEmail, uniqueName } from "../../support/users";
+import { softDeleteMembership } from "../../support/invitations";
 import { loginViaUi } from "../../support/ui";
 
 /**
@@ -253,6 +254,8 @@ test("CA-1: el administrador invita a una recepción (USER) y a un médico (DOCT
   const fixture = await setupFixture();
   const specialtyName = uniqueName("Especialidad CA1");
   await createSpecialty(fixture.admin, fixture.organizationId, specialtyName);
+  // El plan Gratis incluye un médico: sin liberar al del fixture, la invitación del médico nuevo da 402.
+  await softDeleteMembership(fixture.doctor.membershipId);
 
   await goToUsersPage(page, fixture);
   await expect(page.getByRole("heading", { name: "Usuarios" })).toBeVisible();
@@ -266,7 +269,9 @@ test("CA-1: el administrador invita a una recepción (USER) y a un médico (DOCT
   await page.getByRole("button", { name: "Enviar invitación" }).click();
 
   await expect(page.getByText("Invitación enviada")).toBeVisible();
-  await expect(page.getByText(newUserEmail)).toBeVisible();
+  await expect(
+    page.getByRole("cell", { name: newUserEmail, exact: true }),
+  ).toBeVisible();
 
   const newDoctorEmail = uniqueEmail("doctor-ca1");
   await openInviteModal(page);
@@ -280,7 +285,9 @@ test("CA-1: el administrador invita a una recepción (USER) y a un médico (DOCT
   await page.getByRole("button", { name: "Enviar invitación" }).click();
 
   await expect(page.getByText("Invitación enviada")).toBeVisible();
-  await expect(page.getByText(newDoctorEmail)).toBeVisible();
+  await expect(
+    page.getByRole("cell", { name: newDoctorEmail, exact: true }),
+  ).toBeVisible();
 });
 
 /** docs/features/fix-invite-role-check/plan.md — CA-7. */

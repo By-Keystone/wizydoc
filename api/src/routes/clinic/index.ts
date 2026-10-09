@@ -181,6 +181,7 @@ export default async function clinicRoutes(
 
         await useCase.execute({
           ...request.body,
+          resourceType: "CLINIC",
           resourceId: request.params.resourceId,
           createdBy: request.user.userId,
           accountId: request.user.accountId!,

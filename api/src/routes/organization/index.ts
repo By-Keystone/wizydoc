@@ -1,8 +1,13 @@
 import { ApplicationError } from "@/application/errors/application.errors";
 import { UnprocessableEntity } from "@/application/errors/unprocessable-entity.errors";
 import { getOrganizationClinicsSchema } from "@/application/queries/organization/get-organization-clinics.query";
+import { getOrganizationUsersSchema } from "@/application/queries/organization/get-organization-users.query";
 import { getOrganizationsClinicCountSchema } from "@/application/queries/organization/get-organizations-clinic-count.query";
 import { getOrganizationsDoctorCountSchema } from "@/application/queries/organization/get-organizations-doctor-count.query";
+import {
+  lookupAccountUserBodySchema,
+  lookupAccountUserParamsSchema,
+} from "@/application/queries/user/lookup-account-user.query";
 import {
   type CreateOrganizationDto,
   createOrganizationSchema,
@@ -24,23 +29,34 @@ import {
   updateSpecialtyParamsSchema,
   UpdateSpecialtyUseCase,
 } from "@/application/use-cases/specialty/update-specialty.usecase";
+import {
+  inviteOrganizationUserBodySchema,
+  inviteUserParamsSchema,
+  InviteUserUseCase,
+} from "@/application/use-cases/user/invite-user.usecase";
+import type { IEmailService } from "@/application/ports/email-service.port";
 import type { IOrganizationRepository } from "@/domain/repositories/organization.repository";
+import type { ITransactionManager } from "@/domain/services/transaction-manager";
 import { GetOrganizationClinicsQuery } from "@/infrastructure/postgres/queries/organization/get-organization-clinics.query";
+import { GetOrganizationUsersQuery } from "@/infrastructure/postgres/queries/organization/get-organization-users.query";
 import { GetOrganizationsClinicCountQuery } from "@/infrastructure/postgres/queries/organization/get-organizations-clinic-count.query";
 import { GetOrganizationsDoctorCountQuery } from "@/infrastructure/postgres/queries/organization/get-organizations-doctor-count.query";
+import { LookupAccountUserQuery } from "@/infrastructure/postgres/queries/user/lookup-account-user.query";
 import { policy } from "@/plugins/policy";
 import type { ZodTypeProvider } from "@fastify/type-provider-zod";
 import type { FastifyInstance } from "fastify";
 
 export interface OrganizationRoutesOptions {
   organizationRepository: IOrganizationRepository;
+  transactionManager: ITransactionManager;
+  emailService: IEmailService;
 }
 
 export default async function organizationRoutes(
   fastify: FastifyInstance,
   opts: OrganizationRoutesOptions,
 ) {
-  const { organizationRepository } = opts;
+  const { organizationRepository, transactionManager, emailService } = opts;
 
   const app = fastify.withTypeProvider<ZodTypeProvider>();
 
@@ -179,6 +195,130 @@ export default async function organizationRoutes(
         );
         return reply.internalServerError(
           "An error occurred when getting clinics of an organization",
+        );
+      }
+    },
+  );
+
+  app.post(
+    "/organization/:resourceId/invitations",
+    {
+      schema: {
+        params: inviteUserParamsSchema,
+        body: inviteOrganizationUserBodySchema,
+      },
+      ...policy({
+        account: true,
+        confirmed: true,
+        onboarded: true,
+        roles: ["ADMIN"],
+      }),
+    },
+    async (request, reply) => {
+      try {
+        const useCase = new InviteUserUseCase(transactionManager, {
+          emailService,
+        });
+
+        await useCase.execute({
+          ...request.body,
+          resourceType: "ORGANIZATION",
+          resourceId: request.params.resourceId,
+          createdBy: request.user.userId,
+          accountId: request.user.accountId!,
+        });
+
+        return reply
+          .status(200)
+          .send({ message: "Se ha enviado la invitación al usuario" });
+      } catch (error) {
+        if (error instanceof ApplicationError) {
+          return reply
+            .status(error.statusCode)
+            .send({ message: error.message });
+        }
+
+        const errName = error instanceof Error ? error.name : "UnknownError";
+        const errCode =
+          error && typeof error === "object" && "code" in error
+            ? error.code
+            : undefined;
+
+        request.log.error({ errName, errCode }, "[invite-organization-user]");
+
+        return reply
+          .status(500)
+          .send({ message: "Ha ocurrido un error al invitar al usuario" });
+      }
+    },
+  );
+
+  app.get(
+    "/organization/:resourceId/users",
+    {
+      schema: { params: getOrganizationUsersSchema },
+      ...policy({
+        account: true,
+        confirmed: true,
+        onboarded: true,
+        roles: ["ADMIN"],
+      }),
+    },
+    async (request, reply) => {
+      try {
+        const query = new GetOrganizationUsersQuery();
+
+        const users = await query.execute(request.params.resourceId);
+
+        return reply.status(200).send(users);
+      } catch (error) {
+        const errName = error instanceof Error ? error.name : "UnknownError";
+
+        request.log.error({ errName }, "[get-organization-users]");
+
+        return reply.internalServerError(
+          "Ocurrió un error al obtener los usuarios de la organización",
+        );
+      }
+    },
+  );
+
+  // POST para que el correo no quede en logs de acceso.
+  app.post(
+    "/organization/:resourceId/users/lookup",
+    {
+      schema: {
+        params: lookupAccountUserParamsSchema,
+        body: lookupAccountUserBodySchema,
+      },
+      ...policy({
+        account: true,
+        confirmed: true,
+        onboarded: true,
+        roles: ["ADMIN"],
+      }),
+    },
+    async (request, reply) => {
+      try {
+        const query = new LookupAccountUserQuery();
+
+        const user = await query.execute({
+          resourceId: request.params.resourceId,
+          email: request.body.email,
+        });
+
+        return reply.status(200).send({ user });
+      } catch (error) {
+        const errName = error instanceof Error ? error.name : "UnknownError";
+        const errCode =
+          error && typeof error === "object" && "code" in error
+            ? error.code
+            : undefined;
+
+        request.log.error({ errName, errCode }, "[lookup-organization-user]");
+
+        return reply.internalServerError(
+          "Ocurrió un error al buscar el usuario",
         );
       }
     },

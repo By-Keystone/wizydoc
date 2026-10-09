@@ -50,6 +50,7 @@ export interface TestPrismaSubscriptionRow {
 
 export interface TestPrisma {
   user: {
+    count(args: { where: Record<string, unknown> }): Promise<number>;
     findUnique(args: {
       where: Record<string, unknown>;
     }): Promise<TestPrismaUserRow | null>;

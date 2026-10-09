@@ -8,16 +8,16 @@ export type LookedUpUser = {
   phone: string;
 };
 
-export async function lookupUserByEmailAction(
-  clinicId: string,
+// Búsqueda "suave": cualquier fallo (no encontrado, error) devuelve null.
+async function lookupUser(
+  resourcePath: string,
   email: string,
 ): Promise<LookedUpUser | null> {
   if (!email) return null;
 
-  // Búsqueda "suave": cualquier fallo (no encontrado, error) devuelve null.
   try {
     const data = await doFetchJson<{ user: LookedUpUser | null }>(
-      `/clinic/${encodeURIComponent(clinicId)}/users/lookup`,
+      `${resourcePath}/users/lookup`,
       { method: "POST", body: JSON.stringify({ email }) },
     );
 
@@ -25,4 +25,21 @@ export async function lookupUserByEmailAction(
   } catch {
     return null;
   }
+}
+
+export async function lookupUserByEmailAction(
+  clinicId: string,
+  email: string,
+): Promise<LookedUpUser | null> {
+  return lookupUser(`/clinic/${encodeURIComponent(clinicId)}`, email);
+}
+
+export async function lookupOrganizationUserByEmailAction(
+  organizationId: string,
+  email: string,
+): Promise<LookedUpUser | null> {
+  return lookupUser(
+    `/organization/${encodeURIComponent(organizationId)}`,
+    email,
+  );
 }
