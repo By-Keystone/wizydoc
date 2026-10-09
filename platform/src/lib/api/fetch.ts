@@ -2,21 +2,31 @@ import "server-only";
 
 import { headers } from "next/headers";
 import { ApiError, AuthExpiredError } from "./errors";
+import { visitorHeaders } from "./visitor-headers";
 
 const API_URL = process.env.API_URL;
+
+// Cookie de sesión e IP del visitante: sin la IP, el límite de peticiones del api vería a todos como el servidor de Next.
+export async function forwardedHeaders(): Promise<Record<string, string>> {
+  const incoming = await headers();
+  const cookie = incoming.get("cookie") ?? "";
+
+  return {
+    ...(cookie && { cookie }),
+    ...visitorHeaders(incoming.get("x-forwarded-for")),
+  };
+}
 
 /**
  * Llama al api reenviando la cookie de sesión de Better Auth (el api la valida
  * con `getSession`). Sustituye al antiguo header `Authorization: Bearer`.
  */
 export async function doFetch(to: string, init?: RequestInit) {
-  const cookie = (await headers()).get("cookie") ?? "";
-
   const response = await fetch(`${API_URL}${to}`, {
     ...init,
     headers: {
       "Content-Type": "application/json",
-      ...(cookie && { cookie }),
+      ...(await forwardedHeaders()),
       ...init?.headers,
     },
   });

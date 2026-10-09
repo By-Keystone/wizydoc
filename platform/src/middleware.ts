@@ -1,5 +1,10 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { getSessionCookie } from "better-auth/cookies";
+import {
+  PROXY_SECRET_HEADER,
+  VISITOR_IP_HEADER,
+  visitorHeaders,
+} from "@/lib/api/visitor-headers";
 
 const PUBLIC_PATHS = [
   "/register",
@@ -16,6 +21,11 @@ const PUBLIC_PATH_PATTERNS = [
   /^\/api\/invitations(\/|$)/,
 ];
 
+// Rutas que next.config.ts reenvía al api: el navegador las llama directo, sin pasar por doFetch.
+function isProxiedToApi(pathname: string) {
+  return /^\/api\/(auth|invitations)(\/|$)/.test(pathname);
+}
+
 function isPublicPath(pathname: string) {
   return (
     PUBLIC_PATHS.includes(pathname) ||
@@ -25,6 +35,18 @@ function isPublicPath(pathname: string) {
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  if (isProxiedToApi(pathname)) {
+    const requestHeaders = new Headers(request.headers);
+    requestHeaders.delete(PROXY_SECRET_HEADER);
+    requestHeaders.delete(VISITOR_IP_HEADER);
+    for (const [name, value] of Object.entries(
+      visitorHeaders(request.headers.get("x-forwarded-for")),
+    )) {
+      requestHeaders.set(name, value);
+    }
+    return NextResponse.next({ request: { headers: requestHeaders } });
+  }
 
   if (isPublicPath(pathname)) {
     return NextResponse.next();
@@ -45,5 +67,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!api/auth|_next/static|_next/image|favicon.ico|.*\\..*).*)"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\..*).*)"],
 };

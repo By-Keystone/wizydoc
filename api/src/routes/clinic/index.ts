@@ -38,6 +38,7 @@ import { GetClinicMetricsQuery } from "@/infrastructure/postgres/queries/clinic/
 import { GetClinicUsersQuery } from "@/infrastructure/postgres/queries/clinic/get-clinic-users.query";
 import { LookupAccountUserQuery } from "@/infrastructure/postgres/queries/user/lookup-account-user.query";
 import { policy, requireMembership } from "@/plugins/policy";
+import { RATE_LIMITS, limitedBy } from "@/plugins/rate-limit";
 import { requireLiveMembership } from "@/routes/hooks/require-live-membership";
 import type { ZodTypeProvider } from "@fastify/type-provider-zod";
 import type { FastifyInstance } from "fastify";
@@ -166,12 +167,15 @@ export default async function clinicRoutes(
         params: inviteUserParamsSchema,
         body: inviteUserBodySchema,
       },
-      ...policy({
-        account: true,
-        confirmed: true,
-        onboarded: true,
-        roles: ["ADMIN"],
-      }),
+      config: {
+        ...policy({
+          account: true,
+          confirmed: true,
+          onboarded: true,
+          roles: ["ADMIN"],
+        }).config,
+        ...limitedBy(RATE_LIMITS.sendInvitation),
+      },
     },
     async (request, reply) => {
       try {
@@ -220,12 +224,15 @@ export default async function clinicRoutes(
         params: lookupAccountUserParamsSchema,
         body: lookupAccountUserBodySchema,
       },
-      ...policy({
-        account: true,
-        confirmed: true,
-        onboarded: true,
-        roles: ["ADMIN"],
-      }),
+      config: {
+        ...policy({
+          account: true,
+          confirmed: true,
+          onboarded: true,
+          roles: ["ADMIN"],
+        }).config,
+        ...limitedBy(RATE_LIMITS.lookupAccountUser),
+      },
     },
     async (request, reply) => {
       try {

@@ -3,6 +3,7 @@ import { GetClinicDoctorsQuery } from "@/infrastructure/postgres/queries/clinic/
 import type { ZodTypeProvider } from "@fastify/type-provider-zod";
 import type { FastifyInstance } from "fastify";
 import { policy } from "@/plugins/policy";
+import { RATE_LIMITS, limitedBy } from "@/plugins/rate-limit";
 
 export default async function clinicPublicRoutes(fastify: FastifyInstance) {
   const app = fastify.withTypeProvider<ZodTypeProvider>();
@@ -12,7 +13,10 @@ export default async function clinicPublicRoutes(fastify: FastifyInstance) {
     {
       schema: { params: getClinicDoctorsParamsSchema },
       // Pública: la usa el paciente al reservar, sin sesión.
-      ...policy({ public: true }),
+      config: {
+        ...policy({ public: true }).config,
+        ...limitedBy(RATE_LIMITS.readClinicDoctors),
+      },
     },
     async (request, reply) => {
       try {

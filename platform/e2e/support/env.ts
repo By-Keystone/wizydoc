@@ -19,6 +19,13 @@ export const platformEnv = readEnvFile(
   "platform/.env.e2e",
 );
 
+// Las IPs de loopback no tienen límite en los e2e; un visitante reenviado con el secreto sí lo tiene.
+export const RATE_LIMIT_E2E_PROXY_SECRET = "e2e-rate-limit-proxy-secret";
+export const rateLimitE2eEnv = {
+  RATE_LIMIT_PROXY_SECRET: RATE_LIMIT_E2E_PROXY_SECRET,
+  RATE_LIMIT_EXEMPT_IPS: "127.0.0.1,::1,::ffff:127.0.0.1",
+};
+
 export const API_BASE_URL = `http://localhost:${apiEnv.PORT}`;
 export const PLATFORM_BASE_URL = apiEnv.CLIENT_ORIGIN;
 

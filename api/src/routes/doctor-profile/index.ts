@@ -6,6 +6,7 @@ import { GetDoctorSlotsQuery } from "@/infrastructure/postgres/queries/doctor-pr
 import type { ZodTypeProvider } from "@fastify/type-provider-zod";
 import type { FastifyInstance } from "fastify";
 import { policy } from "@/plugins/policy";
+import { RATE_LIMITS, limitedBy } from "@/plugins/rate-limit";
 
 export default async function doctorProfileRoutes(fastify: FastifyInstance) {
   const app = fastify.withTypeProvider<ZodTypeProvider>();
@@ -21,7 +22,10 @@ export default async function doctorProfileRoutes(fastify: FastifyInstance) {
         querystring: getDoctorSlotsQuerySchema,
       },
       // Pública: la usa el paciente al reservar, sin sesión.
-      ...policy({ public: true }),
+      config: {
+        ...policy({ public: true }).config,
+        ...limitedBy(RATE_LIMITS.readSlots),
+      },
     },
     async (request, reply) => {
       try {
