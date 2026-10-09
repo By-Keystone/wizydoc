@@ -10,6 +10,8 @@ import {
 const INVITATION_LOOKUP_LIMIT = 20;
 const SLOTS_LIMIT = 60;
 const APPOINTMENT_LIMIT = 100;
+const READ_MANAGED_APPOINTMENT_LIMIT = 30;
+const CHANGE_MANAGED_APPOINTMENT_LIMIT = 10;
 const REQUESTS_PAST_INVITATION_LIMIT = INVITATION_LOOKUP_LIMIT + 5;
 const TOO_MANY_REQUESTS_MESSAGE = "Demasiadas solicitudes";
 
@@ -19,6 +21,9 @@ const THIRD_VISITOR_IP = "203.0.113.3";
 const FOURTH_VISITOR_IP = "203.0.113.4";
 const FIFTH_VISITOR_IP = "203.0.113.5";
 const SIXTH_VISITOR_IP = "203.0.113.6";
+const SEVENTH_VISITOR_IP = "203.0.113.7";
+const EIGHTH_VISITOR_IP = "203.0.113.8";
+const NINTH_VISITOR_IP = "203.0.113.9";
 const IPV6_SAME_SUBNET_A = "2001:db8:aaaa:1::1";
 const IPV6_SAME_SUBNET_B = "2001:db8:aaaa:1:ffff::2";
 const IPV6_OTHER_SUBNET = "2001:db8:aaaa:2::1";
@@ -29,6 +34,10 @@ function invitationUrl() {
 
 function slotsUrl() {
   return `${API_BASE_URL}/doctor-profile/${randomUUID()}/slots`;
+}
+
+function manageUrl(action = "") {
+  return `${API_BASE_URL}/appointment/manage/${randomBytes(32).toString("base64url")}${action}`;
 }
 
 function visitorHeaders(visitorIp: string, proxySecret: string) {
@@ -135,4 +144,50 @@ test("HEAD en una ruta con límite también se limita", async () => {
   }
 
   expect(statuses).toContain(429);
+});
+
+test("consultar la cita por su enlace se limita por visitante", async () => {
+  const context = await createApiContext();
+  const headers = trustedVisitor(SEVENTH_VISITOR_IP);
+
+  for (let attempt = 0; attempt < READ_MANAGED_APPOINTMENT_LIMIT; attempt++) {
+    const response = await context.get(manageUrl(), { headers });
+    expect(response.status()).toBe(404);
+  }
+
+  const blocked = await context.get(manageUrl(), { headers });
+  expect(blocked.status()).toBe(429);
+});
+
+test("cancelar la cita por su enlace se limita por visitante", async () => {
+  const context = await createApiContext();
+  const headers = trustedVisitor(EIGHTH_VISITOR_IP);
+
+  for (let attempt = 0; attempt < CHANGE_MANAGED_APPOINTMENT_LIMIT; attempt++) {
+    const response = await context.post(manageUrl("/cancel"), { headers });
+    expect(response.status()).toBe(404);
+  }
+
+  const blocked = await context.post(manageUrl("/cancel"), { headers });
+  expect(blocked.status()).toBe(429);
+});
+
+test("reprogramar la cita por su enlace se limita por visitante", async () => {
+  const context = await createApiContext();
+  const headers = trustedVisitor(NINTH_VISITOR_IP);
+  const data = { scheduledAt: "2030-01-01T09:00" };
+
+  for (let attempt = 0; attempt < CHANGE_MANAGED_APPOINTMENT_LIMIT; attempt++) {
+    const response = await context.post(manageUrl("/reschedule"), {
+      headers,
+      data,
+    });
+    expect(response.status()).toBe(404);
+  }
+
+  const blocked = await context.post(manageUrl("/reschedule"), {
+    headers,
+    data,
+  });
+  expect(blocked.status()).toBe(429);
 });

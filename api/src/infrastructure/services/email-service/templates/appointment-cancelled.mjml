@@ -2,18 +2,14 @@
   <mj-body background-color="#f4f4f4">
     <mj-section background-color="#ffffff" padding="40px">
       <mj-column>
-        <mj-text font-size="20px" font-weight="bold">Hola {{patientName}} {{patientLastName}},</mj-text>
+        <mj-text font-size="20px" font-weight="bold">Hola {{patientName}},</mj-text>
         <mj-text font-size="16px">
-          Tu cita ya está reservada. Estos son los detalles:
+          Tu cita fue cancelada. Estos eran los detalles:
         </mj-text>
         <mj-table font-size="15px" cellpadding="0">
           <tr>
             <td style="padding: 8px 16px 8px 0; color: #5C6B6A;">Fecha y hora</td>
-            <td style="padding: 8px 0; font-weight: bold;">{{scheduledAt}}</td>
-          </tr>
-          <tr>
-            <td style="padding: 8px 16px 8px 0; color: #5C6B6A;">Duración</td>
-            <td style="padding: 8px 0;">{{durationMinutes}} minutos</td>
+            <td style="padding: 8px 0;">{{scheduledAt}}</td>
           </tr>
           <tr>
             <td style="padding: 8px 16px 8px 0; color: #5C6B6A;">Especialidad</td>
@@ -32,14 +28,11 @@
             <td style="padding: 8px 0;">{{clinicAddress}}</td>
           </tr>
         </mj-table>
-        <mj-text font-size="14px" color="#5C6B6A">
-          Te recomendamos llegar unos minutos antes de la hora indicada.
-        </mj-text>
-        <mj-button background-color="#0E8C82" href="{{manageUrl}}">
-          Cancelar o reprogramar
+        <mj-button background-color="#0E8C82" href="{{bookAgainUrl}}">
+          Reservar otro horario
         </mj-button>
         <mj-text font-size="14px" color="#5C6B6A">
-          Puedes cancelar hasta la hora de tu cita y reprogramar hasta 12 horas antes. No compartas este enlace: da acceso a tu cita.
+          El horario quedó libre para otro paciente.
         </mj-text>
       </mj-column>
     </mj-section>

@@ -121,6 +121,18 @@ export function toWallTime(
   };
 }
 
+/** Fecha y hora completas en español para mostrar al paciente, según el reloj de la clínica. */
+export function formatClinicDateTime(
+  instant: Date,
+  timeZone: string = CLINIC_TIME_ZONE,
+): string {
+  return new Intl.DateTimeFormat("es", {
+    dateStyle: "full",
+    timeStyle: "short",
+    timeZone,
+  }).format(instant);
+}
+
 /** Instante en que empieza el día `date` en la clínica. */
 export function startOfDay(
   date: string,

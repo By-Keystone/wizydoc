@@ -1,4 +1,5 @@
 import type { IGetDoctorSlotsQuery } from "@/application/queries/doctor-profile/get-doctor-slots.query";
+import type { IAppointmentAccessTokenRepository } from "@/domain/repositories/appointment-access-token.repository";
 import { Conflict } from "@/application/errors/conflict.error";
 import { NotFound } from "@/application/errors/not-found.error";
 import type { IEmailService } from "@/application/ports/email-service.port";
@@ -8,7 +9,7 @@ import {
 } from "@/domain/entities/availability/entity";
 import {
   addDays,
-  CLINIC_TIME_ZONE,
+  formatClinicDateTime,
   toInstant,
   today,
 } from "@/domain/services/clinic-time";
@@ -17,6 +18,8 @@ import {
   getClient,
   inTransaction,
 } from "@/infrastructure/postgres/transaction-context";
+import { AppointmentAccessTokenRepository } from "@/infrastructure/postgres/repositories/appointment-access-token.repository";
+import { manageAppointmentUrl } from "@/infrastructure/services/email-service/appointment-links";
 import { renderTemplate } from "@/infrastructure/services/email-service/template-renderer";
 import z from "zod";
 
@@ -36,6 +39,21 @@ const personName = (messages: { empty: string; tooLong: string }) =>
     .overwrite((text) => text.trim().replace(/\s+/g, " "))
     .min(1, { error: messages.empty })
     .max(MAX_NAME_LENGTH, { error: messages.tooLong });
+
+/**
+ * Hora de reloj de la clínica, sin zona: `"2026-08-06T09:00"`. Es el hueco
+ * que el paciente eligió, y el api lo convierte al instante que le
+ * corresponde según el huso de la clínica.
+ */
+export const clinicWallTimeSchema = z.iso
+  .datetime({
+    local: true,
+    precision: -1,
+    error: "scheduledAt debe ser una fecha y hora que existan",
+  })
+  .regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/, {
+    error: "scheduledAt debe tener formato YYYY-MM-DDTHH:mm",
+  });
 
 export const createAppointmentSchema = z.object({
   patientName: personName({
@@ -73,20 +91,7 @@ export const createAppointmentSchema = z.object({
     .int({ error: DURATION_ERROR })
     .min(1, { error: DURATION_ERROR })
     .max(SLOT_DURATION_MINUTES, { error: DURATION_ERROR }),
-  /**
-   * Hora de reloj de la clínica, sin zona: `"2026-08-06T09:00"`. Es el hueco
-   * que el paciente eligió, y el api lo convierte al instante que le
-   * corresponde según el huso de la clínica.
-   */
-  scheduledAt: z.iso
-    .datetime({
-      local: true,
-      precision: -1,
-      error: "scheduledAt debe ser una fecha y hora que existan",
-    })
-    .regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/, {
-      error: "scheduledAt debe tener formato YYYY-MM-DDTHH:mm",
-    }),
+  scheduledAt: clinicWallTimeSchema,
   doctorProfileId: z.uuid(),
   clinicId: z.uuid(),
 });
@@ -100,6 +105,7 @@ export class CreateApointmentUseCase {
   constructor(
     private readonly props: Props,
     private readonly doctorSlots: IGetDoctorSlotsQuery = new GetDoctorSlotsQuery(),
+    private readonly accessTokens: IAppointmentAccessTokenRepository = new AppointmentAccessTokenRepository(),
   ) {}
 
   private async assertSlotIsOffered(
@@ -163,32 +169,31 @@ export class CreateApointmentUseCase {
 
     await this.assertSlotIsOffered(dto, date, time);
 
-    const { patient, appointment } = await inTransaction(async () => {
-      // El booking es anónimo: reutiliza la ficha del documento pero nunca la modifica.
-      const bookedPatient = await getClient().patient.upsert({
-        where: {
-          accountId_documentType_documentNumber: {
-            accountId: clinic.resource.accountId,
-            documentType: dto.patientDocumentType,
-            documentNumber: dto.patientDocumentNumber,
+    const { patient, appointment, accessToken } = await inTransaction(
+      async () => {
+        // El booking es anónimo: reutiliza la ficha del documento pero nunca la modifica.
+        const bookedPatient = await getClient().patient.upsert({
+          where: {
+            accountId_documentType_documentNumber: {
+              accountId: clinic.resource.accountId,
+              documentType: dto.patientDocumentType,
+              documentNumber: dto.patientDocumentNumber,
+            },
           },
-        },
-        update: {},
-        create: {
-          documentNumber: dto.patientDocumentNumber,
-          documentType: dto.patientDocumentType,
-          email: dto.patientEmail,
-          lastName: dto.patientLastName,
-          name: dto.patientName,
-          phone: dto.patientPhone,
-          birthDate: dto.patientBirthDate,
-          accountId: clinic.resource.accountId,
-        },
-      });
+          update: {},
+          create: {
+            documentNumber: dto.patientDocumentNumber,
+            documentType: dto.patientDocumentType,
+            email: dto.patientEmail,
+            lastName: dto.patientLastName,
+            name: dto.patientName,
+            phone: dto.patientPhone,
+            birthDate: dto.patientBirthDate,
+            accountId: clinic.resource.accountId,
+          },
+        });
 
-      return {
-        patient: bookedPatient,
-        appointment: await getClient().appointment.create({
+        const bookedAppointment = await getClient().appointment.create({
           data: {
             specialty: dto.specialty,
             durationMinutes: dto.durationMinutes,
@@ -197,17 +202,17 @@ export class CreateApointmentUseCase {
             patientId: bookedPatient.id,
             clinicId: clinic.resourceId,
           },
-        }),
-      };
-    });
+        });
 
-    const scheduledAt = new Intl.DateTimeFormat("es", {
-      dateStyle: "full",
-      timeStyle: "short",
-      // Sin esto el correo mostraría la hora del servidor, que en producción es
-      // UTC y no coincide con la que el paciente eligió.
-      timeZone: CLINIC_TIME_ZONE,
-    }).format(appointment.scheduledAt);
+        return {
+          patient: bookedPatient,
+          appointment: bookedAppointment,
+          accessToken: await this.accessTokens.issue(bookedAppointment.id),
+        };
+      },
+    );
+
+    const scheduledAt = formatClinicDateTime(appointment.scheduledAt);
 
     try {
       const html = await renderTemplate("confirm-appointment", {
@@ -219,6 +224,7 @@ export class CreateApointmentUseCase {
         doctorName: `${profile.user.name} ${profile.user.lastName}`,
         clinicName: clinic.name,
         clinicAddress: clinic.address,
+        manageUrl: manageAppointmentUrl(accessToken),
       });
 
       await this.props.emailService.send({

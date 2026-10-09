@@ -1,0 +1,46 @@
+<mjml>
+  <mj-body background-color="#f4f4f4">
+    <mj-section background-color="#ffffff" padding="40px">
+      <mj-column>
+        <mj-text font-size="20px" font-weight="bold">Hola {{doctorName}},</mj-text>
+        {{#if newScheduledAt}}
+        <mj-text font-size="16px">
+          Tu paciente reprogramó su cita. Estos son los detalles:
+        </mj-text>
+        {{else}}
+        <mj-text font-size="16px">
+          Tu paciente canceló su cita. Estos son los detalles:
+        </mj-text>
+        {{/if}}
+        <mj-table font-size="15px" cellpadding="0">
+          {{#if newScheduledAt}}
+          <tr>
+            <td style="padding: 8px 16px 8px 0; color: #5C6B6A;">Antes</td>
+            <td style="padding: 8px 0;">{{scheduledAt}}</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px 16px 8px 0; color: #5C6B6A;">Ahora</td>
+            <td style="padding: 8px 0;"><strong>{{newScheduledAt}}</strong></td>
+          </tr>
+          {{else}}
+          <tr>
+            <td style="padding: 8px 16px 8px 0; color: #5C6B6A;">Fecha y hora</td>
+            <td style="padding: 8px 0;">{{scheduledAt}}</td>
+          </tr>
+          {{/if}}
+          <tr>
+            <td style="padding: 8px 16px 8px 0; color: #5C6B6A;">Especialidad</td>
+            <td style="padding: 8px 0;">{{specialty}}</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px 16px 8px 0; color: #5C6B6A;">Sede</td>
+            <td style="padding: 8px 0;">{{clinicName}}</td>
+          </tr>
+        </mj-table>
+        <mj-text font-size="14px" color="#5C6B6A">
+          Consulta tu agenda en WizyDoc para ver el detalle del paciente.
+        </mj-text>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>
