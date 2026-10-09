@@ -55,6 +55,11 @@ los puertos de `domain`/`application`.
   aplicarlo. Luego `pnpm prisma:generate`.
 - Nunca edites una migración ya existente.
 - Varias escrituras que deben ser atómicas → `transactionManager`.
+- Prisma no modela índices parciales: `appointment_doctor_slot_active_key`
+  (único por médico y hora, sólo para estados que bloquean el hueco) vive
+  únicamente en SQL. `prisma migrate diff` no lo propone borrar, pero no lo
+  quites ni lo recrees sin mantener su predicado igual a
+  `BLOCKING_APPOINTMENT_STATUSES`.
 - Agrega índices para filtros nuevos por `accountId` / `clinicId`.
 
 ## Datos de pacientes
