@@ -1,10 +1,10 @@
 export const PROXY_SECRET_HEADER = "x-wizydoc-proxy-secret";
 export const VISITOR_IP_HEADER = "x-wizydoc-visitor-ip";
 
-// Supone que el proxy de Railway añade la IP que vio al final de x-forwarded-for; lo anterior lo escribe el visitante.
+// Railway descarta el x-forwarded-for del visitante y pone "IP del visitante, IP del borde": la última entrada es del borde y cambia entre peticiones.
 function visitorIpFrom(forwardedFor: string | null): string | null {
   const addresses = forwardedFor?.split(",") ?? [];
-  return addresses.at(-1)?.trim() || null;
+  return addresses[0]?.trim() || null;
 }
 
 export function visitorHeaders(
