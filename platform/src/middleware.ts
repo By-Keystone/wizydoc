@@ -16,6 +16,7 @@ const PUBLIC_PATHS = [
 // Rutas públicas con segmentos dinámicos, que no calzan con match exacto.
 const PUBLIC_PATH_PATTERNS = [
   /^\/clinic\/[^/]+\/create-appointment$/,
+  /^\/appointment\/manage\/[^/]+$/,
   // Rewrite de /invite/accept hacia el api (ver next.config.ts): el propio
   // flujo de invitación llama estos endpoints antes de que exista sesión.
   /^\/api\/invitations(\/|$)/,

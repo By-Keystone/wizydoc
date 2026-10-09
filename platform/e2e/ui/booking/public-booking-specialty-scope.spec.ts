@@ -14,7 +14,8 @@ import { uniqueEmail, uniqueName } from "../../support/users";
 // iPhone 12-ish: el booking público es mobile-first (docs/PRODUCT.md).
 const MOBILE_VIEWPORT = { width: 390, height: 844 };
 
-const WEEKDAY_BUTTON_NAME = /^(Lu|Ma|Mi|Ju|Vi|Sá|Do)\s*\d{1,2}$/;
+const WEEKDAY_BUTTON_NAME =
+  /^(lunes|martes|miércoles|jueves|viernes|sábado|domingo) \d{1,2} de [a-zé]+$/;
 const TIME_SLOT_BUTTON_NAME = /^\d{2}:\d{2}$/;
 
 /** El editor de disponibilidad no es parte de este ticket: se siembra por Prisma para poder reservar. */

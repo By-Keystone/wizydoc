@@ -7,7 +7,7 @@ import { createAppointmentAction } from "@/lib/actions/appointment/create-appoin
 import { StepperProgress } from "./steps/stepper-progress";
 import { SpecialtyStep } from "./steps/specialty-step";
 import { DoctorStep } from "./steps/doctor-step";
-import { DateTimeStep } from "./steps/datetime-step";
+import { DateTimeStep } from "@/components/booking/datetime-step";
 import { PatientStep, type BookingPatient } from "./steps/patient-step";
 import { SuccessStep } from "./steps/success-step";
 

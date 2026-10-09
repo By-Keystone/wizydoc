@@ -56,7 +56,8 @@ export async function doFetchJson<T = unknown>(
       typeof payload?.message === "string"
         ? payload.message
         : "Ha ocurrido un error";
-    throw new ApiError(response.status, message);
+    const code = typeof payload?.code === "string" ? payload.code : undefined;
+    throw new ApiError(response.status, message, code);
   }
 
   const text = await response.text();

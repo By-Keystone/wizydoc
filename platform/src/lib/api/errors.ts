@@ -7,11 +7,13 @@
  */
 export class ApiError extends Error {
   status: number;
+  code?: string;
 
-  constructor(status: number, message = "Error en la API") {
+  constructor(status: number, message = "Error en la API", code?: string) {
     super(message);
     this.name = "ApiError";
     this.status = status;
+    this.code = code;
   }
 }
 

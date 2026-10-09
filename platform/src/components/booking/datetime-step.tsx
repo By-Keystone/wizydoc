@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -10,11 +10,13 @@ import {
   addDays,
   dayLabel,
   dayNumber,
+  formatLongDate,
   formatWeekRange,
   getWeekDays,
   startOfWeek,
   todayKey,
-} from "../lib/week";
+  weeksBetween,
+} from "./week";
 
 // El api rechaza fechas a más de 366 días de hoy; la semana 52 puede pasarse.
 const MAX_WEEK_OFFSET = 51;
@@ -27,12 +29,28 @@ interface Props {
     durationMinutes: number;
   }) => void;
   onBack: () => void;
+  notice?: React.ReactNode;
+  hint?: React.ReactNode;
+  initialDate?: string;
+  headingLevel?: "h1" | "h2";
 }
 
-export function DateTimeStep({ doctorProfileId, onNext, onBack }: Props) {
+export function DateTimeStep({
+  doctorProfileId,
+  onNext,
+  onBack,
+  notice,
+  hint,
+  initialDate,
+  headingLevel: Heading = "h2",
+}: Props) {
   const [slots, setSlots] = useState<DoctorSlots | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [weekOffset, setWeekOffset] = useState(0);
+  const [weekOffset, setWeekOffset] = useState(() =>
+    initialDate ? Math.max(0, weeksBetween(todayKey(), initialDate)) : 0,
+  );
+  const dateToPreselect = useRef(initialDate);
+  const previousDoctorProfileId = useRef(doctorProfileId);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [time, setTime] = useState<string | null>(null);
 
@@ -48,6 +66,8 @@ export function DateTimeStep({ doctorProfileId, onNext, onBack }: Props) {
 
   // Al cambiar de doctor volvemos a la semana actual.
   useEffect(() => {
+    if (previousDoctorProfileId.current === doctorProfileId) return;
+    previousDoctorProfileId.current = doctorProfileId;
     setWeekOffset(0);
   }, [doctorProfileId]);
 
@@ -59,7 +79,8 @@ export function DateTimeStep({ doctorProfileId, onNext, onBack }: Props) {
 
     setSlots(null);
     setError(null);
-    setSelectedDate(null);
+    setSelectedDate(dateToPreselect.current ?? null);
+    dateToPreselect.current = undefined;
     setTime(null);
 
     getDoctorSlotsAction(doctorProfileId, from, to)
@@ -79,12 +100,14 @@ export function DateTimeStep({ doctorProfileId, onNext, onBack }: Props) {
 
   return (
     <div>
-      <h2 className="text-lg font-semibold text-brand-teal-dark">
+      <Heading className="text-lg font-semibold text-brand-teal-dark">
         Elige fecha y horario
-      </h2>
+      </Heading>
       <p className="mt-1 text-sm text-brand-gray">
         Selecciona el día y un horario disponible.
       </p>
+
+      {notice}
 
       {error && <p className="mt-6 text-sm text-red-600">{error}</p>}
 
@@ -124,6 +147,8 @@ export function DateTimeStep({ doctorProfileId, onNext, onBack }: Props) {
                   key={date}
                   type="button"
                   disabled={disabled}
+                  aria-label={formatLongDate(date)}
+                  aria-pressed={selectedDate === date}
                   onClick={() => {
                     setSelectedDate(date);
                     setTime(null);
@@ -171,6 +196,7 @@ export function DateTimeStep({ doctorProfileId, onNext, onBack }: Props) {
                   <button
                     key={slot}
                     type="button"
+                    aria-pressed={time === slot}
                     onClick={() => setTime(slot)}
                     className={cn(
                       "rounded-lg border px-2 py-2 text-sm font-medium transition-colors",
@@ -187,6 +213,8 @@ export function DateTimeStep({ doctorProfileId, onNext, onBack }: Props) {
           </div>
         </>
       )}
+
+      {hint}
 
       <div className="mt-8 flex gap-3">
         <Button
