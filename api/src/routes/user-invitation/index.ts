@@ -17,7 +17,6 @@ import {
 import type { ZodTypeProvider } from "@fastify/type-provider-zod";
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { policy } from "@/plugins/policy";
-import { RATE_LIMITS, limitedBy } from "@/plugins/rate-limit";
 import auth from "@/infrastructure/vendors/auth/better-auth/auth";
 import { fromNodeHeaders } from "better-auth/node";
 
@@ -43,10 +42,7 @@ export default async function userInvitationRoutes(fastify: FastifyInstance) {
     "/:token",
     {
       schema: { params: verifyInvitationTokenParamsSchema },
-      config: {
-        ...policy({ public: true }).config,
-        ...limitedBy(RATE_LIMITS.readInvitation),
-      },
+      ...policy({ public: true }),
     },
     async (request, reply) => {
       try {
@@ -81,10 +77,7 @@ export default async function userInvitationRoutes(fastify: FastifyInstance) {
     "/:token/accept",
     {
       schema: { params: acceptInvitationParamsSchema },
-      config: {
-        ...policy({ public: true }).config,
-        ...limitedBy(RATE_LIMITS.answerInvitation),
-      },
+      ...policy({ public: true }),
     },
     async (request, reply) => {
       try {
@@ -112,13 +105,7 @@ export default async function userInvitationRoutes(fastify: FastifyInstance) {
 
   app.post(
     "/set-password",
-    {
-      schema: { body: setPasswordSchema },
-      config: {
-        ...policy({ public: true }).config,
-        ...limitedBy(RATE_LIMITS.answerInvitation),
-      },
-    },
+    { schema: { body: setPasswordSchema }, ...policy({ public: true }) },
     async (request, reply) => {
       try {
         const usecase = new SetPasswordUseCase();
