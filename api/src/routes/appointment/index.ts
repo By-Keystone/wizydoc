@@ -7,7 +7,6 @@ import { Prisma } from "@prisma/client";
 import type { ZodTypeProvider } from "@fastify/type-provider-zod";
 import type { FastifyInstance } from "fastify";
 import { policy } from "@/plugins/policy";
-import { RATE_LIMITS, limitedBy } from "@/plugins/rate-limit";
 import { ApplicationError } from "@/application/errors/application.errors";
 import type { IEmailService } from "@/application/ports/email-service.port";
 
@@ -29,10 +28,7 @@ export default async function appointmentRoutes(
       schema: { body: createAppointmentSchema },
       // El paciente ve este texto en el wizard: sin el prefijo "body/campo" de Fastify.
       schemaErrorFormatter: (errors) => new Error(errors[0].message),
-      config: {
-        ...policy({ public: true }).config,
-        ...limitedBy(RATE_LIMITS.bookAppointment),
-      },
+      ...policy({ public: true }),
     },
     async (request, reply) => {
       try {
