@@ -166,6 +166,7 @@ export interface TestPrisma {
     } | null>;
   };
   appointment: {
+    create(args: { data: Record<string, unknown> }): Promise<{ id: string }>;
     count(args: { where: Record<string, unknown> }): Promise<number>;
   };
   $queryRaw<T = unknown>(
