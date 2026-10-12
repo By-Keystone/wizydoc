@@ -48,6 +48,18 @@ export interface TestPrismaSubscriptionRow {
   paymentProviderSubscriptionId: string | null;
 }
 
+export interface TestPrismaAppointmentRow {
+  id: string;
+  doctorProfileId: string;
+  clinicId: string;
+  patientId: string;
+  scheduledAt: Date;
+  status: string;
+  specialty: string;
+  cancelledAt: Date | null;
+  rescheduleCount: number;
+}
+
 export interface TestPrisma {
   user: {
     count(args: { where: Record<string, unknown> }): Promise<number>;
@@ -167,6 +179,18 @@ export interface TestPrisma {
   };
   appointment: {
     count(args: { where: Record<string, unknown> }): Promise<number>;
+    findFirst(args: {
+      where: Record<string, unknown>;
+      orderBy?: Record<string, unknown>;
+    }): Promise<TestPrismaAppointmentRow | null>;
+    findMany(args: {
+      where: Record<string, unknown>;
+      orderBy?: Record<string, unknown>;
+    }): Promise<TestPrismaAppointmentRow[]>;
+    update(args: {
+      where: Record<string, unknown>;
+      data: Record<string, unknown>;
+    }): Promise<TestPrismaAppointmentRow>;
   };
   $queryRaw<T = unknown>(
     query: TemplateStringsArray,

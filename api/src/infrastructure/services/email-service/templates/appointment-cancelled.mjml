@@ -1,0 +1,40 @@
+<mjml>
+  <mj-body background-color="#f4f4f4">
+    <mj-section background-color="#ffffff" padding="40px">
+      <mj-column>
+        <mj-text font-size="20px" font-weight="bold">Hola {{patientName}},</mj-text>
+        <mj-text font-size="16px">
+          Tu cita fue cancelada. Estos eran los detalles:
+        </mj-text>
+        <mj-table font-size="15px" cellpadding="0">
+          <tr>
+            <td style="padding: 8px 16px 8px 0; color: #5C6B6A;">Fecha y hora</td>
+            <td style="padding: 8px 0;">{{scheduledAt}}</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px 16px 8px 0; color: #5C6B6A;">Especialidad</td>
+            <td style="padding: 8px 0;">{{specialty}}</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px 16px 8px 0; color: #5C6B6A;">Profesional</td>
+            <td style="padding: 8px 0;">{{doctorName}}</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px 16px 8px 0; color: #5C6B6A;">Sede</td>
+            <td style="padding: 8px 0;">{{clinicName}}</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px 16px 8px 0; color: #5C6B6A;">Dirección</td>
+            <td style="padding: 8px 0;">{{clinicAddress}}</td>
+          </tr>
+        </mj-table>
+        <mj-button background-color="#0E8C82" href="{{bookAgainUrl}}">
+          Reservar otro horario
+        </mj-button>
+        <mj-text font-size="14px" color="#5C6B6A">
+          El horario quedó libre para otro paciente.
+        </mj-text>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>

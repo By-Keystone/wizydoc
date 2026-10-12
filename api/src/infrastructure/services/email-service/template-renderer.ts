@@ -6,7 +6,10 @@ import mjml2html from "mjml";
 export type EmailTemplate =
   | "confirm-email"
   | "invite-user"
-  | "confirm-appointment";
+  | "confirm-appointment"
+  | "appointment-cancelled"
+  | "appointment-rescheduled"
+  | "doctor-appointment-changed";
 
 interface TemplateVariables {
   "confirm-email": { name: string; confirmUrl: string };
@@ -21,6 +24,33 @@ interface TemplateVariables {
     doctorName: string;
     clinicName: string;
     clinicAddress: string;
+    manageUrl: string;
+  };
+  "appointment-cancelled": {
+    patientName: string;
+    scheduledAt: string;
+    specialty: string;
+    doctorName: string;
+    clinicName: string;
+    clinicAddress: string;
+    bookAgainUrl: string;
+  };
+  "appointment-rescheduled": {
+    patientName: string;
+    previousScheduledAt: string;
+    scheduledAt: string;
+    specialty: string;
+    doctorName: string;
+    clinicName: string;
+    clinicAddress: string;
+    manageUrl: string;
+  };
+  "doctor-appointment-changed": {
+    doctorName: string;
+    scheduledAt: string;
+    newScheduledAt?: string;
+    specialty: string;
+    clinicName: string;
   };
 }
 
