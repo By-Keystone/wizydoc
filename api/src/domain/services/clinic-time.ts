@@ -121,6 +121,18 @@ export function toWallTime(
   };
 }
 
+/** Fecha y hora completas en español para mostrar al paciente, según el reloj de la clínica. */
+export function formatClinicDateTime(
+  instant: Date,
+  timeZone: string = CLINIC_TIME_ZONE,
+): string {
+  return new Intl.DateTimeFormat("es", {
+    dateStyle: "full",
+    timeStyle: "short",
+    timeZone,
+  }).format(instant);
+}
+
 /** Instante en que empieza el día `date` en la clínica. */
 export function startOfDay(
   date: string,
@@ -139,4 +151,10 @@ export function addDays(date: string, days: number): string {
   const shifted = new Date(`${date}T00:00:00Z`);
   shifted.setUTCDate(shifted.getUTCDate() + days);
   return shifted.toISOString().slice(0, 10);
+}
+
+/** `"2026-08-06T09:00"` (hora de pared de la clínica) → instante. */
+export function instantOfWallTime(wallTime: string): Date {
+  const [date, time] = wallTime.split("T");
+  return toInstant(date, time);
 }

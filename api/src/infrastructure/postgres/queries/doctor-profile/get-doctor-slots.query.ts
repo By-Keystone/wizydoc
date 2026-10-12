@@ -4,7 +4,7 @@ import {
   type GetDoctorSlotsDto,
   type IGetDoctorSlotsQuery,
 } from "@/application/queries/doctor-profile/get-doctor-slots.query";
-import { BLOCKING_APPOINTMENT_STATUSES } from "@/domain/entities/appointment/self-service";
+import { BLOCKING_APPOINTMENT_STATUSES } from "@/domain/entities/appointment/entity";
 import { SLOT_DURATION_MINUTES } from "@/domain/entities/availability/entity";
 import {
   addDays,
