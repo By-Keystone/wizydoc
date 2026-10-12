@@ -74,3 +74,49 @@ function monthLabel(date: string): string {
 export function formatWeekRange(start: string, end: string): string {
   return `${dayNumber(start)} ${monthLabel(start)} – ${dayNumber(end)} ${monthLabel(end)}`;
 }
+
+const LONG_DAY_NAMES = [
+  "domingo",
+  "lunes",
+  "martes",
+  "miércoles",
+  "jueves",
+  "viernes",
+  "sábado",
+];
+const LONG_MONTH_NAMES = [
+  "enero",
+  "febrero",
+  "marzo",
+  "abril",
+  "mayo",
+  "junio",
+  "julio",
+  "agosto",
+  "septiembre",
+  "octubre",
+  "noviembre",
+  "diciembre",
+];
+
+/** `"viernes 16 de octubre"`, a partir de una fecha de calendario sin zona. */
+export function formatLongDate(date: string): string {
+  const day = new Date(`${date}T00:00:00Z`);
+  return `${LONG_DAY_NAMES[day.getUTCDay()]} ${day.getUTCDate()} de ${LONG_MONTH_NAMES[day.getUTCMonth()]}`;
+}
+
+/** `"Jueves 15 de octubre, 10:00"`. */
+export function formatWhen(date: string, time: string): string {
+  const longDate = formatLongDate(date);
+  return `${longDate.charAt(0).toUpperCase()}${longDate.slice(1)}, ${time}`;
+}
+
+/** Semanas completas entre la semana de `from` y la de `to`. */
+export function weeksBetween(from: string, to: string): number {
+  const millisecondsPerWeek = 7 * 24 * 60 * 60 * 1000;
+  return Math.round(
+    (new Date(`${startOfWeek(to)}T00:00:00Z`).getTime() -
+      new Date(`${startOfWeek(from)}T00:00:00Z`).getTime()) /
+      millisecondsPerWeek,
+  );
+}
