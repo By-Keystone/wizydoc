@@ -34,6 +34,7 @@
   .proto-panel h1 { font-size: 15px; margin: 0; color: var(--teal-dark); }
   .proto-panel p.lead { font-size: 12px; color: var(--gray); margin: 6px 0 16px; line-height: 1.45; }
   .proto-panel h2 { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--teal); margin: 18px 0 8px; }
+  .proto-panel h3 { font-size: 11.5px; color: var(--ink); margin: 12px 0 6px; }
   .proto-panel label { display: flex; gap: 8px; align-items: flex-start; font-size: 13px; color: var(--ink); padding: 5px 0; cursor: pointer; line-height: 1.35; }
   .proto-panel input { margin-top: 2px; accent-color: var(--teal); }
   .jump { display: block; width: 100%; text-align: left; border: 1px solid #e5e7eb; background: #fff; border-radius: 8px; padding: 6px 10px; margin-bottom: 4px; font-size: 12.5px; color: var(--gray); cursor: pointer; }
@@ -43,6 +44,8 @@
   .seg button { flex: 1; border: 0; background: #fff; padding: 6px; font-size: 12.5px; color: var(--gray); cursor: pointer; }
   .seg button[aria-pressed="true"] { background: var(--teal); color: #fff; }
   .note { font-size: 11.5px; color: var(--gray); background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 8px 10px; margin-top: 12px; line-height: 1.45; }
+  .note ul { margin: 4px 0 0; padding-left: 16px; }
+  .note li { margin: 3px 0; }
   .stage { display: flex; justify-content: center; align-items: flex-start; padding: 32px 16px; }
   .frame { background: #fff; box-shadow: 0 10px 30px rgba(0,0,0,.12); overflow: hidden; transition: width .2s; }
   .frame.mobile { width: 375px; min-height: 740px; border-radius: 28px; border: 8px solid #1f2937; }
@@ -56,7 +59,9 @@
   .logo-mark { width: 28px; height: 28px; border-radius: 8px; background: var(--teal); color: #fff; display: grid; place-items: center; font-size: 15px; }
   .shell main { flex: 1; display: flex; justify-content: center; align-items: flex-start; padding: 8px 16px 32px; }
   .desktop .shell main { align-items: center; padding: 48px 16px; }
-  .shell footer { padding: 24px; text-align: center; font-size: 12px; color: var(--gray); }
+  .shell footer { padding: 24px; text-align: center; font-size: 12px; color: var(--gray); line-height: 1.8; }
+  .shell footer a { color: var(--gray); text-underline-offset: 3px; }
+  .shell footer a:hover { color: var(--teal-dark); }
 
   /* ---------- Componentes de la app (ui/card, ui/button, ui/badge) ---------- */
   .card { width: 100%; max-width: 28rem; border-radius: 16px; border: 1px solid #e5e7eb; background: var(--surface); box-shadow: 0 1px 2px rgba(0,0,0,.05); padding: 24px; }
@@ -89,12 +94,14 @@
   .summary .when small { display: block; font-size: 12px; font-weight: 500; color: var(--gray); margin-top: 2px; }
 
   .hint { margin-top: 8px; font-size: 13px; color: var(--gray); line-height: 1.45; }
+  .tz { margin-top: 6px; font-size: 12px; color: var(--gray); display: flex; align-items: center; gap: 6px; }
   .alert { margin-top: 16px; border-radius: 10px; padding: 10px 12px; font-size: 13.5px; line-height: 1.45; display: flex; gap: 8px; }
   .alert svg { flex: none; margin-top: 1px; }
   .alert-red { background: #fef2f2; border: 1px solid #fecaca; color: #b91c1c; }
+  .alert-amber { background: #fffbeb; border: 1px solid #fde68a; color: #92400e; }
   .icon-tile { width: 56px; height: 56px; border-radius: 16px; display: grid; place-items: center; margin: 0 auto 16px; }
   .center { text-align: center; }
-  .linkbtn { background: none; border: 0; color: var(--teal); font-weight: 600; font-size: 14px; cursor: pointer; padding: 0; text-decoration: underline; text-underline-offset: 3px; }
+  .linkbtn { background: none; border: 0; color: var(--teal); font-weight: 600; font-size: inherit; cursor: pointer; padding: 0; text-decoration: underline; text-underline-offset: 3px; }
   .spinner { width: 16px; height: 16px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: spin .7s linear infinite; display: inline-block; }
   @keyframes spin { to { transform: rotate(360deg); } }
 
@@ -115,16 +122,27 @@
   .slot { border-radius: 8px; border: 1px solid #e5e7eb; background: #fff; padding: 9px 4px; font-size: 14px; font-weight: 500; color: var(--gray); cursor: pointer; }
   .slot:hover { background: #f9fafb; }
   .slot[aria-pressed="true"] { border-color: var(--teal); background: rgba(14,140,130,.1); color: var(--teal); }
-  .current { margin-top: 16px; border-radius: 10px; background: #fff; border: 1px dashed #cbd5e1; padding: 10px 12px; font-size: 13px; color: var(--gray); }
+  .current { margin-top: 16px; border-radius: 10px; background: #fff; border: 1px dashed #cbd5e1; padding: 10px 12px; font-size: 13px; color: var(--gray); line-height: 1.5; }
   .current strong { color: var(--ink); }
 
+  /* ---------- Lista de médicos (misma tarjeta seleccionable que el booking) ---------- */
+  .options { margin-top: 20px; display: grid; gap: 10px; }
+  .option { display: flex; flex-direction: column; gap: 2px; width: 100%; text-align: left; border: 1px solid #e5e7eb; background: #fff; border-radius: 12px; padding: 12px 14px; cursor: pointer; color: var(--ink); }
+  .option:hover { background: #f9fafb; }
+  .option[aria-pressed="true"] { border-color: var(--teal); background: rgba(14,140,130,.08); }
+  .option .name { font-size: 15px; font-weight: 600; }
+  .option .next { font-size: 13px; color: var(--gray); }
+  .option[aria-pressed="true"] .name { color: var(--teal-dark); }
+
   .compare { margin-top: 20px; display: grid; gap: 10px; }
-  .compare div { border-radius: 12px; padding: 12px 14px; background: #fff; border: 1px solid #e5e7eb; }
+  .compare > div { border-radius: 12px; padding: 12px 14px; background: #fff; border: 1px solid #e5e7eb; }
   .compare .label { font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--gray); font-weight: 600; }
   .compare .old .value { text-decoration: line-through; color: var(--gray); }
   .compare .new { border-color: var(--teal); background: rgba(14,140,130,.06); }
   .compare .new .value { color: var(--teal-dark); font-weight: 700; }
   .compare .value { margin-top: 2px; font-size: 15px; }
+  .compare .who { margin-top: 2px; font-size: 13.5px; color: var(--ink); }
+  .compare .old .who { color: var(--gray); text-decoration: line-through; }
 
   /* ---------- Toast (sonner) ---------- */
   .toast { position: absolute; left: 50%; bottom: 20px; transform: translateX(-50%); background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,.12); padding: 10px 14px; font-size: 13.5px; color: var(--ink); display: flex; gap: 8px; align-items: center; white-space: nowrap; }
@@ -140,6 +158,7 @@
   .mail-body table { border-collapse: collapse; font-size: 15px; margin: 12px 0; }
   .mail-body td { padding: 6px 16px 6px 0; vertical-align: top; }
   .mail-body td:first-child { color: var(--gray); white-space: nowrap; }
+  .mail-body s { color: var(--gray); }
   .mail-btn { display: inline-block; background: var(--teal); color: #fff; font-weight: 600; text-decoration: none; padding: 12px 22px; border-radius: 8px; margin: 8px 0 4px; border: 0; cursor: pointer; font-size: 15px; }
   .mail-small { font-size: 14px; color: var(--gray); }
 
@@ -167,8 +186,10 @@
     <h2>Escenario al abrir el enlace</h2>
     <div id="scenarios">
       <label><input type="radio" name="scenario" value="normal" checked> Cita en 7 días (jue 15 oct, 10:00)</label>
-      <label><input type="radio" name="scenario" value="deadline"> Cita hoy a las 18:30 (menos de 12 h: no se puede reprogramar)</label>
-      <label><input type="radio" name="scenario" value="limit"> Ya reprogramada 3 veces</label>
+      <label><input type="radio" name="scenario" value="deadline"> Cita hoy a las 18:30 (menos de 12 h: no se puede cancelar ni reprogramar)</label>
+      <label><input type="radio" name="scenario" value="limit"> Ya reprogramada una vez</label>
+      <label><input type="radio" name="scenario" value="noslots"> Su médico no tiene horarios; otros médicos sí</label>
+      <label><input type="radio" name="scenario" value="noslots-none"> Ningún médico de la especialidad tiene horarios</label>
       <label><input type="radio" name="scenario" value="cancelled"> Cita ya cancelada</label>
       <label><input type="radio" name="scenario" value="gone"> Cita ya pasada, enlace inválido o expirado</label>
       <label><input type="radio" name="scenario" value="error"> Error al cargar (api caído)</label>
@@ -179,14 +200,32 @@
     <label><input type="radio" name="outcome" value="taken"> Otro paciente tomó el horario (409)</label>
     <label><input type="radio" name="outcome" value="race"> La cita cambió en otra pestaña (409)</label>
 
+    <h2>Dato del médico</h2>
+    <label><input type="checkbox" id="show-title"> El médico tiene registrado su tratamiento («Dra.», «Dr.»)</label>
+    <p class="lead" style="margin:2px 0 0">Sin ese dato se muestra solo el nombre completo. Carmen Villanueva Torres no lo tiene en ningún caso.</p>
+
     <h2>Ir a una pantalla</h2>
     <div id="jumps"></div>
 
+    <div class="note">
+      <strong>Decisiones aplicadas</strong>
+      <ul>
+        <li>Cancelar y reprogramar: hasta 12 horas antes de la cita. Después, la página no ofrece ninguna acción.</li>
+        <li>Reprogramar: una sola vez por cita. Pasar la cita a otro médico cuenta como esa vez.</li>
+        <li>La página nunca muestra el contacto del consultorio. La salida, cuando algo no se puede, es cancelar y reservar de nuevo.</li>
+        <li>Solo se ofrecen horarios dentro de la disponibilidad del médico elegido.</li>
+        <li>Al reprogramar no se ofrecen horarios a menos de 12 horas de ahora: la nueva hora siempre queda a 12 h o más, para que el paciente aún pueda cancelarla. Hoy (jue 8 oct, 09:40) el primer horario posible es desde las 21:40. Si un médico no tiene ninguno así en todo el rango, aplica «Este médico no tiene horarios disponibles».</li>
+        <li>El aviso al médico no lleva datos del paciente.</li>
+      </ul>
+    </div>
     <p class="note">
-      El modelo actual no tiene <strong>motivo de consulta</strong> (es una feature posterior en <code>PRODUCT.md</code>): el resumen muestra la especialidad en su lugar. Cuando exista el motivo, va como una fila más del resumen.
+      <strong>Plan Gratis:</strong> la autogestión es de pago. En Gratis el correo de confirmación sale <em>sin</em> el botón «Cancelar o reprogramar», no existe la página del enlace y el paciente nunca ve una mejora de plan.
     </p>
     <p class="note">
-      Decisiones aplicadas: tope de 3 reprogramaciones por cita; el aviso al consultorio va sólo al médico de la cita; cancelar es igual a cualquier antelación.
+      <strong>Por confirmar:</strong> si la cita pasa a otro médico, el prototipo asume que cada médico (el anterior y el nuevo) recibe su propio aviso con el mismo contenido.
+    </p>
+    <p class="note">
+      El modelo actual no tiene <strong>motivo de consulta</strong> (es una feature posterior en <code>PRODUCT.md</code>): el resumen muestra la especialidad en su lugar. Cuando exista el motivo, va como una fila más del resumen.
     </p>
   </aside>
 
@@ -203,88 +242,141 @@
 <script>
 (function () {
   var DAYS_LONG = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
+  var DAYS_SHORT = ["dom", "lun", "mar", "mié", "jue", "vie", "sáb"];
   var MONTHS_LONG = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
   var MONTHS_SHORT = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
   var DAY_LABELS = ["Lu", "Ma", "Mi", "Ju", "Vi", "Sá", "Do"];
   var TODAY = "2026-10-08";
   var NOW_TIME = "09:40";
   var MAX_WEEK_OFFSET = 4;
-  var DEMO_NEW_DATE = "2026-10-16";
-  var DEMO_NEW_TIME = "11:00";
-  var DEMO_NEW_WEEK_OFFSET = 1;
+  var CHANGE_DEADLINE_MINUTES = 12 * 60;
+  var MAX_RESCHEDULES = 1;
+  var SLOT_MINUTES = 30;
 
   var ICON = {
     check: '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></svg>',
     x: '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#5C6B6A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6M9 9l6 6"/></svg>',
     link: '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#5C6B6A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 17H7A5 5 0 0 1 7 7h2M15 7h2a5 5 0 1 1 0 10h-2M8 12h8"/><path d="m3 3 18 18"/></svg>',
+    calendarOff: '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#5C6B6A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.18 4.18A2 2 0 0 0 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 1.82-1.18"/><path d="M21 15.5V6a2 2 0 0 0-2-2H9.5M16 2v4M3 10h7M21 10h-5.5M2 2l20 20"/></svg>',
     warn: '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4M12 17h.01"/></svg>',
     alert: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>',
+    clock: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>',
+    globe: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>',
     left: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>',
     right: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>'
   };
 
-  var SCENARIOS = {
-    normal: { status: "PENDING", date: "2026-10-15", time: "10:00", rescheduleBlockedBy: null },
-    deadline: { status: "PENDING", date: "2026-10-08", time: "18:30", rescheduleBlockedBy: "DEADLINE" },
-    limit: { status: "PENDING", date: "2026-10-15", time: "10:00", rescheduleBlockedBy: "LIMIT" },
-    cancelled: { status: "CANCELLED", date: "2026-10-15", time: "10:00", rescheduleBlockedBy: null }
+  var DOCTORS = {
+    paredes: {
+      firstName: "Lucía", fullName: "Lucía Paredes Quispe", title: "Dra.", email: "lucia.paredes@consultorioparedes.pe",
+      availability: { 1: [["09:00", "13:00"]], 2: [["09:00", "13:00"]], 3: [["09:00", "13:00"], ["15:00", "18:00"]], 4: [["09:00", "13:00"], ["15:00", "19:00"]], 5: [["09:00", "13:00"]], 6: [["09:00", "12:00"]] },
+      taken: ["2026-10-08 10:00", "2026-10-08 11:30", "2026-10-09 09:00", "2026-10-09 09:30", "2026-10-12 09:00", "2026-10-13 10:30", "2026-10-13 11:00", "2026-10-14 15:00", "2026-10-15 09:30"],
+      demoSlot: { date: "2026-10-16", time: "11:00", weekOffset: 1 }
+    },
+    salinas: {
+      firstName: "Jorge", fullName: "Jorge Salinas Rojas", title: "Dr.", email: "jorge.salinas@consultorioparedes.pe",
+      availability: { 2: [["15:00", "19:00"]], 4: [["15:00", "19:00"]], 6: [["09:00", "12:00"]] },
+      taken: ["2026-10-08 15:00", "2026-10-13 15:00", "2026-10-13 15:30"],
+      demoSlot: { date: "2026-10-13", time: "16:00", weekOffset: 1 }
+    },
+    villanueva: {
+      firstName: "Carmen", fullName: "Carmen Villanueva Torres", title: null, email: "carmen.villanueva@consultorioparedes.pe",
+      availability: { 1: [["08:00", "12:00"]], 3: [["08:00", "12:00"]], 5: [["08:00", "11:00"]] },
+      taken: ["2026-10-09 08:00"],
+      demoSlot: { date: "2026-10-14", time: "08:30", weekOffset: 1 }
+    }
   };
-
-  var BLOCKED_REASON = {
-    DEADLINE: "Ya no se puede reprogramar porque faltan menos de 12 horas para tu cita. Si no puedes asistir, cancélala y reserva otro horario.",
-    LIMIT: "Ya reprogramaste esta cita 3 veces. Si necesitas otro horario, cancélala y reserva de nuevo."
-  };
+  var SAME_SPECIALTY_DOCTORS = ["paredes", "salinas", "villanueva"];
+  var DEMO_OTHER_DOCTOR = "salinas";
 
   var BASE = {
     patientFirstName: "Rosa",
+    patientFullName: "Rosa Huamán",
+    patientEmail: "rosa.huaman@gmail.com",
     specialty: "Dermatología",
-    doctorName: "Dra. Lucía Paredes Quispe",
+    doctorKey: "paredes",
     clinicName: "Consultorio Paredes · Sede Miraflores",
     clinicAddress: "Av. José Larco 812, of. 304, Miraflores, Lima",
-    durationMinutes: 30
+    durationMinutes: 30,
+    status: "PENDING",
+    date: "2026-10-15",
+    time: "10:00",
+    rescheduleCount: 0
   };
 
-  var AVAILABILITY = {
-    1: [["09:00", "13:00"]],
-    2: [["09:00", "13:00"]],
-    3: [["09:00", "13:00"], ["15:00", "18:00"]],
-    4: [["09:00", "13:00"], ["15:00", "19:00"]],
-    5: [["09:00", "13:00"]],
-    6: [["09:00", "12:00"]]
+  var SCENARIOS = {
+    normal: { unavailableDoctors: [] },
+    deadline: { date: "2026-10-08", time: "18:30", unavailableDoctors: [] },
+    limit: { rescheduleCount: 1, unavailableDoctors: [] },
+    noslots: { unavailableDoctors: ["paredes"] },
+    "noslots-none": { unavailableDoctors: ["paredes", "salinas", "villanueva"] },
+    cancelled: { status: "CANCELLED", unavailableDoctors: [] }
   };
-  var TAKEN = ["2026-10-08 10:00", "2026-10-08 11:30", "2026-10-09 09:00", "2026-10-09 09:30", "2026-10-12 09:00", "2026-10-13 10:30", "2026-10-13 11:00", "2026-10-14 15:00", "2026-10-15 09:30"];
 
-  var SCREENS = [
-    ["email", "Correo de confirmación"],
-    ["loading", "Cargando"],
-    ["summary", "Ver la cita"],
-    ["summary-deadline", "Menos de 12 h: no se puede reprogramar"],
-    ["summary-limit", "Tope de reprogramaciones"],
-    ["confirm-cancel", "Confirmar cancelación"],
-    ["cancelled", "Cancelada"],
-    ["pick", "Elegir otro horario"],
-    ["pick-taken", "Horario ya tomado"],
-    ["confirm-reschedule", "Confirmar cambio"],
-    ["rescheduled", "Reprogramada"],
-    ["race", "La cita cambió"],
-    ["not-found", "Enlace no disponible"],
-    ["error", "Error al cargar"],
-    ["doctor-email", "Aviso al médico"]
+  var DEADLINE_MESSAGE = "Ya no puedes cambiar esta cita desde este enlace porque faltan menos de 12 horas.";
+  var LIMIT_MESSAGE = "Esta cita ya se reprogramó una vez y no se puede volver a reprogramar. Si necesitas otro horario, cancélala y reserva de nuevo.";
+
+  var SCREEN_GROUPS = [
+    ["Página del enlace", [
+      ["loading", "Cargando"],
+      ["summary", "Ver la cita"],
+      ["summary-deadline", "Menos de 12 h: sin cambios"],
+      ["summary-limit", "Ya reprogramada una vez"],
+      ["confirm-cancel", "Confirmar cancelación"],
+      ["cancelled", "Cancelada"],
+      ["pick", "Elegir otro horario"],
+      ["pick-taken", "Horario ya tomado"],
+      ["confirm-reschedule", "Confirmar cambio"],
+      ["rescheduled", "Reprogramada"],
+      ["race", "La cita cambió"],
+      ["not-found", "Enlace no disponible"],
+      ["error", "Error al cargar"]
+    ]],
+    ["Médico sin horarios", [
+      ["pick-doctor", "Elegir otro médico"],
+      ["pick-other", "Horarios del otro médico"],
+      ["confirm-doctor", "Confirmar cambio de médico"],
+      ["rescheduled-doctor", "Reprogramada con otro médico"],
+      ["no-doctors", "Ningún médico con horarios"]
+    ]],
+    ["Correos", [
+      ["email", "Confirmación (solo planes de pago)"],
+      ["patient-cancelled", "Al paciente: cancelada"],
+      ["patient-rescheduled", "Al paciente: reprogramada"],
+      ["doctor-cancelled", "Al médico: cancelación"],
+      ["doctor-rescheduled", "Al médico: reprogramación"]
+    ]]
   ];
+
+  var SCENARIO_FOR_JUMP = {
+    "summary-deadline": "deadline",
+    "summary-limit": "limit",
+    "pick-doctor": "noslots",
+    "pick-other": "noslots",
+    "confirm-doctor": "noslots",
+    "rescheduled-doctor": "noslots",
+    "no-doctors": "noslots-none"
+  };
+
+  var EMAIL_SCREENS = ["email", "patient-cancelled", "patient-rescheduled", "doctor-cancelled", "doctor-rescheduled"];
 
   var state = {
     view: "mobile",
     scenario: "normal",
     outcome: "ok",
     screen: "email",
+    showTitle: false,
     appointment: null,
+    unavailableDoctors: [],
+    pickDoctor: null,
     weekOffset: 0,
     selectedDate: null,
     selectedTime: null,
     pickError: null,
     pending: false,
     toast: null,
-    extraTaken: []
+    extraTaken: [],
+    lastChange: null
   };
 
   function pad(n) { return String(n).padStart(2, "0"); }
@@ -294,53 +386,129 @@
   function startOfWeek(date) { var dow = dayOfWeek(date); return addDays(date, dow === 0 ? -6 : 1 - dow); }
   function dayNumber(date) { return Number(date.slice(8, 10)); }
   function longDate(date) { var d = parse(date); return DAYS_LONG[d.getUTCDay()] + " " + d.getUTCDate() + " de " + MONTHS_LONG[d.getUTCMonth()]; }
+  function shortDate(date) { var d = parse(date); return DAYS_SHORT[d.getUTCDay()] + " " + d.getUTCDate() + " " + MONTHS_SHORT[d.getUTCMonth()]; }
+  function mailDate(date, time) { var d = parse(date); return DAYS_LONG[d.getUTCDay()] + ", " + d.getUTCDate() + " de " + MONTHS_LONG[d.getUTCMonth()] + " de " + d.getUTCFullYear() + ", " + time + " (hora de Lima)"; }
   function capitalize(text) { return text.charAt(0).toUpperCase() + text.slice(1); }
   function when(date, time) { return capitalize(longDate(date)) + ", " + time; }
   function toMinutes(t) { return Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5)); }
   function toTime(m) { return pad(Math.floor(m / 60)) + ":" + pad(m % 60); }
+  function minutesUntil(date, time) { return (parse(date) - parse(TODAY)) / 60000 + toMinutes(time) - toMinutes(NOW_TIME); }
+  function isWithinChangeDeadline(date, time) { return minutesUntil(date, time) < CHANGE_DEADLINE_MINUTES; }
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
 
-  function slotsFor(date) {
+  function doctorName(key) {
+    var doctor = DOCTORS[key];
+    return (state.showTitle && doctor.title ? doctor.title + " " : "") + doctor.fullName;
+  }
+
+  function slotsFor(date, doctorKey) {
     if (date < TODAY) return [];
-    var ranges = AVAILABILITY[dayOfWeek(date)] || [];
-    var occupied = TAKEN.concat(state.extraTaken);
-    if (state.appointment) occupied.push(state.appointment.date + " " + state.appointment.time);
+    if (state.unavailableDoctors.indexOf(doctorKey) !== -1) return [];
+    var doctor = DOCTORS[doctorKey];
+    var ranges = doctor.availability[dayOfWeek(date)] || [];
+    var occupied = doctor.taken.slice();
+    state.extraTaken.forEach(function (entry) { if (entry.doctorKey === doctorKey) occupied.push(entry.date + " " + entry.time); });
+    var a = state.appointment;
+    if (a && a.doctorKey === doctorKey) occupied.push(a.date + " " + a.time);
     var slots = [];
     ranges.forEach(function (range) {
-      for (var m = toMinutes(range[0]); m + 30 <= toMinutes(range[1]); m += 30) {
+      for (var m = toMinutes(range[0]); m + SLOT_MINUTES <= toMinutes(range[1]); m += SLOT_MINUTES) {
         var t = toTime(m);
         if (occupied.indexOf(date + " " + t) !== -1) continue;
-        if (date === TODAY && t <= NOW_TIME) continue;
+        if (isWithinChangeDeadline(date, t)) continue;
         slots.push(t);
       }
     });
     return slots;
   }
 
-  function loadScenario() {
-    var s = SCENARIOS[state.scenario];
-    state.appointment = s ? Object.assign({}, BASE, s) : null;
-    state.extraTaken = [];
+  function bookableDays() {
+    var first = startOfWeek(TODAY);
+    var days = [];
+    for (var i = 0; i < (MAX_WEEK_OFFSET + 1) * 7; i++) days.push(addDays(first, i));
+    return days;
+  }
+
+  function firstSlot(doctorKey) {
+    var days = bookableDays();
+    for (var i = 0; i < days.length; i++) {
+      var slots = slotsFor(days[i], doctorKey);
+      if (slots.length) return { date: days[i], time: slots[0] };
+    }
+    return null;
+  }
+
+  function alternativeDoctors() {
+    var a = state.appointment;
+    return SAME_SPECIALTY_DOCTORS.filter(function (key) { return key !== a.doctorKey && firstSlot(key); });
+  }
+
+  function changeBlockedBy(a) {
+    if (isWithinChangeDeadline(a.date, a.time)) return "DEADLINE";
+    if (a.rescheduleCount >= MAX_RESCHEDULES) return "LIMIT";
+    return null;
+  }
+
+  function resetPick() {
     state.weekOffset = 0;
     state.selectedDate = null;
     state.selectedTime = null;
     state.pickError = null;
+  }
+
+  function loadScenario() {
+    var scenario = SCENARIOS[state.scenario];
+    state.appointment = scenario ? Object.assign({}, BASE, scenario) : null;
+    state.unavailableDoctors = scenario ? scenario.unavailableDoctors : [];
+    state.extraTaken = [];
+    state.pickDoctor = null;
+    state.lastChange = null;
+    resetPick();
     if (state.scenario === "gone") return "not-found";
     if (state.scenario === "error") return "error";
     if (state.appointment.status === "CANCELLED") return "cancelled";
     return "summary";
   }
 
-  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+  function demoAppointment() {
+    return state.appointment || Object.assign({}, BASE);
+  }
+
+  function demoChange() {
+    if (state.lastChange) return state.lastChange;
+    var slot = DOCTORS.paredes.demoSlot;
+    return {
+      from: { date: BASE.date, time: BASE.time, doctorKey: "paredes" },
+      to: { date: slot.date, time: slot.time, doctorKey: "paredes" }
+    };
+  }
+
+  function isDoctorChange(change) { return change.from.doctorKey !== change.to.doctorKey; }
 
   function summaryHtml(a, muted) {
     return '<div class="summary' + (muted ? " muted" : "") + '">' +
       '<p class="when">' + esc(when(a.date, a.time)) + '<small>Hora de Lima · ' + a.durationMinutes + ' minutos</small></p>' +
       '<dl>' +
       '<dt>Especialidad</dt><dd>' + esc(a.specialty) + '</dd>' +
-      '<dt>Profesional</dt><dd>' + esc(a.doctorName) + '</dd>' +
+      '<dt>Profesional</dt><dd>' + esc(doctorName(a.doctorKey)) + '</dd>' +
       '<dt>Sede</dt><dd>' + esc(a.clinicName) + '</dd>' +
       '<dt>Dirección</dt><dd>' + esc(a.clinicAddress) + '</dd>' +
       '</dl></div>';
+  }
+
+  function compareHtml(change) {
+    var showDoctor = isDoctorChange(change);
+    function block(kind, label, moment) {
+      return '<div class="' + kind + '"><div class="label">' + label + '</div>' +
+        '<div class="value">' + esc(when(moment.date, moment.time)) + '</div>' +
+        (showDoctor ? '<div class="who">con ' + esc(doctorName(moment.doctorKey)) + '</div>' : "") +
+        '</div>';
+    }
+    return '<div class="compare">' + block("old", "Antes", change.from) + block("new", "Ahora", change.to) + '</div>';
+  }
+
+  function limaLegend() {
+    return '<p class="tz">' + ICON.globe + 'Horarios en hora de Lima</p>';
   }
 
   function statusBadge(a) {
@@ -352,6 +520,14 @@
     return state.pending ? '<span class="spinner" aria-hidden="true"></span> Procesando...' : label;
   }
 
+  function pendingChange() {
+    var a = state.appointment;
+    return {
+      from: { date: a.date, time: a.time, doctorKey: a.doctorKey },
+      to: { date: state.selectedDate, time: state.selectedTime, doctorKey: state.pickDoctor }
+    };
+  }
+
   var render = {
     loading: function () {
       return '<div class="center" style="padding:120px 0;color:var(--gray)" role="status">' +
@@ -361,15 +537,23 @@
 
     summary: function () {
       var a = state.appointment;
-      var blocked = a.rescheduleBlockedBy;
-      return '<div class="card">' +
-        '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px">' +
-        '<h1 class="title" tabindex="-1">Hola, ' + esc(a.patientFirstName) + '</h1>' + statusBadge(a) + '</div>' +
-        '<p class="sub">Esta es tu cita. Puedes cancelarla hasta la hora de inicio y reprogramarla hasta 12 horas antes.</p>' +
+      var blocked = changeBlockedBy(a);
+      var header = '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px">' +
+        '<h1 class="title" tabindex="-1">Hola, ' + esc(a.patientFirstName) + '</h1>' + statusBadge(a) + '</div>';
+
+      if (blocked === "DEADLINE") {
+        return '<div class="card">' + header +
+          '<p class="sub">Esta es tu cita.</p>' +
+          '<div class="alert alert-amber" role="status">' + ICON.clock + '<span>' + DEADLINE_MESSAGE + '</span></div>' +
+          summaryHtml(a) + '</div>';
+      }
+
+      return '<div class="card">' + header +
+        '<p class="sub">Esta es tu cita. Puedes cancelarla o reprogramarla hasta 12 horas antes. Solo se puede reprogramar una vez.</p>' +
         summaryHtml(a) +
         '<div class="stack">' +
         '<button type="button" class="btn btn-default btn-block" data-action="reschedule"' + (blocked ? ' disabled aria-describedby="blocked-reason"' : "") + '>Reprogramar</button>' +
-        (blocked ? '<p class="hint" id="blocked-reason" style="margin-top:-4px">' + BLOCKED_REASON[blocked] + '</p>' : "") +
+        (blocked ? '<p class="hint" id="blocked-reason" style="margin-top:-4px">' + LIMIT_MESSAGE + '</p>' : "") +
         '<button type="button" class="btn btn-outline btn-block" data-action="cancel">Cancelar cita</button>' +
         '</div></div>';
     },
@@ -397,25 +581,66 @@
         '<div class="stack"><a class="btn btn-default btn-block" href="#" data-action="book-again">Reservar otro horario</a></div></div>';
     },
 
+    "pick-doctor": function () {
+      var a = state.appointment;
+      var options = alternativeDoctors();
+      return '<div class="card">' +
+        '<div class="icon-tile" style="background:#f3f4f6">' + ICON.calendarOff + '</div>' +
+        '<div class="center"><h1 class="title" tabindex="-1">Este médico no tiene horarios disponibles</h1>' +
+        '<p class="sub">' + esc(doctorName(a.doctorKey)) + ' no tiene horarios libres en las próximas semanas. Puedes pasar tu cita a otro médico de ' + esc(a.specialty) + ' en esta misma sede.</p></div>' +
+        '<div class="current">Tu cita actual: <strong>' + esc(when(a.date, a.time)) + '</strong><br>con ' + esc(doctorName(a.doctorKey)) + '</div>' +
+        '<p class="slots-label" id="doctors-label">Médicos de ' + esc(a.specialty) + ' en ' + esc(a.clinicName.split(" · ").pop()) + '</p>' +
+        '<div class="options" role="group" aria-labelledby="doctors-label" style="margin-top:8px">' + options.map(function (key) {
+          var next = firstSlot(key);
+          return '<button type="button" class="option" data-doctor="' + key + '" aria-pressed="' + (state.pickDoctor === key) + '">' +
+            '<span class="name">' + esc(doctorName(key)) + '</span>' +
+            '<span class="next">Primer horario libre: ' + esc(capitalize(shortDate(next.date))) + ', ' + next.time + '</span></button>';
+        }).join("") + '</div>' +
+        '<p class="hint" style="margin-top:16px">¿Prefieres no cambiar de médico? Puedes <button type="button" class="linkbtn" data-action="cancel">cancelar tu cita</button> y reservar más adelante.</p>' +
+        '<div class="row">' +
+        '<button type="button" class="btn btn-outline" data-action="back-summary">Atrás</button>' +
+        '<button type="button" class="btn btn-default" data-action="to-pick"' + (state.pickDoctor ? "" : " disabled") + '>Ver horarios</button>' +
+        '</div></div>';
+    },
+
+    "no-doctors": function () {
+      var a = state.appointment;
+      return '<div class="card">' +
+        '<div class="icon-tile" style="background:#f3f4f6">' + ICON.calendarOff + '</div>' +
+        '<div class="center"><h1 class="title" tabindex="-1">No hay horarios disponibles</h1>' +
+        '<p class="sub">Ni ' + esc(doctorName(a.doctorKey)) + ' ni otros médicos de ' + esc(a.specialty) + ' en esta sede tienen horarios libres en las próximas semanas.</p>' +
+        '<p class="hint">Si no puedes asistir a tu cita, cancélala y reserva de nuevo cuando haya horarios.</p></div>' +
+        '<div class="current">Tu cita actual: <strong>' + esc(when(a.date, a.time)) + '</strong><br>con ' + esc(doctorName(a.doctorKey)) + '</div>' +
+        '<div class="stack">' +
+        '<button type="button" class="btn btn-default btn-block" data-action="cancel">Cancelar y reservar de nuevo</button>' +
+        '<button type="button" class="btn btn-outline btn-block" data-action="back-summary">Mantener mi cita</button>' +
+        '</div></div>';
+    },
+
     pick: function () {
       var a = state.appointment;
+      var doctorKey = state.pickDoctor;
+      var changingDoctor = doctorKey !== a.doctorKey;
       var monday = addDays(startOfWeek(TODAY), state.weekOffset * 7);
       var days = [];
       for (var i = 0; i < 7; i++) days.push(addDays(monday, i));
       var first = days[0], last = days[6];
       var range = dayNumber(first) + " " + MONTHS_SHORT[parse(first).getUTCMonth()] + " – " + dayNumber(last) + " " + MONTHS_SHORT[parse(last).getUTCMonth()];
-      var daySlots = state.selectedDate ? slotsFor(state.selectedDate) : [];
+      var daySlots = state.selectedDate ? slotsFor(state.selectedDate, doctorKey) : [];
       var slotsHtml;
       if (!state.selectedDate) slotsHtml = '<p class="hint">Elige un día para ver los horarios disponibles.</p>';
-      else if (daySlots.length === 0) slotsHtml = '<p class="hint">El doctor no tiene horarios disponibles ese día.</p>';
+      else if (daySlots.length === 0) slotsHtml = '<p class="hint">No hay horarios disponibles ese día.</p>';
       else slotsHtml = '<div class="slots" role="group" aria-label="Horarios disponibles">' + daySlots.map(function (t) {
         return '<button type="button" class="slot" data-time="' + t + '" aria-pressed="' + (state.selectedTime === t) + '">' + t + '</button>';
       }).join("") + '</div>';
 
       return '<div class="card">' +
         '<h1 class="title" tabindex="-1" style="font-size:18px">Elige fecha y horario</h1>' +
-        '<p class="sub">Selecciona el día y un horario disponible.</p>' +
-        '<div class="current">Tu cita actual: <strong>' + esc(when(a.date, a.time)) + '</strong></div>' +
+        '<p class="sub">Solo ves los horarios libres de ' + esc(doctorName(doctorKey)) + '.</p>' +
+        limaLegend() +
+        '<div class="current">Tu cita actual: <strong>' + esc(when(a.date, a.time)) + '</strong>' +
+        (changingDoctor ? '<br>con ' + esc(doctorName(a.doctorKey)) + '<br>Nuevo médico: <strong>' + esc(doctorName(doctorKey)) + '</strong> · <button type="button" class="linkbtn" data-action="back-doctor">Cambiar</button>' : "") +
+        '</div>' +
         (state.pickError ? '<div class="alert alert-red" role="alert">' + ICON.alert + '<span>' + esc(state.pickError) + '</span></div>' : "") +
         '<div class="weeknav">' +
         '<button type="button" class="iconbtn" data-action="prev-week" aria-label="Semana anterior"' + (state.weekOffset === 0 ? " disabled" : "") + '>' + ICON.left + '</button>' +
@@ -423,27 +648,27 @@
         '<button type="button" class="iconbtn" data-action="next-week" aria-label="Semana siguiente"' + (state.weekOffset >= MAX_WEEK_OFFSET ? " disabled" : "") + '>' + ICON.right + '</button>' +
         '</div>' +
         '<div class="days" role="group" aria-label="Días">' + days.map(function (d, i) {
-          var disabled = slotsFor(d).length === 0;
+          var disabled = slotsFor(d, doctorKey).length === 0;
           return '<button type="button" class="day" data-date="' + d + '"' + (disabled ? " disabled" : "") + ' aria-pressed="' + (state.selectedDate === d) + '" aria-label="' + esc(longDate(d)) + '"><span>' + DAY_LABELS[i] + '</span><span>' + dayNumber(d) + '</span></button>';
         }).join("") + '</div>' +
         '<p class="slots-label">Horarios</p>' + slotsHtml +
         '<p class="hint" style="margin-top:16px">¿No encuentras un horario? Puedes <button type="button" class="linkbtn" data-action="cancel">cancelar tu cita</button> y reservar más adelante.</p>' +
         '<div class="row">' +
-        '<button type="button" class="btn btn-outline" data-action="back-summary">Atrás</button>' +
+        '<button type="button" class="btn btn-outline" data-action="' + (changingDoctor ? "back-doctor" : "back-summary") + '">Atrás</button>' +
         '<button type="button" class="btn btn-default" data-action="to-confirm"' + (state.selectedDate && state.selectedTime ? "" : " disabled") + '>Siguiente</button>' +
         '</div></div>';
     },
 
     "confirm-reschedule": function () {
       var a = state.appointment;
+      var change = pendingChange();
+      var changingDoctor = isDoctorChange(change);
       return '<div class="card">' +
-        '<h1 class="title" tabindex="-1">¿Cambiar tu cita a este horario?</h1>' +
-        '<p class="sub">' + esc(a.specialty) + ' con ' + esc(a.doctorName) + ', en ' + esc(a.clinicName) + '.</p>' +
-        '<div class="compare">' +
-        '<div class="old"><div class="label">Antes</div><div class="value">' + esc(when(a.date, a.time)) + '</div></div>' +
-        '<div class="new"><div class="label">Ahora</div><div class="value">' + esc(when(state.selectedDate, state.selectedTime)) + '</div></div>' +
-        '</div>' +
-        '<p class="hint">El horario anterior quedará libre para otro paciente.</p>' +
+        '<h1 class="title" tabindex="-1">' + (changingDoctor ? "¿Cambiar tu cita a este médico y horario?" : "¿Cambiar tu cita a este horario?") + '</h1>' +
+        '<p class="sub">' + esc(a.specialty) + (changingDoctor ? "" : " con " + esc(doctorName(a.doctorKey))) + ', en ' + esc(a.clinicName) + '.</p>' +
+        compareHtml(change) +
+        limaLegend() +
+        '<p class="hint">El horario anterior quedará libre para otro paciente. Solo puedes reprogramar una vez: después de este cambio, solo podrás cancelar.</p>' +
         '<div class="row">' +
         '<button type="button" class="btn btn-outline" data-action="back-pick"' + (state.pending ? " disabled" : "") + '>Elegir otro</button>' +
         '<button type="button" class="btn btn-default" data-action="do-reschedule"' + (state.pending ? " disabled" : "") + '>' + pendingLabel("Confirmar cambio") + '</button>' +
@@ -456,6 +681,7 @@
         '<div class="icon-tile" style="background:#dcfce7">' + ICON.check + '</div>' +
         '<div class="center"><h1 class="title" tabindex="-1">Listo, tu cita cambió</h1>' +
         '<p class="sub">Te enviamos los detalles por correo. Este mismo enlace sigue sirviendo para tu nueva cita.</p></div>' +
+        compareHtml(state.lastChange) +
         summaryHtml(a) +
         '<div class="stack"><button type="button" class="btn btn-outline btn-block" data-action="back-summary">Ver mi cita</button></div></div>';
     },
@@ -484,67 +710,147 @@
     },
 
     email: function () {
-      return '<div class="mail">' +
-        '<div class="mail-head"><strong>Tu cita en Consultorio Paredes · Sede Miraflores está reservada</strong>De: WizyDoc &lt;citas@wizydoc.app&gt; · Para: rosa.huaman@gmail.com</div>' +
-        '<div class="mail-body">' +
-        '<h2 tabindex="-1" class="title" style="color:#000;font-size:20px">Hola Rosa Huamán,</h2>' +
+      var a = Object.assign({}, BASE);
+      return mailShell(
+        "Tu cita en " + a.clinicName + " está reservada", a.patientEmail,
+        '<h2 tabindex="-1" class="title" style="color:#000;font-size:20px">Hola ' + esc(a.patientFullName) + ',</h2>' +
         '<p>Tu cita ya está reservada. Estos son los detalles:</p>' +
-        '<table>' +
-        '<tr><td>Fecha y hora</td><td><strong>jueves, 15 de octubre de 2026, 10:00</strong></td></tr>' +
-        '<tr><td>Duración</td><td>30 minutos</td></tr>' +
-        '<tr><td>Especialidad</td><td>' + esc(BASE.specialty) + '</td></tr>' +
-        '<tr><td>Profesional</td><td>Lucía Paredes Quispe</td></tr>' +
-        '<tr><td>Sede</td><td>' + esc(BASE.clinicName) + '</td></tr>' +
-        '<tr><td>Dirección</td><td>' + esc(BASE.clinicAddress) + '</td></tr>' +
-        '</table>' +
+        patientTable(a, '<tr><td>Fecha y hora</td><td><strong>' + esc(mailDate(a.date, a.time)) + '</strong></td></tr>') +
         '<p class="mail-small">Te recomendamos llegar unos minutos antes de la hora indicada.</p>' +
         '<button type="button" class="mail-btn" data-action="open-link">Cancelar o reprogramar</button>' +
-        '<p class="mail-small">Puedes cancelar hasta la hora de tu cita y reprogramar hasta 12 horas antes. No compartas este enlace: da acceso a tu cita.</p>' +
-        '</div></div>';
+        '<p class="mail-small">Puedes cancelar o reprogramar hasta 12 horas antes de tu cita, y reprogramar una sola vez. No compartas este enlace: da acceso a tu cita.</p>'
+      );
     },
 
-    "doctor-email": function () {
-      return '<div class="mail">' +
-        '<div class="mail-head"><strong>Rosa Huamán canceló su cita del jueves 15 de octubre, 10:00</strong>De: WizyDoc &lt;citas@wizydoc.app&gt; · Para: lucia.paredes@consultorioparedes.pe</div>' +
-        '<div class="mail-body">' +
-        '<h2 tabindex="-1" class="title" style="color:#000;font-size:20px">Hola Lucía,</h2>' +
-        '<p>Una paciente canceló su cita desde el enlace de autogestión. El horario ya quedó libre para otra reserva.</p>' +
+    "patient-cancelled": function () {
+      var a = demoAppointment();
+      return mailShell(
+        "Tu cita en " + a.clinicName + " fue cancelada", a.patientEmail,
+        '<h2 tabindex="-1" class="title" style="color:#000;font-size:20px">Hola ' + esc(a.patientFullName) + ',</h2>' +
+        '<p>Tu cita fue cancelada. Estos eran los detalles:</p>' +
+        patientTable(a, '<tr><td>Fecha y hora</td><td><s>' + esc(mailDate(a.date, a.time)) + '</s></td></tr>') +
+        '<p>Si quieres, puedes reservar otro horario cuando te acomode.</p>' +
+        '<button type="button" class="mail-btn" data-action="book-again">Reservar otro horario</button>'
+      );
+    },
+
+    "patient-rescheduled": function () {
+      var a = demoAppointment();
+      var change = demoChange();
+      var current = Object.assign({}, a, { doctorKey: change.to.doctorKey });
+      var doctorRow = isDoctorChange(change)
+        ? '<tr><td>Profesional</td><td><strong>' + esc(doctorName(change.to.doctorKey)) + '</strong><br><s>' + esc(doctorName(change.from.doctorKey)) + '</s></td></tr>'
+        : null;
+      return mailShell(
+        "Tu cita en " + a.clinicName + " cambió de horario", a.patientEmail,
+        '<h2 tabindex="-1" class="title" style="color:#000;font-size:20px">Hola ' + esc(a.patientFullName) + ',</h2>' +
+        '<p>Tu cita cambió. Estos son los nuevos detalles:</p>' +
+        patientTable(current,
+          '<tr><td>Antes</td><td><s>' + esc(mailDate(change.from.date, change.from.time)) + '</s></td></tr>' +
+          '<tr><td>Ahora</td><td><strong>' + esc(mailDate(change.to.date, change.to.time)) + '</strong></td></tr>',
+          doctorRow) +
+        '<p class="mail-small">Te recomendamos llegar unos minutos antes de la hora indicada.</p>' +
+        '<button type="button" class="mail-btn" data-action="open-link">Ver o cancelar mi cita</button>' +
+        '<p class="mail-small">Es el mismo enlace de antes. Ya reprogramaste esta cita una vez: desde el enlace solo puedes cancelarla, hasta 12 horas antes. No compartas este enlace: da acceso a tu cita.</p>'
+      );
+    },
+
+    "doctor-cancelled": function () {
+      var a = demoAppointment();
+      var doctor = DOCTORS[a.doctorKey];
+      return mailShell(
+        "Un paciente canceló una cita de tu agenda", doctor.email,
+        '<h2 tabindex="-1" class="title" style="color:#000;font-size:20px">Hola ' + esc(doctor.firstName) + ',</h2>' +
+        '<p>Un paciente canceló una cita de tu agenda desde el enlace de autogestión.</p>' +
         '<table>' +
-        '<tr><td>Paciente</td><td><strong>Rosa Huamán</strong></td></tr>' +
-        '<tr><td>Fecha y hora</td><td>jueves, 15 de octubre de 2026, 10:00</td></tr>' +
-        '<tr><td>Especialidad</td><td>Dermatología</td></tr>' +
-        '<tr><td>Sede</td><td>Consultorio Paredes · Sede Miraflores</td></tr>' +
+        '<tr><td>Fecha y hora</td><td><strong>' + esc(mailDate(a.date, a.time)) + '</strong></td></tr>' +
+        '<tr><td>Especialidad</td><td>' + esc(a.specialty) + '</td></tr>' +
+        '<tr><td>Sede</td><td>' + esc(a.clinicName) + '</td></tr>' +
         '</table>' +
-        '<p class="mail-small">No tienes que hacer nada. Si la paciente reserva otro horario, te llegará el aviso de la nueva cita.</p>' +
-        '</div></div>';
+        '<p>El horario quedó libre para otra reserva.</p>' +
+        '<p class="mail-small">No tienes que hacer nada. Consulta tu agenda en WizyDoc para ver el detalle.</p>' +
+        '<button type="button" class="mail-btn" data-action="open-agenda">Ver mi agenda</button>'
+      );
+    },
+
+    "doctor-rescheduled": function () {
+      var a = demoAppointment();
+      var change = demoChange();
+      var recipient = DOCTORS[change.from.doctorKey];
+      var doctorRows = isDoctorChange(change)
+        ? '<tr><td>Médico anterior</td><td>' + esc(doctorName(change.from.doctorKey)) + '</td></tr>' +
+          '<tr><td>Médico nuevo</td><td><strong>' + esc(doctorName(change.to.doctorKey)) + '</strong></td></tr>'
+        : "";
+      return mailShell(
+        "Un paciente reprogramó una cita de tu agenda", recipient.email,
+        '<h2 tabindex="-1" class="title" style="color:#000;font-size:20px">Hola ' + esc(recipient.firstName) + ',</h2>' +
+        '<p>Un paciente reprogramó una cita de tu agenda desde el enlace de autogestión.</p>' +
+        '<table>' +
+        '<tr><td>Antes</td><td><s>' + esc(mailDate(change.from.date, change.from.time)) + '</s></td></tr>' +
+        '<tr><td>Ahora</td><td><strong>' + esc(mailDate(change.to.date, change.to.time)) + '</strong></td></tr>' +
+        doctorRows +
+        '<tr><td>Especialidad</td><td>' + esc(a.specialty) + '</td></tr>' +
+        '<tr><td>Sede</td><td>' + esc(a.clinicName) + '</td></tr>' +
+        '</table>' +
+        '<p class="mail-small">No tienes que hacer nada. Consulta tu agenda en WizyDoc para ver el detalle.</p>' +
+        '<button type="button" class="mail-btn" data-action="open-agenda">Ver mi agenda</button>'
+      );
     }
   };
+
+  function patientTable(a, whenRows, doctorRow) {
+    return '<table>' + whenRows +
+      '<tr><td>Duración</td><td>' + a.durationMinutes + ' minutos</td></tr>' +
+      '<tr><td>Especialidad</td><td>' + esc(a.specialty) + '</td></tr>' +
+      (doctorRow || '<tr><td>Profesional</td><td>' + esc(doctorName(a.doctorKey)) + '</td></tr>') +
+      '<tr><td>Sede</td><td>' + esc(a.clinicName) + '</td></tr>' +
+      '<tr><td>Dirección</td><td>' + esc(a.clinicAddress) + '</td></tr>' +
+      '</table>';
+  }
+
+  function mailShell(subject, to, body) {
+    return '<div class="mail">' +
+      '<div class="mail-head"><strong>' + esc(subject) + '</strong>De: WizyDoc &lt;citas@wizydoc.app&gt; · Para: ' + esc(to) + '</div>' +
+      '<div class="mail-body">' + body + '</div></div>';
+  }
 
   function shell(content) {
     return '<div class="shell"><header><a class="logo" href="#" data-action="noop"><span class="logo-mark">W</span>WizyDoc</a></header>' +
       '<main>' + content + '</main>' +
-      '<footer>© 2026 WizyDoc. Todos los derechos reservados.</footer></div>';
+      '<footer>© 2026 WizyDoc. Todos los derechos reservados.<br><a href="#" data-action="privacy">Política de privacidad</a></footer></div>';
   }
 
-  var OUTSIDE_SHELL = ["email", "doctor-email"];
-
   function currentJumpKey() {
+    var a = state.appointment;
     if (state.screen === "pick" && state.pickError) return "pick-taken";
-    if (state.screen === "summary" && state.appointment && state.appointment.rescheduleBlockedBy === "DEADLINE") return "summary-deadline";
-    if (state.screen === "summary" && state.appointment && state.appointment.rescheduleBlockedBy === "LIMIT") return "summary-limit";
+    if (state.screen === "pick" && a && state.pickDoctor !== a.doctorKey) return "pick-other";
+    if (state.screen === "confirm-reschedule" && a && state.pickDoctor !== a.doctorKey) return "confirm-doctor";
+    if (state.screen === "rescheduled" && state.lastChange && isDoctorChange(state.lastChange)) return "rescheduled-doctor";
+    if (state.screen === "summary" && a) {
+      var blocked = changeBlockedBy(a);
+      if (blocked === "DEADLINE") return "summary-deadline";
+      if (blocked === "LIMIT") return "summary-limit";
+    }
     return state.screen;
+  }
+
+  function screenLabel(key) {
+    var label = null;
+    SCREEN_GROUPS.forEach(function (group) {
+      group[1].forEach(function (screen) { if (screen[0] === key) label = screen[1]; });
+    });
+    return label || key;
   }
 
   function draw(focus) {
     var screenKey = state.screen;
     var html = render[screenKey]();
     var inner = document.getElementById("frame-inner");
-    inner.innerHTML = (OUTSIDE_SHELL.indexOf(screenKey) !== -1 ? html : shell(html)) +
-      (state.toast ? '<div class="toast" role="status">' + state.toast + '</div>' : "");
+    inner.innerHTML = (EMAIL_SCREENS.indexOf(screenKey) !== -1 ? html : shell(html)) +
+      (state.toast ? '<div class="toast" role="status">' + esc(state.toast) + '</div>' : "");
     document.getElementById("frame").className = "frame " + state.view;
     var jumpKey = currentJumpKey();
-    var label = SCREENS.filter(function (s) { return s[0] === jumpKey; })[0];
-    document.getElementById("caption").textContent = (label ? label[1] : screenKey) + " · " + (state.view === "mobile" ? "375 px" : "escritorio");
+    document.getElementById("caption").textContent = screenLabel(jumpKey) + " · " + (state.view === "mobile" ? "375 px" : "escritorio");
     document.querySelectorAll("#jumps .jump").forEach(function (b) {
       b.setAttribute("aria-current", String(b.dataset.jump === jumpKey));
     });
@@ -560,10 +866,12 @@
     draw(true);
   }
 
+  var toastTimer = null;
   function showToast(text) {
     state.toast = text;
     draw(false);
-    setTimeout(function () { state.toast = null; draw(false); }, 2600);
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { state.toast = null; draw(false); }, 2600);
   }
 
   function withPending(next) {
@@ -582,36 +890,70 @@
     document.querySelectorAll('input[name="scenario"]').forEach(function (r) { r.checked = r.value === state.scenario; });
   }
 
-  function selectDemoSlot(time) {
-    state.weekOffset = DEMO_NEW_WEEK_OFFSET;
-    state.selectedDate = DEMO_NEW_DATE;
-    state.selectedTime = time;
+  function selectDemoSlot(doctorKey, withTime) {
+    var slot = DOCTORS[doctorKey].demoSlot;
+    state.pickDoctor = doctorKey;
+    state.weekOffset = slot.weekOffset;
+    state.selectedDate = slot.date;
+    state.selectedTime = withTime ? slot.time : null;
   }
 
-  var SCENARIO_FOR_JUMP = { "summary-deadline": "deadline", "summary-limit": "limit" };
+  function applyReschedule() {
+    var a = state.appointment;
+    state.lastChange = pendingChange();
+    a.date = state.selectedDate;
+    a.time = state.selectedTime;
+    a.doctorKey = state.pickDoctor;
+    a.rescheduleCount += 1;
+  }
+
+  function startReschedule() {
+    var a = state.appointment;
+    resetPick();
+    if (firstSlot(a.doctorKey)) { state.pickDoctor = a.doctorKey; go("pick"); return; }
+    state.pickDoctor = null;
+    go(alternativeDoctors().length ? "pick-doctor" : "no-doctors");
+  }
 
   function jumpTo(key) {
-    if (key === "email" || key === "doctor-email" || key === "loading") { go(key); return; }
-    if (key === "not-found" || key === "error") { state.appointment = null; go(key); return; }
+    if (EMAIL_SCREENS.indexOf(key) !== -1 || key === "loading") { go(key); return; }
+    if (key === "not-found" || key === "error") { state.appointment = null; state.lastChange = null; go(key); return; }
     state.scenario = SCENARIO_FOR_JUMP[key] || "normal";
     syncScenarioRadio();
     loadScenario();
     var a = state.appointment;
-    if (key === "summary-deadline" || key === "summary-limit") key = "summary";
-    if (key === "cancelled") a.status = "CANCELLED";
-    if (key === "pick-taken") {
-      selectDemoSlot(null);
-      state.extraTaken = [DEMO_NEW_DATE + " " + DEMO_NEW_TIME];
-      state.pickError = "Otro paciente acaba de tomar el horario del " + longDate(DEMO_NEW_DATE) + ", " + DEMO_NEW_TIME + ". Elige otro.";
-      key = "pick";
+    switch (key) {
+      case "summary-deadline":
+      case "summary-limit":
+        go("summary"); return;
+      case "cancelled":
+        a.status = "CANCELLED"; go("cancelled"); return;
+      case "pick":
+        state.pickDoctor = a.doctorKey; go("pick"); return;
+      case "pick-taken":
+        selectDemoSlot(a.doctorKey, false);
+        state.extraTaken = [{ doctorKey: a.doctorKey, date: state.selectedDate, time: DOCTORS[a.doctorKey].demoSlot.time }];
+        state.pickError = "Otro paciente acaba de tomar el horario del " + longDate(state.selectedDate) + ", " + DOCTORS[a.doctorKey].demoSlot.time + ". Elige otro.";
+        go("pick"); return;
+      case "confirm-reschedule":
+        selectDemoSlot(a.doctorKey, true); go("confirm-reschedule"); return;
+      case "rescheduled":
+        selectDemoSlot(a.doctorKey, true); applyReschedule(); go("rescheduled"); return;
+      case "pick-doctor":
+        go("pick-doctor"); return;
+      case "pick-other":
+        state.pickDoctor = DEMO_OTHER_DOCTOR; go("pick"); return;
+      case "confirm-doctor":
+        selectDemoSlot(DEMO_OTHER_DOCTOR, true); go("confirm-reschedule"); return;
+      case "rescheduled-doctor":
+        selectDemoSlot(DEMO_OTHER_DOCTOR, true); applyReschedule(); go("rescheduled"); return;
+      default:
+        go(key);
     }
-    if (key === "confirm-reschedule" || key === "rescheduled") selectDemoSlot(DEMO_NEW_TIME);
-    if (key === "rescheduled") { a.date = DEMO_NEW_DATE; a.time = DEMO_NEW_TIME; }
-    go(key);
   }
 
   document.addEventListener("click", function (event) {
-    var target = event.target.closest("[data-action], [data-date], [data-time], [data-view], [data-jump]");
+    var target = event.target.closest("[data-action], [data-date], [data-time], [data-view], [data-jump], [data-doctor]");
     if (!target) return;
     if (target.tagName === "A") event.preventDefault();
 
@@ -622,6 +964,7 @@
       return;
     }
     if (target.dataset.jump) { jumpTo(target.dataset.jump); return; }
+    if (target.dataset.doctor) { state.pickDoctor = target.dataset.doctor; draw(false); return; }
     if (target.dataset.date) { state.selectedDate = target.dataset.date; state.selectedTime = null; draw(false); return; }
     if (target.dataset.time) { state.selectedTime = target.dataset.time; draw(false); return; }
 
@@ -639,10 +982,9 @@
           showToast("Tu cita fue cancelada");
         });
         break;
-      case "reschedule":
-        state.weekOffset = 0; state.selectedDate = null; state.selectedTime = null; state.pickError = null;
-        go("pick");
-        break;
+      case "reschedule": startReschedule(); break;
+      case "to-pick": resetPick(); go("pick"); break;
+      case "back-doctor": resetPick(); go("pick-doctor"); break;
       case "prev-week": state.weekOffset--; state.selectedDate = null; state.selectedTime = null; draw(false); break;
       case "next-week": state.weekOffset++; state.selectedDate = null; state.selectedTime = null; draw(false); break;
       case "to-confirm": state.pickError = null; go("confirm-reschedule"); break;
@@ -650,21 +992,26 @@
       case "do-reschedule":
         withPending(function () {
           if (state.outcome === "taken") {
-            state.extraTaken.push(state.selectedDate + " " + state.selectedTime);
+            state.extraTaken.push({ doctorKey: state.pickDoctor, date: state.selectedDate, time: state.selectedTime });
             state.pickError = "Otro paciente acaba de tomar el horario del " + longDate(state.selectedDate) + ", " + state.selectedTime + ". Elige otro.";
             state.selectedTime = null;
             go("pick");
             return;
           }
           if (state.outcome === "race") { go("race"); return; }
-          a.date = state.selectedDate;
-          a.time = state.selectedTime;
+          applyReschedule();
           go("rescheduled");
-          showToast("Tu cita cambió de horario");
+          showToast("Tu cita cambió");
         });
         break;
       case "book-again":
-        showToast("Abre /clinic/[clinicId]/create-appointment (booking actual)");
+        showToast("Abre el booking de la misma sede");
+        break;
+      case "privacy":
+        showToast("Abre la política de privacidad (la misma del booking)");
+        break;
+      case "open-agenda":
+        showToast("Abre la agenda del médico en el panel");
         break;
     }
   });
@@ -675,9 +1022,15 @@
   document.querySelectorAll('input[name="outcome"]').forEach(function (r) {
     r.addEventListener("change", function () { state.outcome = r.value; });
   });
+  document.getElementById("show-title").addEventListener("change", function (event) {
+    state.showTitle = event.target.checked;
+    draw(false);
+  });
 
-  document.getElementById("jumps").innerHTML = SCREENS.map(function (s) {
-    return '<button type="button" class="jump" data-jump="' + s[0] + '">' + s[1] + '</button>';
+  document.getElementById("jumps").innerHTML = SCREEN_GROUPS.map(function (group) {
+    return '<h3>' + group[0] + '</h3>' + group[1].map(function (s) {
+      return '<button type="button" class="jump" data-jump="' + s[0] + '">' + s[1] + '</button>';
+    }).join("");
   }).join("");
 
   draw(false);
