@@ -112,6 +112,14 @@ Ese plan (sin mergear) toca las mismas piezas. Quien llegue segundo rebasa:
 
 ## 7. Cambios por capa
 
+> **Nota:** la estructura del api cambió respecto a este plan. Hay una entidad
+> `Appointment` con sus reglas, un `AppointmentRepository` que consulta el token
+> directamente (no existe repositorio ni entidad de tokens) y queries de lectura
+> para la página y para los correos. Los archivos y funciones que cita esta
+> sección (`self-service.ts`, `appointment-access-token.repository.ts`,
+> `hasStarted(scheduledAt, now)`) ya no existen; la referencia vigente es
+> `docs/autogestion-cita.md`, sección 8.
+
 ### 7.1 Prisma (requiere migración nueva)
 
 ```prisma

@@ -17,7 +17,7 @@ la visión, sin fecha · **Fuera** = fuera de alcance por ahora.
 | Sin doble reserva del mismo horario | Hoy | Restricción única en base de datos |
 | Paciente reconocido por su documento (no se duplica) | Hoy | Reutiliza la ficha y refresca contacto |
 | Correo de confirmación | Hoy | Vía SES |
-| Paciente cancela o reprograma solo | Próximo | Hoy el correo le pide llamar a la clínica |
+| Paciente cancela o reprograma solo | Hoy | Desde el enlace del correo de confirmación; reprograma hasta 12 h antes y 3 veces por cita |
 | Paciente confirma asistencia | Próximo | |
 | Recordatorios por correo | Próximo | |
 | Recordatorios automáticos por WhatsApp | Próximo | Cupo mensual incluido desde Consultorio; número de WizyDoc que no recibe respuestas |
@@ -32,7 +32,7 @@ la visión, sin fecha · **Fuera** = fuera de alcance por ahora.
 | Disponibilidad semanal por médico | Hoy | Bloques por día de la semana |
 | Agenda del día | Hoy | El doctor ve sólo sus citas |
 | Vista de semana o de días futuros | Próximo | |
-| Estados de cita (atendida por defecto, no asistió, cancelada, cancelación tardía) | Próximo | Hoy toda cita queda en `PENDING` |
+| Estados de cita (atendida por defecto, no asistió, cancelada) | Parcial | Hoy la cita queda en `PENDING` o `CANCELLED` (por el paciente) |
 | Registrar una cita tomada por teléfono | Próximo | |
 | Bloqueos puntuales (vacaciones, feriados) | Futuro | |
 
