@@ -6,7 +6,9 @@ import mjml2html from "mjml";
 export type EmailTemplate =
   | "confirm-email"
   | "invite-user"
-  | "confirm-appointment";
+  | "confirm-appointment"
+  | "patient-cancelled-appointment"
+  | "doctor-cancelled-appointment";
 
 interface TemplateVariables {
   "confirm-email": { name: string; confirmUrl: string };
@@ -22,6 +24,14 @@ interface TemplateVariables {
     clinicName: string;
     clinicAddress: string;
     manageUrl: string | null;
+  };
+  "patient-cancelled-appointment": { patientName: string; manageUrl: string };
+  "doctor-cancelled-appointment": {
+    doctorName: string;
+    scheduledAt: string;
+    specialty: string;
+    reason: string;
+    agendaUrl: string;
   };
 }
 

@@ -11,7 +11,7 @@ import { includesFeature } from "@/domain/entities/subscription/entitlements";
 import type { IAppointmentRepository } from "@/domain/repositories/appointment.repository";
 import {
   addDays,
-  CLINIC_TIME_ZONE,
+  formatClinicDateTime,
   parseWallTime,
   today,
   wallTimeToInstant,
@@ -224,13 +224,8 @@ export class CreateApointmentUseCase {
       },
     );
 
-    const scheduledAt = new Intl.DateTimeFormat("es", {
-      dateStyle: "full",
-      timeStyle: "short",
-      // Sin esto el correo mostraría la hora del servidor, que en producción es
-      // UTC y no coincide con la que el paciente eligió.
-      timeZone: CLINIC_TIME_ZONE,
-    }).format(appointment.scheduledAt);
+    // Sin la zona de la clínica el correo mostraría la hora del servidor (UTC en producción).
+    const scheduledAt = formatClinicDateTime(appointment.scheduledAt);
 
     try {
       const html = await renderTemplate("confirm-appointment", {

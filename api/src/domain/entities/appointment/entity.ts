@@ -15,6 +15,14 @@ export const CANCELLATION_REASONS = [
 
 export type CancellationReason = (typeof CANCELLATION_REASONS)[number];
 
+export const CANCELLATION_REASON_LABELS: Record<CancellationReason, string> = {
+  UNEXPECTED_EVENT: "Me surgió un imprevisto",
+  CANNOT_MAKE_IT: "No puedo llegar a esa hora",
+  NO_LONGER_NEEDED: "Ya no necesito la cita",
+  SEEN_ELSEWHERE: "Me atenderé en otro lugar",
+  BOOKED_BY_MISTAKE: "Reservé por error",
+};
+
 export const CANCELLATION_NOTICE_HOURS = 12;
 export const RESCHEDULE_NOTICE_HOURS = 12;
 export const NEW_SLOT_LEAD_HOURS = 12;
