@@ -10,6 +10,7 @@ import {
   limaWallTimeInDays,
   limaWallTimeInHours,
   moveAppointmentTo,
+  removeAvailability,
   NO_STORE_CACHE_CONTROL,
   updateAppointment,
   wallTimeToInstant,
@@ -186,5 +187,73 @@ test.describe("GET /appointment/manage/:token/slots - horarios para reprogramar"
       expect(response.headers()["cache-control"]).toBe(NO_STORE_CACHE_CONTROL);
       expect((await response.json()).code).toBe("BAD_REQUEST");
     }
+  });
+});
+
+test.describe("GET /appointment/manage/:token/has-slots - hay horarios para reprogramar", () => {
+  test("responde hasSlots true si el médico tiene horarios a 12 h o más", async () => {
+    const scenario = await createPortalScenario("has-slots-true");
+    const managed = await createManagedAppointment(scenario);
+    const client = await createPortalClient();
+
+    const response = await client.hasSlots(managed.token);
+
+    expect(response.status()).toBe(200);
+    expect(response.headers()["cache-control"]).toBe(NO_STORE_CACHE_CONTROL);
+    expect(await response.json()).toEqual({ hasSlots: true });
+  });
+
+  test("responde hasSlots false si el médico no tiene horarios", async () => {
+    const scenario = await createPortalScenario("has-slots-false");
+    const managed = await createManagedAppointment(scenario);
+    const client = await createPortalClient();
+    await removeAvailability(managed.doctorProfileId);
+
+    const response = await client.hasSlots(managed.token);
+
+    expect(response.status()).toBe(200);
+    expect(await response.json()).toEqual({ hasSlots: false });
+  });
+
+  test("token inválido, desconocido o de cita empezada dan el mismo 404 sin caché", async () => {
+    const scenario = await createPortalScenario("has-slots-404");
+    const started = await createManagedAppointment(scenario);
+    const client = await createPortalClient();
+    await updateAppointment(started.appointmentId, {
+      scheduledAt: new Date(Date.now() - 2 * MILLISECONDS_PER_HOUR),
+    });
+
+    const responses = [
+      await client.hasSlots("a".repeat(64)),
+      await client.hasSlots("token-invalido"),
+      await client.hasSlots(started.token),
+    ];
+
+    for (const response of responses) {
+      expect(response.status()).toBe(404);
+      expect(response.headers()["cache-control"]).toBe(NO_STORE_CACHE_CONTROL);
+      expect(await response.json()).toEqual(UNAVAILABLE_BODY);
+    }
+  });
+
+  test("una cita ya reprogramada da 409 RESCHEDULE_NOT_ALLOWED y una cancelada APPOINTMENT_CHANGED", async () => {
+    const scenario = await createPortalScenario("has-slots-409");
+    const rescheduled = await createManagedAppointment(scenario);
+    const cancelled = await createManagedAppointment(scenario, {
+      scheduledAt: limaWallTimeInDays(12, "10:00"),
+    });
+    const client = await createPortalClient();
+    await updateAppointment(rescheduled.appointmentId, { rescheduleCount: 1 });
+    await updateAppointment(cancelled.appointmentId, { status: "CANCELLED" });
+
+    const rescheduledResponse = await client.hasSlots(rescheduled.token);
+    const cancelledResponse = await client.hasSlots(cancelled.token);
+
+    expect(rescheduledResponse.status()).toBe(409);
+    expect((await rescheduledResponse.json()).code).toBe(
+      "RESCHEDULE_NOT_ALLOWED",
+    );
+    expect(cancelledResponse.status()).toBe(409);
+    expect((await cancelledResponse.json()).code).toBe("APPOINTMENT_CHANGED");
   });
 });

@@ -10,6 +10,7 @@ import type {
   AppointmentPortal,
   IGetAppointmentPortalQuery,
 } from "@/application/queries/appointment/get-appointment-portal.query";
+import type { IGetRescheduleSlotsQuery } from "@/application/queries/appointment/get-reschedule-slots.query";
 import type { IGetDoctorSlotsQuery } from "@/application/queries/doctor-profile/get-doctor-slots.query";
 import {
   type Appointment,
@@ -24,11 +25,11 @@ import {
   addDays,
   CLINIC_TIME_ZONE,
   parseWallTime,
-  toInstant,
   today,
   wallTimeToInstant,
 } from "@/domain/services/clinic-time";
 import { GetAppointmentPortalQuery } from "@/infrastructure/postgres/queries/appointment/get-appointment-portal.query";
+import { GetRescheduleSlotsQuery } from "@/infrastructure/postgres/queries/appointment/get-reschedule-slots.query";
 import { GetDoctorSlotsQuery } from "@/infrastructure/postgres/queries/doctor-profile/get-doctor-slots.query";
 import { AppointmentRepository } from "@/infrastructure/postgres/repositories/appointment.repository";
 import { getClient } from "@/infrastructure/postgres/transaction-context";
@@ -69,6 +70,7 @@ export class RescheduleAppointmentUseCase {
     private readonly appointments: IAppointmentRepository = new AppointmentRepository(),
     private readonly portal: IGetAppointmentPortalQuery = new GetAppointmentPortalQuery(),
     private readonly doctorSlots: IGetDoctorSlotsQuery = new GetDoctorSlotsQuery(),
+    private readonly rescheduleSlots: IGetRescheduleSlotsQuery = new GetRescheduleSlotsQuery(),
   ) {}
 
   private async findOpenAppointment(token: string): Promise<Appointment> {
@@ -110,26 +112,6 @@ export class RescheduleAppointmentUseCase {
       throw new AppointmentConflict(
         ALREADY_RESCHEDULED_MESSAGE,
         "RESCHEDULE_NOT_ALLOWED",
-      );
-  }
-
-  private async hasSlotFarEnough(
-    doctorProfileId: string,
-    now: Date,
-  ): Promise<boolean> {
-    const from = today();
-    const { days } = await this.doctorSlots.execute({
-      doctorProfileId,
-      from,
-      to: addDays(from, MAX_DAYS_AHEAD),
-    });
-
-    return Object.keys(days)
-      .sort()
-      .some((date) =>
-        days[date].some((time) =>
-          isNewSlotFarEnough(toInstant(date, time), now),
-        ),
       );
   }
 
@@ -179,7 +161,10 @@ export class RescheduleAppointmentUseCase {
 
     const canChangeDoctor =
       (await this.isAlternativeDoctor(appointment, newDoctorProfileId)) &&
-      !(await this.hasSlotFarEnough(appointment.doctorProfileId, now));
+      !(await this.rescheduleSlots.doctorHasSlotFarEnough(
+        appointment.doctorProfileId,
+        now,
+      ));
     if (!canChangeDoctor)
       throw new AppointmentConflict(
         DOCTOR_CHANGE_NOT_ALLOWED_MESSAGE,

@@ -21,7 +21,8 @@ import {
   rescheduleBlockedBy,
 } from "@/domain/entities/appointment/entity";
 import type { IAppointmentRepository } from "@/domain/repositories/appointment.repository";
-import { toInstant } from "@/domain/services/clinic-time";
+import { MAX_DAYS_AHEAD } from "@/domain/entities/availability/entity";
+import { addDays, today, toInstant } from "@/domain/services/clinic-time";
 import { AppointmentRepository } from "../../repositories/appointment.repository";
 import { GetDoctorSlotsQuery } from "../doctor-profile/get-doctor-slots.query";
 
@@ -62,6 +63,41 @@ export class GetRescheduleSlotsQuery implements IGetRescheduleSlotsQuery {
         ALREADY_RESCHEDULED_MESSAGE,
         "RESCHEDULE_NOT_ALLOWED",
       );
+  }
+
+  private async findReschedulableAppointment(
+    token: string,
+    now: Date,
+  ): Promise<Appointment> {
+    const appointment = await this.findOpenAppointment(token);
+    this.assertCanReschedule(appointment, now);
+    return appointment;
+  }
+
+  async doctorHasSlotFarEnough(
+    doctorProfileId: string,
+    now: Date,
+  ): Promise<boolean> {
+    const from = today();
+    const { days } = await this.doctorSlots.execute({
+      doctorProfileId,
+      from,
+      to: addDays(from, MAX_DAYS_AHEAD),
+    });
+
+    return Object.keys(days)
+      .sort()
+      .some((date) =>
+        days[date].some((time) =>
+          isNewSlotFarEnough(toInstant(date, time), now),
+        ),
+      );
+  }
+
+  async hasSlots(token: string): Promise<boolean> {
+    const now = new Date();
+    const appointment = await this.findReschedulableAppointment(token, now);
+    return this.doctorHasSlotFarEnough(appointment.doctorProfileId, now);
   }
 
   async execute(token: string, range: unknown): Promise<DoctorSlots> {

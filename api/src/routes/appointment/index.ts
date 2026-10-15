@@ -193,6 +193,30 @@ export default async function appointmentRoutes(
     },
   );
 
+  app.get(
+    "/manage/:token/has-slots",
+    {
+      schema: { params: appointmentPortalParamsSchema },
+      onRequest: preventCaching,
+      ...policy({ public: true }),
+    },
+    async (request, reply) => {
+      try {
+        const hasSlots = await new GetRescheduleSlotsQuery().hasSlots(
+          request.params.token,
+        );
+        return reply.status(200).send({ hasSlots });
+      } catch (error) {
+        return replyPortalError(
+          request,
+          reply,
+          error,
+          "[has-reschedule-slots]",
+        );
+      }
+    },
+  );
+
   // Cualquier otra URL bajo /manage responde el mismo 404: sin esto caería en el hook de políticas, que responde 401 y registra la URL con el token.
   app.route({
     method: ["GET", "POST", "PUT", "PATCH", "DELETE"],
