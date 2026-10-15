@@ -28,3 +28,12 @@ export class NoMembershipError extends ApiError {
     this.name = "NoMembershipError";
   }
 }
+
+const PAYMENT_REQUIRED = 402;
+
+export const PLAN_FEATURE_MESSAGE =
+  "Tu plan no permite hacer uso de esta función";
+
+export function isPlanFeatureError(error: unknown): error is ApiError {
+  return error instanceof ApiError && error.status === PAYMENT_REQUIRED;
+}
