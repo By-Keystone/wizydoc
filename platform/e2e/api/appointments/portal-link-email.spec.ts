@@ -15,7 +15,7 @@ import {
 
 // docs/features/autogestion-paciente/prd.html — CA-1 y CA-9 (parte API).
 
-const MANAGE_BUTTON = "Cancelar o reprogramar";
+const MANAGE_BUTTON = "Gestionar mi cita";
 const APPOINTMENT_MANAGEMENT_TEXT =
   "Puedes cancelar o reprogramar hasta 12 horas antes de tu cita, y reprogramar una sola vez. No compartas este enlace: da acceso a tu cita.";
 const BROKEN_PARAGRAPH = "comunícate con la clínica";

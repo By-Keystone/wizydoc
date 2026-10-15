@@ -37,7 +37,7 @@
         </mj-text>
         {{#if manageUrl}}
         <mj-button background-color="#0E8C82" href="{{manageUrl}}">
-          Cancelar o reprogramar
+          Gestionar mi cita
         </mj-button>
         <mj-text font-size="14px" color="#5C6B6A">
           Puedes cancelar o reprogramar hasta 12 horas antes de tu cita, y reprogramar una sola vez. No compartas este enlace: da acceso a tu cita.
