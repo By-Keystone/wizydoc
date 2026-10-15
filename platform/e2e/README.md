@@ -75,12 +75,19 @@ Playwright arranca el api en `:4100` y platform en `:3100` (nunca reutiliza el
 | Cuenta se crea una sola vez | `api/security/fix-account-setup-once.spec.ts` | Un dueño o un miembro (USER/DOCTOR) con cuenta recibe 409 de `POST /account` sin que cambien su `accountId`, la cuenta original ni su suscripción; dos `POST /account` simultáneos del mismo usuario dejan un 201 y un 409 y una sola cuenta/suscripción; un usuario sin cuenta sigue creando la suya en un solo intento; `/onboarding` redirige fuera del formulario a quien ya tiene cuenta; el cuerpo del 409 sólo trae `message` y `code` |
 | Congelamiento de Culqi | `api/account/beta-free-plan-only.spec.ts` | `POST /account` sin `plan` o con `FREE` da 201 y una suscripción Gratis/ACTIVE sin datos de Culqi; con `CONSULTORIO`, `CLINICA` o `RED` (con o sin tarjeta) y con valores de plan desconocidos da 400 sin crear cuenta ni suscripción; un rechazo no bloquea el siguiente alta Gratis; una cuenta de pago sembrada por Prisma (simulando una suscripción real de Culqi) conserva su plan y sus capacidades tras una acción ajena en el panel |
 | Booking público acotado a la sede | `api/security/fix-booking-scope.spec.ts` | `POST /appointment` sin sesión: una combinación válida de sede, médico y especialidad crea una cita; un médico de otra cuenta o de otra sede, una especialidad no conectada al médico (o de otra organización con el mismo nombre), la membership del médico borrada y una sede inexistente responden el mismo 404, con el mismo cuerpo y sin crear ficha ni cita; un id que no es UUID responde 400 |
+| Autogestión: abrir el enlace | `api/appointments/portal-read.spec.ts` | `GET /appointment/manage/:token` devuelve exactamente las claves de la página (nombre de pila, médico sin Dr./Dra., sede, dirección, fecha y hora de Lima) y ni apellidos, documento, teléfono, correo, fecha de nacimiento, teléfono de la sede, id de la cita ni de la ficha; token inexistente, alterado, incompleto, de más, en mayúsculas, muy largo, de cita empezada o de cancelada ya pasada dan el mismo 404, también al cancelar y reprogramar (sin cambios ni correos) y con un cuerpo mal formado; `Cache-Control: private, no-store` en éxitos y errores; `POST /appointment` no devuelve enlace |
+| Autogestión: cancelar | `api/appointments/portal-cancel.spec.ts` | Cancela con días u horas (13 h) de antelación; a menos de 12 h `CANCEL_NOT_ALLOWED` y `RESCHEDULE_NOT_ALLOWED` sin cambios ni «tardía»; el plazo vencido con la página abierta no se aplica; cancelar dos veces (también a la vez) responde 200; reprogramar una cancelada o cancelar desde una pantalla vieja da `APPOINTMENT_CHANGED`; el horario queda libre para otro paciente |
+| Autogestión: reprogramar | `api/appointments/portal-reschedule.spec.ts` | Mueve la misma cita y sube el contador (el mismo enlace muestra la hora nueva; el horario viejo se libera y el nuevo se ocupa); la segunda reprogramación y la de menos de 12 h dan `RESCHEDULE_NOT_ALLOWED`; `SLOT_TAKEN` para horarios a menos de 12 h, fuera de disponibilidad, pasados, fuera de rango, que no son hueco, la hora actual o tomados por otro paciente; 400 con cuerpo mal formado; cambio de médico válido (el actual sin horarios) e inválido (con horarios, otra sede, otra especialidad, membership borrada, otra cuenta, inexistente); carreras (dos reprogramaciones, reprogramar contra reservar, cancelar contra reprogramar) dejan un solo resultado coherente |
 
 Las pruebas que vienen de un plan llevan el ID del criterio de aceptación en el
 título (`CA-3: …`); los criterios están al final de cada
 `docs/features/<slug>/plan.md`.
 
 ### Aún sin pruebas
+
+- Autogestión de la cita: los criterios que dependen de lo que aún no existe
+  (correos con el enlace y avisos al médico CA-1, CA-3, CA-9, CA-36 a CA-41,
+  etiquetas del panel CA-44 a CA-46, tratamiento «Dr./Dra.» CA-6) y toda la UI.
 
 - Ficha del paciente según el rol.
 - Editor de disponibilidad del médico.
@@ -107,6 +114,11 @@ título (`CA-3: …`); los criterios están al final de cada
     `softDeleteMembership`, `markInvitationAcceptedWithoutCredential`) y leer
     credenciales/sesión (`countCredentialAccounts`, `getInvitationByToken`,
     `getLatestSessionTrace`).
+  - `appointment-portal.ts`: escenario de autogestión (`createPortalScenario`,
+    `addPortalDoctor`), cita reservada con un enlace sembrado por Prisma
+    (`createManagedAppointment`, el enlace aún no se emite al reservar), horas de
+    Lima (`limaWallTimeInDays`, `limaWallTimeInHours`) y el cliente anónimo del
+    portal (`createPortalClient`).
   - `availability.ts`: disponibilidad de 00:00 a 23:30 los 7 días
     (`seedFullDayAvailability`), para que el booking público tenga huecos
     libres sin depender de la hora en que corre la prueba.

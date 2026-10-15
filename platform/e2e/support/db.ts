@@ -48,6 +48,19 @@ export interface TestPrismaSubscriptionRow {
   paymentProviderSubscriptionId: string | null;
 }
 
+export interface TestPrismaAppointmentRow {
+  id: string;
+  doctorProfileId: string;
+  clinicId: string;
+  patientId: string;
+  specialty: string;
+  durationMinutes: number;
+  status: string;
+  scheduledAt: Date;
+  rescheduleCount: number;
+  cancelledAt: Date | null;
+}
+
 export interface TestPrisma {
   user: {
     count(args: { where: Record<string, unknown> }): Promise<number>;
@@ -133,6 +146,12 @@ export interface TestPrisma {
   };
   availability: {
     createMany(args: { data: Record<string, unknown>[] }): Promise<unknown>;
+    deleteMany(args: {
+      where: Record<string, unknown>;
+    }): Promise<{ count: number }>;
+  };
+  appointmentAccessToken: {
+    create(args: { data: Record<string, unknown> }): Promise<{ id: string }>;
   };
   userInvitation: {
     count(args: { where: Record<string, unknown> }): Promise<number>;
@@ -168,6 +187,16 @@ export interface TestPrisma {
   appointment: {
     create(args: { data: Record<string, unknown> }): Promise<{ id: string }>;
     count(args: { where: Record<string, unknown> }): Promise<number>;
+    findFirst(args: {
+      where: Record<string, unknown>;
+    }): Promise<TestPrismaAppointmentRow | null>;
+    findUniqueOrThrow(args: {
+      where: Record<string, unknown>;
+    }): Promise<TestPrismaAppointmentRow>;
+    update(args: {
+      where: Record<string, unknown>;
+      data: Record<string, unknown>;
+    }): Promise<TestPrismaAppointmentRow>;
   };
   $queryRaw<T = unknown>(
     query: TemplateStringsArray,
