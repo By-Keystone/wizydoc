@@ -104,6 +104,17 @@
   .spinner { width: 16px; height: 16px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: spin .7s linear infinite; display: inline-block; }
   @keyframes spin { to { transform: rotate(360deg); } }
 
+  /* ---------- Motivo de cancelación (radio group con etiqueta) ---------- */
+  .reasons { margin: 20px 0 0; padding: 0; border: 0; }
+  .reasons legend { padding: 0; font-size: 14px; font-weight: 600; color: var(--ink); }
+  .reasons .list { margin-top: 8px; display: grid; gap: 8px; }
+  .reason { display: flex; align-items: center; gap: 10px; min-height: 48px; border: 1px solid #e5e7eb; background: #fff; border-radius: 12px; padding: 10px 14px; font-size: 14.5px; color: var(--ink); cursor: pointer; }
+  .reason:hover { background: #f9fafb; }
+  .reason input { width: 18px; height: 18px; margin: 0; accent-color: var(--teal); flex: none; }
+  .reason:has(input:checked) { border-color: var(--teal); background: rgba(14,140,130,.08); color: var(--teal-dark); font-weight: 600; }
+  .reason:has(input:focus-visible) { outline: 2px solid var(--ring); outline-offset: 2px; }
+  .reason input:focus-visible { outline: none; }
+
   /* ---------- DateTimeStep (copia visual de datetime-step.tsx) ---------- */
   .weeknav { margin-top: 20px; display: flex; align-items: center; justify-content: space-between; }
   .iconbtn { border: 0; background: none; border-radius: 8px; padding: 6px; color: var(--gray); cursor: pointer; display: grid; place-items: center; }
@@ -154,6 +165,7 @@
   .mail-body { background: #fff; margin: 16px; padding: 24px 20px; font-size: 15px; color: #000; line-height: 1.5; }
   .desktop .mail-body { max-width: 600px; margin: 24px auto; padding: 40px; }
   .mail-body h2 { font-size: 20px; margin: 0 0 10px; }
+  .mail-body h3 { font-size: 15px; margin: 18px 0 0; }
   .mail-body table { border-collapse: collapse; font-size: 15px; margin: 12px 0; }
   .mail-body td { padding: 6px 16px 6px 0; vertical-align: top; }
   .mail-body td:first-child { color: var(--gray); white-space: nowrap; }
@@ -210,15 +222,20 @@
       <strong>Decisiones aplicadas</strong>
       <ul>
         <li>Cancelar y reprogramar: hasta 12 horas antes de la cita. Después, la página no ofrece ninguna acción.</li>
+        <li>Al cancelar, el paciente elige un motivo obligatorio de una lista fija (sin «Otro» ni texto libre). «Sí, cancelar» está deshabilitado hasta elegirlo. El motivo llega al médico en su aviso.</li>
         <li>Reprogramar: una sola vez por cita. Pasar la cita a otro médico cuenta como esa vez.</li>
         <li>La página nunca muestra el contacto del consultorio. La salida, cuando algo no se puede, es cancelar y reservar de nuevo.</li>
         <li>Solo se ofrecen horarios dentro de la disponibilidad del médico elegido.</li>
         <li>Al reprogramar no se ofrecen horarios a menos de 12 horas de ahora: la nueva hora siempre queda a 12 h o más, para que el paciente aún pueda cancelarla. Hoy (jue 8 oct, 09:40) el primer horario posible es desde las 21:40. Si un médico no tiene ninguno así en todo el rango, aplica «Este médico no tiene horarios disponibles».</li>
-        <li>El aviso al médico no lleva datos del paciente.</li>
+        <li>Los correos al paciente llevan el botón «Gestionar mi cita», siempre con el mismo enlace.</li>
+        <li>El aviso al médico no lleva el nombre ni ningún dato del paciente.</li>
       </ul>
     </div>
     <p class="note">
-      <strong>Plan Gratis:</strong> la autogestión es de pago. En Gratis el correo de confirmación sale <em>sin</em> el botón «Cancelar o reprogramar», no existe la página del enlace y el paciente nunca ve una mejora de plan.
+      <strong>Plan Gratis:</strong> la autogestión es de pago. En Gratis el correo de confirmación sale <em>sin</em> el botón «Gestionar mi cita», no existe la página del enlace y el paciente nunca ve una mejora de plan.
+    </p>
+    <p class="note">
+      <strong>Correos de reprogramación:</strong> se implementan después; el prototipo ya los muestra con su texto definitivo.
     </p>
     <p class="note">
       <strong>Por confirmar:</strong> si la cita pasa a otro médico, el prototipo asume que cada médico (el anterior y el nuevo) recibe su propio aviso con el mismo contenido.
@@ -252,6 +269,15 @@
   var MAX_RESCHEDULES = 1;
   var SLOT_MINUTES = 30;
 
+  var CANCEL_REASONS = [
+    "Me surgió un imprevisto",
+    "No puedo llegar a esa hora",
+    "Ya no necesito la cita",
+    "Me atenderé en otro lugar",
+    "Reservé por error"
+  ];
+  var DEMO_CANCEL_REASON = CANCEL_REASONS[0];
+
   var ICON = {
     check: '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></svg>',
     x: '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#5C6B6A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6M9 9l6 6"/></svg>',
@@ -260,7 +286,6 @@
     warn: '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4M12 17h.01"/></svg>',
     alert: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>',
     clock: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>',
-    globe: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>',
     left: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>',
     right: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>'
   };
@@ -321,7 +346,8 @@
       ["summary", "Ver la cita"],
       ["summary-deadline", "Menos de 12 h: sin cambios"],
       ["summary-limit", "Ya reprogramada una vez"],
-      ["confirm-cancel", "Confirmar cancelación"],
+      ["confirm-cancel", "Confirmar cancelación (sin motivo)"],
+      ["confirm-cancel-reason", "Confirmar cancelación (motivo elegido)"],
       ["cancelled", "Cancelada"],
       ["pick", "Elegir otro horario"],
       ["pick-taken", "Horario ya tomado"],
@@ -341,9 +367,9 @@
     ["Correos", [
       ["email", "Confirmación (solo planes de pago)"],
       ["patient-cancelled", "Al paciente: cancelada"],
-      ["patient-rescheduled", "Al paciente: reprogramada"],
-      ["doctor-cancelled", "Al médico: cancelación"],
-      ["doctor-rescheduled", "Al médico: reprogramación"]
+      ["doctor-cancelled", "Al médico: cancelación con motivo"],
+      ["patient-rescheduled", "Al paciente: reprogramada (después)"],
+      ["doctor-rescheduled", "Al médico: reprogramación (después)"]
     ]]
   ];
 
@@ -372,6 +398,8 @@
     selectedDate: null,
     selectedTime: null,
     pickError: null,
+    cancelReason: null,
+    lastCancelReason: null,
     pending: false,
     toast: null,
     extraTaken: [],
@@ -386,6 +414,7 @@
   function dayNumber(date) { return Number(date.slice(8, 10)); }
   function longDate(date) { var d = parse(date); return DAYS_LONG[d.getUTCDay()] + " " + d.getUTCDate() + " de " + MONTHS_LONG[d.getUTCMonth()]; }
   function shortDate(date) { var d = parse(date); return DAYS_SHORT[d.getUTCDay()] + " " + d.getUTCDate() + " " + MONTHS_SHORT[d.getUTCMonth()]; }
+  function dayMonth(date) { return date.slice(8, 10) + "/" + date.slice(5, 7); }
   function mailDate(date, time) { var d = parse(date); return DAYS_LONG[d.getUTCDay()] + ", " + d.getUTCDate() + " de " + MONTHS_LONG[d.getUTCMonth()] + " de " + d.getUTCFullYear() + ", " + time; }
   function capitalize(text) { return text.charAt(0).toUpperCase() + text.slice(1); }
   function when(date, time) { return capitalize(longDate(date)) + ", " + time; }
@@ -462,6 +491,7 @@
     state.extraTaken = [];
     state.pickDoctor = null;
     state.lastChange = null;
+    state.cancelReason = null;
     resetPick();
     if (state.scenario === "gone") return "not-found";
     if (state.scenario === "error") return "error";
@@ -523,6 +553,15 @@
     };
   }
 
+  function reasonsHtml() {
+    return '<fieldset class="reasons"' + (state.pending ? " disabled" : "") + '>' +
+      '<legend>¿Por qué cancelas?</legend>' +
+      '<div class="list">' + CANCEL_REASONS.map(function (reason, index) {
+        return '<label class="reason"><input type="radio" name="cancel-reason" value="' + index + '"' +
+          (state.cancelReason === reason ? " checked" : "") + ' required>' + esc(reason) + '</label>';
+      }).join("") + '</div></fieldset>';
+  }
+
   var render = {
     loading: function () {
       return '<div class="center" style="padding:120px 0;color:var(--gray)" role="status">' +
@@ -555,13 +594,16 @@
 
     "confirm-cancel": function () {
       var a = state.appointment;
+      var hasReason = Boolean(state.cancelReason);
       return '<div class="card">' +
         '<h1 class="title" tabindex="-1">¿Cancelar tu cita?</h1>' +
         '<p class="sub">El horario quedará libre para otro paciente. Esta acción no se puede deshacer.</p>' +
         summaryHtml(a, true) +
+        reasonsHtml() +
+        '<p class="hint" id="reason-hint"' + (hasReason ? " hidden" : "") + '>Elige un motivo para continuar.</p>' +
         '<div class="row">' +
         '<button type="button" class="btn btn-outline" data-action="back-summary"' + (state.pending ? " disabled" : "") + '>Volver</button>' +
-        '<button type="button" class="btn btn-coral" data-action="do-cancel"' + (state.pending ? " disabled" : "") + '>' + pendingLabel("Sí, cancelar") + '</button>' +
+        '<button type="button" class="btn btn-coral" data-action="do-cancel"' + (state.pending || !hasReason ? " disabled" : "") + (hasReason ? "" : ' aria-describedby="reason-hint"') + '>' + pendingLabel("Sí, cancelar") + '</button>' +
         '</div></div>';
     },
 
@@ -710,7 +752,7 @@
         '<p>Tu cita ya está reservada. Estos son los detalles:</p>' +
         patientTable(a, '<tr><td>Fecha y hora</td><td><strong>' + esc(mailDate(a.date, a.time)) + '</strong></td></tr>') +
         '<p class="mail-small">Te recomendamos llegar unos minutos antes de la hora indicada.</p>' +
-        '<button type="button" class="mail-btn" data-action="open-link">Cancelar o reprogramar</button>' +
+        '<button type="button" class="mail-btn" data-action="open-link">Gestionar mi cita</button>' +
         '<p class="mail-small">Puedes cancelar o reprogramar hasta 12 horas antes de tu cita, y reprogramar una sola vez. No compartas este enlace: da acceso a tu cita.</p>'
       );
     },
@@ -718,12 +760,29 @@
     "patient-cancelled": function () {
       var a = demoAppointment();
       return mailShell(
-        "Tu cita en " + a.clinicName + " fue cancelada", a.patientEmail,
+        "Tu cita ha sido cancelada", a.patientEmail,
         '<h2 tabindex="-1" class="title" style="color:#000;font-size:20px">Hola ' + esc(a.patientFullName) + ',</h2>' +
-        '<p>Tu cita fue cancelada. Estos eran los detalles:</p>' +
-        patientTable(a, '<tr><td>Fecha y hora</td><td><s>' + esc(mailDate(a.date, a.time)) + '</s></td></tr>') +
-        '<p>Si quieres, puedes reservar otro horario cuando te acomode.</p>' +
-        '<button type="button" class="mail-btn" data-action="book-again">Reservar otro horario</button>'
+        '<p>Tu cita ha sido cancelada. Puedes ver el detalle desde el enlace de tu cita.</p>' +
+        '<button type="button" class="mail-btn" data-action="open-cancelled-link">Gestionar mi cita</button>' +
+        '<p class="mail-small">No compartas este enlace: da acceso a tu cita.</p>'
+      );
+    },
+
+    "doctor-cancelled": function () {
+      var a = demoAppointment();
+      var doctor = DOCTORS[a.doctorKey];
+      var reason = state.lastCancelReason || DEMO_CANCEL_REASON;
+      return mailShell(
+        "Tu paciente ha cancelado su cita en " + a.clinicName, doctor.email,
+        '<h2 tabindex="-1" class="title" style="color:#000;font-size:20px">Hola ' + esc(doctor.firstName) + ',</h2>' +
+        '<p>Tu paciente canceló su cita desde el enlace de autogestión.</p>' +
+        '<table>' +
+        '<tr><td>Fecha y hora</td><td><strong>' + esc(mailDate(a.date, a.time)) + '</strong></td></tr>' +
+        '<tr><td>Motivo</td><td>' + esc(reason) + '</td></tr>' +
+        '</table>' +
+        '<p>El horario quedó libre para otra reserva.</p>' +
+        '<p class="mail-small">No tienes que hacer nada. Consulta tu agenda en WizyDoc para ver el detalle.</p>' +
+        '<button type="button" class="mail-btn" data-action="open-agenda">Ver mi agenda</button>'
       );
     },
 
@@ -731,38 +790,14 @@
       var a = demoAppointment();
       var change = demoChange();
       var current = Object.assign({}, a, { doctorKey: change.to.doctorKey });
-      var doctorRow = isDoctorChange(change)
-        ? '<tr><td>Profesional</td><td><strong>' + esc(doctorName(change.to.doctorKey)) + '</strong><br><s>' + esc(doctorName(change.from.doctorKey)) + '</s></td></tr>'
-        : null;
       return mailShell(
-        "Tu cita en " + a.clinicName + " cambió de horario", a.patientEmail,
+        "Tu cita se ha reprogramado para el " + dayMonth(change.to.date) + " a las " + change.to.time, a.patientEmail,
         '<h2 tabindex="-1" class="title" style="color:#000;font-size:20px">Hola ' + esc(a.patientFullName) + ',</h2>' +
-        '<p>Tu cita cambió. Estos son los nuevos detalles:</p>' +
-        patientTable(current,
-          '<tr><td>Antes</td><td><s>' + esc(mailDate(change.from.date, change.from.time)) + '</s></td></tr>' +
-          '<tr><td>Ahora</td><td><strong>' + esc(mailDate(change.to.date, change.to.time)) + '</strong></td></tr>',
-          doctorRow) +
+        '<p>Tu cita se reprogramó. Estos son los detalles de tu nueva cita:</p>' +
+        patientTable(current, '<tr><td>Fecha y hora</td><td><strong>' + esc(mailDate(change.to.date, change.to.time)) + '</strong></td></tr>') +
         '<p class="mail-small">Te recomendamos llegar unos minutos antes de la hora indicada.</p>' +
-        '<button type="button" class="mail-btn" data-action="open-link">Ver o cancelar mi cita</button>' +
+        '<button type="button" class="mail-btn" data-action="open-link">Gestionar mi cita</button>' +
         '<p class="mail-small">Es el mismo enlace de antes. Ya reprogramaste esta cita una vez: desde el enlace solo puedes cancelarla, hasta 12 horas antes. No compartas este enlace: da acceso a tu cita.</p>'
-      );
-    },
-
-    "doctor-cancelled": function () {
-      var a = demoAppointment();
-      var doctor = DOCTORS[a.doctorKey];
-      return mailShell(
-        "Un paciente canceló una cita de tu agenda", doctor.email,
-        '<h2 tabindex="-1" class="title" style="color:#000;font-size:20px">Hola ' + esc(doctor.firstName) + ',</h2>' +
-        '<p>Un paciente canceló una cita de tu agenda desde el enlace de autogestión.</p>' +
-        '<table>' +
-        '<tr><td>Fecha y hora</td><td><strong>' + esc(mailDate(a.date, a.time)) + '</strong></td></tr>' +
-        '<tr><td>Especialidad</td><td>' + esc(a.specialty) + '</td></tr>' +
-        '<tr><td>Sede</td><td>' + esc(a.clinicName) + '</td></tr>' +
-        '</table>' +
-        '<p>El horario quedó libre para otra reserva.</p>' +
-        '<p class="mail-small">No tienes que hacer nada. Consulta tu agenda en WizyDoc para ver el detalle.</p>' +
-        '<button type="button" class="mail-btn" data-action="open-agenda">Ver mi agenda</button>'
       );
     },
 
@@ -775,14 +810,20 @@
           '<tr><td>Médico nuevo</td><td><strong>' + esc(doctorName(change.to.doctorKey)) + '</strong></td></tr>'
         : "";
       return mailShell(
-        "Un paciente reprogramó una cita de tu agenda", recipient.email,
+        "Tu paciente ha reprogramado la cita en " + a.clinicName, recipient.email,
         '<h2 tabindex="-1" class="title" style="color:#000;font-size:20px">Hola ' + esc(recipient.firstName) + ',</h2>' +
-        '<p>Un paciente reprogramó una cita de tu agenda desde el enlace de autogestión.</p>' +
+        '<p>Tu paciente reprogramó su cita desde el enlace de autogestión.</p>' +
         '<table>' +
         '<tr><td>Antes</td><td><s>' + esc(mailDate(change.from.date, change.from.time)) + '</s></td></tr>' +
         '<tr><td>Ahora</td><td><strong>' + esc(mailDate(change.to.date, change.to.time)) + '</strong></td></tr>' +
         doctorRows +
+        '</table>' +
+        '<h3>Nueva cita</h3>' +
+        '<table>' +
+        '<tr><td>Fecha y hora</td><td>' + esc(mailDate(change.to.date, change.to.time)) + '</td></tr>' +
+        '<tr><td>Duración</td><td>' + a.durationMinutes + ' minutos</td></tr>' +
         '<tr><td>Especialidad</td><td>' + esc(a.specialty) + '</td></tr>' +
+        '<tr><td>Profesional</td><td>' + esc(doctorName(change.to.doctorKey)) + '</td></tr>' +
         '<tr><td>Sede</td><td>' + esc(a.clinicName) + '</td></tr>' +
         '</table>' +
         '<p class="mail-small">No tienes que hacer nada. Consulta tu agenda en WizyDoc para ver el detalle.</p>' +
@@ -791,11 +832,11 @@
     }
   };
 
-  function patientTable(a, whenRows, doctorRow) {
+  function patientTable(a, whenRows) {
     return '<table>' + whenRows +
       '<tr><td>Duración</td><td>' + a.durationMinutes + ' minutos</td></tr>' +
       '<tr><td>Especialidad</td><td>' + esc(a.specialty) + '</td></tr>' +
-      (doctorRow || '<tr><td>Profesional</td><td>' + esc(doctorName(a.doctorKey)) + '</td></tr>') +
+      '<tr><td>Profesional</td><td>' + esc(doctorName(a.doctorKey)) + '</td></tr>' +
       '<tr><td>Sede</td><td>' + esc(a.clinicName) + '</td></tr>' +
       '<tr><td>Dirección</td><td>' + esc(a.clinicAddress) + '</td></tr>' +
       '</table>';
@@ -815,6 +856,7 @@
 
   function currentJumpKey() {
     var a = state.appointment;
+    if (state.screen === "confirm-cancel" && state.cancelReason) return "confirm-cancel-reason";
     if (state.screen === "pick" && state.pickError) return "pick-taken";
     if (state.screen === "pick" && a && state.pickDoctor !== a.doctorKey) return "pick-other";
     if (state.screen === "confirm-reschedule" && a && state.pickDoctor !== a.doctorKey) return "confirm-doctor";
@@ -835,6 +877,14 @@
     return label || key;
   }
 
+  function syncJumpHighlight() {
+    var jumpKey = currentJumpKey();
+    document.getElementById("caption").textContent = screenLabel(jumpKey) + " · " + (state.view === "mobile" ? "375 px" : "escritorio");
+    document.querySelectorAll("#jumps .jump").forEach(function (b) {
+      b.setAttribute("aria-current", String(b.dataset.jump === jumpKey));
+    });
+  }
+
   function draw(focus) {
     var screenKey = state.screen;
     var html = render[screenKey]();
@@ -842,11 +892,7 @@
     inner.innerHTML = (EMAIL_SCREENS.indexOf(screenKey) !== -1 ? html : shell(html)) +
       (state.toast ? '<div class="toast" role="status">' + esc(state.toast) + '</div>' : "");
     document.getElementById("frame").className = "frame " + state.view;
-    var jumpKey = currentJumpKey();
-    document.getElementById("caption").textContent = screenLabel(jumpKey) + " · " + (state.view === "mobile" ? "375 px" : "escritorio");
-    document.querySelectorAll("#jumps .jump").forEach(function (b) {
-      b.setAttribute("aria-current", String(b.dataset.jump === jumpKey));
-    });
+    syncJumpHighlight();
     if (focus) {
       var heading = inner.querySelector("h1, h2");
       if (heading) heading.focus({ preventScroll: true });
@@ -919,6 +965,8 @@
       case "summary-deadline":
       case "summary-limit":
         go("summary"); return;
+      case "confirm-cancel-reason":
+        state.cancelReason = DEMO_CANCEL_REASON; go("confirm-cancel"); return;
       case "cancelled":
         a.status = "CANCELLED"; go("cancelled"); return;
       case "pick":
@@ -945,6 +993,19 @@
     }
   }
 
+  function chooseCancelReason(index) {
+    state.cancelReason = CANCEL_REASONS[index];
+    var confirmButton = document.querySelector('[data-action="do-cancel"]');
+    confirmButton.disabled = false;
+    confirmButton.removeAttribute("aria-describedby");
+    document.getElementById("reason-hint").hidden = true;
+    syncJumpHighlight();
+  }
+
+  document.addEventListener("change", function (event) {
+    if (event.target.name === "cancel-reason") chooseCancelReason(Number(event.target.value));
+  });
+
   document.addEventListener("click", function (event) {
     var target = event.target.closest("[data-action], [data-date], [data-time], [data-view], [data-jump], [data-doctor]");
     if (!target) return;
@@ -964,13 +1025,20 @@
     var a = state.appointment;
     switch (target.dataset.action) {
       case "open-link": openLink(); break;
+      case "open-cancelled-link":
+        state.scenario = "cancelled";
+        syncScenarioRadio();
+        openLink();
+        break;
       case "retry": openLink(); break;
       case "reload": openLink(); break;
-      case "cancel": go("confirm-cancel"); break;
+      case "cancel": state.cancelReason = null; go("confirm-cancel"); break;
       case "back-summary": go(a && a.status === "CANCELLED" ? "cancelled" : "summary"); break;
       case "do-cancel":
+        if (!state.cancelReason) break;
         withPending(function () {
           a.status = "CANCELLED";
+          state.lastCancelReason = state.cancelReason;
           go("cancelled");
           showToast("Tu cita fue cancelada");
         });
