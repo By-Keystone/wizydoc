@@ -4,7 +4,7 @@ export type Feature =
   | "PATIENT_RECORD"
   | "CLINIC_METRICS"
   | "DATA_EXPORT"
-  | "PATIENT_SELF_SERVICE";
+  | "PATIENT_APPOINTMENT_MANAGEMENT";
 
 interface PlanCapabilities {
   /** `null` es ilimitado: el plan Red se negocia por contrato, no por tope. */
@@ -31,13 +31,17 @@ export const PLAN_CAPABILITIES: Record<Plan, PlanCapabilities> = {
     includedDoctors: 3,
     includedClinics: 1,
     monthlyPriceCents: 7900,
-    features: ["PATIENT_RECORD", "PATIENT_SELF_SERVICE"],
+    features: ["PATIENT_RECORD", "PATIENT_APPOINTMENT_MANAGEMENT"],
   },
   CLINICA: {
     includedDoctors: 8,
     includedClinics: 3,
     monthlyPriceCents: 19900,
-    features: ["PATIENT_RECORD", "CLINIC_METRICS", "PATIENT_SELF_SERVICE"],
+    features: [
+      "PATIENT_RECORD",
+      "CLINIC_METRICS",
+      "PATIENT_APPOINTMENT_MANAGEMENT",
+    ],
   },
   RED: {
     includedDoctors: null,
@@ -47,7 +51,7 @@ export const PLAN_CAPABILITIES: Record<Plan, PlanCapabilities> = {
       "PATIENT_RECORD",
       "CLINIC_METRICS",
       "DATA_EXPORT",
-      "PATIENT_SELF_SERVICE",
+      "PATIENT_APPOINTMENT_MANAGEMENT",
     ],
   },
 };

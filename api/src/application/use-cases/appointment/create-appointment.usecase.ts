@@ -174,9 +174,9 @@ export class CreateApointmentUseCase {
     const entitlements = await this.entitlementsQuery.execute(
       clinic.resource.accountId,
     );
-    const includesSelfService = includesFeature(
+    const includesPatientAppointmentManagement = includesFeature(
       entitlements,
-      "PATIENT_SELF_SERVICE",
+      "PATIENT_APPOINTMENT_MANAGEMENT",
     );
 
     const { patient, appointment, accessToken } = await inTransaction(
@@ -217,7 +217,7 @@ export class CreateApointmentUseCase {
         return {
           patient: bookedPatient,
           appointment: bookedAppointment,
-          accessToken: includesSelfService
+          accessToken: includesPatientAppointmentManagement
             ? await this.appointments.issueAccessToken(bookedAppointment.id)
             : null,
         };

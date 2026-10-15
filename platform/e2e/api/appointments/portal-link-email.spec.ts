@@ -16,7 +16,7 @@ import {
 // docs/features/autogestion-paciente/prd.html — CA-1 y CA-9 (parte API).
 
 const MANAGE_BUTTON = "Cancelar o reprogramar";
-const SELF_SERVICE_TEXT =
+const APPOINTMENT_MANAGEMENT_TEXT =
   "Puedes cancelar o reprogramar hasta 12 horas antes de tu cita, y reprogramar una sola vez. No compartas este enlace: da acceso a tu cita.";
 const BROKEN_PARAGRAPH = "comunícate con la clínica";
 const TOKEN_PATTERN = /^[0-9a-f]{64}$/;
@@ -66,7 +66,7 @@ test.describe("Enlace de autogestión en el correo de confirmación", () => {
     expect(email).toBeDefined();
     const html = email?.html ?? "";
     expect(html).toContain(MANAGE_BUTTON);
-    expect(html).toContain(SELF_SERVICE_TEXT);
+    expect(html).toContain(APPOINTMENT_MANAGEMENT_TEXT);
     expect(html).not.toContain("hora de Lima");
     expect(html).not.toContain(BROKEN_PARAGRAPH);
     expect(html).not.toContain("{{");
