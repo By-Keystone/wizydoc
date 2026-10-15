@@ -6,12 +6,12 @@ import { UnprocessableEntity } from "@/application/errors/unprocessable-entity.e
 import type { IEmailService } from "@/application/ports/email-service.port";
 import { isWithinLimit } from "@/domain/entities/subscription/entitlements";
 import type { ITransactionManager } from "@/domain/services/transaction-manager";
+import { TokenService } from "@/domain/services/token-service";
 import { lockAccountQuota } from "@/infrastructure/postgres/lock-account-quota";
 import { GetAccountEntitlements } from "@/infrastructure/postgres/queries/subscription/get-account-entitlements.query";
 import { getClient } from "@/infrastructure/postgres/transaction-context";
 import { renderTemplate } from "@/infrastructure/services/email-service/template-renderer";
 import { type InvitationStatus, MembershipRole } from "@prisma/client";
-import { randomBytes } from "node:crypto";
 import z from "zod";
 
 export const INVITATION_TTL_MS = 24 * 60 * 60 * 1000;
@@ -73,6 +73,7 @@ export class InviteUserUseCase {
     private readonly tx: ITransactionManager,
     private readonly services: InviteUserUseCaseService,
     private readonly entitlementsQuery = new GetAccountEntitlements(),
+    private readonly tokens = new TokenService(),
   ) {}
 
   // Sin este filtro se podrían conectar especialidades de otra organización o cuenta.
@@ -253,7 +254,7 @@ export class InviteUserUseCase {
 
   private freshInvitationFields() {
     return {
-      token: randomBytes(32).toString("hex"),
+      token: this.tokens.generate(),
       expiresAt: new Date(Date.now() + INVITATION_TTL_MS),
     };
   }
