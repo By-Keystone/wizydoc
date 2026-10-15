@@ -7,7 +7,8 @@ import { createAppointmentAction } from "@/lib/actions/appointment/create-appoin
 import { StepperProgress } from "./steps/stepper-progress";
 import { SpecialtyStep } from "./steps/specialty-step";
 import { DoctorStep } from "./steps/doctor-step";
-import { DateTimeStep } from "./steps/datetime-step";
+import { DateTimeStep } from "@/components/booking/datetime-step";
+import { getDoctorSlotsAction } from "@/lib/actions/doctor-profile/get-slots.action";
 import { PatientStep, type BookingPatient } from "./steps/patient-step";
 import { SuccessStep } from "./steps/success-step";
 
@@ -86,7 +87,8 @@ export function BookingWizard({ doctors, clinicId }: Props) {
 
           {step === 3 && doctor && (
             <DateTimeStep
-              doctorProfileId={doctor.doctorProfileId}
+              slotsSourceId={doctor.doctorProfileId}
+              loadSlots={getDoctorSlotsAction}
               onNext={(selection) => {
                 setDateTime(selection);
                 setStep(4);
