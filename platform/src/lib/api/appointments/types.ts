@@ -20,6 +20,13 @@ export type AppointmentStatus =
   | "COMPLETED"
   | "NO_SHOW";
 
+export type CancellationReason =
+  | "UNEXPECTED_EVENT"
+  | "CANNOT_MAKE_IT"
+  | "NO_LONGER_NEEDED"
+  | "SEEN_ELSEWHERE"
+  | "BOOKED_BY_MISTAKE";
+
 export type RescheduleBlock = "DEADLINE" | "LIMIT";
 
 export type AppointmentPortal = {
