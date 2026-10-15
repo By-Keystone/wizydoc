@@ -47,6 +47,8 @@
   .tag-mod { color: #0b6b63; border-color: #0b6b63; background: #fff; }
   .tag-v3 { color: #fff; border-color: #6d28d9; background: #6d28d9; }
   .tag-v4 { color: #fff; border-color: #b45309; background: #b45309; }
+  .tag-v6 { color: #fff; border-color: #be185d; background: #be185d; }
+  .tag-rev { color: #be185d; border-color: #be185d; background: #fff; }
   .done { text-decoration: line-through; color: var(--muted); }
   .box { border-left: 4px solid; border-radius: 8px; padding: 10px 14px; margin: 12px 0; }
   .box p { margin: 4px 0; }
@@ -79,7 +81,7 @@
 
 <h1>PRD: autogestión de la cita por el paciente</h1>
 <p class="meta">
-  <strong>Estado:</strong> borrador v5, 15 de octubre de 2026 ·
+  <strong>Estado:</strong> borrador v6, 15 de octubre de 2026 ·
   <strong>Revisión:</strong> 12 de octubre de 2026 (v1: 11 de octubre; v2: feedback del 12 de octubre) ·
   <strong>Autor:</strong> product-manager ·
   <strong>Referencias:</strong> <code>docs/PRODUCT.md</code>, <code>docs/features/autogestion-paciente/mockup.html</code> (UI aprobada el 12 de octubre: 23 pantallas)
@@ -98,6 +100,8 @@
   <span><span class="tag tag-mod">Cambia en v2</span>modificado con el feedback del 12 oct</span>
   <span><span class="tag tag-v3">Nuevo v3</span>añadido o cambiado al alinear con el mockup aprobado</span>
   <span><span class="tag tag-v4">Nuevo v4</span>añadido o cambiado al resolver q-3</span>
+  <span><span class="tag tag-v6">Nuevo v6</span>añadido o cambiado con las decisiones del 15 oct (motivo y correos)</span>
+  <span><span class="tag tag-rev">Revertida en v6</span>decisión anterior que ya no aplica</span>
 </div>
 
 <nav class="toc" aria-label="Contenido">
@@ -142,8 +146,8 @@
   <p class="why">Por qué: el médico debe entender qué pasó con su agenda sin abrir el correo; atenuar u ocultar es diseño de la agenda semanal, que va aparte.</p>
 </div>
 <div class="box dec" id="d-5">
-  <p><span class="tag tag-dec">Decisión</span><span class="id">d-5</span> <strong>No se pide motivo al cancelar.</strong></p>
-  <p class="why">Por qué: cada campo extra frena al paciente en el celular, y un texto libre del paciente no puede llegar al médico (sección 8).</p>
+  <p><span class="tag tag-rev">Revertida en v6</span><span class="id">d-5</span> <span class="done">No se pide motivo al cancelar.</span> La reemplaza <a href="#d-21">d-21</a>: se pide un motivo de una lista fija, sin texto libre.</p>
+  <p class="why">Lo que se mantiene de su porqué: un texto libre del paciente no puede llegar al médico (sección 8).</p>
 </div>
 <div class="box dec" id="d-6">
   <p><span class="tag tag-dec">Decisión</span><span class="tag tag-mod">Cambia en v2</span><span class="id">d-6</span> <strong>El pie de la página del enlace replica el del booking tal como esté al lanzar.</strong> Si el booking ya enlaza la política de privacidad, la autogestión también; si aún no, tampoco, y la gana cuando la gane el booking. La autogestión <strong>sale con o sin</strong> la iniciativa del aviso de privacidad del booking. Toda redacción legal nueva la valida un abogado.</p>
@@ -202,7 +206,7 @@
   <p class="why">Por qué: al anterior se le va una cita y al nuevo le llega una que no esperaba; los dos deben saberlo, y el nuevo debe entender de dónde viene.</p>
 </div>
 <div class="box dec" id="d-17">
-  <p><span class="tag tag-dec">Decisión</span><span class="tag tag-v3">Nuevo v3</span><span class="id">d-17</span> <strong>Botones de los correos al paciente:</strong> la confirmación dice <span class="quote">«Cancelar o reprogramar»</span>. El correo de cita reprogramada dice <span class="quote">«Ver o cancelar mi cita»</span> y explica que ya no se puede volver a reprogramar.</p>
+  <p><span class="tag tag-rev">Revertida en v6</span><span class="tag tag-v3">Nuevo v3</span><span class="id">d-17</span> <span class="done">Botones distintos por correo.</span> La reemplaza <a href="#d-22">d-22</a>: todos los correos al paciente usan «Gestionar mi cita». Texto anterior: <strong>Botones de los correos al paciente:</strong> la confirmación dice <span class="quote">«Cancelar o reprogramar»</span>. El correo de cita reprogramada dice <span class="quote">«Ver o cancelar mi cita»</span> y explica que ya no se puede volver a reprogramar.</p>
   <p class="why">Por qué: después de la única reprogramación, prometer «reprogramar» sería falso.</p>
 </div>
 <div class="box dec" id="d-18">
@@ -219,6 +223,42 @@
   <p class="why">Por qué: el paciente entiende la hora como su hora local; rotular la zona sobra y confunde.</p>
 </div>
 
+<p><span class="tag tag-v6">Nuevo v6</span>Decisiones del 15 de octubre de 2026. Donde chocan con las anteriores, mandan estas.</p>
+
+<div class="box dec" id="d-21">
+  <p><span class="tag tag-dec">Decisión</span><span class="tag tag-v6">Nuevo v6</span><span class="id">d-21</span> <strong>Motivo de cancelación obligatorio, de una lista fija.</strong></p>
+  <ul>
+    <li>Al cancelar, el paciente elige <strong>un</strong> motivo de una lista fija de opciones comunes; sin motivo no puede cancelar.</li>
+    <li><strong>No hay opción «Otro» ni texto libre.</strong></li>
+    <li>El motivo se guarda con la cita y llega al médico en su aviso.</li>
+    <li>La lista propuesta está en <a href="#s-13">s-13</a> y la valida el humano.</li>
+  </ul>
+  <p>Revierte <a href="#d-5">d-5</a>.</p>
+  <p class="why">Por qué: el médico sabe por qué se cayó la cita sin preguntar. Sin texto libre no se guarda ni se envía nada escrito por el paciente, que podría contener datos de salud o usarse para enviarle phishing al médico.</p>
+</div>
+<div class="box dec" id="d-22">
+  <p><span class="tag tag-dec">Decisión</span><span class="tag tag-v6">Nuevo v6</span><span class="id">d-22</span> <strong>Un solo botón en todos los correos al paciente: «Gestionar mi cita».</strong> Lleva siempre al mismo enlace, con el mismo token del correo de confirmación. La página muestra la cita en el estado que tenga (pendiente, ya reprogramada, cancelada). Reemplaza <a href="#d-17">d-17</a>.</p>
+  <p class="why">Por qué: un único botón que siempre funciona igual; la página, no el correo, decide qué acciones ofrecer.</p>
+</div>
+<div class="box dec" id="d-23">
+  <p><span class="tag tag-dec">Decisión</span><span class="tag tag-v6">Nuevo v6</span><span class="id">d-23</span> <strong>Correos al cancelar:</strong></p>
+  <ul>
+    <li><strong>Al paciente:</strong> asunto «Tu cita ha sido cancelada», sin resumen de la cita, con el botón «Gestionar mi cita». Sin «Reservar otro horario»: lo ofrece la página cancelada.</li>
+    <li><strong>Al médico de la cita:</strong> asunto «Tu paciente ha cancelado su cita en {sede}». Dice que el paciente canceló, la fecha y hora de la cita y el motivo elegido. Sin nombre ni datos del paciente.</li>
+  </ul>
+  <p>Reemplazan los correos de cancelar que definía la v5, que nunca se implementaron. Hoy cancelar no envía correos; estos son los que se implementan ahora.</p>
+  <p class="why">Por qué: el paciente ya sabe qué cita canceló y puede verla en la página; el médico necesita el cuándo y el porqué, no el quién (lo ve en su agenda).</p>
+</div>
+<div class="box dec" id="d-24">
+  <p><span class="tag tag-dec">Decisión</span><span class="tag tag-v6">Nuevo v6</span><span class="id">d-24</span> <strong>Correos al reprogramar</strong>. Reprogramar sale junto con cancelar (<a href="#d-7">d-7</a>); solo estos correos se implementan en una entrega posterior y quedan definidos ya. Hasta esa entrega, reprogramar no envía correos al paciente ni al médico.</p>
+  <ul>
+    <li><strong>Al paciente:</strong> asunto «Tu cita se ha reprogramado para el {dd/mm} a las {HH:mm}», con el resumen de la nueva cita y el botón «Gestionar mi cita».</li>
+    <li><strong>Al médico:</strong> asunto «Tu paciente ha reprogramado la cita en {sede}», con el resumen de la nueva cita y la hora anterior («Antes» y «Ahora»), sin datos del paciente.</li>
+  </ul>
+  <p>La hora anterior se toma en el momento de reprogramar; no hace falta guardarla para el correo.</p>
+  <p class="why">Por qué: al reprogramar, lo importante es la hora nueva, y conviene que vaya en el asunto.</p>
+</div>
+
 <!-- ============================================================ -->
 <h2 id="s1-problema">1. Problema y tesis</h2>
 <p><strong>Problema.</strong> Hoy el paciente reserva en línea, pero si no puede ir, el correo de confirmación le pide llamar al consultorio. El médico o su asistente atiende la llamada, busca otro horario y mueve la cita a mano. Si el paciente no avisa, el horario se pierde. Además, el horario de una cita cancelada no vuelve a ofrecerse a otros pacientes.</p>
@@ -233,11 +273,11 @@
     <tr id="u-paciente">
       <td><strong>Paciente sin cuenta</strong></td>
       <td>Si su consultorio tiene un plan de pago: abre el enlace del correo, casi siempre en el celular. Ve su cita y, hasta 12 h antes, la cancela o la reprograma una vez. Si su médico no tiene horarios, puede elegir otro médico de la misma sede y especialidad. Recibe un correo con cada cambio.</td>
-      <td>No inicia sesión, no crea cuenta, no escribe motivos ni mensajes, no cambia de sede ni de especialidad (para eso cancela y reserva de nuevo), no cambia de médico si el suyo tiene horarios, no cambia nada a menos de 12 h, no ve el contacto del consultorio. Si el consultorio está en Gratis, no recibe enlace.</td>
+      <td>No inicia sesión, no crea cuenta, no escribe mensajes ni motivos propios (al cancelar elige uno de una lista, <a href="#d-21">d-21</a>), no cambia de sede ni de especialidad (para eso cancela y reserva de nuevo), no cambia de médico si el suyo tiene horarios, no cambia nada a menos de 12 h, no ve el contacto del consultorio. Si el consultorio está en Gratis, no recibe enlace.</td>
     </tr>
     <tr id="u-medico">
       <td><strong>Médico</strong></td>
-      <td>No hace nada. Recibe un aviso por correo cuando un paciente cancela o reprograma una cita suya (o le pasa una cita de otro médico, <a href="#d-11">d-11</a>) y ve el cambio etiquetado en su agenda.</td>
+      <td>No hace nada. Recibe un aviso por correo, con el motivo si es una cancelación, cuando un paciente cancela o reprograma una cita suya (o le pasa una cita de otro médico, <a href="#d-11">d-11</a>) y ve el cambio etiquetado en su agenda.</td>
       <td>No aprueba ni rechaza cambios, no configura plazos ni topes, no puede desactivar el aviso en esta entrega.</td>
     </tr>
     <tr id="u-personal">
@@ -260,6 +300,7 @@
   <li id="m-2"><strong>Horarios recuperados:</strong> horarios liberados por el paciente que otro paciente vuelve a reservar.</li>
   <li id="m-3"><strong>Fricción:</strong> intentos de cancelar o reprogramar bloqueados por el plazo de 12 horas, intentos de reprogramar bloqueados por el tope de 1, y reprogramaciones con cambio de médico.</li>
   <li id="m-4"><strong>Opinión de los médicos:</strong> si recibieron menos llamadas para mover citas.</li>
+  <li id="m-5"><span class="tag tag-v6">Nuevo v6</span><strong>Motivos de cancelación:</strong> distribución por médico y por sede. Como el motivo se guarda con la cita (<a href="#d-21">d-21</a>), se podrá medir hacia atrás desde el lanzamiento.</li>
 </ul>
 <div class="box rsk" id="rg-metricas">
   <p><span class="tag tag-rsk">Riesgo</span><strong>Lo que no se guarde desde ahora no se podrá reconstruir.</strong> Por <a href="#d-4">d-4</a>, el producto ya sabrá qué citas canceló o movió el paciente y su hora anterior. Las aperturas del enlace y los intentos bloqueados no quedarán registrados; cuando se quieran medir, se contarán solo desde ese momento.</p>
@@ -273,7 +314,8 @@
   <li>Página pública del enlace: ver la cita, cancelarla y reprogramarla hasta 12 h antes.</li>
   <li>Cambio de médico al reprogramar, solo si el médico de la cita no tiene horarios (<a href="#d-11">d-11</a>).</li>
   <li>El horario de una cita cancelada o movida vuelve a estar libre para cualquier paciente.</li>
-  <li>Correos al paciente al cancelar y al reprogramar.</li>
+  <li><span class="tag tag-v6">Nuevo v6</span>Motivo obligatorio al cancelar, de una lista fija, guardado con la cita (<a href="#d-21">d-21</a>).</li>
+  <li>Correos al paciente al cancelar y al reprogramar, todos con el botón «Gestionar mi cita» (<a href="#d-22">d-22</a>).</li>
   <li>Aviso por correo al médico (o a los dos médicos si cambia de médico), sin tope.</li>
   <li>Etiquetas en la agenda del médico (<a href="#d-4">d-4</a>).</li>
   <li>Pie igual al del booking (<a href="#d-6">d-6</a>).</li>
@@ -288,7 +330,7 @@
   <li>Estados «atendida» y «no asistió».</li>
   <li>Métricas (<a href="#d-1">d-1</a>).</li>
   <li>Reenvío del enlace o enlace en la pantalla de éxito del booking (<a href="#d-2">d-2</a>).</li>
-  <li>Motivos de cancelación (<a href="#d-5">d-5</a>).</li>
+  <li><span class="tag tag-v6">Nuevo v6</span>Opción «Otro» o texto libre en el motivo de cancelación (<a href="#d-21">d-21</a>). Mostrar el motivo en el panel (<a href="#s-14">s-14</a>).</li>
   <li>Cambiar de sede o especialidad al reprogramar, y cambiar de médico cuando el suyo tiene horarios.</li>
   <li>Plazos o topes configurables por el consultorio.</li>
   <li>Autogestión en el plan Gratis y mensajes de mejora de plan relacionados con ella.</li>
@@ -313,6 +355,7 @@
   <thead><tr><th>Id</th><th>Regla</th><th>Por qué</th></tr></thead>
   <tbody>
     <tr id="r-1"><td>r-1 <span class="tag tag-mod">Cambia en v2</span></td><td><strong>Cancelar:</strong> hasta 12 horas antes de la hora actual de la cita (<a href="#d-9">d-9</a>). A menos de 12 h no se puede cancelar desde el enlace. No existe «cancelación tardía»: ni estado, ni etiqueta, ni mención en correos.</td><td>Un único plazo para cancelar y reprogramar es fácil de explicar y le deja al médico 12 h para llenar el horario. La cancelación tardía ya no existe porque desde el enlace no se puede cancelar tarde.</td></tr>
+    <tr id="r-19"><td>r-19 <span class="tag tag-v6">Nuevo v6</span></td><td><strong>Motivo al cancelar:</strong> obligatorio, exactamente uno, de la lista fija (<a href="#s-13">s-13</a>). Sin opción «Otro» ni texto libre. Una cancelación sin motivo o con un motivo que no está en la lista se rechaza: la cita no cambia y no salen correos. El motivo se guarda con la cita. Cancelar otra vez una cita ya cancelada no cambia el motivo guardado ni reenvía correos.</td><td>El médico sabe por qué se cayó la cita; nada escrito por el paciente llega a la base ni al correo del médico (<a href="#d-21">d-21</a>).</td></tr>
     <tr id="r-2"><td>r-2</td><td><strong>Reprogramar:</strong> hasta 12 horas antes de la hora <em>actual</em> de la cita.</td><td>Mover una cita a última hora deja un horario difícil de llenar.</td></tr>
     <tr id="r-3"><td>r-3 <span class="tag tag-v4">Nuevo v4</span></td><td>La hora nueva <strong>siempre queda a 12 h o más</strong> desde el momento de reprogramar (<a href="#d-19">d-19</a>). El selector no ofrece horarios a menos de 12 h, y el servidor rechaza una hora nueva a menos de 12 h. Tras reprogramar, la cita siempre se puede cancelar desde el enlace hasta 12 h antes.</td><td>Evita dejar a la persona con una cita que ya no puede cambiar ni cancelar.</td></tr>
     <tr id="r-4"><td>r-4 <span class="tag tag-mod">Cambia en v2</span></td><td><strong>Máximo 1 reprogramación por cita</strong> (<a href="#d-8">d-8</a>). Después solo se puede cancelar, si faltan 12 h o más. Un cambio de médico cuenta como esa reprogramación.</td><td>Un cambio cubre el imprevisto normal, acota cuántos cambios y correos puede provocar quien tenga el enlace y le da al médico una agenda estable.</td></tr>
@@ -328,6 +371,7 @@
     <tr id="r-13"><td>r-13</td><td><strong>Sin cuenta, mobile-first y español de Perú.</strong> Las fechas y horas de la página y los correos son las de la clínica y <strong>no se rotula la zona horaria</strong> (<a href="#d-20">d-20</a>).</td><td>El paciente llega desde el correo en el celular y entiende la hora como su hora local.</td></tr>
     <tr id="r-14"><td>r-14 <span class="tag tag-v3">Nuevo v3</span></td><td>El nombre del médico <strong>no asume género</strong>: «Dr.» o «Dra.» solo si el médico tiene registrado su tratamiento; si no, solo su nombre completo (<a href="#d-18">d-18</a>). Ningún texto dice «el doctor» o «la doctora»; los textos genéricos dicen «médico» o «profesional».</td><td>Un tratamiento equivocado es un error visible ante el paciente.</td></tr>
     <tr id="r-15"><td>r-15 <span class="tag tag-mod">Cambia en v2</span></td><td><strong>Aviso al médico de la cita</strong> por cada cancelación o reprogramación, sin datos del paciente y <strong>sin tope</strong> (<a href="#d-13">d-13</a>). Si cambia de médico, se avisa a los dos (<a href="#d-16">d-16</a>).</td><td>El médico debe enterarse de cada cambio. El aviso lo provoca un anónimo con el enlace, por eso no lleva datos del paciente.</td></tr>
+    <tr id="r-20"><td>r-20 <span class="tag tag-v6">Nuevo v6</span></td><td><strong>Todos los correos al paciente</strong> (confirmación, cancelada, reprogramada) llevan el mismo botón «Gestionar mi cita», con el mismo enlace y el mismo token del correo de confirmación (<a href="#d-22">d-22</a>).</td><td>Un solo enlace por cita, que la página interpreta según el estado.</td></tr>
     <tr id="r-16"><td>r-16</td><td>No se generan enlaces para <strong>citas anteriores al lanzamiento</strong>.</td><td>No hay a quién enviarlos sin reenviar confirmaciones que nadie pidió.</td></tr>
     <tr id="r-17"><td>r-17 <span class="tag tag-mod">Cambia en v2</span></td><td><strong>No se aplica un cambio pedido desde una pantalla vieja.</strong> Ejemplo: el paciente abre su cita en el celular y en la computadora; las dos dicen «jueves 10:00». En la computadora la reprograma al viernes 11:00. Luego, en el celular, que todavía dice «jueves 10:00», aprieta «Cancelar cita». Esa cancelación <strong>no se aplica</strong>: el celular le muestra «Tu cita cambió mientras elegías» y, al recargar, la cita como quedó (viernes 11:00). Si quiere cancelarla, lo hace desde ahí.</td><td>El paciente debe ver la cita tal como está antes de cancelarla o moverla; si no, podría cancelar sin saberlo la cita nueva que acaba de elegir.</td></tr>
   </tbody>
@@ -339,6 +383,21 @@
 <div class="box sup" id="s-7">
   <p><span class="tag tag-dec">Decidido en el mockup</span><span class="tag tag-v3">Nuevo v3</span><span class="id">s-7</span> «Sin horarios» se evalúa sobre todo el rango del booking («las próximas semanas»), no sobre un día o una semana (<a href="#r-18">r-18</a>).</p>
   <p class="why">Por qué: si se evaluara por día, cualquier paciente podría cambiar de médico eligiendo un día en que el suyo no atiende.</p>
+</div>
+<div class="box sup" id="s-13">
+  <p><span class="tag tag-sup">Supuesto</span><span class="tag tag-v6">Nuevo v6</span><span class="id">s-13</span> <strong>Lista de motivos</strong> (validada por el humano el 15 de octubre de 2026). En este orden, sin ninguno preseleccionado:</p>
+  <ol>
+    <li>«Me surgió un imprevisto»</li>
+    <li>«No puedo llegar a esa hora»</li>
+    <li>«Ya no necesito la cita»</li>
+    <li>«Me atenderé en otro lugar»</li>
+    <li>«Reservé por error»</li>
+  </ol>
+  <p class="why">Por qué: cubren las causas comunes sin pedir ni sugerir datos de salud (nada como «me siento mejor» o «estoy enfermo»). Sin preselección, el motivo guardado es el que eligió el paciente y no el que venía marcado.</p>
+</div>
+<div class="box sup" id="s-14">
+  <p><span class="tag tag-sup">Supuesto</span><span class="tag tag-v6">Nuevo v6</span><span class="id">s-14</span> En esta entrega el motivo <strong>solo se muestra en el aviso al médico</strong>: el panel no lo muestra y el correo al paciente no lo repite. Mostrarlo en la agenda o en la ficha queda como siguiente paso.</p>
+  <p class="why">Por qué: es lo que pidió el humano para los correos; ponerlo en el panel suma una pantalla sin mockup.</p>
 </div>
 <div class="box sup" id="s-8">
   <p><span class="tag tag-sup">Supuesto</span><span class="tag tag-new">Nuevo v2</span><span class="id">s-8</span> <strong>Cambios de plan:</strong></p>
@@ -355,8 +414,8 @@
 
 <h3 id="s6-recorridos-lista">Recorridos</h3>
 <ol>
-  <li id="rec-1"><strong>Ver:</strong> correo de confirmación → botón «Cancelar o reprogramar» → página de la cita.</li>
-  <li id="rec-2"><strong>Cancelar:</strong> «Cancelar cita» → «¿Cancelar tu cita?» → «Sí, cancelar» → «Tu cita está cancelada» → opcional «Reservar otro horario» (booking de la misma sede).</li>
+  <li id="rec-1"><span class="tag tag-v6">Nuevo v6</span><strong>Ver:</strong> cualquier correo al paciente → botón «Gestionar mi cita» → página de la cita.</li>
+  <li id="rec-2"><span class="tag tag-v6">Nuevo v6</span><strong>Cancelar:</strong> «Cancelar cita» → «¿Cancelar tu cita?» → elige un motivo → «Sí, cancelar» → «Tu cita está cancelada» → opcional «Reservar otro horario» (booking de la misma sede).</li>
   <li id="rec-3"><strong>Reprogramar:</strong> «Reprogramar» → «Elige fecha y horario» → «¿Cambiar tu cita a este horario?» → «Confirmar cambio» → «Listo, tu cita cambió» → «Ver mi cita».</li>
   <li id="rec-4"><span class="tag tag-v3">Nuevo v3</span><strong>Reprogramar con otro médico</strong> (solo si el suyo no tiene horarios): «Reprogramar» → «Este médico no tiene horarios disponibles» → elige un médico → «Ver horarios» → «Elige fecha y horario» → «¿Cambiar tu cita a este médico y horario?» → «Confirmar cambio» → «Listo, tu cita cambió».</li>
 </ol>
@@ -370,7 +429,7 @@
     <tr id="e-vista"><td>Vista de la cita <span class="tag tag-v3">Nuevo v3</span></td><td>Cita pendiente, 12 h o más, sin reprogramar</td><td>«Ver la cita»: «Hola, {nombre de pila}», «Pendiente», «Esta es tu cita. Puedes cancelarla o reprogramarla hasta 12 horas antes. Solo se puede reprogramar una vez.», resumen con «30 minutos», «Reprogramar» y «Cancelar cita».</td></tr>
     <tr id="e-plazo"><td>Menos de 12 h <span class="tag tag-v3">Nuevo v3</span></td><td>Menos de 12 h para la cita (con o sin reprogramación)</td><td>«Menos de 12 h: sin cambios»: saludo, «Pendiente», «Esta es tu cita.», aviso «Ya no puedes cambiar esta cita desde este enlace porque faltan menos de 12 horas.» y el resumen. <strong>Sin botones</strong> y sin contacto del consultorio (<a href="#d-3">d-3</a>).</td></tr>
     <tr id="e-tope"><td>Ya reprogramada una vez <span class="tag tag-v3">Nuevo v3</span></td><td>Ya se reprogramó 1 vez y faltan 12 h o más</td><td>«Ya reprogramada una vez»: «Reprogramar» deshabilitado con «Esta cita ya se reprogramó una vez y no se puede volver a reprogramar. Si necesitas otro horario, cancélala y reserva de nuevo.» escrito debajo; «Cancelar cita» activo.</td></tr>
-    <tr id="e-confirmar-cancelar"><td>Confirmar cancelación</td><td>Tras «Cancelar cita»</td><td>«¿Cancelar tu cita?», «El horario quedará libre para otro paciente. Esta acción no se puede deshacer.», resumen atenuado, «Volver» y «Sí, cancelar». Sin campo de motivo.</td></tr>
+    <tr id="e-confirmar-cancelar"><td>Confirmar cancelación <span class="tag tag-v6">Nuevo v6</span></td><td>Tras «Cancelar cita»</td><td>«¿Cancelar tu cita?», «El horario quedará libre para otro paciente. Esta acción no se puede deshacer.», resumen atenuado y la pregunta del motivo (propuesta: «¿Por qué cancelas?»). Las opciones de <a href="#s-13">s-13</a> son de elección única, sin ninguna marcada, sin «Otro» y sin campo de texto. Botones «Volver» y «Sí, cancelar»; «Sí, cancelar» está deshabilitado hasta elegir un motivo. Textos finales: los del mockup (<a href="#mc-13">mc-13</a>).</td></tr>
     <tr id="e-cancelada"><td>Cancelada</td><td>Recién cancelada o al volver al enlace antes de su hora</td><td>«Tu cita está cancelada», «El horario quedó libre para otro paciente.», resumen atenuado, «Te enviamos la confirmación por correo.» y «Reservar otro horario».</td></tr>
     <tr id="e-elegir"><td>Elegir otro horario <span class="tag tag-v3">Nuevo v3</span></td><td>Tras «Reprogramar», si su médico tiene horarios</td><td>«Elige fecha y horario», «Solo ves los horarios libres de {profesional}.», «Tu cita actual: {fecha}, {hora}», selector del booking (día sin horarios: «No hay horarios disponibles ese día.»), «¿No encuentras un horario? Puedes cancelar tu cita y reservar más adelante.», «Atrás» y «Siguiente».</td></tr>
     <tr id="e-confirmar-cambio"><td>Confirmar cambio <span class="tag tag-v3">Nuevo v3</span></td><td>Tras elegir horario</td><td>«¿Cambiar tu cita a este horario?», «{especialidad} con {profesional}, en {sede}.», «Antes» tachado y «Ahora», «El horario anterior quedará libre para otro paciente. Solo puedes reprogramar una vez: después de este cambio, solo podrás cancelar.», «Elegir otro» y «Confirmar cambio».</td></tr>
@@ -408,12 +467,12 @@
 </ol>
 <p id="om-avisos"><strong>Avisos y agendas</strong> (<a href="#d-16">d-16</a>):</p>
 <ul>
-  <li>El médico anterior y el nuevo reciben cada uno el aviso «Un paciente reprogramó una cita de tu agenda», con el mismo contenido: «Antes», «Ahora», «Médico anterior», «Médico nuevo», especialidad y sede. Ninguno lleva datos del paciente.</li>
+  <li>El médico anterior y el nuevo reciben cada uno el aviso <span class="tag tag-v6">Nuevo v6</span>«Tu paciente ha reprogramado la cita en {sede}», con el mismo contenido: «Antes», «Ahora», «Médico anterior», «Médico nuevo», especialidad y sede. Ninguno lleva datos del paciente.</li>
   <li>La cita desaparece de la agenda del anterior. En la del nuevo aparece con «Reprogramada por el paciente (antes: jueves 15 de octubre, 10:00, con Lucía Paredes Quispe)».</li>
 </ul>
 
 <h3 id="s6-correcciones">Cambios al mockup <span class="tag tag-v3">Nuevo v3</span></h3>
-<p>Estado al 12 de octubre: el mockup aprobado ya incorpora todos los cambios salvo <a href="#mc-7">mc-7</a> y <a href="#mc-12">mc-12</a>.</p>
+<p>Estado al 15 de octubre: el mockup aprobado incorpora todos los cambios hasta la v5 salvo <a href="#mc-7">mc-7</a> y <a href="#mc-12">mc-12</a>. Los de la v6 (<a href="#mc-13">mc-13</a> a <a href="#mc-17">mc-17</a>) están pendientes.</p>
 <ul>
   <li id="mc-1" class="done"><span class="id">mc-1</span> Aviso al médico sin el nombre del paciente. Hecho.</li>
   <li id="mc-2" class="done"><span class="id">mc-2</span> Sin «te llegará el aviso de la nueva cita». Hecho.</li>
@@ -431,6 +490,22 @@
 </div>
 <div class="box mock" id="mc-12">
   <p><span class="tag tag-mock">Pendiente</span><span class="tag tag-v4">Nuevo v4</span><span class="id">mc-12</span> <strong>El selector de horarios no debe mostrar horarios a menos de 12 h desde ahora</strong> (<a href="#d-19">d-19</a>). Hoy el prototipo solo quita los ya pasados. Aplica a «Elegir otro horario», a «Horarios del otro médico» y al «Primer horario libre» de la lista de médicos.</p>
+</div>
+<p><span class="tag tag-v6">Nuevo v6</span>Pendientes por las decisiones del 15 de octubre (otro agente actualiza el mockup en paralelo; cuando lo haga, manda el mockup):</p>
+<div class="box mock" id="mc-13">
+  <p><span class="tag tag-mock">Pendiente</span><span class="tag tag-v6">Nuevo v6</span><span class="id">mc-13</span> <strong>«Confirmar cancelación» con motivo:</strong> la lista de <a href="#s-13">s-13</a> como elección única, sin preselección, sin «Otro» ni texto libre. «Sí, cancelar» deshabilitado hasta elegir.</p>
+</div>
+<div class="box mock" id="mc-14">
+  <p><span class="tag tag-mock">Pendiente</span><span class="tag tag-v6">Nuevo v6</span><span class="id">mc-14</span> <strong>Correo de confirmación:</strong> el botón pasa de «Cancelar o reprogramar» a «Gestionar mi cita».</p>
+</div>
+<div class="box mock" id="mc-15">
+  <p><span class="tag tag-mock">Pendiente</span><span class="tag tag-v6">Nuevo v6</span><span class="id">mc-15</span> <strong>Correo al paciente al cancelar:</strong> asunto «Tu cita ha sido cancelada», sin resumen, botón «Gestionar mi cita», sin «Reservar otro horario».</p>
+</div>
+<div class="box mock" id="mc-16">
+  <p><span class="tag tag-mock">Pendiente</span><span class="tag tag-v6">Nuevo v6</span><span class="id">mc-16</span> <strong>Aviso al médico al cancelar:</strong> asunto «Tu paciente ha cancelado su cita en {sede}», con fecha y hora y el motivo.</p>
+</div>
+<div class="box mock" id="mc-17">
+  <p><span class="tag tag-mock">Pendiente</span><span class="tag tag-v6">Nuevo v6</span><span class="id">mc-17</span> <strong>Correos al reprogramar:</strong> al paciente, «Tu cita se ha reprogramado para el {dd/mm} a las {HH:mm}» con resumen y «Gestionar mi cita»; al médico, «Tu paciente ha reprogramado la cita en {sede}» con resumen y «Antes»/«Ahora».</p>
 </div>
 <div class="box sup" id="s-10">
   <p><span class="tag tag-sup">Descartado</span><span class="tag tag-v3">Nuevo v3</span><span class="id">s-10</span> <span class="done">Aviso especial si el horario nuevo está a menos de 12 h.</span> No está en el mockup aprobado y se retira. Con <a href="#d-19">d-19</a> ya no hace falta: la hora nueva nunca queda a menos de 12 h.</p>
@@ -456,6 +531,8 @@
     <tr id="cl-14"><td><strong>Reserva hecha a menos de 12 h</strong> de la cita <span class="tag tag-new">Nuevo v2</span></td><td>El correo trae el enlace igual; la página muestra la cita en el estado <a href="#e-plazo">«Menos de 12 h»</a>.</td><td>Una sola regla; el enlace sirve también para ver la cita.</td></tr>
     <tr id="cl-15"><td><strong>Consultorio en Gratis</strong> <span class="tag tag-new">Nuevo v2</span></td><td><span class="tag tag-v3">Nuevo v3</span>El correo de confirmación sale sin el botón del enlace y sin el texto de autogestión. No existe la página, el correo no ofrece una mejora de plan y no remite al teléfono de la sede (<a href="#d-15">d-15</a>).</td><td><a href="#d-12">d-12</a>.</td></tr>
     <tr id="cl-16"><td><strong>La cuenta cambia de plan</strong> <span class="tag tag-new">Nuevo v2</span></td><td>Ver <a href="#s-8">s-8</a>.</td><td>El paciente no eligió el plan.</td></tr>
+    <tr id="cl-17"><td><strong>«Gestionar mi cita» de una cita ya pasada</strong> <span class="tag tag-v6">Nuevo v6</span></td><td>Una vez que empieza la cita, el botón de cualquier correo (incluido el de cancelada) lleva a «Este enlace ya no está disponible».</td><td><a href="#r-10">r-10</a>: el enlace muere con la cita.</td></tr>
+    <tr id="cl-18"><td><strong>Cancelar sin motivo o con uno inventado</strong> (por otros medios que no sean la página) <span class="tag tag-v6">Nuevo v6</span></td><td>Se rechaza; la cita no cambia y no salen correos.</td><td><a href="#r-19">r-19</a>.</td></tr>
     <tr id="cl-13"><td><strong>Falla el envío de un correo</strong></td><td>El cambio queda hecho y el paciente ve la pantalla de éxito.</td><td>El cambio es lo importante; la agenda lo refleja igual.</td></tr>
   </tbody>
 </table></div>
@@ -473,56 +550,61 @@
       <li>«Hola {nombre y apellido},» y «Tu cita ya está reservada. Estos son los detalles:»;</li>
       <li>fecha y hora («jueves, 15 de octubre de 2026, 10:00»), duración, especialidad, profesional, sede y dirección;</li>
       <li>«Te recomendamos llegar unos minutos antes de la hora indicada.»;</li>
-      <li>el botón <span class="quote">«Cancelar o reprogramar»</span> y <span class="quote">«Puedes cancelar o reprogramar hasta 12 horas antes de tu cita, y reprogramar una sola vez. No compartas este enlace: da acceso a tu cita.»</span></li>
+      <li><span class="tag tag-v6">Nuevo v6</span>el botón <span class="quote">«Gestionar mi cita»</span> (antes «Cancelar o reprogramar») y <span class="quote">«Puedes cancelar o reprogramar hasta 12 horas antes de tu cita, y reprogramar una sola vez. No compartas este enlace: da acceso a tu cita.»</span></li>
     </ul></li>
   <li><strong>Plan de pago, no contiene:</strong> el párrafo «comunícate con la clínica…» ni referencias vacías.</li>
   <li><span class="tag tag-v3">Nuevo v3</span><strong>Gratis:</strong> sin el botón del enlace ni el texto de autogestión; sin mejora de plan; no remite al teléfono de la sede (<a href="#d-15">d-15</a>).</li>
 </ul>
 <p id="s-12" class="done"><span class="id">s-12</span> Supuesto retirado en v3: lo reemplaza <a href="#d-15">d-15</a>.</p>
 
-<h3 id="s8-cancelada">Cita cancelada (al paciente, nuevo) <span class="tag tag-v3">Nuevo v3</span></h3>
+<h3 id="s8-cancelada">Cita cancelada (al paciente) <span class="tag tag-v6">Nuevo v6</span></h3>
 <ul>
-  <li><strong>Para:</strong> correo de la ficha. <strong>Asunto:</strong> <span class="quote">«Tu cita en {sede} fue cancelada»</span>.</li>
-  <li><strong>Contiene:</strong> «Hola {nombre y apellido},» y «Tu cita fue cancelada. Estos eran los detalles:». Luego la fecha y hora tachadas, duración, especialidad, profesional, sede y dirección. Cierra con «Si quieres, puedes reservar otro horario cuando te acomode.» y el botón <span class="quote">«Reservar otro horario»</span>, que lleva al booking de la misma sede.</li>
-  <li><strong>No contiene:</strong> el enlace de la cita, ni «cancelación tardía».</li>
+  <li><strong>Para:</strong> correo de la ficha. <strong>Asunto:</strong> <span class="quote">«Tu cita ha sido cancelada»</span> (<a href="#d-23">d-23</a>).</li>
+  <li><strong>Contiene:</strong> el saludo «Hola {nombre y apellido},», una línea que dice que la cita fue cancelada y el botón <span class="quote">«Gestionar mi cita»</span>, que lleva al mismo enlace con el mismo token de la confirmación. La página muestra la cita como cancelada y desde ahí ofrece «Reservar otro horario».</li>
+  <li><strong>No contiene:</strong> resumen de la cita (fecha, hora, profesional, sede, dirección), el botón «Reservar otro horario», el motivo elegido (<a href="#s-14">s-14</a>) ni «cancelación tardía».</li>
+  <li><strong>Reemplaza</strong> el correo «Tu cita en {sede} fue cancelada» que definía la v5 (con resumen y «Reservar otro horario»), que nunca se implementó. Hoy cancelar no envía correos; este y el aviso al médico (<a href="#d-23">d-23</a>) se implementan ahora.</li>
 </ul>
 
-<h3 id="s8-reprogramada">Cita reprogramada (al paciente, nuevo) <span class="tag tag-v3">Nuevo v3</span></h3>
+<h3 id="s8-reprogramada">Cita reprogramada (al paciente) <span class="tag tag-v6">Nuevo v6</span></h3>
+<p>Este correo se implementa en una entrega posterior; queda definido aquí (<a href="#d-24">d-24</a>). Reprogramar en sí sale en esta entrega (<a href="#d-7">d-7</a>). Hasta esa entrega, reprogramar no envía correos al paciente ni al médico.</p>
 <ul>
-  <li><strong>Para:</strong> correo de la ficha. <strong>Asunto:</strong> <span class="quote">«Tu cita en {sede} cambió de horario»</span>.</li>
+  <li><strong>Para:</strong> correo de la ficha. <strong>Asunto:</strong> <span class="quote">«Tu cita se ha reprogramado para el {dd/mm} a las {HH:mm}»</span>, p. ej. «Tu cita se ha reprogramado para el 16/10 a las 11:00».</li>
   <li><strong>Contiene:</strong>
     <ul>
-      <li>«Hola {nombre y apellido},» y «Tu cita cambió. Estos son los nuevos detalles:»;</li>
-      <li>«Antes» tachado y «Ahora», duración, especialidad, profesional, sede y dirección. Si cambió de médico, la fila Profesional muestra el nuevo y, tachado, el anterior;</li>
-      <li>«Te recomendamos llegar unos minutos antes de la hora indicada.»;</li>
-      <li>el botón <span class="quote">«Ver o cancelar mi cita»</span> (mismo enlace) y <span class="quote">«Es el mismo enlace de antes. Ya reprogramaste esta cita una vez: desde el enlace solo puedes cancelarla, hasta 12 horas antes. No compartas este enlace: da acceso a tu cita.»</span></li>
+      <li>«Hola {nombre y apellido},»;</li>
+      <li>el resumen de la nueva cita: fecha y hora, duración, especialidad, profesional, sede y dirección;</li>
+      <li>el botón <span class="quote">«Gestionar mi cita»</span> (mismo enlace);</li>
+      <li>se conserva de la v5: «Ya reprogramaste esta cita una vez: desde el enlace solo puedes cancelarla, hasta 12 horas antes. No compartas este enlace: da acceso a tu cita.».</li>
     </ul></li>
-  <li><strong>No contiene:</strong> «Cancelar o reprogramar» ni otra promesa de reprogramar (<a href="#d-17">d-17</a>).</li>
+  <li><strong>No contiene:</strong> el botón «Ver o cancelar mi cita» de la v5 ni otra promesa de reprogramar.</li>
 </ul>
+<div class="box sup" id="s-15">
+  <p><span class="tag tag-sup">Supuesto</span><span class="tag tag-v6">Nuevo v6</span><span class="id">s-15</span> El correo al paciente al reprogramar ya no lleva «Antes» tachado; solo el resumen de la nueva cita. Si cambió de médico, el resumen muestra el médico nuevo.</p>
+  <p class="why">Por qué: la decisión pide «resumen de la nueva cita» para el paciente y «Antes»/«Ahora» solo para el médico.</p>
+</div>
 <div class="box dec" id="s-2">
   <p><span class="tag tag-dec">Decidido en el mockup</span><span class="tag tag-v3">Nuevo v3</span><span class="id">s-2</span> Ningún correo al paciente invita a llamar al consultorio ni muestra su teléfono.</p>
 </div>
 
-<h3 id="s8-medico">Aviso al médico (nuevo) <span class="tag tag-v3">Nuevo v3</span></h3>
+<h3 id="s8-medico">Aviso al médico <span class="tag tag-v6">Nuevo v6</span></h3>
 <ul>
   <li><strong>Para:</strong> solo el correo de usuario del médico de la cita; si cambia de médico, al anterior y al nuevo, cada uno el suyo con el mismo contenido (<a href="#d-16">d-16</a>). Ni administradores, ni recepción, ni otros médicos.</li>
-  <li><strong>Cancelación:</strong>
+  <li><strong>Cancelación</strong> (<a href="#d-23">d-23</a>):
     <ul>
-      <li>asunto <span class="quote">«Un paciente canceló una cita de tu agenda»</span>;</li>
-      <li>«Hola {nombre de pila del médico},» y «Un paciente canceló una cita de tu agenda desde el enlace de autogestión.»;</li>
-      <li>fecha y hora, especialidad y sede;</li>
-      <li>«El horario quedó libre para otra reserva.» y «No tienes que hacer nada. Consulta tu agenda en WizyDoc para ver el detalle.»;</li>
-      <li>el botón «Ver mi agenda».</li>
+      <li>asunto <span class="quote">«Tu paciente ha cancelado su cita en {sede}»</span> (antes «Un paciente canceló una cita de tu agenda»);</li>
+      <li>«Hola {nombre de pila del médico},» y que su paciente canceló la cita desde el enlace;</li>
+      <li>la fecha y hora de la cita y el <strong>motivo</strong> elegido, con el texto exacto de la lista (<a href="#s-13">s-13</a>);</li>
+      <li>se conserva de la v5, porque no contradice la decisión: la especialidad, «El horario quedó libre para otra reserva.», «No tienes que hacer nada. Consulta tu agenda en WizyDoc para ver el detalle.» y el botón «Ver mi agenda».</li>
     </ul></li>
-  <li><strong>Reprogramación:</strong>
+  <li><strong>Reprogramación</strong> (<a href="#d-24">d-24</a>; este correo se implementa en una entrega posterior; hasta esa entrega, reprogramar no envía correos al paciente ni al médico):
     <ul>
-      <li>asunto <span class="quote">«Un paciente reprogramó una cita de tu agenda»</span>;</li>
-      <li>«Hola {nombre de pila del médico},» y «Un paciente reprogramó una cita de tu agenda desde el enlace de autogestión.»;</li>
-      <li>«Antes» tachado y «Ahora»; si cambió de médico, también «Médico anterior» y «Médico nuevo»;</li>
-      <li>especialidad y sede;</li>
-      <li>«No tienes que hacer nada. Consulta tu agenda en WizyDoc para ver el detalle.» y el botón «Ver mi agenda».</li>
+      <li>asunto <span class="quote">«Tu paciente ha reprogramado la cita en {sede}»</span>;</li>
+      <li>«Hola {nombre de pila del médico},»;</li>
+      <li>el resumen de la nueva cita: fecha y hora, duración, especialidad y sede;</li>
+      <li>«Antes» tachado y «Ahora», tomados en el momento de reprogramar; si cambió de médico, también «Médico anterior» y «Médico nuevo»;</li>
+      <li>se conserva de la v5: «No tienes que hacer nada. Consulta tu agenda en WizyDoc para ver el detalle.» y el botón «Ver mi agenda».</li>
     </ul></li>
-  <li><strong>No contiene:</strong> nombre, apellidos ni iniciales del paciente; documento, teléfono, correo ni fecha de nacimiento; el enlace de autogestión; ningún texto escrito por el paciente; ninguna promesa de avisos futuros («te llegará el aviso de la nueva cita»).</li>
+  <li><strong>No contiene:</strong> nombre, apellidos ni iniciales del paciente; documento, teléfono, correo ni fecha de nacimiento; el enlace de autogestión; ningún texto escrito por el paciente (el motivo es siempre un texto de la lista); ninguna promesa de avisos futuros («te llegará el aviso de la nueva cita»).</li>
   <li><strong>Sin tope:</strong> un aviso por cada cambio (<a href="#d-13">d-13</a>).</li>
   <li><strong>No se puede desactivar</strong> en esta entrega.</li>
 </ul>
@@ -530,9 +612,11 @@
 
 <h3 id="s8-reglas">Reglas comunes</h3>
 <ul>
-  <li>Una acción rechazada (enlace no disponible, plazo, tope, horario tomado, cita cambiada) no envía ningún correo.</li>
+  <li>Una acción rechazada (enlace no disponible, plazo, tope, horario tomado, cita cambiada, motivo ausente o fuera de la lista) no envía ningún correo.</li>
   <li>Cancelar una cita ya cancelada no envía correos de nuevo.</li>
   <li>Si falla el envío, el cambio no se revierte.</li>
+  <li><span class="tag tag-v6">Nuevo v6</span>Ningún texto menciona la zona horaria (<a href="#d-20">d-20</a>), y el nombre del médico sigue <a href="#r-14">r-14</a>.</li>
+  <li><span class="tag tag-v6">Nuevo v6</span>Todos los correos al paciente llevan «Gestionar mi cita» con el mismo enlace (<a href="#r-20">r-20</a>).</li>
 </ul>
 
 <!-- ============================================================ -->
@@ -561,6 +645,7 @@
   <li>Lo que recibe el navegador, incluido lo que no se ve, cumple la misma regla. Tampoco incluye identificadores internos de la cita o de la ficha.</li>
   <li>Un enlace inexistente, alterado, incompleto o de una cita ya empezada da la misma respuesta: no se puede saber si un enlace existió.</li>
   <li>El aviso al médico no lleva datos del paciente (sección 8).</li>
+  <li><span class="tag tag-v6">Nuevo v6</span>El motivo de cancelación es siempre una opción de la lista fija, que no contiene datos de salud. Nunca se guarda ni se envía texto escrito por el paciente (<a href="#d-21">d-21</a>).</li>
 </ul>
 <h3 id="s10-enlace">Restricciones sobre el enlace</h3>
 <ul>
@@ -584,6 +669,7 @@
   <li id="dep-2"><strong>Aviso de privacidad del booking</strong> (otra iniciativa): <strong>no bloquea</strong>. La autogestión sale con o sin ella; el pie replica el del booking (<a href="#d-6">d-6</a>). Las dos tocan el correo de confirmación: quien llegue segundo se adapta al primero.</li>
   <li id="dep-3"><strong>Límite de peticiones por cliente</strong> (otra iniciativa): se retiró el límite general por IP. Esta entrega sale sin límite propio y el aviso al médico no tiene tope. Lo mitigan el enlace inadivinable y la única reprogramación por cita. Ver <a href="#rg-1">rg-1</a> y <a href="#rg-5">rg-5</a>.</li>
   <li id="dep-4"><strong>Documentos de producto:</strong> en el mismo cambio se actualizan los de la lista de abajo.</li>
+  <li id="dep-6"><span class="tag tag-v6">Nuevo v6</span><strong>Los correos de reprogramación de la v6 se implementan en una entrega posterior</strong> (<a href="#d-24">d-24</a>). Reprogramar sale en esta entrega, junto con cancelar (<a href="#d-7">d-7</a>). Hasta esa entrega, reprogramar no envía correos al paciente ni al médico. Los correos de cancelación (<a href="#d-23">d-23</a>) sí se implementan ahora; hoy cancelar no envía ninguno.</li>
   <li id="dep-5" class="done"><span class="tag tag-v3">Nuevo v3</span>Booking que empieza por el DNI: descartado por ahora por el humano.</li>
 </ol>
 
@@ -630,17 +716,22 @@
   <p><span class="tag tag-rsk">Riesgo</span><span class="tag tag-v3">Nuevo v3</span><span class="id">rg-8</span> <strong>En la beta casi nadie la tendrá, y en Gratis el correo no ofrece ninguna vía de cambio.</strong> Según <code>PRODUCT.md</code> («Estado»), el onboarding solo ofrece Gratis y los planes de pago se asignan a mano. Solo los consultorios a los que se les asigne un plan de pago verán la autogestión. El paciente de un consultorio en Gratis recibe una confirmación sin enlace y sin teléfono (<a href="#d-15">d-15</a>): si no puede ir, depende de tener el contacto del consultorio por otro lado.</p>
   <p class="why">Es consecuencia de <a href="#d-12">d-12</a> y <a href="#d-15">d-15</a>. Quién recibe un plan de pago en la beta lo decide el humano.</p>
 </div>
+<div class="box rsk" id="rg-9">
+  <p><span class="tag tag-rsk">Riesgo</span><span class="tag tag-v6">Nuevo v6</span><span class="id">rg-9</span> <strong>El motivo obligatorio suma un paso y puede ser poco fiel.</strong> Quien no encuentra su motivo exacto elige cualquiera, porque no hay «Otro». El dato sirve como orientación, no como verdad.</p>
+  <p class="why">Aceptado por <a href="#d-21">d-21</a>. Si un motivo concentra casi todo, se revisa la lista.</p>
+</div>
 <div class="box sup" id="s-6">
   <p><span class="tag tag-sup">Supuesto</span><span class="tag tag-mod">Cambia en v2</span><span class="id">s-6</span> El plazo único de 12 h y una sola reprogramación son razonables para médicos y pacientes.</p>
   <p class="why">Por validar con médicos reales; no se mide en esta entrega.</p>
 </div>
-<p><span class="tag tag-v3">Nuevo v3</span>Supuestos que siguen por validar: <a href="#s-5">s-5</a> (etiquetas en el historial de la ficha) y <a href="#s-8">s-8</a> (cambios de plan). Ya decididos en el mockup: <a href="#s-1">s-1</a>, <a href="#s-2">s-2</a>, <a href="#s-3">s-3</a>, <a href="#s-7">s-7</a>. Convertidos en decisión: s-9 y s-11 (<a href="#d-16">d-16</a>), <a href="#s-12">s-12</a> (<a href="#d-15">d-15</a>). Descartado: <a href="#s-10">s-10</a>.</p>
+<p><span class="tag tag-v6">Nuevo v6</span>Supuestos que siguen por validar: <a href="#s-5">s-5</a> (etiquetas en el historial de la ficha), <a href="#s-8">s-8</a> (cambios de plan), <a href="#s-13">s-13</a> (lista de motivos), <a href="#s-14">s-14</a> (motivo solo en el aviso al médico) y <a href="#s-15">s-15</a> (correo de reprogramada sin «Antes»). Ya decididos en el mockup: <a href="#s-1">s-1</a>, <a href="#s-2">s-2</a>, <a href="#s-3">s-3</a>, <a href="#s-7">s-7</a>. Convertidos en decisión: s-9 y s-11 (<a href="#d-16">d-16</a>), <a href="#s-12">s-12</a> (<a href="#d-15">d-15</a>). Descartado: <a href="#s-10">s-10</a>.</p>
 
 <!-- ============================================================ -->
 <h2 id="s13-criterios">13. Criterios de aceptación</h2>
 <p>Los marcados <span class="tag tag-e2e">e2e</span> los prueba el e2e-tester; el resto se verifica con revisión, petición manual o navegador. Notas:</p>
 <ul>
-  <li>«El enlace» es el del botón «Cancelar o reprogramar» del correo de confirmación capturado.</li>
+  <li><span class="tag tag-v6">Nuevo v6</span>«El enlace» es el del botón «Gestionar mi cita» del correo de confirmación capturado.</li>
+  <li><span class="tag tag-v6">Nuevo v6</span>Los criterios de correos de reprogramar (CA-37, la parte de reprogramación de CA-38, CA-53) aplican cuando se implementen los correos de reprogramación, en una entrega posterior (<a href="#dep-6">dep-6</a>). El resto de los criterios de reprogramar aplica en esta entrega. Hasta esa entrega, reprogramar no envía correos al paciente ni al médico.</li>
   <li><span class="tag tag-mod">Cambia en v2</span>Salvo que el criterio diga otra cosa, la cuenta de prueba tiene un plan de pago (Consultorio). Los criterios de Gratis usan una cuenta Gratis.</li>
   <li>Para el cambio de médico hace falta una sede con dos médicos de la misma especialidad, uno sin horarios en el rango del booking.</li>
   <li>Ejemplos de fecha: cita el jueves 15 de octubre a las 10:00, 30 minutos, hora de Lima.</li>
@@ -649,7 +740,7 @@
 
 <h3 id="ca-g-enlace">Llegar al enlace</h3>
 <div class="ca" id="ca-1"><p class="head">CA-1 <span class="tag tag-e2e">e2e</span></p>
-  <p><span class="tag tag-v3">Nuevo v3</span>En un consultorio con plan de pago, al reservar en el booking público, el correo de confirmación («Tu cita en {sede} está reservada») trae el botón «Cancelar o reprogramar» y el texto «Puedes cancelar o reprogramar hasta 12 horas antes de tu cita, y reprogramar una sola vez. No compartas este enlace: da acceso a tu cita.» La fecha no menciona la zona horaria. No aparece «comunícate con la clínica», ni el teléfono del consultorio, ni un dato vacío.</p></div>
+  <p><span class="tag tag-v3">Nuevo v3</span>En un consultorio con plan de pago, al reservar en el booking público, el correo de confirmación («Tu cita en {sede} está reservada») trae el botón <span class="tag tag-v6">Nuevo v6</span>«Gestionar mi cita» (no «Cancelar o reprogramar») y el texto «Puedes cancelar o reprogramar hasta 12 horas antes de tu cita, y reprogramar una sola vez. No compartas este enlace: da acceso a tu cita.» La fecha no menciona la zona horaria. No aparece «comunícate con la clínica», ni el teléfono del consultorio, ni un dato vacío.</p></div>
 <div class="ca" id="ca-2"><p class="head">CA-2 <span class="tag tag-e2e">e2e</span></p>
   <p>La pantalla «¡Cita reservada!» del booking no cambia: no muestra ni enlaza la página del enlace, y lo que recibe el navegador al reservar no contiene el enlace.</p></div>
 <div class="ca" id="ca-3"><p class="head">CA-3 <span class="tag tag-e2e">e2e</span></p>
@@ -671,7 +762,7 @@
 <div class="ca" id="ca-8"><p class="head">CA-8 <span class="tag tag-e2e">e2e</span></p>
   <p><span class="tag tag-v3">Nuevo v3</span>El pie de la página del enlace es el mismo que el del booking público en ese momento: «© 2026 WizyDoc. Todos los derechos reservados.» y, si el booking enlaza la política de privacidad, «Política de privacidad», que abre la misma política; si el booking no la enlaza, la página tampoco.</p></div>
 <div class="ca" id="ca-9"><p class="head">CA-9 <span class="tag tag-e2e">e2e</span></p>
-  <p><span class="tag tag-v3">Nuevo v3</span>En una cuenta Gratis, el correo de confirmación sale sin el botón «Cancelar o reprogramar» y sin el texto de las 12 horas. No ofrece una mejora de plan y no remite al teléfono de la sede (<a href="#d-15">d-15</a>). No se genera enlace, así que no hay página. El paciente no ve en ningún lugar mensajes de plan.</p></div>
+  <p><span class="tag tag-v3">Nuevo v3</span>En una cuenta Gratis, el correo de confirmación sale sin el botón «Gestionar mi cita» y sin el texto de las 12 horas. No ofrece una mejora de plan y no remite al teléfono de la sede (<a href="#d-15">d-15</a>). No se genera enlace, así que no hay página. El paciente no ve en ningún lugar mensajes de plan.</p></div>
 <div class="ca" id="ca-49"><p class="head">CA-49 <span class="tag tag-e2e">e2e</span> <span class="tag tag-new">Nuevo v2</span></p>
   <p>Si una cuenta de pago pasa a Gratis, los enlaces ya enviados siguen abriendo la cita y permitiendo cancelar y reprogramar con las reglas normales; las reservas nuevas salen sin enlace. Si una cuenta Gratis pasa a un plan de pago, solo las reservas nuevas reciben enlace (<a href="#s-8">s-8</a>).</p></div>
 <div class="ca" id="ca-10"><p class="head">CA-10</p>
@@ -695,7 +786,17 @@
 
 <h3 id="ca-g-cancelar">Cancelar</h3>
 <div class="ca" id="ca-17"><p class="head">CA-17 <span class="tag tag-e2e">e2e</span></p>
-  <p>«Cancelar cita» lleva a «¿Cancelar tu cita?» con «El horario quedará libre para otro paciente. Esta acción no se puede deshacer.», el resumen atenuado y los botones «Volver» y «Sí, cancelar», en ese orden. No hay campo de motivo. «Volver» regresa a la vista y la cita sigue «Pendiente» al recargar.</p></div>
+  <p><span class="tag tag-v6">Nuevo v6</span>«Cancelar cita» lleva a «¿Cancelar tu cita?» con:</p>
+  <ul>
+    <li>«El horario quedará libre para otro paciente. Esta acción no se puede deshacer.» y el resumen atenuado;</li>
+    <li>la pregunta del motivo con exactamente las opciones de <a href="#s-13">s-13</a>, en ese orden, de elección única y sin ninguna marcada;</li>
+    <li>los botones «Volver» y «Sí, cancelar», en ese orden.</li>
+  </ul>
+  <p>No hay opción «Otro» ni campo de texto. «Sí, cancelar» está deshabilitado hasta elegir un motivo. «Volver» regresa a la vista y la cita sigue «Pendiente» al recargar.</p></div>
+<div class="ca" id="ca-54"><p class="head">CA-54 <span class="tag tag-e2e">e2e</span> <span class="tag tag-v6">Nuevo v6</span></p>
+  <p>Una cancelación sin motivo, con un motivo vacío o con un texto que no es exactamente una de las opciones de la lista se rechaza: la cita sigue «Pendiente» y no sale ningún correo. Se comprueba enviando la acción de cancelar por otros medios, no solo con el botón deshabilitado.</p></div>
+<div class="ca" id="ca-55"><p class="head">CA-55 <span class="tag tag-e2e">e2e</span> <span class="tag tag-v6">Nuevo v6</span></p>
+  <p>Al cancelar con un motivo, ese motivo queda guardado con la cita: el aviso al médico muestra exactamente la opción elegida (CA-38). La revisión confirma que se guarda junto a la cita y que no hay forma de guardar un texto distinto de los de la lista.</p></div>
 <div class="ca" id="ca-18"><p class="head">CA-18 <span class="tag tag-e2e">e2e</span></p>
   <p>Mientras se procesa, los botones se deshabilitan y se lee «Procesando...». Al terminar: «Tu cita está cancelada», «El horario quedó libre para otro paciente.», el resumen atenuado, «Te enviamos la confirmación por correo.», el botón «Reservar otro horario» y un aviso breve «Tu cita fue cancelada».</p></div>
 <div class="ca" id="ca-19"><p class="head">CA-19 <span class="tag tag-e2e">e2e</span></p>
@@ -705,7 +806,7 @@
 <div class="ca" id="ca-20"><p class="head">CA-20 <span class="tag tag-e2e">e2e</span></p>
   <p>Volver a abrir el enlace de una cita cancelada antes de su hora muestra «Tu cita está cancelada» y «Reservar otro horario», sin «Reprogramar» ni «Cancelar cita». «Reservar otro horario» abre el booking público de la misma sede.</p></div>
 <div class="ca" id="ca-21"><p class="head">CA-21 <span class="tag tag-e2e">e2e</span></p>
-  <p>Cancelar dos veces (doble toque o dos pestañas) deja la cita cancelada, no muestra error y los correos salen una sola vez.</p></div>
+  <p>Cancelar dos veces (doble toque o dos pestañas) deja la cita cancelada, no muestra error y los correos salen una sola vez. <span class="tag tag-v6">Nuevo v6</span>Si el segundo intento lleva otro motivo, el motivo guardado sigue siendo el del primero.</p></div>
 <div class="ca" id="ca-22"><p class="head">CA-22 <span class="tag tag-e2e">e2e</span></p>
   <p>Tras cancelar, el horario vuelve a aparecer en el booking público y otro paciente lo reserva con éxito.</p></div>
 
@@ -765,8 +866,8 @@
 <div class="ca" id="ca-53"><p class="head">CA-53 <span class="tag tag-e2e">e2e</span> <span class="tag tag-v3">Nuevo v3</span></p>
   <p>Tras un cambio de médico:</p>
   <ul>
-    <li>el paciente recibe «Tu cita en {sede} cambió de horario», con el médico nuevo y, tachado, el anterior;</li>
-    <li>el médico anterior y el nuevo reciben cada uno «Un paciente reprogramó una cita de tu agenda», con «Antes», «Ahora», «Médico anterior», «Médico nuevo», especialidad y sede, sin datos del paciente (CA-39);</li>
+    <li><span class="tag tag-v6">Nuevo v6</span>el paciente recibe «Tu cita se ha reprogramado para el {dd/mm} a las {HH:mm}», con el resumen de la nueva cita y el médico nuevo;</li>
+    <li>el médico anterior y el nuevo reciben cada uno «Tu paciente ha reprogramado la cita en {sede}», con el resumen, «Antes», «Ahora», «Médico anterior» y «Médico nuevo», sin datos del paciente (CA-39);</li>
     <li>la agenda del anterior ya no muestra la cita;</li>
     <li>la del nuevo la muestra con «Reprogramada por el paciente (antes: {fecha}, {hora}, con {profesional anterior})».</li>
   </ul></div>
@@ -786,40 +887,37 @@
 
 <h3 id="ca-g-correos">Correos</h3>
 <div class="ca" id="ca-36"><p class="head">CA-36 <span class="tag tag-e2e">e2e</span></p>
-  <p><span class="tag tag-v3">Nuevo v3</span>Al cancelar, el correo de la ficha recibe «Tu cita en {sede} fue cancelada» con:</p>
+  <p><span class="tag tag-v6">Nuevo v6</span>Al cancelar, el correo de la ficha recibe «Tu cita ha sido cancelada» con:</p>
   <ul>
-    <li>«Tu cita fue cancelada. Estos eran los detalles:»;</li>
-    <li>la fecha y hora tachadas, duración, especialidad, profesional, sede y dirección;</li>
-    <li>«Si quieres, puedes reservar otro horario cuando te acomode.» y el botón «Reservar otro horario», que lleva al booking de la misma sede.</li>
+    <li>el saludo y una línea que dice que la cita fue cancelada;</li>
+    <li>el botón «Gestionar mi cita», con el mismo enlace del correo de confirmación, que abre la página en el estado «Tu cita está cancelada» con «Reservar otro horario».</li>
   </ul>
-  <p>No trae el enlace de la cita.</p></div>
+  <p>No trae resumen de la cita (fecha, hora, profesional, sede ni dirección), ni el botón «Reservar otro horario», ni el motivo, ni la zona horaria.</p></div>
 <div class="ca" id="ca-37"><p class="head">CA-37 <span class="tag tag-e2e">e2e</span></p>
-  <p><span class="tag tag-v3">Nuevo v3</span>Al reprogramar, el correo de la ficha recibe «Tu cita en {sede} cambió de horario» con:</p>
+  <p><span class="tag tag-v6">Nuevo v6</span>Al reprogramar, el correo de la ficha recibe «Tu cita se ha reprogramado para el {dd/mm} a las {HH:mm}» (p. ej. «… para el 16/10 a las 11:00») con:</p>
   <ul>
-    <li>«Tu cita cambió. Estos son los nuevos detalles:»;</li>
-    <li>«Antes» tachado y «Ahora», duración, especialidad, profesional, sede y dirección;</li>
-    <li>el botón «Ver o cancelar mi cita», con el mismo enlace, que sigue funcionando;</li>
-    <li>«Es el mismo enlace de antes. Ya reprogramaste esta cita una vez: desde el enlace solo puedes cancelarla, hasta 12 horas antes. No compartas este enlace: da acceso a tu cita.».</li>
+    <li>el resumen de la nueva cita: fecha y hora, duración, especialidad, profesional, sede y dirección;</li>
+    <li>el botón «Gestionar mi cita», con el mismo enlace, que abre la cita con la hora nueva;</li>
+    <li>«Ya reprogramaste esta cita una vez: desde el enlace solo puedes cancelarla, hasta 12 horas antes. No compartas este enlace: da acceso a tu cita.».</li>
   </ul>
-  <p>No dice «Cancelar o reprogramar».</p></div>
+  <p>No dice «Cancelar o reprogramar» ni «Ver o cancelar mi cita», ni menciona la zona horaria.</p></div>
 <div class="ca" id="ca-38"><p class="head">CA-38 <span class="tag tag-e2e">e2e</span></p>
-  <p><span class="tag tag-v3">Nuevo v3</span>Al cancelar, el médico de la cita recibe en su correo de usuario «Un paciente canceló una cita de tu agenda» con:</p>
+  <p><span class="tag tag-v6">Nuevo v6</span>Al cancelar, el médico de la cita recibe en su correo de usuario «Tu paciente ha cancelado su cita en {sede}» con:</p>
   <ul>
-    <li>«Un paciente canceló una cita de tu agenda desde el enlace de autogestión.»;</li>
-    <li>fecha y hora, especialidad y sede;</li>
-    <li>«El horario quedó libre para otra reserva.» y «No tienes que hacer nada. Consulta tu agenda en WizyDoc para ver el detalle.»;</li>
-    <li>el botón «Ver mi agenda».</li>
+    <li>que su paciente canceló la cita;</li>
+    <li>la fecha y hora de la cita y el motivo, con el texto exacto de la opción elegida;</li>
+    <li>especialidad, «El horario quedó libre para otra reserva.», «No tienes que hacer nada. Consulta tu agenda en WizyDoc para ver el detalle.» y el botón «Ver mi agenda».</li>
   </ul>
-  <p>Al reprogramar recibe «Un paciente reprogramó una cita de tu agenda» con:</p>
+  <p>Al reprogramar recibe «Tu paciente ha reprogramado la cita en {sede}» con:</p>
   <ul>
-    <li>«Un paciente reprogramó una cita de tu agenda desde el enlace de autogestión.»;</li>
-    <li>«Antes» tachado y «Ahora», especialidad y sede;</li>
+    <li>el resumen de la nueva cita;</li>
+    <li>«Antes» tachado y «Ahora»;</li>
     <li>«No tienes que hacer nada. Consulta tu agenda en WizyDoc para ver el detalle.» y el botón «Ver mi agenda».</li>
   </ul></div>
 <div class="ca" id="ca-39"><p class="head">CA-39 <span class="tag tag-e2e">e2e</span></p>
-  <p>El aviso al médico (asunto y cuerpo) no contiene nombre, apellidos ni iniciales del paciente, ni documento, teléfono, correo, fecha de nacimiento, el enlace de autogestión, texto escrito por el paciente ni «te llegará el aviso de la nueva cita».</p></div>
+  <p>El aviso al médico (asunto y cuerpo) no contiene nombre, apellidos ni iniciales del paciente, ni documento, teléfono, correo, fecha de nacimiento, el enlace de autogestión, texto escrito por el paciente ni «te llegará el aviso de la nueva cita». <span class="tag tag-v6">Nuevo v6</span>El único dato que viene del paciente es el motivo, y siempre es una opción literal de la lista.</p></div>
 <div class="ca" id="ca-40"><p class="head">CA-40 <span class="tag tag-e2e">e2e</span></p>
-  <p>Ni administradores, ni recepción, ni otros médicos de la sede reciben el aviso (salvo el médico anterior y el nuevo en un cambio de médico, CA-53). Una acción rechazada (enlace no disponible, plazo, tope, horario tomado, cita cambiada) no envía ningún correo.</p></div>
+  <p>Ni administradores, ni recepción, ni otros médicos de la sede reciben el aviso (salvo el médico anterior y el nuevo en un cambio de médico, CA-53). Una acción rechazada (enlace no disponible, plazo, tope, horario tomado, cita cambiada, motivo ausente o fuera de la lista) no envía ningún correo.</p></div>
 <div class="ca" id="ca-41"><p class="head">CA-41 <span class="tag tag-e2e">e2e</span></p>
   <p><span class="tag tag-mod">Cambia en v2</span>No hay tope de avisos: con 11 cambios hechos por pacientes en citas del mismo médico dentro de la misma hora, el médico recibe 11 avisos.</p></div>
 <div class="ca" id="ca-42"><p class="head">CA-42</p>
