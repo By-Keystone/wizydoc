@@ -1,4 +1,9 @@
-import { ApiError, AuthExpiredError } from "@/lib/api/errors";
+import {
+  ApiError,
+  AuthExpiredError,
+  isPlanFeatureError,
+  PLAN_FEATURE_MESSAGE,
+} from "@/lib/api/errors";
 import type { ActionState } from "./types";
 
 /**
@@ -9,6 +14,9 @@ import type { ActionState } from "./types";
 export function toActionState(error: unknown): ActionState {
   if (error instanceof AuthExpiredError) {
     return { status: "auth-expired" };
+  }
+  if (isPlanFeatureError(error)) {
+    return { status: "error", message: PLAN_FEATURE_MESSAGE };
   }
   if (error instanceof ApiError) {
     return { status: "error", message: error.message };
