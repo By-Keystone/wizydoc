@@ -298,6 +298,9 @@ test.describe("GET /appointment/manage/:token", () => {
       });
       expect(cancelWithMalformedBody.status()).toBe(404);
       expect(await cancelWithMalformedBody.json()).toEqual(UNAVAILABLE_BODY);
+      const cancelWithoutReason = await client.postRaw(`${token}/cancel`, "{}");
+      expect(cancelWithoutReason.status()).toBe(404);
+      expect(await cancelWithoutReason.json()).toEqual(UNAVAILABLE_BODY);
     }
 
     const sameBodiesWithValidToken = await client.reschedule(managed.token, {

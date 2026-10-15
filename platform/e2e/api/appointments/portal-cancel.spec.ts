@@ -2,6 +2,7 @@ import { test, expect } from "../../support/test";
 import { readEmailsTo } from "../../support/email";
 import {
   createManagedAppointment,
+  DEFAULT_CANCELLATION_REASON,
   createPortalClient,
   createPortalScenario,
   limaWallTime,
@@ -15,6 +16,13 @@ import {
 
 // docs/features/autogestion-paciente/prd.html — CA-11, CA-19 a CA-22, CA-32 y CA-50 (parte API).
 
+const CANCELLATION_REASONS = [
+  "UNEXPECTED_EVENT",
+  "CANNOT_MAKE_IT",
+  "NO_LONGER_NEEDED",
+  "SEEN_ELSEWHERE",
+  "BOOKED_BY_MISTAKE",
+];
 const HOURS_BEFORE_DEADLINE = 6;
 const HOURS_AFTER_DEADLINE = 13;
 const LESS_THAN_NOTICE_MESSAGE =
@@ -47,6 +55,7 @@ test.describe("POST /appointment/manage/:token/cancel", () => {
     const stored = await readAppointment(managed.appointmentId);
     expect(stored.status).toBe("CANCELLED");
     expect(stored.cancelledAt).not.toBeNull();
+    expect(stored.cancellationReason).toBe(DEFAULT_CANCELLATION_REASON);
   });
 
   test("CA-19: con horas de antelación (13 h) también cancela", async () => {
@@ -256,5 +265,87 @@ test.describe("POST /appointment/manage/:token/cancel", () => {
 
     expect(malformed.status()).toBe(400);
     expect(matching.status()).toBe(200);
+  });
+
+  test("CA-54: cancelar sin motivo responde 400 y la cita sigue activa", async () => {
+    const scenario = await createPortalScenario("cancel-no-reason");
+    const managed = await createManagedAppointment(scenario);
+    const client = await createPortalClient();
+
+    const withoutReason = await client.postRaw(`${managed.token}/cancel`, "{}");
+    const withoutBody = await client.postRaw(`${managed.token}/cancel`, "");
+
+    expect(withoutReason.status()).toBe(400);
+    expect(withoutBody.status()).toBe(400);
+    const stored = await readAppointment(managed.appointmentId);
+    expect(stored.status).toBe("PENDING");
+    expect(stored.cancelledAt).toBeNull();
+    expect(stored.cancellationReason).toBeNull();
+  });
+
+  test("CA-54: un motivo fuera de la lista responde 400 y la cita sigue activa", async () => {
+    const scenario = await createPortalScenario("cancel-bad-reason");
+    const managed = await createManagedAppointment(scenario);
+    const client = await createPortalClient();
+
+    for (const reason of [
+      "OTHER",
+      "cannot_make_it",
+      "",
+      null,
+      3,
+      "Me enfermé",
+    ]) {
+      const response = await client.cancel(managed.token, { reason });
+      expect(response.status(), JSON.stringify(reason)).toBe(400);
+    }
+
+    const stored = await readAppointment(managed.appointmentId);
+    expect(stored.status).toBe("PENDING");
+    expect(stored.cancellationReason).toBeNull();
+  });
+
+  test("CA-54: cada motivo de la lista se guarda con la cita", async () => {
+    const client = await createPortalClient();
+
+    for (const [index, reason] of CANCELLATION_REASONS.entries()) {
+      const scenario = await createPortalScenario(`cancel-reason-${index}`);
+      const managed = await createManagedAppointment(scenario);
+
+      const response = await client.cancel(managed.token, { reason });
+
+      expect(response.status()).toBe(200);
+      expect(
+        (await readAppointment(managed.appointmentId)).cancellationReason,
+      ).toBe(reason);
+    }
+  });
+
+  test("CA-55: cancelar otra vez con otro motivo responde 200 y no cambia el guardado", async () => {
+    const scenario = await createPortalScenario("cancel-reason-kept");
+    const managed = await createManagedAppointment(scenario);
+    const client = await createPortalClient();
+    await client.cancel(managed.token, { reason: "SEEN_ELSEWHERE" });
+
+    const second = await client.cancel(managed.token, {
+      reason: "BOOKED_BY_MISTAKE",
+    });
+
+    expect(second.status()).toBe(200);
+    expect(
+      (await readAppointment(managed.appointmentId)).cancellationReason,
+    ).toBe("SEEN_ELSEWHERE");
+  });
+
+  test("CA-55: la respuesta del portal no expone el motivo", async () => {
+    const scenario = await createPortalScenario("cancel-reason-hidden");
+    const managed = await createManagedAppointment(scenario);
+    const client = await createPortalClient();
+
+    const response = await client.cancel(managed.token, {
+      reason: "NO_LONGER_NEEDED",
+    });
+
+    expect(await response.text()).not.toContain("NO_LONGER_NEEDED");
   });
 });

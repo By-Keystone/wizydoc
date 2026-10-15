@@ -59,6 +59,7 @@ export interface TestPrismaAppointmentRow {
   scheduledAt: Date;
   rescheduleCount: number;
   cancelledAt: Date | null;
+  cancellationReason: string | null;
 }
 
 export interface TestPrisma {
