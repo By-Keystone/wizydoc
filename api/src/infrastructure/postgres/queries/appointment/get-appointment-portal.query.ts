@@ -8,15 +8,17 @@ import {
   rescheduleBlockedBy,
 } from "@/domain/entities/appointment/entity";
 import { toWallTime } from "@/domain/services/clinic-time";
-import { hashToken, isTokenFormat } from "@/domain/services/token-service";
+import { TokenService } from "@/domain/services/token-service";
 import { getClient } from "../../transaction-context";
 
 export class GetAppointmentPortalQuery implements IGetAppointmentPortalQuery {
+  constructor(private readonly tokens: TokenService = new TokenService()) {}
+
   async execute(token: string): Promise<AppointmentPortal | null> {
-    if (!isTokenFormat(token)) return null;
+    if (!this.tokens.isWellFormed(token)) return null;
 
     const accessToken = await getClient().appointmentAccessToken.findUnique({
-      where: { tokenHash: hashToken(token) },
+      where: { tokenHash: this.tokens.hash(token) },
       select: {
         appointment: {
           select: {
