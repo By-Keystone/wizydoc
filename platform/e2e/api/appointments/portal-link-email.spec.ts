@@ -67,7 +67,7 @@ test.describe("Enlace de autogestión en el correo de confirmación", () => {
     const html = email?.html ?? "";
     expect(html).toContain(MANAGE_BUTTON);
     expect(html).toContain(SELF_SERVICE_TEXT);
-    expect(html).toContain("(hora de Lima)");
+    expect(html).not.toContain("hora de Lima");
     expect(html).not.toContain(BROKEN_PARAGRAPH);
     expect(html).not.toContain("{{");
 

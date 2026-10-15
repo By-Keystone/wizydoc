@@ -9,7 +9,7 @@
         <mj-table font-size="15px" cellpadding="0">
           <tr>
             <td style="padding: 8px 16px 8px 0; color: #5C6B6A;">Fecha y hora</td>
-            <td style="padding: 8px 0; font-weight: bold;">{{scheduledAt}} (hora de Lima)</td>
+            <td style="padding: 8px 0; font-weight: bold;">{{scheduledAt}}</td>
           </tr>
           <tr>
             <td style="padding: 8px 16px 8px 0; color: #5C6B6A;">Duración</td>
