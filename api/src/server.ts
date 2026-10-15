@@ -27,21 +27,28 @@ import auth from "./infrastructure/vendors/auth/better-auth/auth";
 import userInvitationRoutes from "./routes/user-invitation";
 import doctorProfileRoutes from "./routes/doctor-profile/index";
 import appointmentRoutes from "./routes/appointment/index";
+import appointmentPortalRoutes from "./routes/appointment/portal";
 import patientRoutes from "./routes/patient";
 import { CulqiBillingService } from "./infrastructure/vendors/billing/culqi/culqi-billing.service";
 
 // Tapa el token de invitación en el log de acceso (GET y POST /accept lo llevan en la URL).
 const INVITATION_TOKEN_IN_URL = /(\/invitations\/)[0-9a-f]{64}/;
+const APPOINTMENT_TOKEN_IN_URL = /(\/appointment\/manage\/)[^/?\s]*/;
+// Con el límite por defecto (100) un token largo no casaría la ruta y respondería 401 en vez del 404 uniforme.
+const MAX_ROUTE_PARAM_LENGTH = 2048;
 
 function requestSerializer(request: FastifyRequest) {
   return {
     method: request.method,
-    url: request.url.replace(INVITATION_TOKEN_IN_URL, "$1[token]"),
+    url: request.url
+      .replace(INVITATION_TOKEN_IN_URL, "$1[token]")
+      .replace(APPOINTMENT_TOKEN_IN_URL, "$1[token]"),
     remoteAddress: request.ip,
   };
 }
 
 const fastify = Fastify({
+  maxParamLength: MAX_ROUTE_PARAM_LENGTH,
   logger:
     process.env.NODE_ENV === "production"
       ? { serializers: { req: requestSerializer } }
@@ -171,6 +178,10 @@ async function start() {
   await fastify.register(appointmentRoutes, {
     prefix: "/appointment",
     emailService,
+  });
+
+  await fastify.register(appointmentPortalRoutes, {
+    prefix: "/appointment/manage",
   });
 
   await fastify.register(patientRoutes, {
