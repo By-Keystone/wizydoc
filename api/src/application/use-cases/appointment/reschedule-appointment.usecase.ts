@@ -1,4 +1,9 @@
-import { AppointmentConflict } from "@/application/errors/appointment-conflict.error";
+import {
+  ALREADY_RESCHEDULED_MESSAGE,
+  APPOINTMENT_CHANGED_MESSAGE,
+  AppointmentConflict,
+  LESS_THAN_NOTICE_MESSAGE,
+} from "@/application/errors/appointment-conflict.error";
 import { AppointmentLinkUnavailable } from "@/application/errors/appointment-link-unavailable.error";
 import { BadRequest } from "@/application/errors/bad-request.errors";
 import type {
@@ -28,14 +33,8 @@ import { GetDoctorSlotsQuery } from "@/infrastructure/postgres/queries/doctor-pr
 import { AppointmentRepository } from "@/infrastructure/postgres/repositories/appointment.repository";
 import { getClient } from "@/infrastructure/postgres/transaction-context";
 import z from "zod";
-import {
-  APPOINTMENT_CHANGED_MESSAGE,
-  LESS_THAN_NOTICE_MESSAGE,
-} from "./cancel-appointment.usecase";
 import { clinicWallTimeSchema } from "./clinic-wall-time.schema";
 
-const ALREADY_RESCHEDULED_MESSAGE =
-  "Esta cita ya se reprogramó una vez y no se puede volver a reprogramar. Si necesitas otro horario, cancélala y reserva de nuevo.";
 const DOCTOR_CHANGE_NOT_ALLOWED_MESSAGE =
   "No puedes pasar tu cita a ese médico. Elige otro o mantén tu cita.";
 
