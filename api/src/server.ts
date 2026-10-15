@@ -32,16 +32,22 @@ import { CulqiBillingService } from "./infrastructure/vendors/billing/culqi/culq
 
 // Tapa el token de invitación en el log de acceso (GET y POST /accept lo llevan en la URL).
 const INVITATION_TOKEN_IN_URL = /(\/invitations\/)[0-9a-f]{64}/;
+const APPOINTMENT_TOKEN_IN_URL = /(\/appointment\/manage\/)[^/?\s]*/;
+// Node rechaza cabeceras de más de 16 KB: con este tope todo token que llegue casa la ruta y recibe el 404 uniforme en vez del 401.
+const MAX_ROUTE_PARAM_LENGTH = 16 * 1024;
 
 function requestSerializer(request: FastifyRequest) {
   return {
     method: request.method,
-    url: request.url.replace(INVITATION_TOKEN_IN_URL, "$1[token]"),
+    url: request.url
+      .replace(INVITATION_TOKEN_IN_URL, "$1[token]")
+      .replace(APPOINTMENT_TOKEN_IN_URL, "$1[token]"),
     remoteAddress: request.ip,
   };
 }
 
 const fastify = Fastify({
+  maxParamLength: MAX_ROUTE_PARAM_LENGTH,
   logger:
     process.env.NODE_ENV === "production"
       ? { serializers: { req: requestSerializer } }
