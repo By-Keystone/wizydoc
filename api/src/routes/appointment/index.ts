@@ -132,10 +132,9 @@ export default async function appointmentRoutes(
     },
     async (request, reply) => {
       try {
-        const appointment = await new CancelAppointmentUseCase().execute(
-          request.params.token,
-          request.body,
-        );
+        const appointment = await new CancelAppointmentUseCase(
+          emailService,
+        ).execute(request.params.token, request.body);
         return reply.status(200).send(appointment);
       } catch (error) {
         return replyPortalError(request, reply, error, "[cancel-appointment]");

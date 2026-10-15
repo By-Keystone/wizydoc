@@ -1,0 +1,18 @@
+<mjml>
+  <mj-body background-color="#f4f4f4">
+    <mj-section background-color="#ffffff" padding="40px">
+      <mj-column>
+        <mj-text font-size="20px" font-weight="bold">Hola {{patientName}},</mj-text>
+        <mj-text font-size="16px">
+          Tu cita ha sido cancelada. Puedes ver el detalle desde el enlace de tu cita.
+        </mj-text>
+        <mj-button background-color="#0E8C82" href="{{manageUrl}}">
+          Gestionar mi cita
+        </mj-button>
+        <mj-text font-size="14px" color="#5C6B6A">
+          No compartas este enlace: da acceso a tu cita.
+        </mj-text>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>

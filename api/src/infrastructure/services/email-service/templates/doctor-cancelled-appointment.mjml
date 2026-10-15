@@ -1,0 +1,35 @@
+<mjml>
+  <mj-body background-color="#f4f4f4">
+    <mj-section background-color="#ffffff" padding="40px">
+      <mj-column>
+        <mj-text font-size="20px" font-weight="bold">Hola {{doctorName}},</mj-text>
+        <mj-text font-size="16px">
+          Tu paciente canceló su cita desde el enlace de autogestión.
+        </mj-text>
+        <mj-table font-size="15px" cellpadding="0">
+          <tr>
+            <td style="padding: 8px 16px 8px 0; color: #5C6B6A;">Fecha y hora</td>
+            <td style="padding: 8px 0; font-weight: bold;">{{scheduledAt}}</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px 16px 8px 0; color: #5C6B6A;">Especialidad</td>
+            <td style="padding: 8px 0;">{{specialty}}</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px 16px 8px 0; color: #5C6B6A;">Motivo</td>
+            <td style="padding: 8px 0;">{{reason}}</td>
+          </tr>
+        </mj-table>
+        <mj-text font-size="16px">
+          El horario quedó libre para otra reserva.
+        </mj-text>
+        <mj-text font-size="14px" color="#5C6B6A">
+          No tienes que hacer nada. Consulta tu agenda en WizyDoc para ver el detalle.
+        </mj-text>
+        <mj-button background-color="#0E8C82" href="{{agendaUrl}}">
+          Ver mi agenda
+        </mj-button>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>
