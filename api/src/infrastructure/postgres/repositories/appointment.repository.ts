@@ -46,7 +46,11 @@ export class AppointmentRepository implements IAppointmentRepository {
           scheduledAt: data.expectedScheduledAt,
         }),
       },
-      data: { status: "CANCELLED", cancelledAt: data.cancelledAt },
+      data: {
+        status: "CANCELLED",
+        cancelledAt: data.cancelledAt,
+        cancellationReason: data.reason,
+      },
     });
     return count === 1;
   }

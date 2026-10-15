@@ -11,6 +11,7 @@ import type {
 } from "@/application/queries/appointment/get-appointment-portal.query";
 import {
   type Appointment,
+  CANCELLATION_REASONS,
   canCancel,
   hasStarted,
 } from "@/domain/entities/appointment/entity";
@@ -21,9 +22,12 @@ import { AppointmentRepository } from "@/infrastructure/postgres/repositories/ap
 import z from "zod";
 import { clinicWallTimeSchema } from "./clinic-wall-time.schema";
 
-export const cancelAppointmentSchema = z
-  .object({ expectedScheduledAt: clinicWallTimeSchema.optional() })
-  .optional();
+export const cancelAppointmentSchema = z.object({
+  reason: z.enum(CANCELLATION_REASONS, {
+    error: "Indica el motivo de la cancelación.",
+  }),
+  expectedScheduledAt: clinicWallTimeSchema.optional(),
+});
 
 export class CancelAppointmentUseCase {
   constructor(
@@ -75,7 +79,7 @@ export class CancelAppointmentUseCase {
 
   async execute(token: string, body: unknown): Promise<AppointmentPortal> {
     const appointment = await this.findOpenAppointment(token);
-    const { expectedScheduledAt } = this.parseBody(body) ?? {};
+    const { reason, expectedScheduledAt } = this.parseBody(body);
 
     if (appointment.status === "CANCELLED") return this.readPortal(token);
 
@@ -94,6 +98,7 @@ export class CancelAppointmentUseCase {
     const wasCancelled = await this.appointments.cancel({
       appointmentId: appointment.id,
       cancelledAt: now,
+      reason,
       expectedScheduledAt: expectedInstant,
     });
     if (!wasCancelled) await this.assertCancelledByAnotherRequest(token);

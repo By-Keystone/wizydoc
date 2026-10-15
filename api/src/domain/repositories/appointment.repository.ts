@@ -1,8 +1,12 @@
-import type { Appointment } from "../entities/appointment/entity";
+import type {
+  Appointment,
+  CancellationReason,
+} from "../entities/appointment/entity";
 
 export interface CancelAppointmentData {
   appointmentId: string;
   cancelledAt: Date;
+  reason: CancellationReason;
   expectedScheduledAt?: Date;
 }
 

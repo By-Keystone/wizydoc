@@ -5,6 +5,16 @@ export type AppointmentStatus =
   | "COMPLETED"
   | "NO_SHOW";
 
+export const CANCELLATION_REASONS = [
+  "UNEXPECTED_EVENT",
+  "CANNOT_MAKE_IT",
+  "NO_LONGER_NEEDED",
+  "SEEN_ELSEWHERE",
+  "BOOKED_BY_MISTAKE",
+] as const;
+
+export type CancellationReason = (typeof CANCELLATION_REASONS)[number];
+
 export const CANCELLATION_NOTICE_HOURS = 12;
 export const RESCHEDULE_NOTICE_HOURS = 12;
 export const NEW_SLOT_LEAD_HOURS = 12;
@@ -37,6 +47,7 @@ export interface Appointment {
   status: AppointmentStatus;
   rescheduleCount: number;
   cancelledAt: Date | null;
+  cancellationReason: CancellationReason | null;
   createdAt: Date;
   updatedAt: Date;
 }

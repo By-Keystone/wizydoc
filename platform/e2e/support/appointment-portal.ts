@@ -331,6 +331,8 @@ export async function countActiveAppointmentsAt(
   });
 }
 
+export const DEFAULT_CANCELLATION_REASON = "CANNOT_MAKE_IT";
+
 export interface PortalClient {
   get(token: string): Promise<APIResponse>;
   cancel(token: string, data?: unknown): Promise<APIResponse>;
@@ -346,10 +348,9 @@ export async function createPortalClient(): Promise<PortalClient> {
   return {
     get: (token) => context.get(`${base}/${token}`),
     cancel: (token, data) =>
-      context.post(
-        `${base}/${token}/cancel`,
-        data === undefined ? {} : { data },
-      ),
+      context.post(`${base}/${token}/cancel`, {
+        data: { reason: DEFAULT_CANCELLATION_REASON, ...(data ?? {}) },
+      }),
     reschedule: (token, data) =>
       context.post(`${base}/${token}/reschedule`, { data }),
     slots: (token, query = "") => context.get(`${base}/${token}/slots${query}`),
