@@ -94,7 +94,6 @@
   .summary .when small { display: block; font-size: 12px; font-weight: 500; color: var(--gray); margin-top: 2px; }
 
   .hint { margin-top: 8px; font-size: 13px; color: var(--gray); line-height: 1.45; }
-  .tz { margin-top: 6px; font-size: 12px; color: var(--gray); display: flex; align-items: center; gap: 6px; }
   .alert { margin-top: 16px; border-radius: 10px; padding: 10px 12px; font-size: 13.5px; line-height: 1.45; display: flex; gap: 8px; }
   .alert svg { flex: none; margin-top: 1px; }
   .alert-red { background: #fef2f2; border: 1px solid #fecaca; color: #b91c1c; }
@@ -387,7 +386,7 @@
   function dayNumber(date) { return Number(date.slice(8, 10)); }
   function longDate(date) { var d = parse(date); return DAYS_LONG[d.getUTCDay()] + " " + d.getUTCDate() + " de " + MONTHS_LONG[d.getUTCMonth()]; }
   function shortDate(date) { var d = parse(date); return DAYS_SHORT[d.getUTCDay()] + " " + d.getUTCDate() + " " + MONTHS_SHORT[d.getUTCMonth()]; }
-  function mailDate(date, time) { var d = parse(date); return DAYS_LONG[d.getUTCDay()] + ", " + d.getUTCDate() + " de " + MONTHS_LONG[d.getUTCMonth()] + " de " + d.getUTCFullYear() + ", " + time + " (hora de Lima)"; }
+  function mailDate(date, time) { var d = parse(date); return DAYS_LONG[d.getUTCDay()] + ", " + d.getUTCDate() + " de " + MONTHS_LONG[d.getUTCMonth()] + " de " + d.getUTCFullYear() + ", " + time; }
   function capitalize(text) { return text.charAt(0).toUpperCase() + text.slice(1); }
   function when(date, time) { return capitalize(longDate(date)) + ", " + time; }
   function toMinutes(t) { return Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5)); }
@@ -487,7 +486,7 @@
 
   function summaryHtml(a, muted) {
     return '<div class="summary' + (muted ? " muted" : "") + '">' +
-      '<p class="when">' + esc(when(a.date, a.time)) + '<small>Hora de Lima · ' + a.durationMinutes + ' minutos</small></p>' +
+      '<p class="when">' + esc(when(a.date, a.time)) + '<small>' + a.durationMinutes + ' minutos</small></p>' +
       '<dl>' +
       '<dt>Especialidad</dt><dd>' + esc(a.specialty) + '</dd>' +
       '<dt>Profesional</dt><dd>' + esc(doctorName(a.doctorKey)) + '</dd>' +
@@ -505,10 +504,6 @@
         '</div>';
     }
     return '<div class="compare">' + block("old", "Antes", change.from) + block("new", "Ahora", change.to) + '</div>';
-  }
-
-  function limaLegend() {
-    return '<p class="tz">' + ICON.globe + 'Horarios en hora de Lima</p>';
   }
 
   function statusBadge(a) {
@@ -637,7 +632,6 @@
       return '<div class="card">' +
         '<h1 class="title" tabindex="-1" style="font-size:18px">Elige fecha y horario</h1>' +
         '<p class="sub">Solo ves los horarios libres de ' + esc(doctorName(doctorKey)) + '.</p>' +
-        limaLegend() +
         '<div class="current">Tu cita actual: <strong>' + esc(when(a.date, a.time)) + '</strong>' +
         (changingDoctor ? '<br>con ' + esc(doctorName(a.doctorKey)) + '<br>Nuevo médico: <strong>' + esc(doctorName(doctorKey)) + '</strong> · <button type="button" class="linkbtn" data-action="back-doctor">Cambiar</button>' : "") +
         '</div>' +
@@ -667,7 +661,6 @@
         '<h1 class="title" tabindex="-1">' + (changingDoctor ? "¿Cambiar tu cita a este médico y horario?" : "¿Cambiar tu cita a este horario?") + '</h1>' +
         '<p class="sub">' + esc(a.specialty) + (changingDoctor ? "" : " con " + esc(doctorName(a.doctorKey))) + ', en ' + esc(a.clinicName) + '.</p>' +
         compareHtml(change) +
-        limaLegend() +
         '<p class="hint">El horario anterior quedará libre para otro paciente. Solo puedes reprogramar una vez: después de este cambio, solo podrás cancelar.</p>' +
         '<div class="row">' +
         '<button type="button" class="btn btn-outline" data-action="back-pick"' + (state.pending ? " disabled" : "") + '>Elegir otro</button>' +
