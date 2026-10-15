@@ -11,13 +11,11 @@ import {
   hasStarted,
 } from "@/domain/entities/appointment/entity";
 import type { IAppointmentRepository } from "@/domain/repositories/appointment.repository";
+import { wallTimeToInstant } from "@/domain/services/clinic-time";
 import { GetAppointmentPortalQuery } from "@/infrastructure/postgres/queries/appointment/get-appointment-portal.query";
 import { AppointmentRepository } from "@/infrastructure/postgres/repositories/appointment.repository";
 import z from "zod";
-import {
-  clinicWallTimeSchema,
-  wallTimeToInstant,
-} from "./clinic-wall-time.schema";
+import { clinicWallTimeSchema } from "./clinic-wall-time.schema";
 
 export const APPOINTMENT_CHANGED_MESSAGE =
   "Tu cita cambió mientras elegías. Alguien canceló o reprogramó esta cita desde otra pestaña o dispositivo. Recarga para ver cómo quedó.";

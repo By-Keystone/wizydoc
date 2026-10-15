@@ -121,6 +121,25 @@ export function toWallTime(
   };
 }
 
+/** Separa una hora de pared `YYYY-MM-DDTHH:mm` en su fecha y su hora. */
+export function parseWallTime(wallTime: string): WallTime {
+  const [date, time] = wallTime.split("T");
+  return { date, time };
+}
+
+/**
+ * Instante de una hora de pared `YYYY-MM-DDTHH:mm` de la clínica.
+ *
+ * Ejemplo con `America/Lima`: `"2026-08-06T09:00"` → `2026-08-06T14:00:00Z`.
+ */
+export function wallTimeToInstant(
+  wallTime: string,
+  timeZone: string = CLINIC_TIME_ZONE,
+): Date {
+  const { date, time } = parseWallTime(wallTime);
+  return toInstant(date, time, timeZone);
+}
+
 /** Instante en que empieza el día `date` en la clínica. */
 export function startOfDay(
   date: string,

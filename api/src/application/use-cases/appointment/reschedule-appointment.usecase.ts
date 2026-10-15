@@ -18,8 +18,10 @@ import type { IAppointmentRepository } from "@/domain/repositories/appointment.r
 import {
   addDays,
   CLINIC_TIME_ZONE,
+  parseWallTime,
   toInstant,
   today,
+  wallTimeToInstant,
 } from "@/domain/services/clinic-time";
 import { GetAppointmentPortalQuery } from "@/infrastructure/postgres/queries/appointment/get-appointment-portal.query";
 import { GetDoctorSlotsQuery } from "@/infrastructure/postgres/queries/doctor-profile/get-doctor-slots.query";
@@ -30,10 +32,7 @@ import {
   APPOINTMENT_CHANGED_MESSAGE,
   LESS_THAN_NOTICE_MESSAGE,
 } from "./cancel-appointment.usecase";
-import {
-  clinicWallTimeSchema,
-  wallTimeToInstant,
-} from "./clinic-wall-time.schema";
+import { clinicWallTimeSchema } from "./clinic-wall-time.schema";
 
 const ALREADY_RESCHEDULED_MESSAGE =
   "Esta cita ya se reprogramó una vez y no se puede volver a reprogramar. Si necesitas otro horario, cancélala y reserva de nuevo.";
@@ -196,8 +195,8 @@ export class RescheduleAppointmentUseCase {
     scheduledAt: string,
     now: Date,
   ) {
-    const [date, time] = scheduledAt.split("T");
-    const slotStart = toInstant(date, time);
+    const { date, time } = parseWallTime(scheduledAt);
+    const slotStart = wallTimeToInstant(scheduledAt);
     const slotTaken = new AppointmentConflict(
       slotTakenMessage(slotStart),
       "SLOT_TAKEN",

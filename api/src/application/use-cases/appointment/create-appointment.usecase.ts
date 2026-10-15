@@ -9,8 +9,9 @@ import {
 import {
   addDays,
   CLINIC_TIME_ZONE,
-  toInstant,
+  parseWallTime,
   today,
+  wallTimeToInstant,
 } from "@/domain/services/clinic-time";
 import { GetDoctorSlotsQuery } from "@/infrastructure/postgres/queries/doctor-profile/get-doctor-slots.query";
 import {
@@ -159,7 +160,7 @@ export class CreateApointmentUseCase {
 
     if (!profile) throw new NotFound(BOOKING_OPTION_UNAVAILABLE);
 
-    const [date, time] = dto.scheduledAt.split("T");
+    const { date, time } = parseWallTime(dto.scheduledAt);
 
     await this.assertSlotIsOffered(dto, date, time);
 
@@ -193,7 +194,7 @@ export class CreateApointmentUseCase {
             specialty: dto.specialty,
             durationMinutes: dto.durationMinutes,
             doctorProfileId: dto.doctorProfileId,
-            scheduledAt: toInstant(date, time),
+            scheduledAt: wallTimeToInstant(dto.scheduledAt),
             patientId: bookedPatient.id,
             clinicId: clinic.resourceId,
           },
