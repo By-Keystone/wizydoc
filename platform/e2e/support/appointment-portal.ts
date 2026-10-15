@@ -74,6 +74,8 @@ export interface AddDoctorOptions {
   admin: OnboardedAdmin;
   specialtyId: string;
   availability?: DoctorAvailability;
+  name?: string;
+  lastName?: string;
 }
 
 export async function addPortalDoctor(
@@ -85,6 +87,8 @@ export async function addPortalDoctor(
     role: "DOCTOR",
     createdBy: options.admin.userId,
     emailPrefix: `doctor-${options.label}`,
+    name: options.name,
+    lastName: options.lastName,
   });
   const prisma = await getTestPrisma();
   const profile = await prisma.doctorProfile.create({

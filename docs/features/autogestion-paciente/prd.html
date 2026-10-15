@@ -250,7 +250,7 @@
   <p class="why">Por qué: el paciente ya sabe qué cita canceló y puede verla en la página; el médico necesita el cuándo y el porqué, no el quién (lo ve en su agenda).</p>
 </div>
 <div class="box dec" id="d-24">
-  <p><span class="tag tag-dec">Decisión</span><span class="tag tag-v6">Nuevo v6</span><span class="id">d-24</span> <strong>Correos al reprogramar</strong>. Reprogramar sale junto con cancelar (<a href="#d-7">d-7</a>); solo estos correos se implementan en una entrega posterior y quedan definidos ya. Hasta esa entrega, reprogramar no envía correos al paciente ni al médico.</p>
+  <p><span class="tag tag-dec">Decisión</span><span class="tag tag-v6">Nuevo v6</span><span class="id">d-24</span> <strong>Correos al reprogramar</strong>. Reprogramar sale junto con cancelar (<a href="#d-7">d-7</a>); estos son los correos que envía y se implementan ahora.</p>
   <ul>
     <li><strong>Al paciente:</strong> asunto «Tu cita se ha reprogramado para el {dd/mm} a las {HH:mm}», con el resumen de la nueva cita y el botón «Gestionar mi cita».</li>
     <li><strong>Al médico:</strong> asunto «Tu paciente ha reprogramado la cita en {sede}», con el resumen de la nueva cita y la hora anterior («Antes» y «Ahora»), sin datos del paciente.</li>
@@ -566,7 +566,7 @@
 </ul>
 
 <h3 id="s8-reprogramada">Cita reprogramada (al paciente) <span class="tag tag-v6">Nuevo v6</span></h3>
-<p>Este correo se implementa en una entrega posterior; queda definido aquí (<a href="#d-24">d-24</a>). Reprogramar en sí sale en esta entrega (<a href="#d-7">d-7</a>). Hasta esa entrega, reprogramar no envía correos al paciente ni al médico.</p>
+<p>Reprogramar sale en esta entrega (<a href="#d-7">d-7</a>); este correo y el aviso al médico (<a href="#d-24">d-24</a>) se implementan ahora.</p>
 <ul>
   <li><strong>Para:</strong> correo de la ficha. <strong>Asunto:</strong> <span class="quote">«Tu cita se ha reprogramado para el {dd/mm} a las {HH:mm}»</span>, p. ej. «Tu cita se ha reprogramado para el 16/10 a las 11:00».</li>
   <li><strong>Contiene:</strong>
@@ -596,7 +596,7 @@
       <li>la fecha y hora de la cita y el <strong>motivo</strong> elegido, con el texto exacto de la lista (<a href="#s-13">s-13</a>);</li>
       <li>se conserva de la v5, porque no contradice la decisión: la especialidad, «El horario quedó libre para otra reserva.», «No tienes que hacer nada. Consulta tu agenda en WizyDoc para ver el detalle.» y el botón «Ver mi agenda».</li>
     </ul></li>
-  <li><strong>Reprogramación</strong> (<a href="#d-24">d-24</a>; este correo se implementa en una entrega posterior; hasta esa entrega, reprogramar no envía correos al paciente ni al médico):
+  <li><strong>Reprogramación</strong> (<a href="#d-24">d-24</a>):
     <ul>
       <li>asunto <span class="quote">«Tu paciente ha reprogramado la cita en {sede}»</span>;</li>
       <li>«Hola {nombre de pila del médico},»;</li>
@@ -669,7 +669,7 @@
   <li id="dep-2"><strong>Aviso de privacidad del booking</strong> (otra iniciativa): <strong>no bloquea</strong>. La autogestión sale con o sin ella; el pie replica el del booking (<a href="#d-6">d-6</a>). Las dos tocan el correo de confirmación: quien llegue segundo se adapta al primero.</li>
   <li id="dep-3"><strong>Límite de peticiones por cliente</strong> (otra iniciativa): se retiró el límite general por IP. Esta entrega sale sin límite propio y el aviso al médico no tiene tope. Lo mitigan el enlace inadivinable y la única reprogramación por cita. Ver <a href="#rg-1">rg-1</a> y <a href="#rg-5">rg-5</a>.</li>
   <li id="dep-4"><strong>Documentos de producto:</strong> en el mismo cambio se actualizan los de la lista de abajo.</li>
-  <li id="dep-6"><span class="tag tag-v6">Nuevo v6</span><strong>Los correos de reprogramación de la v6 se implementan en una entrega posterior</strong> (<a href="#d-24">d-24</a>). Reprogramar sale en esta entrega, junto con cancelar (<a href="#d-7">d-7</a>). Hasta esa entrega, reprogramar no envía correos al paciente ni al médico. Los correos de cancelación (<a href="#d-23">d-23</a>) sí se implementan ahora; hoy cancelar no envía ninguno.</li>
+  <li id="dep-6"><span class="tag tag-v6">Nuevo v6</span><strong>Los correos de reprogramación de la v6 se implementan ahora</strong> (<a href="#d-24">d-24</a>), en la misma entrega que reprogramar, junto con cancelar (<a href="#d-7">d-7</a>). Los correos de cancelación (<a href="#d-23">d-23</a>) también se implementan ahora.</li>
   <li id="dep-5" class="done"><span class="tag tag-v3">Nuevo v3</span>Booking que empieza por el DNI: descartado por ahora por el humano.</li>
 </ol>
 
@@ -731,7 +731,7 @@
 <p>Los marcados <span class="tag tag-e2e">e2e</span> los prueba el e2e-tester; el resto se verifica con revisión, petición manual o navegador. Notas:</p>
 <ul>
   <li><span class="tag tag-v6">Nuevo v6</span>«El enlace» es el del botón «Gestionar mi cita» del correo de confirmación capturado.</li>
-  <li><span class="tag tag-v6">Nuevo v6</span>Los criterios de correos de reprogramar (CA-37, la parte de reprogramación de CA-38, CA-53) aplican cuando se implementen los correos de reprogramación, en una entrega posterior (<a href="#dep-6">dep-6</a>). El resto de los criterios de reprogramar aplica en esta entrega. Hasta esa entrega, reprogramar no envía correos al paciente ni al médico.</li>
+  <li><span class="tag tag-v6">Nuevo v6</span>Los criterios de correos de reprogramar (CA-37, la parte de reprogramación de CA-38, CA-53) aplican en esta entrega, como el resto de los criterios de reprogramar (<a href="#dep-6">dep-6</a>).</li>
   <li><span class="tag tag-mod">Cambia en v2</span>Salvo que el criterio diga otra cosa, la cuenta de prueba tiene un plan de pago (Consultorio). Los criterios de Gratis usan una cuenta Gratis.</li>
   <li>Para el cambio de médico hace falta una sede con dos médicos de la misma especialidad, uno sin horarios en el rango del booking.</li>
   <li>Ejemplos de fecha: cita el jueves 15 de octubre a las 10:00, 30 minutos, hora de Lima.</li>
