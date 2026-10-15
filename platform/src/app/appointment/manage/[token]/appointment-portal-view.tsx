@@ -20,12 +20,16 @@ import { cancelAppointmentAction } from "@/lib/actions/appointment/cancel-appoin
 import { getRescheduleSlotsAction } from "@/lib/actions/appointment/get-reschedule-slots.action";
 import { getRescheduleAvailabilityAction } from "@/lib/actions/appointment/get-reschedule-availability.action";
 import { rescheduleAppointmentAction } from "@/lib/actions/appointment/reschedule-appointment.action";
-import type { AppointmentPortal } from "@/lib/api/appointments/types";
+import type {
+  AppointmentPortal,
+  CancellationReason,
+} from "@/lib/api/appointments/types";
 import {
   AppointmentSummary,
   ChangeComparison,
   type Moment,
 } from "./appointment-summary";
+import { CANCELLATION_REASONS } from "./cancellation-reasons";
 import { formatWhen } from "./format";
 import { LinkUnavailable } from "./link-unavailable";
 
@@ -145,6 +149,42 @@ function CurrentAppointmentNote({
   );
 }
 
+function CancellationReasonField({
+  selected,
+  disabled,
+  onSelect,
+}: {
+  selected: CancellationReason | null;
+  disabled: boolean;
+  onSelect: (reason: CancellationReason) => void;
+}) {
+  return (
+    <fieldset disabled={disabled} className="mt-5 min-w-0 border-0 p-0">
+      <legend className="p-0 text-sm font-semibold text-brand-ink">
+        ¿Por qué cancelas?
+      </legend>
+      <div className="mt-2 grid gap-2">
+        {CANCELLATION_REASONS.map(({ code, label }) => (
+          <label
+            key={code}
+            className="flex min-h-12 cursor-pointer items-center gap-2.5 rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 text-[14.5px] text-brand-ink hover:bg-gray-50 has-[:checked]:border-brand-teal has-[:checked]:bg-brand-teal/10 has-[:checked]:font-semibold has-[:checked]:text-brand-teal-dark has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring has-[:focus-visible]:ring-offset-2"
+          >
+            <input
+              type="radio"
+              name="cancellation-reason"
+              value={code}
+              checked={selected === code}
+              onChange={() => onSelect(code)}
+              className="h-[18px] w-[18px] flex-none accent-brand-teal"
+            />
+            {label}
+          </label>
+        ))}
+      </div>
+    </fieldset>
+  );
+}
+
 interface Props {
   token: string;
   initialAppointment: AppointmentPortal;
@@ -164,11 +204,14 @@ export function AppointmentPortalView({ token, initialAppointment }: Props) {
     after: Moment;
   } | null>(null);
   const [pickAttempt, setPickAttempt] = useState(0);
+  const [cancellationReason, setCancellationReason] =
+    useState<CancellationReason | null>(null);
 
   const seenScheduledAt = `${appointment.date}T${appointment.time}`;
 
   const goTo = (next: View) => {
     setErrorMessage(null);
+    if (next === "confirm-cancel") setCancellationReason(null);
     setView(next);
   };
 
@@ -208,9 +251,14 @@ export function AppointmentPortalView({ token, initialAppointment }: Props) {
   };
 
   const confirmCancel = async () => {
+    if (!cancellationReason) return;
     setIsPending(true);
     setErrorMessage(null);
-    const result = await cancelAppointmentAction(token, seenScheduledAt);
+    const result = await cancelAppointmentAction(
+      token,
+      seenScheduledAt,
+      cancellationReason,
+    );
     setIsPending(false);
 
     if (result.status !== "success") return handleFailure(result);
@@ -317,6 +365,19 @@ export function AppointmentPortalView({ token, initialAppointment }: Props) {
           deshacer.
         </p>
         <AppointmentSummary appointment={appointment} muted />
+        <CancellationReasonField
+          selected={cancellationReason}
+          disabled={isPending}
+          onSelect={setCancellationReason}
+        />
+        {!cancellationReason && (
+          <p
+            id="cancellation-reason-hint"
+            className="mt-2 text-[13px] leading-snug text-brand-gray"
+          >
+            Elige un motivo para continuar.
+          </p>
+        )}
         {errorMessage && <ErrorNotice message={errorMessage} />}
         <div className="mt-6 flex gap-3">
           <Button
@@ -332,7 +393,10 @@ export function AppointmentPortalView({ token, initialAppointment }: Props) {
             type="button"
             variant="coral"
             className="h-11 flex-1"
-            disabled={isPending}
+            disabled={isPending || !cancellationReason}
+            aria-describedby={
+              cancellationReason ? undefined : "cancellation-reason-hint"
+            }
             onClick={confirmCancel}
           >
             <ProcessingLabel label="Sí, cancelar" pending={isPending} />

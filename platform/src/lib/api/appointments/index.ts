@@ -1,7 +1,11 @@
 import { ApiError } from "../errors";
 import type { DoctorSlots } from "../doctor-profile/types";
 import { doFetchJson } from "../fetch";
-import type { AppointmentPortal, RescheduleAvailability } from "./types";
+import type {
+  AppointmentPortal,
+  CancellationReason,
+  RescheduleAvailability,
+} from "./types";
 
 const NOT_FOUND = 404;
 
@@ -25,10 +29,11 @@ export const appointmentsApi = {
   cancel: (
     token: string,
     expectedScheduledAt: string,
+    reason: CancellationReason,
   ): Promise<AppointmentPortal> =>
     doFetchJson(`${manageUrl(token)}/cancel`, {
       method: "POST",
-      body: JSON.stringify({ expectedScheduledAt }),
+      body: JSON.stringify({ expectedScheduledAt, reason }),
       cache: "no-store",
     }),
 

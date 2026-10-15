@@ -28,6 +28,15 @@ const DEADLINE_MESSAGE =
   "Ya no puedes cambiar esta cita desde este enlace porque faltan menos de 12 horas.";
 const LIMIT_MESSAGE =
   "Esta cita ya se reprogramó una vez y no se puede volver a reprogramar. Si necesitas otro horario, cancélala y reserva de nuevo.";
+const REASON_LABEL = "Ya no necesito la cita";
+const REASON_LABELS = [
+  "Me surgió un imprevisto",
+  "No puedo llegar a esa hora",
+  REASON_LABEL,
+  "Me atenderé en otro lugar",
+  "Reservé por error",
+];
+const REASON_HINT = "Elige un motivo para continuar.";
 const LINK_UNAVAILABLE_TITLE = "Este enlace ya no está disponible";
 const FORBIDDEN_COPY = [/hora de Lima/i, /\bDra?\.\s/];
 
@@ -146,6 +155,7 @@ test("cancelar pide confirmación, deja la cita cancelada y ofrece reservar otro
   expect((await readAppointment(managed.appointmentId)).status).toBe("PENDING");
 
   await page.getByRole("button", { name: "Cancelar cita" }).click();
+  await page.getByRole("radio", { name: REASON_LABEL }).check();
   await page.getByRole("button", { name: "Sí, cancelar" }).click();
 
   await expect(
@@ -169,6 +179,61 @@ test("cancelar pide confirmación, deja la cita cancelada y ofrece reservar otro
     page.getByRole("heading", { name: "Tu cita está cancelada" }),
   ).toBeVisible();
   await expectNoForbiddenCopy(page);
+});
+
+test("cancelar exige elegir un motivo: sin selección al entrar y «Sí, cancelar» deshabilitado hasta elegir", async ({
+  page,
+}) => {
+  const { managed } = await setUp("portal-cancel-reason");
+  await page.goto(manageUrl(managed.token));
+
+  await page.getByRole("button", { name: "Cancelar cita" }).click();
+  const group = page.getByRole("group", { name: "¿Por qué cancelas?" });
+  const radios = group.getByRole("radio");
+  await expect(radios).toHaveCount(REASON_LABELS.length);
+  for (const [index, label] of REASON_LABELS.entries()) {
+    await expect(radios.nth(index)).toHaveAccessibleName(label);
+    await expect(radios.nth(index)).not.toBeChecked();
+  }
+  await expect(page.getByText(REASON_HINT)).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Sí, cancelar" }),
+  ).toBeDisabled();
+  await expectNoHorizontalScroll(page);
+
+  await group.getByText(REASON_LABEL).click();
+  await expect(page.getByRole("radio", { name: REASON_LABEL })).toBeChecked();
+  await expect(page.getByText(REASON_HINT)).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Sí, cancelar" }),
+  ).toBeEnabled();
+
+  await page.getByRole("button", { name: "Volver" }).click();
+  await page.getByRole("button", { name: "Cancelar cita" }).click();
+  await expect(page.getByRole("radio", { checked: true })).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Sí, cancelar" }),
+  ).toBeDisabled();
+  expect((await readAppointment(managed.appointmentId)).status).toBe("PENDING");
+});
+
+test("cancelar envía al servidor el motivo elegido", async ({ page }) => {
+  const { managed } = await setUp("portal-cancel-payload");
+  await page.goto(manageUrl(managed.token));
+
+  await page.getByRole("button", { name: "Cancelar cita" }).click();
+  await page.getByRole("radio", { name: "Reservé por error" }).check();
+  const cancelRequest = page.waitForRequest(
+    (request) =>
+      request.method() === "POST" &&
+      request.headers()["next-action"] !== undefined,
+  );
+  await page.getByRole("button", { name: "Sí, cancelar" }).click();
+
+  expect((await cancelRequest).postData()).toContain("BOOKED_BY_MISTAKE");
+  await expect(
+    page.getByRole("heading", { name: "Tu cita está cancelada" }),
+  ).toBeVisible();
 });
 
 test("reprogramar con el mismo médico: elegir, confirmar con Antes y Ahora, y ver el tope", async ({
@@ -369,6 +434,7 @@ test("si la cita cambió en otra pestaña, cancelar no se aplica y «Recargar» 
   expect(moved.status()).toBe(200);
 
   await page.getByRole("button", { name: "Cancelar cita" }).click();
+  await page.getByRole("radio", { name: REASON_LABEL }).check();
   await page.getByRole("button", { name: "Sí, cancelar" }).click();
 
   await expect(
