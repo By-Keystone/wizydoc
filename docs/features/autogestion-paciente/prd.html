@@ -79,7 +79,7 @@
 
 <h1>PRD: autogestión de la cita por el paciente</h1>
 <p class="meta">
-  <strong>Estado:</strong> borrador v4, 12 de octubre de 2026 ·
+  <strong>Estado:</strong> borrador v5, 15 de octubre de 2026 ·
   <strong>Revisión:</strong> 12 de octubre de 2026 (v1: 11 de octubre; v2: feedback del 12 de octubre) ·
   <strong>Autor:</strong> product-manager ·
   <strong>Referencias:</strong> <code>docs/PRODUCT.md</code>, <code>docs/features/autogestion-paciente/mockup.html</code> (UI aprobada el 12 de octubre: 23 pantallas)
@@ -214,6 +214,11 @@
   <p class="why">Por qué: si la hora nueva quedara a menos de 12 h, la persona se quedaría con una cita que ya no puede cambiar ni cancelar. Así, la frase del mockup «después de este cambio, solo podrás cancelar» siempre es cierta.</p>
 </div>
 
+<div class="box dec" id="d-20">
+  <p><span class="tag tag-dec">Decisión</span><span class="tag tag-v4">Nuevo v5</span><span class="id">d-20</span> <strong>No se menciona la zona horaria al paciente</strong>: ni la página ni los correos dicen «hora de Lima». Las fechas y horas siguen siendo las de la clínica.</p>
+  <p class="why">Por qué: el paciente entiende la hora como su hora local; rotular la zona sobra y confunde.</p>
+</div>
+
 <!-- ============================================================ -->
 <h2 id="s1-problema">1. Problema y tesis</h2>
 <p><strong>Problema.</strong> Hoy el paciente reserva en línea, pero si no puede ir, el correo de confirmación le pide llamar al consultorio. El médico o su asistente atiende la llamada, busca otro horario y mueve la cita a mano. Si el paciente no avisa, el horario se pierde. Además, el horario de una cita cancelada no vuelve a ofrecerse a otros pacientes.</p>
@@ -320,7 +325,7 @@
     <tr id="r-10"><td>r-10 <span class="tag tag-mod">Cambia en v2</span></td><td>El enlace <strong>muestra la cita mientras no haya empezado</strong>; las acciones solo están disponibles hasta 12 h antes. Reprogramar no cambia el enlace: el del primer correo sirve para la hora nueva, incluso si cambió el médico.</td><td>El paciente no tiene que buscar el último correo; el enlace muere solo con la cita.</td></tr>
     <tr id="r-11"><td>r-11</td><td>Una cita cancelada ya no se puede reprogramar ni «descancelar». Hasta su hora, el enlace muestra que está cancelada.</td><td>Cancelar es definitivo y el horario ya pudo tomarlo otro paciente.</td></tr>
     <tr id="r-12"><td>r-12 <span class="tag tag-mod">Cambia en v2</span></td><td><strong>Solo en planes de pago</strong>, desde Consultorio (<a href="#d-12">d-12</a>). En Gratis, la confirmación sale sin el botón del enlace y no existe la página (<a href="#d-15">d-15</a>). El paciente nunca ve mensajes de plan: la mejora de plan es asunto del consultorio. Enlaces ya emitidos al cambiar de plan: <a href="#s-8">s-8</a>.</td><td>Es una de las funciones que justifican pagar; el paciente no eligió el plan y no debe verlo.</td></tr>
-    <tr id="r-13"><td>r-13</td><td><strong>Sin cuenta, mobile-first, español de Perú y hora de Lima explícita</strong> en la página y los correos.</td><td>El paciente llega desde el correo en el celular, a veces fuera de Perú.</td></tr>
+    <tr id="r-13"><td>r-13</td><td><strong>Sin cuenta, mobile-first y español de Perú.</strong> Las fechas y horas de la página y los correos son las de la clínica y <strong>no se rotula la zona horaria</strong> (<a href="#d-20">d-20</a>).</td><td>El paciente llega desde el correo en el celular y entiende la hora como su hora local.</td></tr>
     <tr id="r-14"><td>r-14 <span class="tag tag-v3">Nuevo v3</span></td><td>El nombre del médico <strong>no asume género</strong>: «Dr.» o «Dra.» solo si el médico tiene registrado su tratamiento; si no, solo su nombre completo (<a href="#d-18">d-18</a>). Ningún texto dice «el doctor» o «la doctora»; los textos genéricos dicen «médico» o «profesional».</td><td>Un tratamiento equivocado es un error visible ante el paciente.</td></tr>
     <tr id="r-15"><td>r-15 <span class="tag tag-mod">Cambia en v2</span></td><td><strong>Aviso al médico de la cita</strong> por cada cancelación o reprogramación, sin datos del paciente y <strong>sin tope</strong> (<a href="#d-13">d-13</a>). Si cambia de médico, se avisa a los dos (<a href="#d-16">d-16</a>).</td><td>El médico debe enterarse de cada cambio. El aviso lo provoca un anónimo con el enlace, por eso no lleva datos del paciente.</td></tr>
     <tr id="r-16"><td>r-16</td><td>No se generan enlaces para <strong>citas anteriores al lanzamiento</strong>.</td><td>No hay a quién enviarlos sin reenviar confirmaciones que nadie pidió.</td></tr>
@@ -362,13 +367,13 @@
   <thead><tr><th>Estado</th><th>Cuándo</th><th>Qué se ve (pantalla del mockup)</th></tr></thead>
   <tbody>
     <tr id="e-cargando"><td>Cargando</td><td>Al abrir el enlace</td><td>«Cargando tu cita...»</td></tr>
-    <tr id="e-vista"><td>Vista de la cita <span class="tag tag-v3">Nuevo v3</span></td><td>Cita pendiente, 12 h o más, sin reprogramar</td><td>«Ver la cita»: «Hola, {nombre de pila}», «Pendiente», «Esta es tu cita. Puedes cancelarla o reprogramarla hasta 12 horas antes. Solo se puede reprogramar una vez.», resumen con «Hora de Lima · 30 minutos», «Reprogramar» y «Cancelar cita».</td></tr>
+    <tr id="e-vista"><td>Vista de la cita <span class="tag tag-v3">Nuevo v3</span></td><td>Cita pendiente, 12 h o más, sin reprogramar</td><td>«Ver la cita»: «Hola, {nombre de pila}», «Pendiente», «Esta es tu cita. Puedes cancelarla o reprogramarla hasta 12 horas antes. Solo se puede reprogramar una vez.», resumen con «30 minutos», «Reprogramar» y «Cancelar cita».</td></tr>
     <tr id="e-plazo"><td>Menos de 12 h <span class="tag tag-v3">Nuevo v3</span></td><td>Menos de 12 h para la cita (con o sin reprogramación)</td><td>«Menos de 12 h: sin cambios»: saludo, «Pendiente», «Esta es tu cita.», aviso «Ya no puedes cambiar esta cita desde este enlace porque faltan menos de 12 horas.» y el resumen. <strong>Sin botones</strong> y sin contacto del consultorio (<a href="#d-3">d-3</a>).</td></tr>
     <tr id="e-tope"><td>Ya reprogramada una vez <span class="tag tag-v3">Nuevo v3</span></td><td>Ya se reprogramó 1 vez y faltan 12 h o más</td><td>«Ya reprogramada una vez»: «Reprogramar» deshabilitado con «Esta cita ya se reprogramó una vez y no se puede volver a reprogramar. Si necesitas otro horario, cancélala y reserva de nuevo.» escrito debajo; «Cancelar cita» activo.</td></tr>
     <tr id="e-confirmar-cancelar"><td>Confirmar cancelación</td><td>Tras «Cancelar cita»</td><td>«¿Cancelar tu cita?», «El horario quedará libre para otro paciente. Esta acción no se puede deshacer.», resumen atenuado, «Volver» y «Sí, cancelar». Sin campo de motivo.</td></tr>
     <tr id="e-cancelada"><td>Cancelada</td><td>Recién cancelada o al volver al enlace antes de su hora</td><td>«Tu cita está cancelada», «El horario quedó libre para otro paciente.», resumen atenuado, «Te enviamos la confirmación por correo.» y «Reservar otro horario».</td></tr>
-    <tr id="e-elegir"><td>Elegir otro horario <span class="tag tag-v3">Nuevo v3</span></td><td>Tras «Reprogramar», si su médico tiene horarios</td><td>«Elige fecha y horario», «Solo ves los horarios libres de {profesional}.», «Horarios en hora de Lima», «Tu cita actual: {fecha}, {hora}», selector del booking (día sin horarios: «No hay horarios disponibles ese día.»), «¿No encuentras un horario? Puedes cancelar tu cita y reservar más adelante.», «Atrás» y «Siguiente».</td></tr>
-    <tr id="e-confirmar-cambio"><td>Confirmar cambio <span class="tag tag-v3">Nuevo v3</span></td><td>Tras elegir horario</td><td>«¿Cambiar tu cita a este horario?», «{especialidad} con {profesional}, en {sede}.», «Antes» tachado y «Ahora», «Horarios en hora de Lima», «El horario anterior quedará libre para otro paciente. Solo puedes reprogramar una vez: después de este cambio, solo podrás cancelar.», «Elegir otro» y «Confirmar cambio».</td></tr>
+    <tr id="e-elegir"><td>Elegir otro horario <span class="tag tag-v3">Nuevo v3</span></td><td>Tras «Reprogramar», si su médico tiene horarios</td><td>«Elige fecha y horario», «Solo ves los horarios libres de {profesional}.», «Tu cita actual: {fecha}, {hora}», selector del booking (día sin horarios: «No hay horarios disponibles ese día.»), «¿No encuentras un horario? Puedes cancelar tu cita y reservar más adelante.», «Atrás» y «Siguiente».</td></tr>
+    <tr id="e-confirmar-cambio"><td>Confirmar cambio <span class="tag tag-v3">Nuevo v3</span></td><td>Tras elegir horario</td><td>«¿Cambiar tu cita a este horario?», «{especialidad} con {profesional}, en {sede}.», «Antes» tachado y «Ahora», «El horario anterior quedará libre para otro paciente. Solo puedes reprogramar una vez: después de este cambio, solo podrás cancelar.», «Elegir otro» y «Confirmar cambio».</td></tr>
     <tr id="e-exito"><td>Reprogramada <span class="tag tag-v3">Nuevo v3</span></td><td>Cambio aplicado</td><td>«Listo, tu cita cambió», «Te enviamos los detalles por correo. Este mismo enlace sigue sirviendo para tu nueva cita.», «Antes» y «Ahora», resumen nuevo y «Ver mi cita». Aviso breve «Tu cita cambió».</td></tr>
     <tr id="e-tomado"><td>Horario ya tomado</td><td>Otro paciente tomó el horario elegido</td><td>Vuelve al selector con «Otro paciente acaba de tomar el horario del {día y fecha}, {hora}. Elige otro.» en rojo.</td></tr>
     <tr id="e-carrera"><td>La cita cambió</td><td>La cita cambió en otra pestaña o dispositivo</td><td>«Tu cita cambió mientras elegías», «Alguien canceló o reprogramó esta cita desde otra pestaña o dispositivo. Recarga para ver cómo quedó.» y «Recargar».</td></tr>
@@ -397,7 +402,7 @@
       <li>«Cancelar y reservar de nuevo» (lleva a «¿Cancelar tu cita?») y «Mantener mi cita».</li>
     </ul></li>
   <li id="om-3"><strong>Horarios del otro médico.</strong> «Elige fecha y horario» con «Solo ves los horarios libres de {médico nuevo}.». El recuadro muestra «Tu cita actual: {fecha}, {hora}», «con {profesional anterior}» y «Nuevo médico: {médico nuevo} · Cambiar». «Cambiar» y «Atrás» vuelven a la lista de médicos.</li>
-  <li id="om-4"><strong>Confirmar cambio de médico.</strong> «¿Cambiar tu cita a este médico y horario?» y «{especialidad}, en {sede}.». Luego «Antes» (fecha, hora y «con {anterior}», tachados) y «Ahora» (fecha, hora y «con {nuevo}»). Debajo, la leyenda de hora de Lima y el mismo texto de una sola reprogramación.</li>
+  <li id="om-4"><strong>Confirmar cambio de médico.</strong> «¿Cambiar tu cita a este médico y horario?» y «{especialidad}, en {sede}.». Luego «Antes» (fecha, hora y «con {anterior}», tachados) y «Ahora» (fecha, hora y «con {nuevo}»). Debajo, el mismo texto de una sola reprogramación.</li>
   <li id="om-5"><strong>Reprogramada con otro médico.</strong> «Listo, tu cita cambió», con «Antes» y «Ahora» por médico y el resumen nuevo. Cuenta como la única reprogramación de la cita.</li>
   <li id="om-6"><strong>Se mantienen</strong> sede, especialidad y duración. La cita pasa a ser del médico nuevo: la ve en su agenda y recibe los avisos posteriores (una cancelación).</li>
 </ol>
@@ -415,7 +420,7 @@
   <li id="mc-3" class="done"><span class="id">mc-3</span> Tratamiento del médico solo si está registrado; si no, nombre completo. Hecho (casilla «Dato del médico» del mockup).</li>
   <li id="mc-4" class="done"><span class="id">mc-4</span> Pie con «Política de privacidad», la misma del booking. Hecho.</li>
   <li id="mc-5" class="done"><span class="id">mc-5</span> «No hay horarios disponibles ese día.». Hecho.</li>
-  <li id="mc-6" class="done"><span class="id">mc-6</span> «Horarios en hora de Lima» en elegir y confirmar. Hecho.</li>
+  <li id="mc-6" class="done"><span class="id">mc-6</span> <s>«Horarios en hora de Lima» en elegir y confirmar.</s> Retirado en v5: no se rotula la zona horaria (<a href="#d-20">d-20</a>).</li>
   <li id="mc-8" class="done"><span class="id">mc-8</span> Plazo único de 12 h en los textos de la página y los correos. Hecho.</li>
   <li id="mc-9" class="done"><span class="id">mc-9</span> «Menos de 12 h» sin botones. Hecho.</li>
   <li id="mc-10" class="done"><span class="id">mc-10</span> Pantallas del cambio de médico. Hecho (5 pantallas).</li>
@@ -457,7 +462,7 @@
 
 <!-- ============================================================ -->
 <h2 id="s8-comunicacion">8. Comunicación: correos al paciente y al médico</h2>
-<p>Todos los correos escriben las fechas en hora de Lima, en texto completo, y aplican <a href="#r-14">r-14</a> al nombre del médico.</p>
+<p>Todos los correos escriben las fechas en la hora de la clínica, en texto completo y sin mencionar la zona horaria, y aplican <a href="#r-14">r-14</a> al nombre del médico.</p>
 
 <h3 id="s8-confirmacion">Confirmación de la reserva (al paciente, se modifica)</h3>
 <ul>
@@ -466,7 +471,7 @@
     <ul>
       <li>asunto «Tu cita en {sede} está reservada»;</li>
       <li>«Hola {nombre y apellido},» y «Tu cita ya está reservada. Estos son los detalles:»;</li>
-      <li>fecha y hora («jueves, 15 de octubre de 2026, 10:00 (hora de Lima)»), duración, especialidad, profesional, sede y dirección;</li>
+      <li>fecha y hora («jueves, 15 de octubre de 2026, 10:00»), duración, especialidad, profesional, sede y dirección;</li>
       <li>«Te recomendamos llegar unos minutos antes de la hora indicada.»;</li>
       <li>el botón <span class="quote">«Cancelar o reprogramar»</span> y <span class="quote">«Puedes cancelar o reprogramar hasta 12 horas antes de tu cita, y reprogramar una sola vez. No compartas este enlace: da acceso a tu cita.»</span></li>
     </ul></li>
@@ -505,7 +510,7 @@
     <ul>
       <li>asunto <span class="quote">«Un paciente canceló una cita de tu agenda»</span>;</li>
       <li>«Hola {nombre de pila del médico},» y «Un paciente canceló una cita de tu agenda desde el enlace de autogestión.»;</li>
-      <li>fecha y hora (hora de Lima), especialidad y sede;</li>
+      <li>fecha y hora, especialidad y sede;</li>
       <li>«El horario quedó libre para otra reserva.» y «No tienes que hacer nada. Consulta tu agenda en WizyDoc para ver el detalle.»;</li>
       <li>el botón «Ver mi agenda».</li>
     </ul></li>
@@ -644,7 +649,7 @@
 
 <h3 id="ca-g-enlace">Llegar al enlace</h3>
 <div class="ca" id="ca-1"><p class="head">CA-1 <span class="tag tag-e2e">e2e</span></p>
-  <p><span class="tag tag-v3">Nuevo v3</span>En un consultorio con plan de pago, al reservar en el booking público, el correo de confirmación («Tu cita en {sede} está reservada») trae el botón «Cancelar o reprogramar» y el texto «Puedes cancelar o reprogramar hasta 12 horas antes de tu cita, y reprogramar una sola vez. No compartas este enlace: da acceso a tu cita.» La fecha va con «(hora de Lima)». No aparece «comunícate con la clínica», ni el teléfono del consultorio, ni un dato vacío.</p></div>
+  <p><span class="tag tag-v3">Nuevo v3</span>En un consultorio con plan de pago, al reservar en el booking público, el correo de confirmación («Tu cita en {sede} está reservada») trae el botón «Cancelar o reprogramar» y el texto «Puedes cancelar o reprogramar hasta 12 horas antes de tu cita, y reprogramar una sola vez. No compartas este enlace: da acceso a tu cita.» La fecha no menciona la zona horaria. No aparece «comunícate con la clínica», ni el teléfono del consultorio, ni un dato vacío.</p></div>
 <div class="ca" id="ca-2"><p class="head">CA-2 <span class="tag tag-e2e">e2e</span></p>
   <p>La pantalla «¡Cita reservada!» del booking no cambia: no muestra ni enlaza la página del enlace, y lo que recibe el navegador al reservar no contiene el enlace.</p></div>
 <div class="ca" id="ca-3"><p class="head">CA-3 <span class="tag tag-e2e">e2e</span></p>
@@ -654,7 +659,7 @@
   <ul>
     <li>«Hola, {nombre de pila}» y la etiqueta «Pendiente»;</li>
     <li>«Esta es tu cita. Puedes cancelarla o reprogramarla hasta 12 horas antes. Solo se puede reprogramar una vez.»;</li>
-    <li>el resumen: «Jueves 15 de octubre, 10:00», «Hora de Lima · 30 minutos», Especialidad, Profesional, Sede y Dirección;</li>
+    <li>el resumen: «Jueves 15 de octubre, 10:00», «30 minutos», Especialidad, Profesional, Sede y Dirección;</li>
     <li>los botones «Reprogramar» y «Cancelar cita», de ancho completo y al menos 44 px de alto.</li>
   </ul></div>
 <div class="ca" id="ca-5"><p class="head">CA-5 <span class="tag tag-e2e">e2e</span></p>
@@ -706,9 +711,9 @@
 
 <h3 id="ca-g-reprogramar">Reprogramar</h3>
 <div class="ca" id="ca-23"><p class="head">CA-23 <span class="tag tag-e2e">e2e</span></p>
-  <p><span class="tag tag-v3">Nuevo v3</span>Con 12 h o más y un médico con horarios, «Reprogramar» muestra «Elige fecha y horario», «Solo ves los horarios libres de {profesional}.», «Horarios en hora de Lima», «Tu cita actual: Jueves 15 de octubre, 10:00» y el mismo selector de días y horas del booking, con el mismo rango de días y solo los horarios de la disponibilidad del mismo médico en la misma sede: no aparecen la hora actual de la cita, horas en que el médico no atiende, horarios ocupados ni horarios a menos de 12 h desde ahora (CA-27). No se ofrece cambiar de médico. Debajo: «¿No encuentras un horario? Puedes cancelar tu cita y reservar más adelante.», donde «cancelar tu cita» lleva a «¿Cancelar tu cita?». «Atrás» vuelve a la vista; «Siguiente» está deshabilitado hasta elegir horario.</p></div>
+  <p><span class="tag tag-v3">Nuevo v3</span>Con 12 h o más y un médico con horarios, «Reprogramar» muestra «Elige fecha y horario», «Solo ves los horarios libres de {profesional}.», «Tu cita actual: Jueves 15 de octubre, 10:00» y el mismo selector de días y horas del booking, con el mismo rango de días y solo los horarios de la disponibilidad del mismo médico en la misma sede: no aparecen la hora actual de la cita, horas en que el médico no atiende, horarios ocupados ni horarios a menos de 12 h desde ahora (CA-27). No se ofrece cambiar de médico. Debajo: «¿No encuentras un horario? Puedes cancelar tu cita y reservar más adelante.», donde «cancelar tu cita» lleva a «¿Cancelar tu cita?». «Atrás» vuelve a la vista; «Siguiente» está deshabilitado hasta elegir horario.</p></div>
 <div class="ca" id="ca-24"><p class="head">CA-24 <span class="tag tag-e2e">e2e</span></p>
-  <p><span class="tag tag-v3">Nuevo v3</span>Al elegir horario, «¿Cambiar tu cita a este horario?» muestra «{especialidad} con {profesional}, en {sede}.», «Antes» tachado, «Ahora» destacado, «Horarios en hora de Lima», «El horario anterior quedará libre para otro paciente. Solo puedes reprogramar una vez: después de este cambio, solo podrás cancelar.» y los botones «Elegir otro» (vuelve al selector) y «Confirmar cambio».</p></div>
+  <p><span class="tag tag-v3">Nuevo v3</span>Al elegir horario, «¿Cambiar tu cita a este horario?» muestra «{especialidad} con {profesional}, en {sede}.», «Antes» tachado, «Ahora» destacado, «El horario anterior quedará libre para otro paciente. Solo puedes reprogramar una vez: después de este cambio, solo podrás cancelar.» y los botones «Elegir otro» (vuelve al selector) y «Confirmar cambio».</p></div>
 <div class="ca" id="ca-25"><p class="head">CA-25 <span class="tag tag-e2e">e2e</span></p>
   <p><span class="tag tag-v3">Nuevo v3</span>«Confirmar cambio» muestra «Listo, tu cita cambió», «Te enviamos los detalles por correo. Este mismo enlace sigue sirviendo para tu nueva cita.», «Antes» y «Ahora», el resumen con la hora nueva, el botón «Ver mi cita» (vuelve a la vista) y un aviso breve «Tu cita cambió».</p></div>
 <div class="ca" id="ca-26"><p class="head">CA-26 <span class="tag tag-e2e">e2e</span></p>
@@ -784,7 +789,7 @@
   <p><span class="tag tag-v3">Nuevo v3</span>Al cancelar, el correo de la ficha recibe «Tu cita en {sede} fue cancelada» con:</p>
   <ul>
     <li>«Tu cita fue cancelada. Estos eran los detalles:»;</li>
-    <li>la fecha y hora tachadas (hora de Lima), duración, especialidad, profesional, sede y dirección;</li>
+    <li>la fecha y hora tachadas, duración, especialidad, profesional, sede y dirección;</li>
     <li>«Si quieres, puedes reservar otro horario cuando te acomode.» y el botón «Reservar otro horario», que lleva al booking de la misma sede.</li>
   </ul>
   <p>No trae el enlace de la cita.</p></div>
