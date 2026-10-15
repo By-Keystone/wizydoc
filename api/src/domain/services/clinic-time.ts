@@ -121,6 +121,14 @@ export function toWallTime(
   };
 }
 
+export function formatClinicDateTime(instant: Date): string {
+  return new Intl.DateTimeFormat("es", {
+    dateStyle: "full",
+    timeStyle: "short",
+    timeZone: CLINIC_TIME_ZONE,
+  }).format(instant);
+}
+
 /** Separa una hora de pared `YYYY-MM-DDTHH:mm` en su fecha y su hora. */
 export function parseWallTime(wallTime: string): WallTime {
   const [date, time] = wallTime.split("T");
