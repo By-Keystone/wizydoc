@@ -1,0 +1,47 @@
+<mjml>
+  <mj-body background-color="#f4f4f4">
+    <mj-section background-color="#ffffff" padding="40px">
+      <mj-column>
+        <mj-text font-size="20px" font-weight="bold">Hola {{patientName}} {{patientLastName}},</mj-text>
+        <mj-text font-size="16px">
+          Tu cita se reprogramó. Estos son los detalles de tu nueva cita:
+        </mj-text>
+        <mj-table font-size="15px" cellpadding="0">
+          <tr>
+            <td style="padding: 8px 16px 8px 0; color: #5C6B6A;">Fecha y hora</td>
+            <td style="padding: 8px 0; font-weight: bold;">{{scheduledAt}}</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px 16px 8px 0; color: #5C6B6A;">Duración</td>
+            <td style="padding: 8px 0;">{{durationMinutes}} minutos</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px 16px 8px 0; color: #5C6B6A;">Especialidad</td>
+            <td style="padding: 8px 0;">{{specialty}}</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px 16px 8px 0; color: #5C6B6A;">Profesional</td>
+            <td style="padding: 8px 0;">{{doctorName}}</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px 16px 8px 0; color: #5C6B6A;">Sede</td>
+            <td style="padding: 8px 0;">{{clinicName}}</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px 16px 8px 0; color: #5C6B6A;">Dirección</td>
+            <td style="padding: 8px 0;">{{clinicAddress}}</td>
+          </tr>
+        </mj-table>
+        <mj-text font-size="14px" color="#5C6B6A">
+          Te recomendamos llegar unos minutos antes de la hora indicada.
+        </mj-text>
+        <mj-button background-color="#0E8C82" href="{{manageUrl}}">
+          Gestionar mi cita
+        </mj-button>
+        <mj-text font-size="14px" color="#5C6B6A">
+          Es el mismo enlace de antes. Ya reprogramaste esta cita una vez: desde el enlace solo puedes cancelarla, hasta 12 horas antes. No compartas este enlace: da acceso a tu cita.
+        </mj-text>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>

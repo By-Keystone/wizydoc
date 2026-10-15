@@ -7,13 +7,13 @@ import { AppointmentLinkUnavailable } from "@/application/errors/appointment-lin
 import { BadRequest } from "@/application/errors/bad-request.errors";
 import type { IEmailService } from "@/application/ports/email-service.port";
 import type {
-  CancellationNotice,
-  IGetCancellationNoticeQuery,
-} from "@/application/queries/appointment/get-cancellation-notice.query";
-import type {
   AppointmentPortal,
   IGetAppointmentPortalQuery,
 } from "@/application/queries/appointment/get-appointment-portal.query";
+import type {
+  AppointmentNotice,
+  IGetAppointmentNoticeQuery,
+} from "@/application/queries/appointment/get-appointment-notice.query";
 import {
   type Appointment,
   CANCELLATION_REASON_LABELS,
@@ -27,8 +27,8 @@ import {
   formatClinicDateTime,
   wallTimeToInstant,
 } from "@/domain/services/clinic-time";
+import { GetAppointmentNoticeQuery } from "@/infrastructure/postgres/queries/appointment/get-appointment-notice.query";
 import { GetAppointmentPortalQuery } from "@/infrastructure/postgres/queries/appointment/get-appointment-portal.query";
-import { GetCancellationNoticeQuery } from "@/infrastructure/postgres/queries/appointment/get-cancellation-notice.query";
 import { AppointmentRepository } from "@/infrastructure/postgres/repositories/appointment.repository";
 import { renderTemplate } from "@/infrastructure/services/email-service/template-renderer";
 import z from "zod";
@@ -46,7 +46,7 @@ export class CancelAppointmentUseCase {
     private readonly emailService: IEmailService,
     private readonly appointments: IAppointmentRepository = new AppointmentRepository(),
     private readonly portal: IGetAppointmentPortalQuery = new GetAppointmentPortalQuery(),
-    private readonly cancellationNotice: IGetCancellationNoticeQuery = new GetCancellationNoticeQuery(),
+    private readonly appointmentNotice: IGetAppointmentNoticeQuery = new GetAppointmentNoticeQuery(),
   ) {}
 
   private async findOpenAppointment(token: string): Promise<Appointment> {
@@ -105,7 +105,7 @@ export class CancelAppointmentUseCase {
   }
 
   private async sendPatientNotice(
-    notice: CancellationNotice,
+    notice: AppointmentNotice,
     manageUrl: string,
   ) {
     const html = await renderTemplate("patient-cancelled-appointment", {
@@ -120,12 +120,12 @@ export class CancelAppointmentUseCase {
   }
 
   private async sendDoctorNotice(
-    notice: CancellationNotice,
+    notice: AppointmentNotice,
     reason: CancellationReason,
     agendaUrl: string,
   ) {
     const html = await renderTemplate("doctor-cancelled-appointment", {
-      doctorName: notice.doctorName,
+      doctorName: notice.doctor.firstName,
       scheduledAt: formatClinicDateTime(notice.scheduledAt),
       specialty: notice.specialty,
       reason: CANCELLATION_REASON_LABELS[reason],
@@ -133,7 +133,7 @@ export class CancelAppointmentUseCase {
     });
     await this.emailService.send({
       subject: `Tu paciente ha cancelado su cita en ${notice.clinicName}`,
-      to: notice.doctorEmail,
+      to: notice.doctor.email,
       html,
     });
   }
@@ -143,7 +143,7 @@ export class CancelAppointmentUseCase {
     token: string,
     reason: CancellationReason,
   ) {
-    const notice = await this.cancellationNotice
+    const notice = await this.appointmentNotice
       .execute(appointmentId)
       .catch((error: unknown) => {
         this.logEmailFailure(appointmentId, error);

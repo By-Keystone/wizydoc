@@ -151,10 +151,9 @@ export default async function appointmentRoutes(
     },
     async (request, reply) => {
       try {
-        const appointment = await new RescheduleAppointmentUseCase().execute(
-          request.params.token,
-          request.body,
-        );
+        const appointment = await new RescheduleAppointmentUseCase(
+          emailService,
+        ).execute(request.params.token, request.body);
         return reply.status(200).send(appointment);
       } catch (error) {
         return replyPortalError(

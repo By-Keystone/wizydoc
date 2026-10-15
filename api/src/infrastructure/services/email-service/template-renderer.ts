@@ -8,7 +8,9 @@ export type EmailTemplate =
   | "invite-user"
   | "confirm-appointment"
   | "patient-cancelled-appointment"
-  | "doctor-cancelled-appointment";
+  | "doctor-cancelled-appointment"
+  | "patient-rescheduled-appointment"
+  | "doctor-rescheduled-appointment";
 
 interface TemplateVariables {
   "confirm-email": { name: string; confirmUrl: string };
@@ -31,6 +33,28 @@ interface TemplateVariables {
     scheduledAt: string;
     specialty: string;
     reason: string;
+    agendaUrl: string;
+  };
+  "patient-rescheduled-appointment": {
+    patientName: string;
+    patientLastName: string;
+    scheduledAt: string;
+    durationMinutes: number;
+    specialty: string;
+    doctorName: string;
+    clinicName: string;
+    clinicAddress: string;
+    manageUrl: string;
+  };
+  "doctor-rescheduled-appointment": {
+    doctorName: string;
+    previousScheduledAt: string;
+    scheduledAt: string;
+    durationMinutes: number;
+    specialty: string;
+    newDoctorFullName: string;
+    clinicName: string;
+    previousDoctorName: string | null;
     agendaUrl: string;
   };
 }
