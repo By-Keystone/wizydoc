@@ -14,6 +14,7 @@ import { appointmentPortalParamsSchema } from "@/application/queries/appointment
 import { CancelAppointmentUseCase } from "@/application/use-cases/appointment/cancel-appointment.usecase";
 import { RescheduleAppointmentUseCase } from "@/application/use-cases/appointment/reschedule-appointment.usecase";
 import { GetAppointmentPortalQuery } from "@/infrastructure/postgres/queries/appointment/get-appointment-portal.query";
+import { GetRescheduleSlotsQuery } from "@/infrastructure/postgres/queries/appointment/get-reschedule-slots.query";
 
 async function preventCaching(_request: FastifyRequest, reply: FastifyReply) {
   reply.header("Cache-Control", "private, no-store");
@@ -162,6 +163,55 @@ export default async function appointmentRoutes(
           reply,
           error,
           "[reschedule-appointment]",
+        );
+      }
+    },
+  );
+
+  app.get(
+    "/manage/:token/slots",
+    {
+      schema: { params: appointmentPortalParamsSchema },
+      onRequest: preventCaching,
+      ...policy({ public: true }),
+    },
+    async (request, reply) => {
+      try {
+        const slots = await new GetRescheduleSlotsQuery().execute(
+          request.params.token,
+          request.query,
+        );
+        return reply.status(200).send(slots);
+      } catch (error) {
+        return replyPortalError(
+          request,
+          reply,
+          error,
+          "[get-reschedule-slots]",
+        );
+      }
+    },
+  );
+
+  app.get(
+    "/manage/:token/has-slots",
+    {
+      schema: { params: appointmentPortalParamsSchema },
+      onRequest: preventCaching,
+      ...policy({ public: true }),
+    },
+    async (request, reply) => {
+      try {
+        const hasSlots = await new GetRescheduleSlotsQuery().hasSlots(
+          request.params.token,
+        );
+        return reply.status(200).send({ hasSlots });
+      } catch (error) {
+        return replyPortalError(
+          request,
+          reply,
+          error,
+          "[has-reschedule-slots]",
         );
       }
     },

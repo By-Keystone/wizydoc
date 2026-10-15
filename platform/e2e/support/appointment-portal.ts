@@ -335,6 +335,8 @@ export interface PortalClient {
   get(token: string): Promise<APIResponse>;
   cancel(token: string, data?: unknown): Promise<APIResponse>;
   reschedule(token: string, data: unknown): Promise<APIResponse>;
+  slots(token: string, query?: string): Promise<APIResponse>;
+  hasSlots(token: string): Promise<APIResponse>;
   postRaw(path: string, body: string): Promise<APIResponse>;
 }
 
@@ -350,6 +352,8 @@ export async function createPortalClient(): Promise<PortalClient> {
       ),
     reschedule: (token, data) =>
       context.post(`${base}/${token}/reschedule`, { data }),
+    slots: (token, query = "") => context.get(`${base}/${token}/slots${query}`),
+    hasSlots: (token) => context.get(`${base}/${token}/has-slots`),
     postRaw: (path, body) =>
       context.post(`${base}/${path}`, {
         headers: { "content-type": "application/json" },

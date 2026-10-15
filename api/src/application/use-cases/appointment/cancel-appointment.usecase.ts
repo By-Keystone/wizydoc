@@ -1,4 +1,8 @@
-import { AppointmentConflict } from "@/application/errors/appointment-conflict.error";
+import {
+  APPOINTMENT_CHANGED_MESSAGE,
+  AppointmentConflict,
+  LESS_THAN_NOTICE_MESSAGE,
+} from "@/application/errors/appointment-conflict.error";
 import { AppointmentLinkUnavailable } from "@/application/errors/appointment-link-unavailable.error";
 import { BadRequest } from "@/application/errors/bad-request.errors";
 import type {
@@ -16,11 +20,6 @@ import { GetAppointmentPortalQuery } from "@/infrastructure/postgres/queries/app
 import { AppointmentRepository } from "@/infrastructure/postgres/repositories/appointment.repository";
 import z from "zod";
 import { clinicWallTimeSchema } from "./clinic-wall-time.schema";
-
-export const APPOINTMENT_CHANGED_MESSAGE =
-  "Tu cita cambió mientras elegías. Alguien canceló o reprogramó esta cita desde otra pestaña o dispositivo. Recarga para ver cómo quedó.";
-export const LESS_THAN_NOTICE_MESSAGE =
-  "Ya no puedes cambiar esta cita desde este enlace porque faltan menos de 12 horas.";
 
 export const cancelAppointmentSchema = z
   .object({ expectedScheduledAt: clinicWallTimeSchema.optional() })
