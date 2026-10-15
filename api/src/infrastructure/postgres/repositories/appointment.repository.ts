@@ -12,29 +12,29 @@ import type {
 import { PrismaClientKnownRequestError } from "@prisma/client/runtime/client";
 import { toDomain } from "../../mappers/appointment/mapper";
 import {
-  generateAccessToken,
-  hashAccessToken,
-  isAccessTokenFormat,
-} from "../appointment-access-token";
+  generateToken,
+  hashToken,
+  isTokenFormat,
+} from "@/domain/services/token-service";
 import { getClient } from "../transaction-context";
 
 const UNIQUE_VIOLATION_CODE = "P2002";
 
 export class AppointmentRepository implements IAppointmentRepository {
   async findByAccessToken(token: string): Promise<Appointment | null> {
-    if (!isAccessTokenFormat(token)) return null;
+    if (!isTokenFormat(token)) return null;
 
     const accessToken = await getClient().appointmentAccessToken.findUnique({
-      where: { tokenHash: hashAccessToken(token) },
+      where: { tokenHash: hashToken(token) },
       include: { appointment: true },
     });
     return accessToken ? toDomain(accessToken.appointment) : null;
   }
 
   async issueAccessToken(appointmentId: string): Promise<string> {
-    const token = generateAccessToken();
+    const token = generateToken();
     await getClient().appointmentAccessToken.create({
-      data: { appointmentId, tokenHash: hashAccessToken(token) },
+      data: { appointmentId, tokenHash: hashToken(token) },
     });
     return token;
   }
