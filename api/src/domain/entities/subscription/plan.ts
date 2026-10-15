@@ -1,6 +1,10 @@
 import type { Plan } from "@prisma/client";
 
-export type Feature = "PATIENT_RECORD" | "CLINIC_METRICS" | "DATA_EXPORT";
+export type Feature =
+  | "PATIENT_RECORD"
+  | "CLINIC_METRICS"
+  | "DATA_EXPORT"
+  | "PATIENT_APPOINTMENT_MANAGEMENT";
 
 interface PlanCapabilities {
   /** `null` es ilimitado: el plan Red se negocia por contrato, no por tope. */
@@ -27,19 +31,28 @@ export const PLAN_CAPABILITIES: Record<Plan, PlanCapabilities> = {
     includedDoctors: 3,
     includedClinics: 1,
     monthlyPriceCents: 7900,
-    features: ["PATIENT_RECORD"],
+    features: ["PATIENT_RECORD", "PATIENT_APPOINTMENT_MANAGEMENT"],
   },
   CLINICA: {
     includedDoctors: 8,
     includedClinics: 3,
     monthlyPriceCents: 19900,
-    features: ["PATIENT_RECORD", "CLINIC_METRICS"],
+    features: [
+      "PATIENT_RECORD",
+      "CLINIC_METRICS",
+      "PATIENT_APPOINTMENT_MANAGEMENT",
+    ],
   },
   RED: {
     includedDoctors: null,
     includedClinics: null,
     monthlyPriceCents: null,
-    features: ["PATIENT_RECORD", "CLINIC_METRICS", "DATA_EXPORT"],
+    features: [
+      "PATIENT_RECORD",
+      "CLINIC_METRICS",
+      "DATA_EXPORT",
+      "PATIENT_APPOINTMENT_MANAGEMENT",
+    ],
   },
 };
 

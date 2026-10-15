@@ -151,6 +151,7 @@ export interface TestPrisma {
     }): Promise<{ count: number }>;
   };
   appointmentAccessToken: {
+    count(args: { where: Record<string, unknown> }): Promise<number>;
     create(args: { data: Record<string, unknown> }): Promise<{ id: string }>;
   };
   userInvitation: {

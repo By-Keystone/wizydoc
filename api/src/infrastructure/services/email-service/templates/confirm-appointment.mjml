@@ -35,9 +35,14 @@
         <mj-text font-size="14px" color="#5C6B6A">
           Te recomendamos llegar unos minutos antes de la hora indicada.
         </mj-text>
+        {{#if manageUrl}}
+        <mj-button background-color="#0E8C82" href="{{manageUrl}}">
+          Cancelar o reprogramar
+        </mj-button>
         <mj-text font-size="14px" color="#5C6B6A">
-          Si necesitas cancelar o reprogramar, comunícate con la clínica al {{clinicPhone}} indicando la referencia {{appointmentId}}.
+          Puedes cancelar o reprogramar hasta 12 horas antes de tu cita, y reprogramar una sola vez. No compartas este enlace: da acceso a tu cita.
         </mj-text>
+        {{/if}}
       </mj-column>
     </mj-section>
   </mj-body>
