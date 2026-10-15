@@ -21,6 +21,7 @@ interface TemplateVariables {
     doctorName: string;
     clinicName: string;
     clinicAddress: string;
+    manageUrl: string | null;
   };
 }
 

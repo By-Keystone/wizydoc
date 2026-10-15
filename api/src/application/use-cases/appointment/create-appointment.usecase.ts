@@ -1,3 +1,4 @@
+import type { IGetAccountEntitlements } from "@/application/queries/subscription/get-account-entitlements.query";
 import type { IGetDoctorSlotsQuery } from "@/application/queries/doctor-profile/get-doctor-slots.query";
 import { Conflict } from "@/application/errors/conflict.error";
 import { NotFound } from "@/application/errors/not-found.error";
@@ -6,6 +7,8 @@ import {
   MAX_DAYS_AHEAD,
   SLOT_DURATION_MINUTES,
 } from "@/domain/entities/availability/entity";
+import { includesFeature } from "@/domain/entities/subscription/entitlements";
+import type { IAppointmentRepository } from "@/domain/repositories/appointment.repository";
 import {
   addDays,
   CLINIC_TIME_ZONE,
@@ -13,6 +16,8 @@ import {
   today,
   wallTimeToInstant,
 } from "@/domain/services/clinic-time";
+import { AppointmentRepository } from "@/infrastructure/postgres/repositories/appointment.repository";
+import { GetAccountEntitlements } from "@/infrastructure/postgres/queries/subscription/get-account-entitlements.query";
 import { GetDoctorSlotsQuery } from "@/infrastructure/postgres/queries/doctor-profile/get-doctor-slots.query";
 import {
   getClient,
@@ -101,6 +106,8 @@ export class CreateApointmentUseCase {
   constructor(
     private readonly props: Props,
     private readonly doctorSlots: IGetDoctorSlotsQuery = new GetDoctorSlotsQuery(),
+    private readonly entitlementsQuery: IGetAccountEntitlements = new GetAccountEntitlements(),
+    private readonly appointments: IAppointmentRepository = new AppointmentRepository(),
   ) {}
 
   private async assertSlotIsOffered(
@@ -164,32 +171,39 @@ export class CreateApointmentUseCase {
 
     await this.assertSlotIsOffered(dto, date, time);
 
-    const { patient, appointment } = await inTransaction(async () => {
-      // El booking es anónimo: reutiliza la ficha del documento pero nunca la modifica.
-      const bookedPatient = await getClient().patient.upsert({
-        where: {
-          accountId_documentType_documentNumber: {
-            accountId: clinic.resource.accountId,
-            documentType: dto.patientDocumentType,
-            documentNumber: dto.patientDocumentNumber,
-          },
-        },
-        update: {},
-        create: {
-          documentNumber: dto.patientDocumentNumber,
-          documentType: dto.patientDocumentType,
-          email: dto.patientEmail,
-          lastName: dto.patientLastName,
-          name: dto.patientName,
-          phone: dto.patientPhone,
-          birthDate: dto.patientBirthDate,
-          accountId: clinic.resource.accountId,
-        },
-      });
+    const entitlements = await this.entitlementsQuery.execute(
+      clinic.resource.accountId,
+    );
+    const includesSelfService = includesFeature(
+      entitlements,
+      "PATIENT_SELF_SERVICE",
+    );
 
-      return {
-        patient: bookedPatient,
-        appointment: await getClient().appointment.create({
+    const { patient, appointment, accessToken } = await inTransaction(
+      async () => {
+        // El booking es anónimo: reutiliza la ficha del documento pero nunca la modifica.
+        const bookedPatient = await getClient().patient.upsert({
+          where: {
+            accountId_documentType_documentNumber: {
+              accountId: clinic.resource.accountId,
+              documentType: dto.patientDocumentType,
+              documentNumber: dto.patientDocumentNumber,
+            },
+          },
+          update: {},
+          create: {
+            documentNumber: dto.patientDocumentNumber,
+            documentType: dto.patientDocumentType,
+            email: dto.patientEmail,
+            lastName: dto.patientLastName,
+            name: dto.patientName,
+            phone: dto.patientPhone,
+            birthDate: dto.patientBirthDate,
+            accountId: clinic.resource.accountId,
+          },
+        });
+
+        const bookedAppointment = await getClient().appointment.create({
           data: {
             specialty: dto.specialty,
             durationMinutes: dto.durationMinutes,
@@ -198,9 +212,17 @@ export class CreateApointmentUseCase {
             patientId: bookedPatient.id,
             clinicId: clinic.resourceId,
           },
-        }),
-      };
-    });
+        });
+
+        return {
+          patient: bookedPatient,
+          appointment: bookedAppointment,
+          accessToken: includesSelfService
+            ? await this.appointments.issueAccessToken(bookedAppointment.id)
+            : null,
+        };
+      },
+    );
 
     const scheduledAt = new Intl.DateTimeFormat("es", {
       dateStyle: "full",
@@ -220,6 +242,9 @@ export class CreateApointmentUseCase {
         doctorName: `${profile.user.name} ${profile.user.lastName}`,
         clinicName: clinic.name,
         clinicAddress: clinic.address,
+        manageUrl: accessToken
+          ? `${process.env.FRONTEND_URL}/appointment/manage/${accessToken}`
+          : null,
       });
 
       await this.props.emailService.send({
