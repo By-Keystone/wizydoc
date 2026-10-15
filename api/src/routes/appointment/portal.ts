@@ -98,4 +98,16 @@ export default async function appointmentPortalRoutes(
       }
     },
   );
+
+  // Cualquier otra URL bajo el prefijo responde el mismo 404: sin esto caería en el hook de políticas, que responde 401 y registra la URL con el token.
+  app.route({
+    method: ["GET", "POST", "PUT", "PATCH", "DELETE"],
+    url: "/*",
+    ...policy({ public: true }),
+    handler: async (_request, reply) =>
+      reply.status(404).send({
+        message: new AppointmentLinkUnavailable().message,
+        code: "NOT_FOUND",
+      }),
+  });
 }
