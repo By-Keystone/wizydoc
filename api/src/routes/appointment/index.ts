@@ -5,10 +5,43 @@ import {
 } from "@/application/use-cases/appointment/create-appointment.usecase";
 import { Prisma } from "@prisma/client";
 import type { ZodTypeProvider } from "@fastify/type-provider-zod";
-import type { FastifyInstance } from "fastify";
+import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { policy } from "@/plugins/policy";
 import { ApplicationError } from "@/application/errors/application.errors";
+import { AppointmentLinkUnavailable } from "@/application/errors/appointment-link-unavailable.error";
 import type { IEmailService } from "@/application/ports/email-service.port";
+import { appointmentPortalParamsSchema } from "@/application/queries/appointment/get-appointment-portal.query";
+import { CancelAppointmentUseCase } from "@/application/use-cases/appointment/cancel-appointment.usecase";
+import { RescheduleAppointmentUseCase } from "@/application/use-cases/appointment/reschedule-appointment.usecase";
+import { GetAppointmentPortalQuery } from "@/infrastructure/postgres/queries/appointment/get-appointment-portal.query";
+
+async function preventCaching(_request: FastifyRequest, reply: FastifyReply) {
+  reply.header("Cache-Control", "private, no-store");
+}
+
+function replyPortalError(
+  request: FastifyRequest,
+  reply: FastifyReply,
+  error: unknown,
+  label: string,
+) {
+  if (error instanceof ApplicationError)
+    return reply
+      .status(error.statusCode)
+      .send({ message: error.message, code: error.code });
+
+  // Sólo nombre y código: el error de Prisma puede traer el hash del token en los argumentos.
+  const errName = error instanceof Error ? error.name : "UnknownError";
+  const errCode =
+    error && typeof error === "object" && "code" in error
+      ? error.code
+      : undefined;
+  request.log.error({ errName, errCode }, label);
+
+  return reply
+    .status(500)
+    .send({ message: "Ocurrió un error al gestionar tu cita" });
+}
 
 interface RouteProps {
   emailService: IEmailService;
@@ -62,4 +95,88 @@ export default async function appointmentRoutes(
       }
     },
   );
+
+  app.get(
+    "/manage/:token",
+    {
+      schema: { params: appointmentPortalParamsSchema },
+      onRequest: preventCaching,
+      ...policy({ public: true }),
+    },
+    async (request, reply) => {
+      try {
+        const appointment = await new GetAppointmentPortalQuery().execute(
+          request.params.token,
+        );
+        if (!appointment) throw new AppointmentLinkUnavailable();
+
+        return reply.status(200).send(appointment);
+      } catch (error) {
+        return replyPortalError(
+          request,
+          reply,
+          error,
+          "[get-appointment-portal]",
+        );
+      }
+    },
+  );
+
+  app.post(
+    "/manage/:token/cancel",
+    {
+      schema: { params: appointmentPortalParamsSchema },
+      onRequest: preventCaching,
+      ...policy({ public: true }),
+    },
+    async (request, reply) => {
+      try {
+        const appointment = await new CancelAppointmentUseCase().execute(
+          request.params.token,
+          request.body,
+        );
+        return reply.status(200).send(appointment);
+      } catch (error) {
+        return replyPortalError(request, reply, error, "[cancel-appointment]");
+      }
+    },
+  );
+
+  app.post(
+    "/manage/:token/reschedule",
+    {
+      schema: { params: appointmentPortalParamsSchema },
+      onRequest: preventCaching,
+      ...policy({ public: true }),
+    },
+    async (request, reply) => {
+      try {
+        const appointment = await new RescheduleAppointmentUseCase().execute(
+          request.params.token,
+          request.body,
+        );
+        return reply.status(200).send(appointment);
+      } catch (error) {
+        return replyPortalError(
+          request,
+          reply,
+          error,
+          "[reschedule-appointment]",
+        );
+      }
+    },
+  );
+
+  // Cualquier otra URL bajo /manage responde el mismo 404: sin esto caería en el hook de políticas, que responde 401 y registra la URL con el token.
+  app.route({
+    method: ["GET", "POST", "PUT", "PATCH", "DELETE"],
+    url: "/manage/*",
+    onRequest: preventCaching,
+    ...policy({ public: true }),
+    handler: async (_request, reply) =>
+      reply.status(404).send({
+        message: new AppointmentLinkUnavailable().message,
+        code: "NOT_FOUND",
+      }),
+  });
 }

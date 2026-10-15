@@ -27,7 +27,6 @@ import auth from "./infrastructure/vendors/auth/better-auth/auth";
 import userInvitationRoutes from "./routes/user-invitation";
 import doctorProfileRoutes from "./routes/doctor-profile/index";
 import appointmentRoutes from "./routes/appointment/index";
-import appointmentPortalRoutes from "./routes/appointment/portal";
 import patientRoutes from "./routes/patient";
 import { CulqiBillingService } from "./infrastructure/vendors/billing/culqi/culqi-billing.service";
 
@@ -178,10 +177,6 @@ async function start() {
   await fastify.register(appointmentRoutes, {
     prefix: "/appointment",
     emailService,
-  });
-
-  await fastify.register(appointmentPortalRoutes, {
-    prefix: "/appointment/manage",
   });
 
   await fastify.register(patientRoutes, {
