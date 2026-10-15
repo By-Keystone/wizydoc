@@ -1,10 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { getDoctorSlotsAction } from "@/lib/actions/doctor-profile/get-slots.action";
 import type { DoctorSlots } from "@/lib/api/doctor-profile/types";
 import {
   addDays,
@@ -14,22 +13,40 @@ import {
   getWeekDays,
   startOfWeek,
   todayKey,
-} from "../lib/week";
+} from "./week";
 
 // El api rechaza fechas a más de 366 días de hoy; la semana 52 puede pasarse.
 const MAX_WEEK_OFFSET = 51;
 
 interface Props {
-  doctorProfileId: string;
+  slotsSourceId: string;
+  loadSlots: (
+    slotsSourceId: string,
+    from: string,
+    to: string,
+  ) => Promise<DoctorSlots>;
   onNext: (selection: {
     date: string;
     time: string;
     durationMinutes: number;
   }) => void;
   onBack: () => void;
+  description?: string;
+  emptyDayMessage?: string;
+  intro?: ReactNode;
+  hint?: ReactNode;
 }
 
-export function DateTimeStep({ doctorProfileId, onNext, onBack }: Props) {
+export function DateTimeStep({
+  slotsSourceId,
+  loadSlots,
+  onNext,
+  onBack,
+  description = "Selecciona el día y un horario disponible.",
+  emptyDayMessage = "El doctor no tiene horarios disponibles ese día.",
+  intro,
+  hint,
+}: Props) {
   const [slots, setSlots] = useState<DoctorSlots | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [weekOffset, setWeekOffset] = useState(0);
@@ -46,10 +63,10 @@ export function DateTimeStep({ doctorProfileId, onNext, onBack }: Props) {
   const from = weekDays[0];
   const to = weekDays[6];
 
-  // Al cambiar de doctor volvemos a la semana actual.
+  // Al cambiar de fuente de horarios volvemos a la semana actual.
   useEffect(() => {
     setWeekOffset(0);
-  }, [doctorProfileId]);
+  }, [slotsSourceId]);
 
   // Una petición por semana visible: los huecos ya reservados no llegan a
   // mostrarse. `cancelled` descarta respuestas de una semana que el paciente
@@ -62,7 +79,7 @@ export function DateTimeStep({ doctorProfileId, onNext, onBack }: Props) {
     setSelectedDate(null);
     setTime(null);
 
-    getDoctorSlotsAction(doctorProfileId, from, to)
+    loadSlots(slotsSourceId, from, to)
       .then((result) => {
         if (!cancelled) setSlots(result);
       })
@@ -73,7 +90,7 @@ export function DateTimeStep({ doctorProfileId, onNext, onBack }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [doctorProfileId, from, to]);
+  }, [slotsSourceId, loadSlots, from, to]);
 
   const daySlots = selectedDate ? (slots?.days[selectedDate] ?? []) : [];
 
@@ -82,9 +99,9 @@ export function DateTimeStep({ doctorProfileId, onNext, onBack }: Props) {
       <h2 className="text-lg font-semibold text-brand-teal-dark">
         Elige fecha y horario
       </h2>
-      <p className="mt-1 text-sm text-brand-gray">
-        Selecciona el día y un horario disponible.
-      </p>
+      <p className="mt-1 text-sm text-brand-gray">{description}</p>
+
+      {intro}
 
       {error && <p className="mt-6 text-sm text-red-600">{error}</p>}
 
@@ -162,9 +179,7 @@ export function DateTimeStep({ doctorProfileId, onNext, onBack }: Props) {
                 Elige un día para ver los horarios disponibles.
               </p>
             ) : daySlots.length === 0 ? (
-              <p className="mt-2 text-sm text-brand-gray">
-                El doctor no tiene horarios disponibles ese día.
-              </p>
+              <p className="mt-2 text-sm text-brand-gray">{emptyDayMessage}</p>
             ) : (
               <div className="mt-2 grid grid-cols-4 gap-2">
                 {daySlots.map((slot) => (
@@ -187,6 +202,8 @@ export function DateTimeStep({ doctorProfileId, onNext, onBack }: Props) {
           </div>
         </>
       )}
+
+      {hint}
 
       <div className="mt-8 flex gap-3">
         <Button

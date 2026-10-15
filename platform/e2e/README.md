@@ -55,6 +55,7 @@ Playwright arranca el api en `:4100` y platform en `:3100` (nunca reutiliza el
 | Booking público en el celular | `ui/booking/public-booking-specialty-scope.spec.ts` | Con viewport móvil: el paciente ve sólo las especialidades y médicos de la sede (no los de otra organización) y completa una reserva de punta a punta |
 | Aviso de plan sin la función | `ui/clinic/plan-feature-notice.spec.ts` | En Gratis, pacientes y las métricas de la sede muestran "Tu plan no permite hacer uso de esta función" (en el dashboard sólo en las métricas; "Citas de hoy" sigue) y no "Algo salió mal"; en Clínica ambas páginas funcionan |
 | Booking público (caso feliz) | `ui/clinic/public-booking.spec.ts` | Especialidad → doctor → fecha/hora → datos del paciente → "¡Cita reservada!", con un médico invitado y disponibilidad sembrada por Prisma; confirma que quitar `userId` del listado de médicos no rompe la reserva |
+| Autogestión de la cita (página) | `ui/appointment/appointment-portal.spec.ts` | A 375 px y sin sesión, con el enlace sembrado por Prisma: la cita se ve sin apellidos, documento, teléfono, correo ni contacto de la sede, sin «hora de Lima» ni «Dr./Dra.», con `noindex` y `referrer: no-referrer`; cancelar pide confirmación («Volver» no cancela), deja la cita cancelada y ofrece «Reservar otro horario» a la reserva de la sede; reprogramar con el mismo médico de punta a punta (selector, «Antes»/«Ahora», éxito, y luego «Reprogramar» deshabilitado con su motivo); a menos de 12 h sin botones; tope de una reprogramación; cita ya cancelada; token alterado o inexistente muestra «Este enlace ya no está disponible» (con estado HTTP 200 porque la página responde en streaming); horario tomado mientras se confirma vuelve al selector con el mensaje y la cita intacta; cita cambiada en otra pestaña muestra «Tu cita cambió mientras elegías» y «Recargar» enseña cómo quedó; médico sin horarios ofrece sólo «Cancelar y reservar de nuevo» y «Mantener mi cita» |
 | Botón "Crear organización" en `/select` | `ui/account/create-organization-button.spec.ts` | Un USER de una organización y un ADMIN sólo de una sede no ven el botón; en una cuenta sin organizaciones sólo el dueño lo ve; el dueño nuevo crea su organización y una sede desde ahí y queda ADMIN |
 
 ### Sólo API (`e2e/api/`)
@@ -89,7 +90,7 @@ título (`CA-3: …`); los criterios están al final de cada
 
 - Autogestión de la cita: los criterios que dependen de lo que aún no existe
   (correos con el enlace y avisos al médico CA-1, CA-3, CA-9, CA-36 a CA-41,
-  etiquetas del panel CA-44 a CA-46, tratamiento «Dr./Dra.» CA-6) y toda la UI.
+  etiquetas del panel CA-44 a CA-46, tratamiento «Dr./Dra.» CA-6) y el cambio de médico en la página (lista de otros médicos).
 
 - Ficha del paciente según el rol.
 - Editor de disponibilidad del médico.

@@ -16,8 +16,22 @@ export type FieldErrors<Fields> = Partial<
 export type ActionState<Fields = Record<string, unknown>> =
   | { status: "idle" }
   | { status: "success"; message?: string }
-  | { status: "error"; message: string; fieldErrors?: FieldErrors<Fields> }
+  | {
+      status: "error";
+      message: string;
+      code?: string;
+      fieldErrors?: FieldErrors<Fields>;
+    }
   | { status: "auth-expired" };
+
+export type ActionFailure = Exclude<
+  ActionState,
+  { status: "success" } | { status: "idle" }
+>;
+
+export type DataActionState<Data> =
+  | { status: "success"; data: Data }
+  | ActionFailure;
 
 /** Devuelve el primer error de un campo, o `undefined` si no hay. */
 export function fieldError<Fields>(
