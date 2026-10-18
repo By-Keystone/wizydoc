@@ -9,6 +9,7 @@ import {
   today,
   toWallTime,
 } from "@/domain/services/clinic-time";
+import { formatDoctorName } from "@/domain/services/doctor-name";
 import { getClient } from "../../transaction-context";
 
 export class GetClinicAppointmentsQuery implements IGetClinicAppointmentsQuery {
@@ -35,7 +36,9 @@ export class GetClinicAppointmentsQuery implements IGetClinicAppointmentsQuery {
         status: true,
         specialty: true,
         doctorProfile: {
-          select: { user: { select: { name: true, lastName: true } } },
+          select: {
+            user: { select: { name: true, lastName: true, treatment: true } },
+          },
         },
         patient: { select: { name: true, lastName: true, phone: true } },
       },
@@ -44,7 +47,11 @@ export class GetClinicAppointmentsQuery implements IGetClinicAppointmentsQuery {
     return appointments.map(({ doctorProfile, ...appointment }) => ({
       ...appointment,
       time: toWallTime(appointment.scheduledAt).time,
-      doctor: doctorProfile.user,
+      doctor: {
+        name: doctorProfile.user.name,
+        lastName: doctorProfile.user.lastName,
+        displayName: formatDoctorName(doctorProfile.user),
+      },
     }));
   }
 }

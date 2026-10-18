@@ -9,6 +9,7 @@ import {
 } from "@/domain/entities/availability/entity";
 import { includesFeature } from "@/domain/entities/subscription/entitlements";
 import type { IAppointmentRepository } from "@/domain/repositories/appointment.repository";
+import { formatDoctorName } from "@/domain/services/doctor-name";
 import {
   addDays,
   formatClinicDateTime,
@@ -143,7 +144,9 @@ export class CreateApointmentUseCase {
           },
         },
       },
-      select: { user: { select: { name: true, lastName: true } } },
+      select: {
+        user: { select: { name: true, lastName: true, treatment: true } },
+      },
     });
   }
 
@@ -234,7 +237,7 @@ export class CreateApointmentUseCase {
         scheduledAt,
         durationMinutes: appointment.durationMinutes,
         specialty: appointment.specialty,
-        doctorName: `${profile.user.name} ${profile.user.lastName}`,
+        doctorName: formatDoctorName(profile.user),
         clinicName: clinic.name,
         clinicAddress: clinic.address,
         manageUrl: accessToken

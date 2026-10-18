@@ -2,6 +2,8 @@ import type {
   IGetClinicDoctorsQuery,
   IGetClinicDoctorsQueryResult,
 } from "@/application/queries/clinic/get-clinic-doctors.query";
+import type { DoctorTreatment } from "@/domain/enums/doctor-treatment";
+import { formatDoctorName } from "@/domain/services/doctor-name";
 import { getClient } from "../../transaction-context";
 
 export class GetClinicDoctorsQuery implements IGetClinicDoctorsQuery {
@@ -9,8 +11,12 @@ export class GetClinicDoctorsQuery implements IGetClinicDoctorsQuery {
     const client = getClient();
 
     // DoctorProfile no tiene deleted_at: quitar al médico se registra en su membership.
-    const doctors = await client.$queryRaw<IGetClinicDoctorsQueryResult[]>`
-            SELECT dp.id AS "doctorProfileId", u.name, u.last_name AS "lastName", json_agg(
+    const doctors = await client.$queryRaw<
+      (Omit<IGetClinicDoctorsQueryResult, "displayName"> & {
+        treatment: DoctorTreatment | null;
+      })[]
+    >`
+            SELECT dp.id AS "doctorProfileId", u.name, u.last_name AS "lastName", u.treatment, json_agg(
                 json_build_object('id', s.id, 'name', s.name)
             ) as specialties
             FROM doctor_profile dp
@@ -25,9 +31,17 @@ export class GetClinicDoctorsQuery implements IGetClinicDoctorsQuery {
                 AND urm.resource_id = dp.resource_id
                 AND urm.deleted_at IS NULL
             )
-            GROUP BY dp.id, u.id, u.name, u.last_name
+            GROUP BY dp.id, u.id, u.name, u.last_name, u.treatment
         `;
 
-    return doctors;
+    // Respuesta pública: se expone el nombre armado y no el tratamiento.
+    return doctors.map(({ treatment, ...doctor }) => ({
+      ...doctor,
+      displayName: formatDoctorName({
+        name: doctor.name,
+        lastName: doctor.lastName,
+        treatment,
+      }),
+    }));
   }
 }

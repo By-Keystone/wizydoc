@@ -8,6 +8,7 @@ import {
   rescheduleBlockedBy,
 } from "@/domain/entities/appointment/entity";
 import { toWallTime } from "@/domain/services/clinic-time";
+import { formatDoctorName } from "@/domain/services/doctor-name";
 import { TokenService } from "@/domain/services/token-service";
 import { getClient } from "../../transaction-context";
 
@@ -32,7 +33,11 @@ export class GetAppointmentPortalQuery implements IGetAppointmentPortalQuery {
             patient: { select: { name: true } },
             clinic: { select: { name: true, address: true } },
             doctorProfile: {
-              select: { user: { select: { name: true, lastName: true } } },
+              select: {
+                user: {
+                  select: { name: true, lastName: true, treatment: true },
+                },
+              },
             },
           },
         },
@@ -51,7 +56,7 @@ export class GetAppointmentPortalQuery implements IGetAppointmentPortalQuery {
       status: appointment.status,
       patientName: appointment.patient.name,
       specialty: appointment.specialty,
-      doctorName: `${user.name} ${user.lastName}`,
+      doctorName: formatDoctorName(user),
       doctorProfileId: appointment.doctorProfileId,
       clinicId: appointment.clinicId,
       clinicName: appointment.clinic.name,

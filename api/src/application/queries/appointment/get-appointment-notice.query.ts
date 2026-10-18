@@ -1,7 +1,7 @@
 export interface DoctorContact {
   email: string;
   firstName: string;
-  fullName: string;
+  displayName: string;
 }
 
 export interface AppointmentNotice {

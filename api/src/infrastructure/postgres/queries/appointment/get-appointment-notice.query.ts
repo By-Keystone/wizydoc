@@ -3,21 +3,28 @@ import type {
   DoctorContact,
   IGetAppointmentNoticeQuery,
 } from "@/application/queries/appointment/get-appointment-notice.query";
+import type { DoctorTreatment } from "@/domain/enums/doctor-treatment";
+import { formatDoctorName } from "@/domain/services/doctor-name";
 import { getClient } from "../../transaction-context";
 
 const doctorUserSelect = {
-  select: { user: { select: { name: true, lastName: true, email: true } } },
+  select: {
+    user: {
+      select: { name: true, lastName: true, email: true, treatment: true },
+    },
+  },
 } as const;
 
 function toDoctorContact(user: {
   name: string;
   lastName: string;
   email: string;
+  treatment: DoctorTreatment | null;
 }): DoctorContact {
   return {
     email: user.email,
     firstName: user.name,
-    fullName: `${user.name} ${user.lastName}`,
+    displayName: formatDoctorName(user),
   };
 }
 
