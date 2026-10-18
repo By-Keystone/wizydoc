@@ -57,7 +57,7 @@ export async function TodayAppointments({ resourceId }: Props) {
                   </p>
                   <p className="truncate text-sm text-brand-gray">
                     {appointment.specialty} · {appointment.durationMinutes} min
-                    · {appointment.doctor.name} {appointment.doctor.lastName}
+                    · {appointment.doctor.displayName}
                   </p>
                 </div>
 

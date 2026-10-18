@@ -51,7 +51,10 @@ test("CA-5: el paciente reserva una cita de punta a punta con un médico invitad
   await page.getByRole("button", { name: "Siguiente", exact: true }).click();
 
   await page
-    .getByRole("button", { name: `Dr. ${DOCTOR_NAME} ${DOCTOR_LAST_NAME}` })
+    .getByRole("button", {
+      name: `${DOCTOR_NAME} ${DOCTOR_LAST_NAME}`,
+      exact: true,
+    })
     .click();
   await page.getByRole("button", { name: "Siguiente", exact: true }).click();
 
