@@ -64,6 +64,7 @@ Playwright arranca el api en `:4100` y platform en `:3100` (nunca reutiliza el
 | Mi perfil: edición | `ui/profile/profile-edit.spec.ts` | «Editar» y foco, guardar y persistir, tratamiento visible en el booking, «Cancelar» (descarta valores y errores), errores por campo, celulares (+51, sin código, código fuera de la lista), el tratamiento no se envía a quien no tiene sedes, sesión expirada (CA-50 a CA-57, CA-71) |
 | Mi perfil: contraseña | `ui/profile/profile-password.spec.ts` | Desplegar, mostrar/ocultar, actual incorrecta, validaciones sin petición, 129 caracteres, éxito con la sesión vigente, cierre de las demás sesiones (segundo contexto), cancelar (CA-63 a CA-70) |
 | Mi perfil en el celular | `ui/profile/profile-mobile.spec.ts` | A 375 px, médico con dos sedes y un nombre de 60 caracteres: sin desplazamiento horizontal en lectura, edición y contraseña abierta, bajo los workspaces y dentro de la sede (CA-73) |
+| Mi perfil: navegación | `ui/profile/profile-navigation.spec.ts` | Menú del avatar en `/select`, la sede y la organización (computadora y 375 px): nombre, correo, «Mi perfil», «Cambiar de sede» (cookies borradas, a `/select`) y «Cerrar sesión» (a `/login`, sin cookies ni panel); teclado (flechas, Escape con foco al avatar, Escape a 375 px sólo cierra el menú, clic fuera); avatar activo en el perfil; nombre sin tratamiento; el avatar se actualiza tras guardar; «Configuración» sólo para el médico; `profile` redirige a `me`; sin desplazamiento horizontal (CA-78 a CA-91, CA-93) |
 
 ### Sólo API (`e2e/api/`)
 

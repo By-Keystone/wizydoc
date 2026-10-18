@@ -1,33 +1,24 @@
 "use client";
 
-import { LogOut } from "lucide-react";
-import Image from "next/image";
 import logo from "@/images/logo.png";
-import { authClient } from "@/lib/auth/client";
-import { useRouter } from "next/navigation";
+import type { Me } from "@/lib/auth/me";
+import Image from "next/image";
+import { useParams } from "next/navigation";
+import { UserMenu } from "./user-menu";
 
-export const TopNav = () => {
-  const router = useRouter();
-
-  const handleSignOut = async () => {
-    await authClient.signOut();
-    // Cookies de app (no httpOnly) — se limpian aquí; la de sesión la borra BA.
-    document.cookie = "resource_id=; path=/; max-age=0";
-    document.cookie = "resource_type=; path=/; max-age=0";
-    router.push("/login");
-  };
+export const TopNav = ({ user }: { user: Me }) => {
+  const { accountId } = useParams<{ accountId: string }>();
 
   return (
-    <div className="flex w-full items-center justify-between gap-x-2 bg-gray-100 px-4 py-4 shadow-lg rounded-b-md">
-      <Image src={logo} alt="WizyDoc" className="h-10 w-auto" />
-      <button
-        type="button"
-        onClick={handleSignOut}
-        className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm text-brand-gray transition-colors hover:bg-gray-200 hover:text-brand-ink"
-      >
-        <LogOut className="h-4 w-4 shrink-0" />
-        Cerrar sesión
-      </button>
+    <div className="flex w-full items-center justify-between gap-x-2 rounded-b-md bg-gray-100 px-4 py-4 shadow-lg">
+      {/* Más bajo en el celular: a 40 px de alto el logo ocupa ~165 px y, con
+          un nombre largo junto al avatar, la barra desborda a 375 px. */}
+      <Image src={logo} alt="WizyDoc" className="h-8 w-auto shrink-0 sm:h-10" />
+      <UserMenu
+        user={user}
+        placement="top"
+        profileHref={`/account/${accountId}/me`}
+      />
     </div>
   );
 };

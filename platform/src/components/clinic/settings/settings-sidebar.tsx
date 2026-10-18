@@ -2,13 +2,13 @@
 
 import Link from "next/link";
 import { usePathname, useParams } from "next/navigation";
-import { CalendarClock, UserRound, type LucideProps } from "lucide-react";
+import { CalendarClock, type LucideProps } from "lucide-react";
 import type { ForwardRefExoticComponent, RefAttributes } from "react";
 import { cn, MembershipRole } from "@/lib/utils";
 import { useApp } from "@/context/app/app.context";
 
 type SettingsLink = {
-  /** Segmento relativo bajo `.../clinic/:clinicId/profile`. "" es la raíz (Mi Perfil). */
+  /** Segmento relativo bajo `.../clinic/:clinicId/profile`. */
   segment: string;
   label: string;
   icon: ForwardRefExoticComponent<
@@ -18,7 +18,6 @@ type SettingsLink = {
 };
 
 const settingsLinks: SettingsLink[] = [
-  { segment: "", label: "Mi Perfil", icon: UserRound },
   {
     segment: "availability",
     label: "Mi Disponibilidad",
@@ -43,7 +42,7 @@ export function SettingsSidebar() {
       </p>
       <nav className="flex gap-1 overflow-x-auto md:flex-col">
         {settingsLinks.map(({ segment, label, icon: Icon, roleScope }) => {
-          const href = segment ? `${base}/${segment}` : base;
+          const href = `${base}/${segment}`;
           const isActive = pathname === href;
           const shouldRender =
             roleScope?.includes(membership.role) || !roleScope;

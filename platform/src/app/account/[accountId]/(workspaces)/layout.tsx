@@ -11,7 +11,7 @@ export default async ({ children }: { children: ReactNode }) => {
 
   return (
     <div className="h-svh">
-      <TopNav />
+      <TopNav user={me} />
       {children}
     </div>
   );

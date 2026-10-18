@@ -26,10 +26,10 @@ const clinicNavLinks: NavLink[] = [
     icon: LayoutDashboard,
   },
   {
-    href: "profile",
+    href: "profile/availability",
     label: "Configuración",
     icon: Settings,
-    roles: [MembershipRole.DOCTOR, MembershipRole.USER],
+    roles: [MembershipRole.DOCTOR],
   },
   {
     href: "patients",
