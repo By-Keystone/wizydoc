@@ -2,6 +2,7 @@ import type { User } from "@/domain/entities/user/entity";
 import type {
   CreateUserData,
   IUserRepository,
+  UpdateProfileData,
 } from "@/domain/repositories/user.repository";
 import { getClient } from "../transaction-context.js";
 import { toDomain } from "../../mappers/user/mapper.js";
@@ -29,6 +30,23 @@ export class PrismaUserRepository implements IUserRepository {
     const { count } = await getClient().user.updateMany({
       where: { id: userId, accountId: null },
       data: { accountId, onboardingCompleted: true },
+    });
+    return count === 1;
+  }
+
+  async updateProfile(
+    userId: string,
+    accountId: string,
+    data: UpdateProfileData,
+  ): Promise<boolean> {
+    const { count } = await getClient().user.updateMany({
+      where: { id: userId, accountId },
+      data: {
+        name: data.name,
+        lastName: data.lastName,
+        phone: data.phone,
+        ...(data.treatment !== undefined && { treatment: data.treatment }),
+      },
     });
     return count === 1;
   }

@@ -243,7 +243,7 @@ export class RescheduleAppointmentUseCase {
       scheduledAt: formatClinicDateTime(notice.scheduledAt),
       durationMinutes: notice.durationMinutes,
       specialty: notice.specialty,
-      doctorName: notice.doctor.fullName,
+      doctorName: notice.doctor.displayName,
       clinicName: notice.clinicName,
       clinicAddress: notice.clinicAddress,
       manageUrl,
@@ -268,9 +268,9 @@ export class RescheduleAppointmentUseCase {
       scheduledAt: formatClinicDateTime(notice.scheduledAt),
       durationMinutes: notice.durationMinutes,
       specialty: notice.specialty,
-      newDoctorFullName: notice.doctor.fullName,
+      newDoctorFullName: notice.doctor.displayName,
       clinicName: notice.clinicName,
-      previousDoctorName: previousDoctor?.fullName ?? null,
+      previousDoctorName: previousDoctor?.displayName ?? null,
       agendaUrl,
     });
     await this.emailService.send({

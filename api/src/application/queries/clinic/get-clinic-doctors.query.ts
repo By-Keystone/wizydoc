@@ -14,6 +14,7 @@ export interface IGetClinicDoctorsQueryResult {
   }[];
   name: string;
   lastName: string;
+  displayName: string;
 }
 
 export interface IGetClinicDoctorsQuery {

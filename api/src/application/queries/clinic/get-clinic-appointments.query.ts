@@ -32,6 +32,7 @@ export interface ClinicAppointment {
   doctor: {
     name: string;
     lastName: string;
+    displayName: string;
   };
 }
 

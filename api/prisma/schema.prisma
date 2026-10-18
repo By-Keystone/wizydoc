@@ -12,6 +12,7 @@ model User {
   name                String
   lastName            String   @map("last_name")
   phone               String
+  treatment           DoctorTreatment? // Dr./Dra. Sin valor se muestra solo el nombre completo.
   role                UserRole @default(USER) // Account Role
   confirmed           Boolean  @default(false)
   onboardingCompleted Boolean  @default(false) @map("onboarding_completed")
@@ -246,6 +247,11 @@ model AppointmentAccessToken {
 
   @@index([appointmentId])
   @@map("appointment_access_token")
+}
+
+enum DoctorTreatment {
+  DR
+  DRA
 }
 
 enum UserRole {

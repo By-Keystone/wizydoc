@@ -1,0 +1,517 @@
+<!doctype html>
+<html lang="es-PE">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototipo: mi perfil</title>
+<style>
+  :root {
+    --teal: #0E8C82;
+    --teal-dark: #0B4F49;
+    --ink: #1F2A2A;
+    --gray: #5C6B6A;
+    --surface: #EFF5F4;
+    --coral: #FF6F59;
+    --border: #e5e7eb;
+    --ring: hsl(175 82% 30%);
+    --radius: 0.625rem;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: var(--ink); background: #e5e7eb; -webkit-font-smoothing: antialiased; }
+  button, input, select { font: inherit; color: inherit; }
+  a { color: inherit; }
+  :focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+
+  /* ---------- Barra del prototipo (no es parte de la app) ---------- */
+  .proto { display: grid; grid-template-columns: 300px minmax(0, 1fr); min-height: 100vh; }
+  .proto-panel { background: #fff; border-right: 1px solid #d1d5db; padding: 20px; overflow-y: auto; max-height: 100vh; position: sticky; top: 0; }
+  .proto-panel h1 { font-size: 15px; margin: 0; color: var(--teal-dark); }
+  .proto-panel p.lead { font-size: 12px; color: var(--gray); margin: 6px 0 16px; line-height: 1.45; }
+  .proto-panel h2 { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--teal); margin: 18px 0 8px; }
+  .proto-panel label.chk { display: flex; gap: 8px; align-items: flex-start; font-size: 13px; padding: 5px 0; cursor: pointer; line-height: 1.35; }
+  .proto-panel input[type=checkbox] { margin-top: 2px; accent-color: var(--teal); }
+  .seg { display: flex; border: 1px solid #d1d5db; border-radius: 8px; overflow: hidden; }
+  .seg button { flex: 1; border: 0; background: #fff; padding: 6px 4px; font-size: 12.5px; color: var(--gray); cursor: pointer; }
+  .seg button[aria-pressed="true"] { background: var(--teal); color: #fff; }
+  .jump { display: block; width: 100%; text-align: left; border: 1px solid #e5e7eb; background: #fff; border-radius: 8px; padding: 6px 10px; margin-bottom: 4px; font-size: 12.5px; color: var(--gray); cursor: pointer; }
+  .jump:hover { background: #f9fafb; }
+  .jump[aria-current="true"] { border-color: var(--teal); color: var(--teal); background: rgba(14,140,130,.06); }
+  .roles { display: flex; flex-direction: column; gap: 4px; }
+  .note { font-size: 11.5px; color: var(--gray); background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 8px 10px; margin-top: 12px; line-height: 1.45; }
+  .note b { color: var(--ink); }
+  .note ol { margin: 4px 0 0; padding-left: 16px; }
+  .note li { margin: 5px 0; }
+  .tip { font-size: 11.5px; color: var(--teal-dark); background: var(--surface); border-radius: 8px; padding: 8px 10px; margin-top: 10px; line-height: 1.45; }
+  .stage { display: flex; justify-content: center; align-items: flex-start; padding: 32px 16px; min-width: 0; }
+  .frame-wrap { min-width: 0; max-width: 100%; }
+  .frame-caption { text-align: center; font-size: 12px; color: var(--gray); margin-bottom: 8px; }
+  .frame { position: relative; background: #f9fafb; box-shadow: 0 10px 30px rgba(0,0,0,.12); overflow: hidden; }
+  .frame.mobile { width: 375px; height: 780px; border-radius: 28px; border: 8px solid #1f2937; display: flex; flex-direction: column; }
+  .frame.desktop { width: 1100px; max-width: 100%; min-height: 760px; border-radius: 10px; border: 1px solid #cbd5e1; display: flex; flex-direction: column; }
+  .scroll { flex: 1; min-height: 0; overflow-y: auto; }
+
+  /* ---------- Barra superior (= TopNav) ---------- */
+  .topnav { display: flex; align-items: center; justify-content: space-between; gap: 8px; background: #f3f4f6; padding: 12px 16px; box-shadow: 0 4px 12px rgba(0,0,0,.08); border-radius: 0 0 6px 6px; position: relative; z-index: 5; flex-shrink: 0; }
+  .logo { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; font-size: 18px; color: var(--teal-dark); }
+  .logo-mark { width: 26px; height: 26px; border-radius: 8px; background: var(--teal); color: #fff; display: grid; place-items: center; font-size: 14px; }
+  .avatar { width: 32px; height: 32px; border-radius: 50%; background: #ccfbf1; color: var(--teal-dark); display: grid; place-items: center; font-size: 12px; font-weight: 700; flex-shrink: 0; }
+  .avatar.lg { width: 56px; height: 56px; font-size: 18px; }
+  .me-btn { display: inline-flex; align-items: center; gap: 8px; border: 1px solid transparent; background: none; border-radius: 999px; padding: 4px 10px 4px 4px; cursor: pointer; font-size: 14px; font-weight: 500; }
+  .me-btn:hover, .me-btn[aria-expanded="true"] { background: #e5e7eb; }
+  .me-btn svg { width: 16px; height: 16px; color: var(--gray); }
+  .menu { position: absolute; z-index: 30; background: #fff; border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,.14); padding: 6px; min-width: 210px; }
+  .menu .who { padding: 8px 10px 10px; border-bottom: 1px solid var(--border); margin-bottom: 4px; }
+  .menu .who b { display: block; font-size: 14px; }
+  .menu .who span { font-size: 12.5px; color: var(--gray); overflow-wrap: anywhere; }
+  .menu button { display: flex; align-items: center; gap: 10px; width: 100%; border: 0; background: none; text-align: left; border-radius: 6px; padding: 8px 10px; font-size: 14px; cursor: pointer; }
+  .menu button:hover { background: #f3f4f6; }
+  .menu button svg { width: 16px; height: 16px; color: var(--gray); }
+  .menu .danger { color: #b91c1c; }
+  .menu .danger svg { color: #b91c1c; }
+  .menu-top { top: calc(100% - 4px); right: 12px; }
+
+  /* ---------- Selección de workspace (= memberships-list) ---------- */
+  .ws { max-width: 42rem; margin: 0 auto; padding: 24px; display: flex; flex-direction: column; gap: 16px; }
+  .mobile .ws { padding: 16px; }
+  .ws h1 { margin: 0; font-size: 20px; font-weight: 600; color: var(--teal-dark); }
+  .org { background: #fff; border: 1px solid var(--border); border-radius: 16px; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
+  .org-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 18px 20px; }
+  .org-head h2 { margin: 0; font-size: 16px; color: var(--teal-dark); }
+  .org-head p { margin: 2px 0 0; font-size: 12px; color: var(--gray); }
+  .org ul { list-style: none; margin: 0; padding: 0 20px 8px; border-top: 1px solid #f3f4f6; }
+  .org li { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-top: 1px solid #f3f4f6; }
+  .org li:first-child { border-top: 0; }
+  .org li b { display: block; font-size: 14px; font-weight: 500; }
+  .org li span { font-size: 12px; color: var(--gray); }
+  .enter { border-radius: 8px; padding: 6px 12px; font-size: 12px; font-weight: 500; border: 1px solid var(--border); background: #fff; color: var(--gray); cursor: pointer; }
+  .enter.primary { background: var(--teal); border-color: var(--teal); color: #fff; }
+
+  /* ---------- Panel de la sede (= layout + Sidebar) ---------- */
+  .shell { flex: 1; min-height: 0; display: flex; }
+  .mobile .shell { flex-direction: column; }
+  .sidebar { width: 232px; flex-shrink: 0; background: #fff; border-right: 1px solid var(--border); padding: 20px 14px 14px; display: flex; flex-direction: column; gap: 4px; position: relative; }
+  .sidebar .logo { padding: 0 8px 16px; }
+  .nav { display: flex; align-items: center; gap: 10px; border-radius: 8px; padding: 8px 12px; font-size: 14px; color: var(--gray); border: 0; background: none; text-align: left; cursor: pointer; width: 100%; }
+  .nav:hover { background: #f3f4f6; color: var(--ink); }
+  .nav.active { background: var(--surface); color: var(--teal-dark); font-weight: 600; }
+  .nav svg { width: 18px; height: 18px; }
+  .side-me { margin-top: auto; border-top: 1px solid var(--border); padding-top: 10px; position: relative; }
+  .side-me .me-btn.on { background: var(--surface); }
+  .side-me .me-btn { width: 100%; border-radius: 10px; padding: 8px; justify-content: flex-start; text-align: left; }
+  .side-me .me-btn div { min-width: 0; flex: 1; }
+  .side-me .me-btn b { display: block; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .side-me .me-btn small { display: block; font-size: 12px; color: var(--gray); font-weight: 400; }
+  .menu-up { bottom: calc(100% + 6px); left: 0; right: 0; }
+  .topbar { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; background: #fff; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+  .topbar .logo { font-size: 17px; }
+  .icon-btn { width: 36px; height: 36px; border-radius: 8px; border: 1px solid var(--border); background: #fff; display: grid; place-items: center; color: var(--gray); cursor: pointer; flex-shrink: 0; }
+  .icon-btn:hover { background: #f9fafb; color: var(--ink); }
+  .main { flex: 1; min-width: 0; padding: 32px; overflow-y: auto; }
+  .mobile .main { padding: 16px; }
+  .ph { background: #fff; border: 1px dashed #cbd5e1; border-radius: 12px; padding: 40px 16px; text-align: center; color: var(--gray); font-size: 13.5px; }
+  .ph h1 { margin: 0 0 6px; font-size: 22px; color: var(--teal-dark); }
+  .scrim { position: absolute; inset: 0; background: rgba(15, 23, 42, .38); z-index: 20; }
+  .drawer { position: absolute; z-index: 21; top: 0; bottom: 0; left: 0; width: 82%; background: #fff; display: flex; flex-direction: column; padding: 16px 14px; gap: 4px; box-shadow: 8px 0 30px rgba(0,0,0,.18); }
+  .drawer-head { display: flex; align-items: center; justify-content: space-between; padding: 0 4px 12px; }
+
+  /* ---------- Mi perfil ---------- */
+  .profile { max-width: 46rem; margin: 0 auto; padding: 24px; display: flex; flex-direction: column; gap: 16px; }
+  .mobile .profile { padding: 16px; }
+  .back { display: inline-flex; align-items: center; gap: 4px; font-size: 14px; color: var(--gray); background: none; border: 0; padding: 0; cursor: pointer; width: fit-content; }
+  .back:hover { color: var(--ink); }
+  .back svg { width: 16px; height: 16px; }
+  .p-head { display: flex; align-items: center; gap: 14px; }
+  .p-head h1 { margin: 0; font-size: 22px; color: var(--teal-dark); overflow-wrap: anywhere; }
+  .p-head p { margin: 2px 0 0; font-size: 13.5px; color: var(--gray); overflow-wrap: anywhere; }
+  .card { background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 20px; min-width: 0; }
+  .mobile .card { padding: 16px; }
+  .card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+  .card-head h2 { margin: 0; font-size: 16px; color: var(--teal-dark); }
+  .card-head p { margin: 3px 0 0; font-size: 13px; color: var(--gray); line-height: 1.45; }
+  .fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  .mobile .fields { grid-template-columns: minmax(0, 1fr); }
+  .field label, .field > span { display: block; font-size: 12px; font-weight: 600; color: var(--gray); margin-bottom: 4px; }
+  .field input, .field select, .field .ro { width: 100%; border: 1px solid #d1d5db; border-radius: 8px; padding: 9px 12px; font-size: 14px; background: #fff; min-height: 40px; }
+  .field .ro { background: #f9fafb; border-color: var(--border); overflow-wrap: anywhere; }
+  .field input:disabled, .field select:disabled { background: #f9fafb; border-color: var(--border); color: var(--ink); opacity: 1; }
+  .field.wide { grid-column: 1 / -1; }
+  .field small { display: block; font-size: 12px; color: var(--gray); margin-top: 4px; line-height: 1.4; }
+  .field small.err { color: #b91c1c; }
+  .field input.bad { border-color: #f87171; }
+  .pwd { position: relative; }
+  .pwd button { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); border: 0; background: none; font-size: 12px; font-weight: 600; color: var(--teal); cursor: pointer; padding: 6px; }
+  .hintline { font-size: 12.5px; color: var(--gray); background: var(--surface); border-radius: 8px; padding: 8px 12px; margin-top: 14px; line-height: 1.45; }
+  .actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
+  .mobile .actions .btn { flex: 1; }
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 40px; padding: 0 16px; border-radius: var(--radius); font-size: 14px; font-weight: 600; border: 0; cursor: pointer; white-space: nowrap; text-decoration: none; }
+  .btn svg { width: 16px; height: 16px; }
+  .btn-default { background: var(--teal); color: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+  .btn-default:hover { background: var(--teal-dark); }
+  .btn-outline { background: #fff; color: var(--ink); border: 1px solid var(--border); }
+  .btn-outline:hover { background: #f9fafb; }
+  .btn-sm { height: 34px; padding: 0 12px; font-size: 13px; }
+  .clinic { border: 1px solid var(--border); border-radius: 10px; padding: 14px; }
+  .clinic + .clinic { margin-top: 10px; }
+  .clinic-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+  .clinic-top b { font-size: 14.5px; }
+  .clinic-top span { display: block; font-size: 12.5px; color: var(--gray); }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .chip { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 4px 12px; font-size: 13px; background: var(--surface); color: var(--teal-dark); border: 1px solid #cfe5e2; }
+  .chip.pick { cursor: pointer; background: #fff; color: var(--gray); border-color: #d1d5db; }
+  .chip.pick[aria-pressed="true"] { background: var(--teal); color: #fff; border-color: var(--teal); }
+  .chip.new { cursor: pointer; background: #fff; color: var(--teal); border: 1px dashed var(--teal); }
+  .muted { font-size: 13px; color: var(--gray); margin: 8px 0 0; line-height: 1.45; }
+  .warn { font-size: 13px; color: #92400e; background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 8px 12px; margin-top: 10px; line-height: 1.45; }
+  .link { font-size: 13px; font-weight: 600; color: var(--teal); text-decoration: none; background: none; border: 0; padding: 0; cursor: pointer; }
+  .link:hover { text-decoration: underline; text-underline-offset: 3px; }
+  .row-links { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 12px; }
+  .toast { position: absolute; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 40; background: var(--ink); color: #fff; font-size: 13.5px; border-radius: 10px; padding: 10px 16px; box-shadow: 0 10px 30px rgba(0,0,0,.25); max-width: calc(100% - 32px); text-align: center; }
+  .preview { font-size: 13px; color: var(--gray); margin-top: 6px; }
+  .preview b { color: var(--ink); }
+
+  @media (max-width: 900px) {
+    .proto { grid-template-columns: minmax(0, 1fr); }
+    .proto-panel { position: static; max-height: none; border-right: 0; border-bottom: 1px solid #d1d5db; }
+  }
+</style>
+</head>
+<body>
+<div class="proto">
+  <aside class="proto-panel" aria-label="Controles del prototipo">
+    <h1>Mi perfil</h1>
+    <p class="lead">Prototipo de la página de perfil y de cómo se llega a ella. Los datos son de ejemplo.</p>
+
+    <h2>Vista</h2>
+    <div class="seg" role="group" aria-label="Vista">
+      <button type="button" data-view="mobile" aria-pressed="true">Celular</button>
+      <button type="button" data-view="desktop" aria-pressed="false">Computadora</button>
+    </div>
+
+    <h2>Pantalla</h2>
+    <div id="screens"></div>
+
+    <h2>Quién entra</h2>
+    <div class="roles" id="roles"></div>
+
+    <h2>Casos</h2>
+    <label class="chk"><input type="checkbox" data-opt="twoClinics"> Atiende en dos sedes</label>
+    <label class="chk"><input type="checkbox" data-opt="noSpecialties"> Sin especialidad asignada</label>
+    <label class="chk"><input type="checkbox" data-opt="orgEmpty"> La organización no tiene especialidades</label>
+    <label class="chk"><input type="checkbox" data-opt="treatment" checked> Tratamiento Dr./Dra. en el perfil (q-1)</label>
+    <p class="tip">Toca el avatar con el nombre, arriba a la derecha o al pie del menú de la sede, para abrir el menú y entrar a <b>Mi perfil</b>.</p>
+
+    <div class="note">
+      <b>Qué propone este mockup</b>
+      <ol>
+        <li><b>Avatar y nombre en la barra superior</b> de la selección de workspace, en lugar de «Cerrar sesión». El menú tiene «Mi perfil» y «Cerrar sesión».</li>
+        <li><b>El mismo avatar dentro de la sede:</b> al pie del menú lateral en la computadora y en el menú desplegable en el celular. Desde ahí, «Mi perfil» se abre <b>dentro del panel</b>: el menú lateral sigue visible e «Inicio» vuelve a la sede. Lo mismo en el panel de la organización.</li>
+        <li><b>El perfil es de la cuenta, no de la sede.</b> El PRD v1 lo pone en «Configuración › Mi Perfil» de cada sede. Aquí es una sola página: datos personales y contraseña una vez, y «Dónde atiendes» con las especialidades de cada sede.</li>
+        <li><b>«Mi disponibilidad» sigue en cada sede:</b> los horarios son por sede. Desde «Dónde atiendes» hay un enlace a cada una.</li>
+        <li><b>Recepción</b> ve solo datos personales y contraseña.</li>
+      </ol>
+    </div>
+  </aside>
+
+  <div class="stage">
+    <div class="frame-wrap">
+      <div class="frame-caption" id="caption"></div>
+      <div class="frame mobile" id="frame"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const ICON = {
+    down: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>',
+    user: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></svg>',
+    out: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>',
+    swap: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3 4 7l4 4M4 7h16M16 21l4-4-4-4M20 17H4"/></svg>',
+    home: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>',
+    gear: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>',
+    users: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
+    menu: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg>',
+    x: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>',
+    left: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>',
+  };
+
+  const ROLES = {
+    admin: { label: "Administrador que atiende", person: { name: "Lucía", lastName: "Paredes Quispe", phone: "987 111 222", email: "lucia.paredes@correo.pe", treatment: "Dra." }, roleLabel: "ADMIN", doctor: true, canAssign: true },
+    doctor: { label: "Médico invitado", person: { name: "Andrés", lastName: "Rivas Soto", phone: "954 330 118", email: "andres.rivas@correo.pe", treatment: "Dr." }, roleLabel: "DOCTOR", doctor: true, canAssign: false },
+    reception: { label: "Recepción", person: { name: "Milagros", lastName: "Huamán Torres", phone: "912 778 004", email: "milagros.ht@correo.pe", treatment: "" }, roleLabel: "USER", doctor: false, canAssign: false },
+  };
+  const ORG = "Consultorio Paredes";
+  const ORG_SPECIALTIES = ["Medicina general", "Pediatría", "Cardiología"];
+  const CLINICS = [
+    { id: "mira", name: "Sede Miraflores", specialties: { admin: ["Medicina general"], doctor: ["Cardiología"] } },
+    { id: "sani", name: "Sede San Isidro", specialties: { admin: ["Medicina general", "Pediatría"], doctor: ["Cardiología"] } },
+  ];
+  const SCREENS = [
+    { id: "select", label: "Selección de workspace" },
+    { id: "clinic", label: "Dentro de la sede" },
+    { id: "profile", label: "Mi perfil (desde la selección)" },
+    { id: "profileClinic", label: "Mi perfil (desde la sede)" },
+  ];
+
+  const state = {
+    view: "mobile", screen: "select", role: "admin", from: "select",
+    menu: false, drawer: false, toast: "",
+    twoClinics: false, noSpecialties: false, orgEmpty: false, treatment: true,
+    editData: false, dataError: false, editing: null, picked: [], pwdOpen: false, pwdError: "", show: { cur: false, neu: false },
+    person: null,
+  };
+
+  const role = () => ROLES[state.role];
+  const me = () => state.person;
+  const initials = (p) => `${p.name[0]}${p.lastName[0]}`.toUpperCase();
+  const fullName = (p) => `${p.name} ${p.lastName}`;
+  const publicName = (p) => (state.treatment && p.treatment ? `${p.treatment} ${fullName(p)}` : fullName(p));
+  const clinics = () => (state.twoClinics ? CLINICS : CLINICS.slice(0, 1));
+  const specialtiesOf = (c) => (state.noSpecialties ? [] : c.specialties[state.role] || []);
+  const orgSpecialties = () => (state.orgEmpty ? [] : ORG_SPECIALTIES);
+
+  function meMenu(pos, withSwap) {
+    if (!state.menu) return "";
+    const p = me();
+    return `<div class="menu ${pos}" role="menu">
+      <div class="who"><b>${fullName(p)}</b><span>${p.email}</span></div>
+      <button type="button" role="menuitem" data-act="profile">${ICON.user}Mi perfil</button>
+      ${withSwap ? `<button type="button" role="menuitem" data-act="select">${ICON.swap}Cambiar de sede</button>` : ""}
+      <button type="button" role="menuitem" class="danger">${ICON.out}Cerrar sesión</button>
+    </div>`;
+  }
+
+  function topnav() {
+    const p = me();
+    const nameLabel = state.view === "mobile" ? p.name : fullName(p);
+    return `<div class="topnav">
+      <span class="logo"><span class="logo-mark">W</span>WizyDoc</span>
+      <button type="button" class="me-btn" data-act="menu" aria-haspopup="menu" aria-expanded="${state.menu}">
+        <span class="avatar">${initials(p)}</span>${nameLabel}${ICON.down}
+      </button>
+      ${meMenu("menu-top", false)}
+    </div>`;
+  }
+
+  function selectScreen() {
+    const items = clinics().map((c) => `<li><div><b>${c.name}</b><span>${role().roleLabel}${state.role === "admin" ? ' <span style="margin-left:6px;font-size:10px;background:#f3f4f6;border-radius:4px;padding:1px 6px;text-transform:uppercase">Heredado</span>' : ""}</span></div><button type="button" class="enter" data-act="clinic">Entrar</button></li>`).join("");
+    return `${topnav()}<div class="scroll"><div class="ws">
+      <h1>Selecciona un workspace</h1>
+      <div class="org">
+        <div class="org-head"><div><h2>${ORG}</h2><p>${state.role === "admin" ? "Tu rol: ADMIN" : "Acceso por sedes"} · ${clinics().length} ${clinics().length === 1 ? "sede" : "sedes"}</p></div>
+          ${state.role === "admin" ? '<button type="button" class="enter primary">Entrar</button>' : ""}</div>
+        <ul>${items}</ul>
+      </div>
+    </div></div>`;
+  }
+
+  function navItems() {
+    return `<button type="button" class="nav ${state.screen === "clinic" ? "active" : ""}" data-act="clinic">${ICON.home}Inicio</button>
+      <button type="button" class="nav">${ICON.gear}Configuración</button>
+      <button type="button" class="nav">${ICON.users}Pacientes</button>`;
+  }
+
+  function sideMe(pos) {
+    const p = me();
+    return `<div class="side-me">
+      <button type="button" class="me-btn ${state.screen === "profile" ? "on" : ""}" data-act="menu" aria-haspopup="menu" aria-expanded="${state.menu}">
+        <span class="avatar">${initials(p)}</span><div><b>${fullName(p)}</b><small>${clinics()[0].name}</small></div>${ICON.down}
+      </button>
+      ${meMenu(pos, true)}
+    </div>`;
+  }
+
+  function clinicScreen(content = `<div class="ph"><h1>Inicio de ${clinics()[0].name}</h1>El contenido del inicio no cambia en este ticket («Mi día» o la lista de la sede).</div>`) {
+    if (state.view === "desktop") {
+      return `<div class="shell">
+        <nav class="sidebar" aria-label="Navegación"><span class="logo"><span class="logo-mark">W</span>WizyDoc</span>${navItems()}${sideMe("menu-up")}</nav>
+        <main class="main">${content}</main>
+      </div>`;
+    }
+    const drawer = state.drawer ? `<div class="scrim" data-act="drawer"></div>
+      <nav class="drawer" aria-label="Navegación">
+        <div class="drawer-head"><span class="logo"><span class="logo-mark">W</span>WizyDoc</span><button type="button" class="icon-btn" data-act="drawer" aria-label="Cerrar menú">${ICON.x}</button></div>
+        ${navItems()}${sideMe("menu-up")}
+      </nav>` : "";
+    return `<div class="topbar"><span class="logo"><span class="logo-mark">W</span>WizyDoc</span><button type="button" class="icon-btn" data-act="drawer" aria-label="Abrir menú">${ICON.menu}</button></div>
+      <div class="shell"><main class="main">${content}</main></div>${drawer}`;
+  }
+
+  function dataCard() {
+    const p = me();
+    const dis = state.editData ? "" : "disabled";
+    const nameErr = state.dataError;
+    const treatmentField = state.treatment && role().doctor
+      ? `<div class="field"><label for="tr">Tratamiento</label><select id="tr" ${dis}>
+          ${["", "Dr.", "Dra."].map((t) => `<option ${p.treatment === t ? "selected" : ""} value="${t}">${t || "Sin tratamiento"}</option>`).join("")}
+        </select><small>Opcional. Sin tratamiento, tus pacientes ven solo tu nombre.</small></div>`
+      : "";
+    const preview = role().doctor ? `<p class="preview">Así te ven tus pacientes al reservar: <b>${publicName(p)}</b></p>` : "";
+    return `<section class="card" aria-labelledby="h-data">
+      <div class="card-head"><div><h2 id="h-data">Datos personales</h2><p>Tus datos son los mismos en todas tus sedes.${role().doctor ? " Tu nombre es el que ven tus pacientes al reservar." : ""}</p></div>
+        ${state.editData ? "" : '<button type="button" class="btn btn-outline btn-sm" data-act="editData">Editar</button>'}</div>
+      <div class="fields">
+        ${treatmentField}
+        <div class="field"><label for="fn">Nombre</label><input id="fn" value="${nameErr ? "" : p.name}" ${dis} class="${nameErr ? "bad" : ""}">${nameErr ? '<small class="err">Ingresa tu nombre</small>' : ""}</div>
+        <div class="field"><label for="ln">Apellido</label><input id="ln" value="${p.lastName}" ${dis}></div>
+        <div class="field"><label for="ph">Celular</label><input id="ph" type="tel" value="${p.phone}" ${dis}></div>
+        <div class="field wide"><span>Correo electrónico</span><div class="ro">${p.email}</div><small>Tu correo es tu usuario para iniciar sesión y por ahora no se puede cambiar.</small></div>
+      </div>
+      ${preview}
+      ${state.editData ? `<div class="actions">
+        <button type="button" class="btn btn-outline" data-act="cancelData">Cancelar</button>
+        <button type="button" class="btn btn-outline" data-act="badData">Probar error</button>
+        <button type="button" class="btn btn-default" data-act="saveData">Guardar cambios</button></div>` : ""}
+    </section>`;
+  }
+
+  function clinicBlock(c) {
+    const own = specialtiesOf(c);
+    const editing = state.editing === c.id;
+    let body;
+    if (editing) {
+      const org = orgSpecialties();
+      const picks = org.map((s) => `<button type="button" class="chip pick" data-pick="${s}" aria-pressed="${state.picked.includes(s)}">${s}</button>`).join("");
+      body = `<p class="muted">Elige las especialidades que atiendes en ${c.name}.</p>
+        <div class="chips">${picks}<button type="button" class="chip new" data-act="newSpec">+ Crear especialidad</button></div>
+        ${org.length ? "" : `<p class="muted">${ORG} todavía no tiene especialidades. Crea la que atiendes.</p>`}
+        ${state.picked.length ? "" : `<div class="warn">Sin especialidad no apareces en el link de reserva de ${c.name}.</div>`}
+        <div class="row-links"><button type="button" class="link">Administrar especialidades de ${ORG}</button></div>
+        <div class="actions"><button type="button" class="btn btn-outline" data-act="cancelSpec">Cancelar</button><button type="button" class="btn btn-default" data-act="saveSpec">Guardar especialidades</button></div>`;
+    } else {
+      const chips = own.length ? `<div class="chips">${own.map((s) => `<span class="chip">${s}</span>`).join("")}</div>` : "";
+      let note = "";
+      if (!own.length && role().canAssign) note = `<div class="warn">Sin especialidad no apareces en el link de reserva de ${c.name}.</div>`;
+      else if (!own.length) note = `<p class="muted">Aún no tienes una especialidad asignada. Un administrador de ${c.name} tiene que asignártela.</p>`;
+      else if (!role().canAssign) note = '<p class="muted">Te las asigna un administrador.</p>';
+      body = `${chips}${note}`;
+    }
+    const editBtn = role().canAssign && !editing ? `<button type="button" class="btn btn-outline btn-sm" data-edit="${c.id}">${own.length ? "Editar" : "Asignar especialidad"}</button>` : "";
+    return `<div class="clinic">
+      <div class="clinic-top"><div><b>${c.name}</b><span>${ORG}</span></div>${editBtn}</div>
+      ${body}
+      ${editing ? "" : '<div class="row-links"><button type="button" class="link" data-act="clinic">Mi disponibilidad en esta sede →</button></div>'}
+    </div>`;
+  }
+
+  function whereCard() {
+    if (!role().doctor) return "";
+    return `<section class="card" aria-labelledby="h-where">
+      <div class="card-head"><div><h2 id="h-where">Dónde atiendes</h2><p>Tus especialidades en cada sede. Tus horarios se configuran dentro de cada sede.</p></div></div>
+      ${clinics().map(clinicBlock).join("")}
+    </section>`;
+  }
+
+  function pwdCard() {
+    const field = (id, label, key, ph) => `<div class="field"><label for="${id}">${label}</label><div class="pwd"><input id="${id}" type="${state.show[key] ? "text" : "password"}" placeholder="${ph}" value="${key === "cur" ? "••••••••" : ""}" class="${state.pwdError && key === "cur" ? "bad" : ""}"><button type="button" data-show="${key}">${state.show[key] ? "Ocultar" : "Mostrar"}</button></div>
+      ${state.pwdError && key === "cur" ? `<small class="err">${state.pwdError}</small>` : ""}</div>`;
+    return `<section class="card" aria-labelledby="h-pwd">
+      <div class="card-head"><div><h2 id="h-pwd">Contraseña</h2><p>Al cambiarla cerramos tu sesión en tus otros dispositivos.</p></div>
+        ${state.pwdOpen ? "" : '<button type="button" class="btn btn-outline btn-sm" data-act="pwdOpen">Cambiar contraseña</button>'}</div>
+      ${state.pwdOpen ? `<div class="fields">${field("cur", "Contraseña actual", "cur", "")}${field("neu", "Contraseña nueva", "neu", "Mínimo 8 caracteres")}</div>
+        <div class="actions">
+          <button type="button" class="btn btn-outline" data-act="pwdCancel">Cancelar</button>
+          <button type="button" class="btn btn-outline" data-act="pwdBad">Probar error</button>
+          <button type="button" class="btn btn-default" data-act="pwdSave">Cambiar contraseña</button></div>` : ""}
+    </section>`;
+  }
+
+  function profileScreen() {
+    const p = me();
+    const inClinic = state.from === "clinic";
+    const back = inClinic ? "" : `<button type="button" class="back" data-act="back">${ICON.left}Volver a tus workspaces</button>`;
+    const body = `<div class="profile" style="${inClinic ? "padding:0;margin:0" : ""}">
+      ${back}
+      <div class="p-head"><span class="avatar lg">${initials(p)}</span><div><h1>${fullName(p)}</h1><p>${p.email}</p></div></div>
+      ${dataCard()}${whereCard()}${pwdCard()}
+    </div>`;
+    // Desde una sede, el perfil se abre dentro del panel: el menú lateral sigue ahí
+    // y «Inicio» devuelve a la sede. Desde la selección de workspace, con la barra superior.
+    return inClinic ? clinicScreen(body) : `${topnav()}<div class="scroll">${body}</div>`;
+  }
+
+  function render() {
+    const frame = document.getElementById("frame");
+    const scroller = frame.querySelector(".scroll, .main");
+    const scroll = scroller ? scroller.scrollTop : 0;
+    frame.className = `frame ${state.view}`;
+    let html = state.screen === "select" ? selectScreen() : state.screen === "clinic" ? clinicScreen() : profileScreen();
+    if (state.toast) html += `<div class="toast" role="status">${state.toast}</div>`;
+    frame.innerHTML = html;
+    const s2 = frame.querySelector(".scroll, .main");
+    if (s2) s2.scrollTop = scroll;
+    const names = { select: "selección de workspace", clinic: "dentro de la sede", profile: state.from === "clinic" ? "mi perfil, dentro de la sede" : "mi perfil, desde la selección" };
+    document.getElementById("caption").textContent = `${state.view === "mobile" ? "Celular · 375 px" : "Computadora"} · ${names[state.screen]} · ${role().label}`;
+    document.querySelectorAll("[data-view]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.view === state.view)));
+    const current = state.screen === "profile" && state.from === "clinic" ? "profileClinic" : state.screen;
+    document.querySelectorAll("[data-screen]").forEach((b) => b.setAttribute("aria-current", String(b.dataset.screen === current)));
+    document.querySelectorAll("[data-role]").forEach((b) => b.setAttribute("aria-current", String(b.dataset.role === state.role)));
+  }
+
+  let toastTimer;
+  function toast(msg) {
+    state.toast = msg;
+    render();
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { state.toast = ""; render(); }, 2600);
+  }
+  function resetProfile() {
+    Object.assign(state, { editData: false, dataError: false, editing: null, picked: [], pwdOpen: false, pwdError: "", show: { cur: false, neu: false } });
+  }
+  function go(screen) {
+    if (screen === "profile" && state.screen !== "profile") state.from = state.screen;
+    state.screen = screen; state.menu = false; state.drawer = false;
+    if (screen !== "profile") resetProfile();
+    render();
+  }
+
+  document.getElementById("frame").addEventListener("click", (e) => {
+    const el = e.target.closest("[data-act],[data-edit],[data-pick],[data-show]");
+    if (!el) { if (state.menu && !e.target.closest(".menu")) { state.menu = false; render(); } return; }
+    if (el.dataset.edit) { state.editing = el.dataset.edit; state.picked = [...specialtiesOf(clinics().find((c) => c.id === el.dataset.edit))]; render(); return; }
+    if (el.dataset.pick) { const s = el.dataset.pick; state.picked = state.picked.includes(s) ? state.picked.filter((x) => x !== s) : [...state.picked, s]; render(); return; }
+    if (el.dataset.show) { state.show[el.dataset.show] = !state.show[el.dataset.show]; render(); return; }
+    switch (el.dataset.act) {
+      case "menu": state.menu = !state.menu; render(); break;
+      case "drawer": state.drawer = !state.drawer; state.menu = false; render(); break;
+      case "profile": go("profile"); break;
+      case "select": go("select"); break;
+      case "clinic": go("clinic"); break;
+      case "back": go(state.from); break;
+      case "editData": state.editData = true; render(); break;
+      case "cancelData": state.editData = false; state.dataError = false; render(); break;
+      case "badData": state.dataError = true; render(); break;
+      case "saveData": state.editData = false; state.dataError = false; toast("Guardamos tus datos."); break;
+      case "cancelSpec": state.editing = null; render(); break;
+      case "saveSpec": {
+        const c = clinics().find((x) => x.id === state.editing);
+        c.specialties[state.role] = [...state.picked];
+        if (state.picked.length) state.noSpecialties = false;
+        state.editing = null;
+        document.querySelector('[data-opt="noSpecialties"]').checked = state.noSpecialties;
+        toast("Guardamos tus especialidades.");
+        break;
+      }
+      case "newSpec": state.picked = [...state.picked, "Dermatología"]; if (!ORG_SPECIALTIES.includes("Dermatología")) ORG_SPECIALTIES.push("Dermatología"); state.orgEmpty = false; document.querySelector('[data-opt="orgEmpty"]').checked = false; render(); break;
+      case "pwdOpen": state.pwdOpen = true; render(); break;
+      case "pwdCancel": state.pwdOpen = false; state.pwdError = ""; render(); break;
+      case "pwdBad": state.pwdError = "La contraseña actual no es correcta."; render(); break;
+      case "pwdSave": state.pwdOpen = false; state.pwdError = ""; toast("Cambiaste tu contraseña. Cerramos tu sesión en tus otros dispositivos."); break;
+    }
+  });
+
+  document.getElementById("screens").innerHTML = SCREENS.map((s) => `<button type="button" class="jump" data-screen="${s.id}">${s.label}</button>`).join("");
+  document.getElementById("roles").innerHTML = Object.entries(ROLES).map(([id, r]) => `<button type="button" class="jump" data-role="${id}">${r.label}</button>`).join("");
+  document.querySelectorAll("[data-view]").forEach((b) => b.addEventListener("click", () => { state.view = b.dataset.view; state.menu = false; state.drawer = false; render(); }));
+  document.querySelectorAll("[data-screen]").forEach((b) => b.addEventListener("click", () => {
+    if (b.dataset.screen === "profileClinic") { state.from = "clinic"; state.screen = "profile"; state.menu = false; state.drawer = false; render(); return; }
+    if (b.dataset.screen === "profile") state.from = "select";
+    go(b.dataset.screen);
+  }));
+  document.querySelectorAll("[data-role]").forEach((b) => b.addEventListener("click", () => { state.role = b.dataset.role; state.person = { ...ROLES[state.role].person }; resetProfile(); render(); }));
+  document.querySelectorAll("[data-opt]").forEach((c) => c.addEventListener("change", () => { state[c.dataset.opt] = c.checked; state.editing = null; render(); }));
+
+  state.person = { ...ROLES.admin.person };
+  render();
+</script>
+</body>
+</html>

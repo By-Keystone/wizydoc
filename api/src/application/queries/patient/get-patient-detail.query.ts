@@ -1,5 +1,6 @@
 import { NotFound } from "@/application/errors/not-found.error";
 import { buildPatientMetrics } from "@/domain/services/patient-metrics";
+import { formatDoctorName } from "@/domain/services/doctor-name";
 import { getClient } from "@/infrastructure/postgres/transaction-context";
 import z from "zod";
 
@@ -40,7 +41,9 @@ export class GetPatientDetailQuery {
         durationMinutes: true,
         clinic: { select: { name: true } },
         doctorProfile: {
-          select: { user: { select: { name: true, lastName: true } } },
+          select: {
+            user: { select: { name: true, lastName: true, treatment: true } },
+          },
         },
       },
     });
@@ -73,7 +76,7 @@ export class GetPatientDetailQuery {
         specialty: appointment.specialty,
         durationMinutes: appointment.durationMinutes,
         clinicName: appointment.clinic.name,
-        doctorName: `${appointment.doctorProfile.user.name} ${appointment.doctorProfile.user.lastName}`,
+        doctorName: formatDoctorName(appointment.doctorProfile.user),
       })),
       metrics: buildPatientMetrics(appointments),
     };

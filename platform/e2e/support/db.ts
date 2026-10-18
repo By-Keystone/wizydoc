@@ -15,6 +15,7 @@ export interface TestPrismaUserRow {
   role: string;
   confirmed: boolean;
   onboardingCompleted: boolean;
+  treatment: string | null;
 }
 
 export interface TestPrismaInvitationRow {
