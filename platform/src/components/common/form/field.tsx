@@ -21,7 +21,11 @@ export const Field = ({ label, htmlFor, error, children }: Props) => (
     {label && <Label htmlFor={htmlFor}>{label}</Label>}
     {children}
     {error && (
-      <p className="text-xs text-red-500" role="alert">
+      <p
+        id={htmlFor ? `${htmlFor}-error` : undefined}
+        className="text-xs text-red-500"
+        role="alert"
+      >
         {error}
       </p>
     )}

@@ -157,6 +157,9 @@ export interface TestPrisma {
       where: Record<string, unknown>;
       orderBy?: Record<string, unknown>;
     }): Promise<TestPrismaSessionRow | null>;
+    deleteMany(args: {
+      where: Record<string, unknown>;
+    }): Promise<{ count: number }>;
   };
   availability: {
     createMany(args: { data: Record<string, unknown>[] }): Promise<unknown>;
