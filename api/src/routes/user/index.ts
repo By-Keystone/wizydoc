@@ -1,11 +1,36 @@
+import { ApplicationError } from "@/application/errors/application.errors";
+import { NotFound } from "@/application/errors/not-found.error";
 import { getUserMembershipSchema } from "@/application/queries/membership/get-user-membership.query";
+import {
+  updateMyProfileSchema,
+  UpdateMyProfileUseCase,
+} from "@/application/use-cases/user/update-my-profile.usecase";
 import { policy } from "@/plugins/policy";
 import type { IAccountRepository } from "@/domain/repositories/account.repository";
 import type { IUserRepository } from "@/domain/repositories/user.repository";
 import { GetUserMembership } from "@/infrastructure/postgres/queries/membership/get-user-membership.query";
 import { UserMembershipsQuery } from "@/infrastructure/postgres/queries/membership/get-user-memberships.query";
+import { GetMyProfileQuery } from "@/infrastructure/postgres/queries/user/get-my-profile.query";
 import type { ZodTypeProvider } from "@fastify/type-provider-zod";
-import type { FastifyInstance } from "fastify";
+import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+
+function handleProfileError(
+  error: unknown,
+  request: FastifyRequest,
+  reply: FastifyReply,
+  message: string,
+) {
+  if (error instanceof ApplicationError) {
+    return reply
+      .status(error.statusCode)
+      .send({ message: error.message, code: error.code });
+  }
+
+  const errName = error instanceof Error ? error.name : "UnknownError";
+  request.log.error({ userId: request.user.userId, errName }, "[user-profile]");
+
+  return reply.status(500).send({ message });
+}
 
 interface UserRoutesOptions {
   userRepository: IUserRepository;
@@ -86,6 +111,65 @@ export default async function userRoutes(
         isAccountOwner,
         entitlements,
       });
+    },
+  );
+
+  app.get(
+    "/me/profile",
+    {
+      // Sin requireLiveMembership: el dueño recién registrado aún no tiene
+      // memberships y debe poder abrir su perfil.
+      ...policy({ account: true, confirmed: true, onboarded: true }),
+    },
+    async (request, reply) => {
+      try {
+        const profile = await new GetMyProfileQuery().execute(
+          request.user.userId,
+          request.user.accountId!,
+        );
+        // Mismo cuerpo que el 404 del PATCH ({ message, code }).
+        if (!profile) throw new NotFound("User not found");
+
+        return reply.status(200).send(profile);
+      } catch (error) {
+        return handleProfileError(
+          error,
+          request,
+          reply,
+          "No se pudo obtener tu perfil",
+        );
+      }
+    },
+  );
+
+  app.patch(
+    "/me/profile",
+    {
+      ...policy({ account: true, confirmed: true, onboarded: true }),
+      schema: { body: updateMyProfileSchema },
+    },
+    async (request, reply) => {
+      try {
+        const useCase = new UpdateMyProfileUseCase(
+          userRepository,
+          new GetMyProfileQuery(),
+        );
+
+        const profile = await useCase.execute({
+          ...request.body,
+          userId: request.user.userId,
+          accountId: request.user.accountId!,
+        });
+
+        return reply.status(200).send(profile);
+      } catch (error) {
+        return handleProfileError(
+          error,
+          request,
+          reply,
+          "No se pudieron guardar tus datos",
+        );
+      }
     },
   );
 
