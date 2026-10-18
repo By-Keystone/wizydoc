@@ -23,15 +23,19 @@ export default async function globalSetup(): Promise<void> {
     await testPrisma.$disconnect();
   }
 
-  execFileSync("./node_modules/.bin/prisma", ["migrate", "deploy"], {
-    cwd: API_DIR,
-    stdio: "inherit",
-    env: {
-      ...process.env,
-      DATABASE_URL: apiEnv.DATABASE_URL,
-      DOTENV_CONFIG_PATH: ".env.e2e",
+  execFileSync(
+    process.execPath,
+    ["node_modules/prisma/build/index.js", "migrate", "deploy"],
+    {
+      cwd: API_DIR,
+      stdio: "inherit",
+      env: {
+        ...process.env,
+        DATABASE_URL: apiEnv.DATABASE_URL,
+        DOTENV_CONFIG_PATH: ".env.e2e",
+      },
     },
-  });
+  );
 
   rmSync(EMAIL_CAPTURE_PATH, { force: true });
 }

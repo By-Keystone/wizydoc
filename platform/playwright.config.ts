@@ -40,7 +40,7 @@ export default defineConfig({
   webServer: [
     {
       name: "api",
-      command: "./node_modules/.bin/tsx src/server.ts",
+      command: "node node_modules/tsx/dist/cli.mjs src/server.ts",
       cwd: API_DIR,
       url: `${API_BASE_URL}/health`,
       env: { ...apiEnv, DOTENV_CONFIG_PATH: ".env.e2e" },
@@ -49,7 +49,7 @@ export default defineConfig({
     },
     {
       name: "platform",
-      command: "./node_modules/.bin/next dev --port 3100",
+      command: "node node_modules/next/dist/bin/next dev --port 3100",
       cwd: PLATFORM_DIR,
       url: PLATFORM_BASE_URL,
       env: platformEnv,
