@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { cn } from "@/lib/utils";
 
 const COUNTRY_CODES = [
@@ -24,6 +24,27 @@ const COUNTRY_CODES = [
   { code: "+507", country: "PA", flag: "🇵🇦" },
 ] as const;
 
+const compose = (code: string, number: string) => {
+  const compact = number.replace(/\s/g, "");
+  if (!compact) return "";
+  // Un número que ya trae su código (+44…) no se vuelve a prefijar.
+  return compact.startsWith("+") ? compact : `${code}${compact}`;
+};
+
+export function splitPhone(phone: string, fallbackCode: string) {
+  const compact = phone.replace(/\s/g, "");
+  const known = COUNTRY_CODES.filter((c) => compact.startsWith(c.code)).sort(
+    (a, b) => b.code.length - a.code.length,
+  )[0];
+
+  if (!known) return { countryCode: fallbackCode, number: phone };
+
+  return {
+    countryCode: known.code as string,
+    number: compact.slice(known.code.length),
+  };
+}
+
 interface PhoneInputProps {
   name: string;
   id?: string;
@@ -33,7 +54,13 @@ interface PhoneInputProps {
   defaultValue?: string;
   defaultCountryCode?: string;
   className?: string;
+  disabled?: boolean;
+  invalid?: boolean;
+  "aria-describedby"?: string;
 }
+
+const FIELD_CLASSES =
+  "border text-sm outline-none transition focus:ring-2 disabled:bg-gray-50 disabled:text-brand-ink";
 
 export function PhoneInput({
   name,
@@ -44,28 +71,35 @@ export function PhoneInput({
   defaultValue = "",
   defaultCountryCode = "+52",
   className,
+  disabled,
+  invalid,
+  "aria-describedby": describedBy,
 }: PhoneInputProps) {
   const [countryCode, setCountryCode] = useState(defaultCountryCode);
   const [number, setNumber] = useState(defaultValue);
-  const hiddenRef = useRef<HTMLInputElement>(null);
 
-  const updateHiddenValue = (code: string, num: string) => {
-    if (hiddenRef.current) {
-      hiddenRef.current.value = num ? `${code}${num.replace(/\s/g, "")}` : "";
-    }
-  };
+  const borderClasses = invalid
+    ? "border-red-400 focus:border-red-500 focus:ring-red-100"
+    : "border-gray-300 focus:border-brand-teal focus:ring-brand-teal/20";
 
   return (
     <div className={cn("flex", className)}>
-      <input type="hidden" ref={hiddenRef} name={name} />
+      <input
+        type="hidden"
+        name={name}
+        value={compose(countryCode, number)}
+        readOnly
+      />
       <select
         value={countryCode}
         aria-label="Código de país"
-        onChange={(e) => {
-          setCountryCode(e.target.value);
-          updateHiddenValue(e.target.value, number);
-        }}
-        className="rounded-l-lg border border-r-0 border-gray-300 bg-gray-50 px-2 py-2 text-sm outline-none transition focus:border-brand-teal focus:ring-2 focus:ring-brand-teal/20"
+        disabled={disabled}
+        onChange={(e) => setCountryCode(e.target.value)}
+        className={cn(
+          FIELD_CLASSES,
+          borderClasses,
+          "rounded-l-lg border-r-0 bg-gray-50 px-2 py-2",
+        )}
       >
         {COUNTRY_CODES.map((c) => (
           <option key={c.country} value={c.code}>
@@ -79,12 +113,16 @@ export function PhoneInput({
         autoComplete={autoComplete}
         value={number}
         required={required}
+        disabled={disabled}
         placeholder={placeholder}
-        onChange={(e) => {
-          setNumber(e.target.value);
-          updateHiddenValue(countryCode, e.target.value);
-        }}
-        className="flex-1 rounded-r-lg border border-gray-300 px-3 py-2 text-sm outline-none transition focus:border-brand-teal focus:ring-2 focus:ring-brand-teal/20"
+        aria-invalid={invalid ? true : undefined}
+        aria-describedby={describedBy}
+        onChange={(e) => setNumber(e.target.value)}
+        className={cn(
+          FIELD_CLASSES,
+          borderClasses,
+          "min-w-0 flex-1 rounded-r-lg px-3 py-2",
+        )}
       />
     </div>
   );
