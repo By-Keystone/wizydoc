@@ -11,6 +11,8 @@ export interface TestPrismaUserRow {
   id: string;
   email: string;
   name: string;
+  lastName: string;
+  phone: string;
   accountId: string | null;
   role: string;
   confirmed: boolean;
@@ -69,6 +71,9 @@ export interface TestPrisma {
     findUnique(args: {
       where: Record<string, unknown>;
     }): Promise<TestPrismaUserRow | null>;
+    findUniqueOrThrow(args: {
+      where: Record<string, unknown>;
+    }): Promise<TestPrismaUserRow>;
     update(args: {
       where: Record<string, unknown>;
       data: Record<string, unknown>;
@@ -133,6 +138,13 @@ export interface TestPrisma {
     }): Promise<{ id: string } | null>;
     findUniqueOrThrow(args: {
       where: Record<string, unknown>;
+    }): Promise<{ id: string }>;
+    findFirstOrThrow(args: {
+      where: Record<string, unknown>;
+    }): Promise<{ id: string }>;
+    update(args: {
+      where: Record<string, unknown>;
+      data: Record<string, unknown>;
     }): Promise<{ id: string }>;
   };
   authAccount: {
