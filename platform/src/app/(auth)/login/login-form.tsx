@@ -7,6 +7,8 @@ import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { authClient } from "@/lib/auth/client";
 
+const TOO_MANY_REQUESTS = 429;
+
 interface Props {
   /** Ruta a la que volver tras iniciar sesión (la que el usuario intentaba abrir). */
   callbackUrl?: string;
@@ -40,6 +42,12 @@ export function LoginForm({ callbackUrl }: Props) {
     setPending(false);
 
     if (error) {
+      if (error.status === TOO_MANY_REQUESTS) {
+        setError(
+          "Hiciste varios intentos seguidos. Espera un minuto y vuelve a intentarlo.",
+        );
+        return;
+      }
       setError(error.message ?? "Credenciales inválidas");
       return;
     }

@@ -223,3 +223,29 @@ test("CA-70: «Cancelar» pliega el formulario y lo vacía", async ({ page }) =>
   await expect(currentField(page)).toHaveValue("");
   await expect(newField(page)).toHaveValue("");
 });
+
+test("CA-15: un 429 al cambiar la contraseña muestra el aviso en español y el formulario sigue abierto", async ({
+  page,
+}) => {
+  await openPasswordForm(page, "pwd-429");
+  await page.route("**/api/auth/change-password", (route) =>
+    route.fulfill({
+      status: 429,
+      contentType: "application/json",
+      body: JSON.stringify({
+        message: "Too many requests. Please try again later.",
+      }),
+    }),
+  );
+
+  await submit(page, E2E_PASSWORD, NEW_PASSWORD);
+
+  await expect(
+    toast(
+      page,
+      "Hiciste varios intentos seguidos. Espera un minuto y vuelve a intentarlo.",
+    ),
+  ).toBeVisible();
+  await expect(currentField(page)).toBeVisible();
+  await expect(newField(page)).toBeVisible();
+});
