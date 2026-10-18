@@ -92,11 +92,13 @@ test("CA-26: desde el celular, el paciente ve los médicos y especialidades de l
   await page.getByRole("button", { name: specialtyName }).click();
   await page.getByRole("button", { name: "Siguiente", exact: true }).click();
 
-  const doctorButtonName = "Dr. Daniela Flores";
+  const doctorButtonName = "Daniela Flores";
   await expect(
-    page.getByRole("button", { name: doctorButtonName }),
+    page.getByRole("button", { name: doctorButtonName, exact: true }),
   ).toBeVisible();
-  await page.getByRole("button", { name: doctorButtonName }).click();
+  await page
+    .getByRole("button", { name: doctorButtonName, exact: true })
+    .click();
   await page.getByRole("button", { name: "Siguiente", exact: true }).click();
 
   // La semana siguiente queda enteramente en el futuro: no depende de a qué hora corra la prueba.

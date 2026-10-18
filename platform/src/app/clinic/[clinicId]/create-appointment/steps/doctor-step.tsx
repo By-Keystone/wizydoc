@@ -44,7 +44,7 @@ export function DoctorStep({ doctors, onNext, onBack }: Props) {
                   : "border-gray-200 text-brand-gray hover:bg-gray-50",
               )}
             >
-              Dr. {doctor.name} {doctor.lastName}
+              {doctor.displayName}
             </button>
           ))}
         </div>

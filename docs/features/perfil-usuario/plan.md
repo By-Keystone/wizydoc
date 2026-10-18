@@ -263,8 +263,8 @@ Las plantillas `.mjml` y `template-renderer.ts` no cambian: las variables se lla
 | `platform/src/lib/api/user/types.ts` (nuevo) | `DoctorTreatment = "DR" \| "DRA"`, `MyProfileClinic` y `MyProfile`, según el contrato de arriba. |
 | `platform/src/lib/api/user/index.ts` | `tags = { myProfile: () => "user/me/profile" }` y `getMyProfile()`, que llama a `doFetchJson("/user/me/profile", { next: { tags: [tags.myProfile()] } })`. **Sin `cache: "force-cache"`:** es un dato de cada usuario y no puede entrar en la caché de datos compartida. |
 | `platform/src/lib/actions/user/update-my-profile.action.ts` (nuevo) | Sigue el patrón de `platform/AGENTS.md`. Con `getSession()`: si no hay sesión, devuelve `auth-expired`. Valida con Zod y los mismos mensajes del api. Envía `treatment` solo si `data.has("treatment")` (`""` se convierte en `null`). Llama a `doFetchJson("/user/me/profile", { method: "PATCH" })` y a `revalidateTag(tags.myProfile())`. Devuelve `{ status: "success", message: "Guardamos tus datos." }`. Los errores pasan por `toActionState`. Con errores por campo, el mensaje general es «Revisa los datos marcados.». |
-| `platform/src/lib/api/doctors/types.ts` | `ClinicDoctor` agrega `displayName: string`. |
-| `platform/src/lib/api/clinic/types.ts` | `ClinicAppointment.doctor` agrega `displayName: string`. |
+| `platform/src/lib/api/doctors/types.ts` | `ClinicDoctor` agrega `displayName: string` y deja de tener `name` y `lastName` (PR 2): así nadie vuelve a armar el nombre a mano (CA-23). El api los sigue devolviendo. |
+| `platform/src/lib/api/clinic/types.ts` | `ClinicAppointment.doctor` queda solo con `displayName: string` (PR 2), por la misma razón. |
 | `platform/src/lib/auth/sign-out.ts` (nuevo, `"use client"`) | `signOutAndClearResource(router)`: llama a `authClient.signOut()`, borra las cookies `resource_id` y `resource_type` y va a `/login`. Reemplaza las dos copias de `top-nav.tsx` y `sidebar.tsx`. |
 
 #### Nombre del médico en platform

@@ -100,7 +100,7 @@ export function BookingWizard({ doctors, clinicId }: Props) {
           {step === 4 && specialty && doctor && dateTime && (
             <PatientStep
               specialtyName={specialty.name}
-              doctorName={`Dr. ${doctor.name} ${doctor.lastName}`}
+              doctorName={doctor.displayName}
               date={dateTime.date}
               time={dateTime.time}
               onNext={async (p) => {
@@ -137,7 +137,7 @@ export function BookingWizard({ doctors, clinicId }: Props) {
           {step === 5 && specialty && doctor && dateTime && patient && (
             <SuccessStep
               specialtyName={specialty.name}
-              doctorName={`Dr. ${doctor.name} ${doctor.lastName}`}
+              doctorName={doctor.displayName}
               date={dateTime.date}
               time={dateTime.time}
               patient={patient}

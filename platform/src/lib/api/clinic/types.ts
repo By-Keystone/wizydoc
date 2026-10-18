@@ -52,7 +52,6 @@ export type ClinicAppointment = {
     phone: string;
   };
   doctor: {
-    name: string;
-    lastName: string;
+    displayName: string;
   };
 };

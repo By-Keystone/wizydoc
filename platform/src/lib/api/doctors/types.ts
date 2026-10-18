@@ -15,7 +15,6 @@ export type Doctor = {
 // clínica), que trae otros campos (phone, confirmed, membershipRole).
 export type ClinicDoctor = {
   doctorProfileId: string;
-  name: string;
-  lastName: string;
+  displayName: string;
   specialties: { id: string; name: string }[];
 };
