@@ -1,7 +1,11 @@
-export default function ClinicProfilePage() {
-  return (
-    <div>
-      <h1 className="text-2xl font-bold text-brand-teal-dark">Mi Perfil</h1>
-    </div>
-  );
+import { redirect } from "next/navigation";
+
+interface Props {
+  params: Promise<{ accountId: string; clinicId: string }>;
+}
+
+export default async function ClinicProfilePage({ params }: Props) {
+  const { accountId, clinicId } = await params;
+
+  redirect(`/account/${accountId}/clinic/${clinicId}/me`);
 }

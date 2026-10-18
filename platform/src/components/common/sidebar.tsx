@@ -1,20 +1,22 @@
 "use client";
 
-import { LogOut, Menu, X, ArrowLeftRight } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import logo from "@/images/logo.png";
 import * as Dialog from "@radix-ui/react-dialog";
-import { type FormEvent, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { getNavLinks } from "./utils";
-import { authClient } from "@/lib/auth/client";
+import { UserMenu } from "./user-menu";
 import { useApp } from "@/context/app/app.context";
-import { useParams, useRouter } from "next/navigation";
+import { cn } from "@/lib/utils";
+import { useParams, usePathname, useRouter } from "next/navigation";
 
 export function Sidebar() {
-  const { membership } = useApp();
+  const { membership, user } = useApp();
   const params = useParams<{ accountId: string }>();
   const router = useRouter();
+  const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const { resourceType, resourceId, role } = membership;
@@ -30,16 +32,7 @@ export function Sidebar() {
     [membership],
   );
 
-  const handleSignOut = async (e: FormEvent) => {
-    e.stopPropagation();
-    await authClient.signOut();
-    // Cookies de app (no httpOnly) — se limpian aquí; la de sesión la borra BA.
-    document.cookie = "resource_id=; path=/; max-age=0";
-    document.cookie = "resource_type=; path=/; max-age=0";
-    router.push("/login");
-  };
-
-  const handleChangeResource = async () => {
+  const handleChangeResource = () => {
     router.push(`/account/${params.accountId}/select`);
     document.cookie = "resource_id=; path=/; max-age=0";
     document.cookie = "resource_type=; path=/; max-age=0";
@@ -47,41 +40,43 @@ export function Sidebar() {
 
   const basePath = `/account/${params.accountId}/${lowerResourceType}/${resourceId}`;
   const dashboardHref = `${basePath}/dashboard`;
+  const profileHref = `${basePath}/me`;
 
   // El drawer cierra al navegar; la sidebar de escritorio no tiene que cerrar
   // nada, así que el handler es opcional.
   const renderNavLinks = (onNavigate?: () => void) =>
-    navLinks.map(({ href, label, icon: Icon }) => (
-      <Link
-        key={href}
-        href={`${basePath}/${href}`}
-        onClick={onNavigate}
-        className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-brand-gray transition-colors hover:bg-gray-100 hover:text-brand-ink"
-      >
-        <Icon className="h-4 w-4 shrink-0" />
-        {label}
-      </Link>
-    ));
+    navLinks.map(({ href, label, icon: Icon }) => {
+      const isActive = pathname.startsWith(`${basePath}/${href}`);
 
-  const signOutButton = (
-    <button
-      type="button"
-      onClick={handleSignOut}
-      className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-brand-gray transition-colors hover:bg-gray-100 hover:text-brand-ink"
-    >
-      <LogOut className="h-4 w-4 shrink-0" />
-      Cerrar sesión
-    </button>
-  );
+      return (
+        <Link
+          key={href}
+          href={`${basePath}/${href}`}
+          onClick={onNavigate}
+          aria-current={isActive ? "page" : undefined}
+          className={cn(
+            "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
+            isActive
+              ? "bg-brand-surface font-semibold text-brand-teal-dark"
+              : "text-brand-gray hover:bg-gray-100 hover:text-brand-ink",
+          )}
+        >
+          <Icon className="h-4 w-4 shrink-0" />
+          {label}
+        </Link>
+      );
+    });
 
-  const selectResourcesButton = (
-    <button
-      className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-brand-gray transition-colors hover:bg-gray-100 hover:text-brand-ink"
-      onClick={handleChangeResource}
-    >
-      <ArrowLeftRight className="h-4 w-4 shrink-0" />
-      Selección de recursos
-    </button>
+  const renderUserMenu = (onNavigate?: () => void) => (
+    <UserMenu
+      user={user}
+      placement="sidebar"
+      subtitle={membership.resourceName}
+      profileHref={profileHref}
+      active={pathname === profileHref}
+      onChangeResource={handleChangeResource}
+      onNavigate={onNavigate}
+    />
   );
 
   return (
@@ -117,6 +112,11 @@ export function Sidebar() {
           */}
           <Dialog.Content
             aria-describedby={undefined}
+            onEscapeKeyDown={(e) => {
+              // Con el menú del avatar abierto, Escape cierra solo ese menú.
+              if ((e.target as HTMLElement).closest('[role="menu"]'))
+                e.preventDefault();
+            }}
             className="fixed left-0 top-0 z-50 flex h-dvh w-72 max-w-[80%] flex-col gap-6 overflow-y-auto bg-white px-4 py-6 shadow-xl focus:outline-none md:hidden"
           >
             <Dialog.Title className="sr-only">Menú de navegación</Dialog.Title>
@@ -145,8 +145,7 @@ export function Sidebar() {
                 mide `h-dvh`: su fondo es el borde visible de la pantalla, no el
                 del viewport, que quedaría tapado por la barra del navegador. */}
             <div className="mt-auto border-t border-gray-100 pt-4">
-              {selectResourcesButton}
-              {signOutButton}
+              {renderUserMenu(() => setMobileOpen(false))}
             </div>
           </Dialog.Content>
         </Dialog.Portal>
@@ -163,10 +162,7 @@ export function Sidebar() {
 
         <nav className="flex flex-1 flex-col gap-1">{renderNavLinks()}</nav>
 
-        <div className="border-t border-gray-100 pt-4 ">
-          {selectResourcesButton}
-          {signOutButton}
-        </div>
+        <div className="border-t border-gray-100 pt-4">{renderUserMenu()}</div>
       </aside>
     </>
   );

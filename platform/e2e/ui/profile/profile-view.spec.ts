@@ -38,12 +38,16 @@ test("CA-43: bajo los workspaces muestra la barra superior, el regreso, el avata
   await loginAndOpenProfile(page, user);
 
   await expect(page.getByRole("img", { name: "WizyDoc" })).toBeVisible();
+  await page
+    .getByRole("button", { name: `Tu cuenta: ${FULL_NAME}`, exact: true })
+    .click();
   await expect(
-    page.getByRole("button", { name: "Cerrar sesión" }),
+    page.getByRole("menuitem", { name: "Cerrar sesión", exact: true }),
   ).toBeVisible();
+  await page.keyboard.press("Escape");
   await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1);
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(FULL_NAME);
-  await expect(page.getByText("MQ", { exact: true })).toBeVisible();
+  await expect(page.getByText("MQ", { exact: true }).first()).toBeVisible();
   await expect(
     page.getByText(user.email, { exact: true }).first(),
   ).toBeVisible();
