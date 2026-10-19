@@ -1,4 +1,5 @@
 import "dotenv/config";
+import { randomUUID } from "node:crypto";
 
 // Se corre con NODE_ENV=production: el límite de Better Auth sólo está activo
 // ahí y sin él no hay 127.0.0.1 de respaldo. Ver docs/features/fix-auth-rate-limit-ip/plan.md.
@@ -139,6 +140,49 @@ async function main() {
     changeEmail.slice(0, 3).every((response) => response.status !== 429) &&
       changeEmail[3].status === 429,
     changeEmail.map((r) => r.status).join(","),
+  );
+
+  // f. Pedir el enlace: 3 cada 10 minutos por IP. Correos que no existen:
+  // Better Auth responde antes de llamar a sendResetPassword, así que no sale
+  // ningún correo aunque el script corra con EMAIL_DRIVER=ses.
+  const requestReset = (headers: Record<string, string>) =>
+    post(
+      "request-password-reset",
+      { email: `${randomUUID()}@verify-rate-limit.test` },
+      headers,
+    );
+  const f = await statuses(
+    () => requestReset({ "x-real-ip": "203.0.113.30" }),
+    4,
+  );
+  const fRetryAfter = Number(f[3].headers.get("x-retry-after"));
+  const fOtherIp = await requestReset({ "x-real-ip": "203.0.113.31" });
+  report(
+    "CA-36 request-password-reset x4 misma IP",
+    f.slice(0, 3).every((response) => response.status === 200) &&
+      f[3].status === 429 &&
+      fRetryAfter >= 1 &&
+      fRetryAfter <= 600 &&
+      fOtherIp.status === 200,
+    `${f.map((r) => r.status).join(",")} X-Retry-After=${fRetryAfter} otra IP=${fOtherIp.status}`,
+  );
+
+  // g. Crear la contraseña: 5 cada minuto por IP. Con un token inventado
+  // Better Auth responde INVALID_TOKEN sin tocar a ningún usuario.
+  const g = await statuses(
+    () =>
+      post(
+        "reset-password",
+        { newPassword: "Contraseña-falsa-2026", token: "A".repeat(24) },
+        { "x-real-ip": "203.0.113.32" },
+      ),
+    6,
+  );
+  report(
+    "CA-37 reset-password x6 misma IP",
+    g.slice(0, 5).every((response) => response.status === 400) &&
+      g[5].status === 429,
+    g.map((r) => r.status).join(","),
   );
 
   // e. Modo de fallo: sin x-real-ip, todos caen en un cupo compartido.

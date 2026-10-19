@@ -1,18 +1,16 @@
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth/session";
 import { getActiveResource } from "@/lib/auth/guards";
+import { safeInternalPath } from "@/lib/auth/safe-internal-path";
 import { LoginForm } from "./login-form";
 
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ callbackUrl?: string }>;
+  searchParams: Promise<{ callbackUrl?: string; reset?: string }>;
 }) {
-  const { callbackUrl } = await searchParams;
-  const callback =
-    callbackUrl?.startsWith("/") && !callbackUrl.startsWith("//")
-      ? callbackUrl
-      : null;
+  const { callbackUrl, reset } = await searchParams;
+  const callback = safeInternalPath(callbackUrl);
 
   const session = await getSession();
 
@@ -35,5 +33,5 @@ export default async function LoginPage({
     redirect(`/account/${accountId}/select`);
   }
 
-  return <LoginForm callbackUrl={callbackUrl} />;
+  return <LoginForm callbackUrl={callbackUrl} passwordReset={reset === "ok"} />;
 }

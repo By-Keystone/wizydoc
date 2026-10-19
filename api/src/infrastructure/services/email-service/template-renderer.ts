@@ -6,6 +6,8 @@ import mjml2html from "mjml";
 export type EmailTemplate =
   | "confirm-email"
   | "invite-user"
+  | "reset-password"
+  | "pending-invitation"
   | "confirm-appointment"
   | "patient-cancelled-appointment"
   | "doctor-cancelled-appointment"
@@ -15,6 +17,12 @@ export type EmailTemplate =
 interface TemplateVariables {
   "confirm-email": { name: string; confirmUrl: string };
   "invite-user": { name: string; resourceName: string; inviteUrl: string };
+  "reset-password": { name: string; resetUrl: string };
+  "pending-invitation": {
+    name: string;
+    resourceName: string;
+    inviteUrl: string | null;
+  };
   /** Acuse de reserva: la cita ya está creada, no hay nada que confirmar. */
   "confirm-appointment": {
     patientName: string;

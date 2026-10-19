@@ -1,6 +1,6 @@
 "use client";
 
-import { Field } from "@/components/common/form";
+import { Field } from "./field";
 import { useState } from "react";
 
 interface Props {

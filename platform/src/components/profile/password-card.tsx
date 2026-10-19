@@ -5,7 +5,7 @@ import { authClient } from "@/lib/auth/client";
 import { toast } from "@/lib/toast";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useEffect, useRef, useState } from "react";
-import { PasswordInput } from "./password-input";
+import { PasswordInput } from "@/components/common/form";
 import { ProfileCard } from "./profile-card";
 
 const MIN_LENGTH = 8;

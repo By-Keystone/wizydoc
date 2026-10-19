@@ -1,29 +1,33 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Loader2 } from "lucide-react";
+import { CheckCircle2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { authClient } from "@/lib/auth/client";
+import { safeInternalPath } from "@/lib/auth/safe-internal-path";
 
 const TOO_MANY_REQUESTS = 429;
 
 interface Props {
   /** Ruta a la que volver tras iniciar sesión (la que el usuario intentaba abrir). */
   callbackUrl?: string;
+  /** Llegó de crear su contraseña nueva (`?reset=ok`). */
+  passwordReset?: boolean;
 }
 
-// Solo aceptamos rutas internas relativas para evitar open-redirect.
-function safeInternalPath(path?: string): string | null {
-  if (!path) return null;
-  return path.startsWith("/") && !path.startsWith("//") ? path : null;
-}
-
-export function LoginForm({ callbackUrl }: Props) {
+export function LoginForm({ callbackUrl, passwordReset }: Props) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const [showResetNotice, setShowResetNotice] = useState(false);
+
+  // Un aviso que ya está en el HTML al cargar no se anuncia: la región
+  // `role="status"` va vacía en el servidor y el texto entra tras montar.
+  useEffect(() => {
+    setShowResetNotice(Boolean(passwordReset));
+  }, [passwordReset]);
 
   const callback = safeInternalPath(callbackUrl);
 
@@ -64,6 +68,16 @@ export function LoginForm({ callbackUrl }: Props) {
   return (
     <div className="w-full max-w-md">
       <div className="rounded-2xl border border-gray-200 bg-white p-8 shadow-xl">
+        <div role="status">
+          {showResetNotice && (
+            <p className="mb-5 flex items-start gap-2 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+              <CheckCircle2 className="mt-0.5 h-[18px] w-[18px] shrink-0" />
+              <span>
+                Listo, ya puedes iniciar sesión con tu contraseña nueva.
+              </span>
+            </p>
+          )}
+        </div>
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-brand-teal-dark">
             Bienvenido de vuelta
@@ -108,6 +122,15 @@ export function LoginForm({ callbackUrl }: Props) {
               placeholder="Tu contraseña"
               className="rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none transition focus:border-brand-teal focus:ring-2 focus:ring-brand-teal/20"
             />
+          </div>
+
+          <div className="-mt-2 flex justify-end">
+            <Link
+              href="/forgot-password"
+              className="inline-flex min-h-10 items-center text-sm font-medium text-brand-teal hover:text-brand-teal-dark"
+            >
+              ¿Olvidaste tu contraseña?
+            </Link>
           </div>
 
           {error && (
