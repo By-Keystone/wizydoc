@@ -94,7 +94,7 @@ export function PasswordCard() {
         });
       } else if (error.status === TOO_MANY_REQUESTS) {
         toast.error(
-          "Hiciste varios intentos seguidos. Espera unos segundos y vuelve a intentarlo.",
+          "Hiciste varios intentos seguidos. Espera un minuto y vuelve a intentarlo.",
         );
       } else {
         toast.error("No pudimos cambiar tu contraseña. Vuelve a intentarlo.");

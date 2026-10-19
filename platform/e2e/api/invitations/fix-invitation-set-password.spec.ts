@@ -89,7 +89,7 @@ test.describe("Lo que debe seguir funcionando", () => {
     expect(response.status()).toBe(200);
 
     const session = await getLatestSessionTrace(invited.userId);
-    expect(session?.ipAddress).not.toBeNull();
+    expect(session?.ipAddress).toBeTruthy();
     expect(session?.userAgent).toBe("verificacion-qa-ca6");
   });
 });

@@ -13,7 +13,24 @@ const auth = betterAuth({
   disabledPaths: ["/update-user"],
   advanced: {
     database: { generateId: false },
-    ipAddress: { ipAddressHeaders: ["x-forwarded-for"] },
+    // El borde de Railway pone en X-Real-IP la IP de quien abrió la conexión;
+    // platform la reenvía tal cual. No se usa x-forwarded-for: Railway lo arma
+    // como "visitante, borde" y con dos entradas Better Auth no resuelve la IP,
+    // así que todos los clientes compartían un único cupo y la sesión quedaba
+    // sin IP. Sin cabecera de respaldo: si X-Real-IP faltara, preferimos la
+    // sesión sin IP y el aviso de Better Auth en el log a aceptar una cabecera
+    // que el cliente pueda fijar. Sólo es seguro mientras el api no tenga
+    // dominio público.
+    ipAddress: { ipAddressHeaders: ["x-real-ip"] },
+  },
+  rateLimit: {
+    // 5 intentos por minuto y por IP para iniciar sesión y cambiar la
+    // contraseña (Better Auth trae 3 cada 10 s). Como el resto del límite, sólo
+    // se aplica con NODE_ENV=production.
+    customRules: {
+      "/sign-in/email": { window: 60, max: 5 },
+      "/change-password": { window: 60, max: 5 },
+    },
   },
   session: {
     // Ventana de sesión: 7 días. Como es rodante, un usuario activo no se
