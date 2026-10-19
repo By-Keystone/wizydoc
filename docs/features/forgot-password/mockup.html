@@ -1,0 +1,460 @@
+<!doctype html>
+<html lang="es-PE">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototipo: ¿Olvidaste tu contraseña?</title>
+<style>
+  /* Tokens de platform/tailwind.config.ts (brand-*) y --radius de globals.css. */
+  :root {
+    --teal: #0E8C82;
+    --teal-dark: #0B4F49;
+    --ink: #1F2A2A;
+    --gray: #5C6B6A;
+    --surface: #EFF5F4;
+    --coral: #FF6F59;
+    --border: #e5e7eb;
+    --ring: hsl(175 82% 30%);
+    --radius: 0.625rem;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: var(--ink); background: #e5e7eb; -webkit-font-smoothing: antialiased; }
+  button, input { font: inherit; color: inherit; }
+  a { color: inherit; }
+  :focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+
+  /* ---------- Barra del prototipo (no es parte de la app) ---------- */
+  .proto { display: grid; grid-template-columns: 300px minmax(0, 1fr); min-height: 100vh; }
+  .proto-panel { background: #fff; border-right: 1px solid #d1d5db; padding: 20px; overflow-y: auto; max-height: 100vh; position: sticky; top: 0; }
+  .proto-panel h1 { font-size: 15px; margin: 0; color: var(--teal-dark); }
+  .proto-panel p.lead { font-size: 12px; color: var(--gray); margin: 6px 0 16px; line-height: 1.45; }
+  .proto-panel h2 { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--teal); margin: 18px 0 8px; }
+  .proto-panel h3 { font-size: 11.5px; color: var(--gray); margin: 10px 0 4px; font-weight: 600; }
+  .proto-panel label.chk { display: flex; gap: 8px; align-items: flex-start; font-size: 13px; padding: 5px 0; cursor: pointer; line-height: 1.35; }
+  .proto-panel input[type=checkbox] { margin-top: 2px; accent-color: var(--teal); }
+  .seg { display: flex; border: 1px solid #d1d5db; border-radius: 8px; overflow: hidden; }
+  .seg button { flex: 1; border: 0; background: #fff; padding: 6px 4px; font-size: 12.5px; color: var(--gray); cursor: pointer; }
+  .seg button[aria-pressed="true"] { background: var(--teal); color: #fff; }
+  .jump { display: block; width: 100%; text-align: left; border: 1px solid #e5e7eb; background: #fff; border-radius: 8px; padding: 6px 10px; margin-bottom: 4px; font-size: 12.5px; color: var(--gray); cursor: pointer; }
+  .jump:hover { background: #f9fafb; }
+  .jump[aria-current="true"] { border-color: var(--teal); color: var(--teal); background: rgba(14,140,130,.06); }
+  .note { font-size: 11.5px; color: var(--gray); background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 8px 10px; margin-top: 12px; line-height: 1.45; }
+  .note b { color: var(--ink); }
+  .note ol { margin: 4px 0 0; padding-left: 16px; }
+  .note li { margin: 5px 0; }
+  .tip { font-size: 11.5px; color: var(--teal-dark); background: var(--surface); border-radius: 8px; padding: 8px 10px; margin-top: 10px; line-height: 1.45; }
+  .stage { display: flex; justify-content: center; align-items: flex-start; padding: 32px 16px; min-width: 0; }
+  .frame-wrap { min-width: 0; max-width: 100%; }
+  .frame-caption { text-align: center; font-size: 12px; color: var(--gray); margin-bottom: 8px; }
+  .frame { position: relative; background: #fff; box-shadow: 0 10px 30px rgba(0,0,0,.12); overflow: hidden; display: flex; flex-direction: column; }
+  /* 375 px de contenido + 8 px de marco a cada lado. */
+  .frame.mobile { width: 391px; height: 796px; border-radius: 28px; border: 8px solid #1f2937; }
+  .frame.desktop { width: 1100px; max-width: 100%; height: 760px; border-radius: 10px; border: 1px solid #cbd5e1; }
+  .browserbar { flex-shrink: 0; display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: #f3f4f6; border-bottom: 1px solid var(--border); font-size: 12px; color: var(--gray); }
+  .browserbar .dots { display: flex; gap: 5px; }
+  .browserbar .dots i { width: 9px; height: 9px; border-radius: 50%; background: #d1d5db; display: block; }
+  .browserbar .url { flex: 1; min-width: 0; background: #fff; border: 1px solid var(--border); border-radius: 6px; padding: 4px 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mobile .browserbar .dots { display: none; }
+  .scroll { flex: 1; min-height: 0; overflow-y: auto; overflow-x: auto; }
+
+  /* ---------- (auth)/layout.tsx ---------- */
+  .auth { min-height: 100%; display: flex; flex-direction: column; background: linear-gradient(to bottom right, var(--surface), #fff, var(--surface)); }
+  .auth header { padding: 20px 24px; }
+  .logo { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; font-size: 18px; color: var(--teal-dark); text-decoration: none; height: 32px; }
+  .logo-mark { width: 26px; height: 26px; border-radius: 8px; background: var(--teal); color: #fff; display: grid; place-items: center; font-size: 14px; }
+  .auth main { flex: 1; display: flex; align-items: center; justify-content: center; padding: 48px 16px; }
+  .auth footer { padding: 24px 0; text-align: center; font-size: 12px; color: var(--gray); }
+
+  /* ---------- Tarjeta (rounded-2xl border bg-white p-8 shadow-xl) ---------- */
+  .card { width: 100%; max-width: 28rem; background: #fff; border: 1px solid var(--border); border-radius: 16px; padding: 32px; box-shadow: 0 20px 25px -5px rgba(0,0,0,.1), 0 8px 10px -6px rgba(0,0,0,.1); }
+  .card.center { text-align: center; }
+  .card h1 { margin: 0; font-size: 24px; line-height: 32px; font-weight: 700; color: var(--teal-dark); }
+  .card h1:focus { outline: none; }
+  .card h1:focus-visible { outline: 2px solid var(--ring); outline-offset: 4px; border-radius: 4px; }
+  .sub { margin: 4px 0 0; font-size: 14px; line-height: 20px; color: var(--gray); }
+  .card.center .sub { margin-top: 8px; }
+  .head { margin-bottom: 32px; }
+  .badge-icon { margin: 0 auto 16px; width: 56px; height: 56px; border-radius: 16px; display: flex; align-items: center; justify-content: center; }
+  .badge-icon.ok { background: rgba(14,140,130,.1); color: var(--teal); }
+  .badge-icon.bad { background: #fee2e2; color: #ef4444; }
+  .badge-icon svg { width: 28px; height: 28px; }
+  form { display: flex; flex-direction: column; gap: 16px; margin: 0; }
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .field label { font-size: 14px; font-weight: 500; color: var(--gray); }
+  .input { width: 100%; border: 1px solid #d1d5db; border-radius: var(--radius); padding: 8px 12px; font-size: 14px; line-height: 20px; outline: none; background: #fff; transition: box-shadow .15s, border-color .15s; }
+  .input:focus { border-color: var(--teal); box-shadow: 0 0 0 2px rgba(14,140,130,.2); }
+  .input.bad { border-color: #f87171; }
+  .input.bad:focus { border-color: #ef4444; box-shadow: 0 0 0 2px #fee2e2; }
+  .input[readonly] { background: #f9fafb; }
+  .field-err { font-size: 12px; color: #ef4444; margin: 0; }
+  .pwd { position: relative; }
+  .pwd .input { padding-right: 80px; }
+  .pwd button { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); border: 0; background: none; font-size: 12px; font-weight: 600; color: var(--teal); cursor: pointer; padding: 6px; border-radius: 4px; }
+  .forgot-row { display: flex; justify-content: flex-end; margin-top: -6px; }
+  .tlink { font-size: 14px; font-weight: 500; color: var(--teal); text-decoration: none; background: none; border: 0; padding: 4px 0; cursor: pointer; }
+  .tlink:hover { color: var(--teal-dark); }
+  .alert { border-radius: var(--radius); padding: 8px 12px; font-size: 14px; line-height: 20px; margin: 0; }
+  .alert.err { background: #fef2f2; color: #dc2626; }
+  .alert.ok { background: #ecfdf5; color: #047857; display: flex; gap: 8px; align-items: flex-start; margin-bottom: 20px; }
+  .alert.ok svg { width: 18px; height: 18px; flex-shrink: 0; margin-top: 1px; }
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 40px; padding: 0 20px; border-radius: var(--radius); font-size: 14px; font-weight: 600; border: 0; cursor: pointer; white-space: nowrap; text-decoration: none; width: 100%; }
+  .btn svg { width: 16px; height: 16px; }
+  .btn-default { background: var(--teal); color: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+  .btn-default:hover { background: var(--teal-dark); }
+  .btn-default[disabled] { background: rgba(14,140,130,.5); cursor: default; }
+  .btn-outline { background: #fff; color: var(--gray); border: 1px solid var(--border); }
+  .btn-outline:hover { background: #f9fafb; }
+  .mt2 { margin-top: 8px; }
+  .mt6 { margin-top: 24px; }
+  .foot { margin-top: 24px; text-align: center; font-size: 14px; color: var(--gray); }
+  .back { display: inline-flex; align-items: center; gap: 4px; }
+  .back svg { width: 16px; height: 16px; }
+  .typed { margin: 16px 0 0; font-size: 14px; color: var(--gray); background: var(--surface); border-radius: var(--radius); padding: 10px 12px; text-align: left; line-height: 1.45; }
+  .typed b { color: var(--ink); word-break: break-all; font-weight: 600; }
+  .small { font-size: 14px; color: var(--gray); margin: 12px 0 0; line-height: 20px; }
+  .spin { animation: spin 1s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading { display: flex; flex-direction: column; align-items: center; gap: 12px; color: var(--gray); padding: 24px 0; font-size: 14px; }
+  .loading svg { width: 24px; height: 24px; }
+
+  /* ---------- Correo (MJML: fondo #f4f4f4, sección blanca 40px) ---------- */
+  .mail { flex: 1; min-height: 0; display: flex; flex-direction: column; background: #fff; }
+  .mail-meta { flex-shrink: 0; padding: 14px 18px; border-bottom: 1px solid var(--border); font-size: 13px; line-height: 1.6; }
+  .mail-meta b { font-size: 16px; display: block; margin-bottom: 4px; color: var(--ink); }
+  .mail-meta span { color: var(--gray); }
+  .mail-meta .who { overflow-wrap: anywhere; }
+  .mail-body { flex: 1; overflow-y: auto; background: #f4f4f4; padding: 20px 0; }
+  .mj { max-width: 600px; margin: 0 auto; background: #fff; padding: 40px; font-family: Ubuntu, Helvetica, Arial, sans-serif; color: #000; }
+  .mobile .mj { padding: 40px 25px; }
+  .mj p { margin: 0 0 18px; font-size: 16px; line-height: 1.5; }
+  .mj p.hi { font-size: 20px; font-weight: 700; }
+  .mj p.muted { font-size: 14px; color: #5C6B6A; }
+  .mj .mj-btn { display: table; margin: 6px auto 24px; background: #0E8C82; color: #fff; text-decoration: none; padding: 10px 25px; border-radius: 3px; font-size: 13px; cursor: pointer; border: 0; }
+
+  @media (max-width: 900px) {
+    .proto { grid-template-columns: minmax(0, 1fr); }
+    .proto-panel { position: static; max-height: none; border-right: 0; border-bottom: 1px solid #d1d5db; }
+  }
+</style>
+</head>
+<body>
+<div class="proto">
+  <aside class="proto-panel" aria-label="Controles del prototipo">
+    <h1>¿Olvidaste tu contraseña?</h1>
+    <p class="lead">Prototipo del flujo de recuperación: login, pedir el enlace, los correos y crear la contraseña nueva. Los datos son de ejemplo.</p>
+
+    <h2>Vista</h2>
+    <div class="seg" role="group" aria-label="Vista">
+      <button type="button" data-view="mobile" aria-pressed="true">Celular</button>
+      <button type="button" data-view="desktop" aria-pressed="false">Computadora</button>
+    </div>
+
+    <h2>Pantalla y estado</h2>
+    <div id="screens"></div>
+
+    <h2>Casos</h2>
+    <label class="chk"><input type="checkbox" data-opt="longEmail"> Correo largo (comprueba que no haya desplazamiento a 375 px)</label>
+    <p class="tip">Recorre el flujo tocando dentro del teléfono: «¿Olvidaste tu contraseña?» → «Enviar enlace» → abre el correo → «Crear contraseña nueva» → «Guardar contraseña».</p>
+
+    <div class="note">
+      <b>Qué propone este mockup</b>
+      <ol>
+        <li><b>Siempre la misma respuesta.</b> «Revisa tu correo» sale igual exista o no la cuenta. Muestra el correo escrito para que la persona note si lo escribió mal.</li>
+        <li><b>El enlace dura 1 hora y sirve una vez.</b> Lleva el token después de <code>#</code>, que no llega a ningún servidor ni log. Por eso «Este enlace ya no sirve» aparece al guardar si venció o ya se usó, y al abrir si está incompleto.</li>
+        <li><b>Al guardar se cierran todas las sesiones</b> y se vuelve al login con el aviso verde. No inicia sesión sola.</li>
+        <li><b>Invitado sin contraseña:</b> no recibe el correo de recuperación sino «Tu invitación a WizyDoc sigue pendiente», con el enlace de su invitación o, si venció, con qué hacer. En pantalla no cambia nada.</li>
+        <li><b>Correo sin confirmar:</b> recibe el de recuperación; al crear la contraseña queda confirmado.</li>
+        <li>Igual para ADMIN, DOCTOR y USER, y en todos los planes: no hay 403 ni 402.</li>
+      </ol>
+    </div>
+  </aside>
+
+  <div class="stage">
+    <div class="frame-wrap">
+      <div class="frame-caption" id="caption"></div>
+      <div class="frame mobile" id="frame"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const ICON = {
+    mailCheck: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 13V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v12c0 1.1.9 2 2 2h8"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/><path d="m16 19 2 2 4-4"/></svg>',
+    xCircle: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6M9 9l6 6"/></svg>',
+    check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>',
+    loader: '<svg class="spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>',
+    left: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>',
+  };
+
+  const SCREENS = [
+    { group: "Login" },
+    { id: "login", label: "Login con el enlace", url: "/login" },
+    { id: "loginOk", label: "Login tras crear la contraseña", url: "/login?reset=ok" },
+    { group: "Recupera tu contraseña" },
+    { id: "forgot", label: "Normal", url: "/forgot-password" },
+    { id: "forgotLoading", label: "Enviando (carga)", url: "/forgot-password" },
+    { id: "forgotField", label: "Error: correo inválido", url: "/forgot-password" },
+    { id: "forgot429", label: "Error: demasiados pedidos (429)", url: "/forgot-password" },
+    { id: "forgotGeneric", label: "Error: sin conexión", url: "/forgot-password" },
+    { id: "sent", label: "Revisa tu correo", url: "/forgot-password" },
+    { group: "Correos" },
+    { id: "mailReset", label: "Recuperación", mail: true },
+    { id: "mailInvite", label: "Invitado: invitación vigente", mail: true },
+    { id: "mailInviteExpired", label: "Invitado: invitación vencida", mail: true },
+    { group: "Crea tu contraseña nueva" },
+    { id: "resetLoading", label: "Leyendo el enlace (carga)", url: "/reset-password#token=…" },
+    { id: "reset", label: "Normal", url: "/reset-password#token=…" },
+    { id: "resetSaving", label: "Guardando (carga)", url: "/reset-password#token=…" },
+    { id: "resetField", label: "Error: menos de 8 caracteres", url: "/reset-password#token=…" },
+    { id: "reset429", label: "Error: demasiados intentos (429)", url: "/reset-password#token=…" },
+    { id: "resetGeneric", label: "Error: no se pudo guardar", url: "/reset-password#token=…" },
+    { id: "invalid", label: "Este enlace ya no sirve", url: "/reset-password" },
+  ];
+
+  const PERSON = { name: "Ana", lastName: "López Quispe", email: "ana.lopez@consultorio.pe" };
+  const LONG_EMAIL = "recepcion.consultorio.pediatrico.san.borja@clinicasanmartindeporres.com.pe";
+
+  const state = { view: "mobile", screen: "login", show: false, longEmail: false, typed: "" };
+  const email = () => (state.longEmail ? LONG_EMAIL : PERSON.email);
+  const screen = () => SCREENS.find((s) => s.id === state.screen);
+  let timer;
+
+  function shell(card) {
+    return `<div class="auth">
+      <header><a class="logo" href="#" data-go="login" aria-label="WizyDoc, ir a iniciar sesión"><span class="logo-mark">W</span>WizyDoc</a></header>
+      <main>${card}</main>
+      <footer>© 2026 WizyDoc. Todos los derechos reservados.</footer>
+    </div>`;
+  }
+
+  function loginCard(ok) {
+    return `<div class="card">
+      ${ok ? `<p class="alert ok" role="status">${ICON.check}<span>Listo, ya puedes iniciar sesión con tu contraseña nueva.</span></p>` : ""}
+      <div class="head">
+        <h1>Bienvenido de vuelta</h1>
+        <p class="sub">Ingresa a tu cuenta para continuar</p>
+      </div>
+      <form onsubmit="return false">
+        <div class="field">
+          <label for="l-email">Correo electrónico</label>
+          <input id="l-email" class="input" type="email" autocomplete="email" placeholder="ana@consultorio.com" value="${ok ? email() : ""}">
+        </div>
+        <div class="field">
+          <label for="l-pwd">Contraseña</label>
+          <input id="l-pwd" class="input" type="password" autocomplete="current-password" placeholder="Tu contraseña">
+        </div>
+        <div class="forgot-row"><a class="tlink" href="#" data-go="forgot">¿Olvidaste tu contraseña?</a></div>
+        <button type="submit" class="btn btn-default mt2">Iniciar sesión</button>
+      </form>
+      <p class="foot">¿No tienes cuenta? <a class="tlink" href="#">Regístrate gratis</a></p>
+    </div>`;
+  }
+
+  function forgotCard(mode) {
+    const loading = mode === "loading";
+    const fieldErr = mode === "field";
+    const value = fieldErr ? "ana.lopez@consultorio" : mode === "normal" ? state.typed : email();
+    const alert = {
+      "429": "Hiciste varios pedidos seguidos. Espera 10 minutos y vuelve a intentarlo.",
+      generic: "No pudimos enviar el enlace. Revisa tu conexión y vuelve a intentarlo.",
+    }[mode];
+    return `<div class="card">
+      <div class="head">
+        <h1>Recupera tu contraseña</h1>
+        <p class="sub">Escribe el correo con el que entras a WizyDoc y te enviaremos un enlace para crear una contraseña nueva.</p>
+      </div>
+      <form id="forgot-form" novalidate>
+        <div class="field">
+          <label for="f-email">Correo electrónico</label>
+          <input id="f-email" name="email" class="input ${fieldErr ? "bad" : ""}" type="email" autocomplete="email" placeholder="ana@consultorio.com" value="${value}" ${loading ? "readonly" : ""} ${fieldErr ? 'aria-invalid="true" aria-describedby="f-email-error"' : ""}>
+          ${fieldErr ? '<p id="f-email-error" class="field-err" role="alert">Escribe un correo válido, por ejemplo ana@consultorio.com.</p>' : ""}
+        </div>
+        ${alert ? `<p class="alert err" role="alert">${alert}</p>` : ""}
+        <button type="submit" class="btn btn-default mt2" ${loading ? "disabled" : ""}>${loading ? `${ICON.loader}Enviando…` : "Enviar enlace"}</button>
+      </form>
+      <p class="foot"><a class="tlink back" href="#" data-go="login">${ICON.left}Volver a iniciar sesión</a></p>
+    </div>`;
+  }
+
+  function sentCard() {
+    return `<div class="card center">
+      <div class="badge-icon ok">${ICON.mailCheck}</div>
+      <h1 tabindex="-1" id="focus-title">Revisa tu correo</h1>
+      <p class="sub">Si hay una cuenta con ese correo, te enviamos un enlace para crear una contraseña nueva. Revisa tu bandeja y la carpeta de spam.</p>
+      <p class="typed">Correo que escribiste: <b>${email()}</b><br>El enlace dura 1 hora.</p>
+      <a class="btn btn-default mt6" href="#" data-go="login">Volver a iniciar sesión</a>
+      <p class="small">¿Lo escribiste mal o no llegó? <a class="tlink" href="#" data-go="forgotAgain">Pide otro enlace</a></p>
+    </div>`;
+  }
+
+  function resetCard(mode) {
+    if (mode === "loading") {
+      return `<div class="card"><div class="loading" role="status">${ICON.loader}<span>Cargando…</span></div></div>`;
+    }
+    const saving = mode === "saving";
+    const fieldErr = mode === "field";
+    const alert = {
+      "429": "Hiciste varios intentos seguidos. Espera un minuto y vuelve a intentarlo.",
+      generic: "No pudimos guardar tu contraseña. Vuelve a intentarlo.",
+    }[mode];
+    const action = state.show ? "Ocultar" : "Mostrar";
+    const value = fieldErr ? "clave12" : mode === "normal" ? "" : "Consulta-Lunes-2026";
+    return `<div class="card">
+      <div class="head">
+        <h1>Crea tu contraseña nueva</h1>
+        <p class="sub">Usa entre 8 y 128 caracteres. Al guardarla cerramos tu sesión en todos tus dispositivos.</p>
+      </div>
+      <form id="reset-form" novalidate>
+        <div class="field">
+          <label for="new-password">Contraseña nueva</label>
+          <div class="pwd">
+            <input id="new-password" name="newPassword" class="input ${fieldErr ? "bad" : ""}" type="${state.show ? "text" : "password"}" autocomplete="new-password" placeholder="Mínimo 8 caracteres" value="${value}" ${saving ? "readonly" : ""} ${fieldErr ? 'aria-invalid="true" aria-describedby="new-password-error"' : ""}>
+            <button type="button" data-act="toggle" aria-label="${action} contraseña nueva">${action}</button>
+          </div>
+          ${fieldErr ? '<p id="new-password-error" class="field-err" role="alert">Tu contraseña nueva debe tener al menos 8 caracteres.</p>' : ""}
+        </div>
+        ${alert ? `<p class="alert err" role="alert">${alert}</p>` : ""}
+        <button type="submit" class="btn btn-default mt2" ${saving ? "disabled" : ""}>${saving ? `${ICON.loader}Guardando…` : "Guardar contraseña"}</button>
+      </form>
+    </div>`;
+  }
+
+  function invalidCard() {
+    return `<div class="card center">
+      <div class="badge-icon bad">${ICON.xCircle}</div>
+      <h1 tabindex="-1" id="focus-title">Este enlace ya no sirve</h1>
+      <p class="sub">Los enlaces duran 1 hora y sirven una sola vez. Pide otro y ábrelo desde el correo más reciente.</p>
+      <a class="btn btn-default mt6" href="#" data-go="forgot">Pedir otro enlace</a>
+      <p class="small"><a class="tlink" href="#" data-go="login">Volver a iniciar sesión</a></p>
+    </div>`;
+  }
+
+  function mail(kind) {
+    const subject = kind === "reset" ? "Crea tu contraseña nueva de WizyDoc" : "Tu invitación a WizyDoc sigue pendiente";
+    const to = kind === "reset" ? email() : "lucia.paredes@correo.pe";
+    let body;
+    if (kind === "reset") {
+      body = `<p class="hi">Hola ${PERSON.name},</p>
+        <p>Recibimos un pedido para crear una contraseña nueva para tu cuenta de WizyDoc. Para hacerlo, haz clic en el botón:</p>
+        <button type="button" class="mj-btn" data-go="resetLoading">Crear contraseña nueva</button>
+        <p class="muted">El enlace vence en 1 hora y sirve una sola vez. Al crear tu contraseña nueva cerraremos tu sesión en todos tus dispositivos.</p>
+        <p class="muted">Si no lo pediste, ignora este correo; tu contraseña no cambia.</p>`;
+    } else if (kind === "invite") {
+      body = `<p class="hi">Hola Lucía,</p>
+        <p>Pediste recuperar tu contraseña, pero todavía no tienes una: te invitaron a <strong>Sede Miraflores</strong> y aún no aceptaste la invitación. Acéptala y crea tu contraseña desde este botón:</p>
+        <button type="button" class="mj-btn">Aceptar invitación</button>
+        <p class="muted">Es el mismo enlace de tu invitación y vence 1 día después de que te la enviaron. Si venció, pide a quien te invitó que te envíe una nueva.</p>
+        <p class="muted">Si no lo pediste, puedes ignorar este correo.</p>`;
+    } else {
+      body = `<p class="hi">Hola Lucía,</p>
+        <p>Pediste recuperar tu contraseña, pero todavía no tienes una: te invitaron a <strong>Sede Miraflores</strong> y la invitación venció antes de que la aceptaras.</p>
+        <p>Pide a quien te invitó que te envíe una nueva desde WizyDoc. Con ella podrás crear tu contraseña.</p>
+        <p class="muted">Si no lo pediste, puedes ignorar este correo.</p>`;
+    }
+    return `<div class="mail">
+      <div class="mail-meta"><b>${subject}</b><span>De:</span> WizyDoc &lt;no-responder@wizydoc.app&gt;<br><span>Para:</span> <span class="who">${to}</span></div>
+      <div class="mail-body"><div class="mj">${body}</div></div>
+    </div>`;
+  }
+
+  function content() {
+    switch (state.screen) {
+      case "login": return shell(loginCard(false));
+      case "loginOk": return shell(loginCard(true));
+      case "forgot": return shell(forgotCard("normal"));
+      case "forgotLoading": return shell(forgotCard("loading"));
+      case "forgotField": return shell(forgotCard("field"));
+      case "forgot429": return shell(forgotCard("429"));
+      case "forgotGeneric": return shell(forgotCard("generic"));
+      case "sent": return shell(sentCard());
+      case "resetLoading": return shell(resetCard("loading"));
+      case "reset": return shell(resetCard("normal"));
+      case "resetSaving": return shell(resetCard("saving"));
+      case "resetField": return shell(resetCard("field"));
+      case "reset429": return shell(resetCard("429"));
+      case "resetGeneric": return shell(resetCard("generic"));
+      case "invalid": return shell(invalidCard());
+      case "mailReset": return mail("reset");
+      case "mailInvite": return mail("invite");
+      case "mailInviteExpired": return mail("expired");
+    }
+    return "";
+  }
+
+  function render() {
+    const frame = document.getElementById("frame");
+    const s = screen();
+    frame.className = `frame ${state.view}`;
+    const bar = s.mail
+      ? `<div class="browserbar"><span class="dots"><i></i><i></i><i></i></span><span class="url">Bandeja de entrada</span></div>`
+      : `<div class="browserbar"><span class="dots"><i></i><i></i><i></i></span><span class="url">app.wizydoc.app${s.url}</span></div>`;
+    frame.innerHTML = s.mail ? `${bar}${content()}` : `${bar}<div class="scroll">${content()}</div>`;
+    const title = frame.querySelector("#focus-title");
+    if (title) title.focus({ preventScroll: true });
+    const sc = frame.querySelector(".scroll");
+    const overflow = sc && sc.scrollWidth > sc.clientWidth;
+    document.getElementById("caption").textContent = `${state.view === "mobile" ? "Celular · 375 px" : "Computadora"} · ${groupOf(s.id)} · ${s.label}${overflow ? " · ⚠ desplazamiento horizontal" : ""}`;
+    document.querySelectorAll("[data-view]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.view === state.view)));
+    document.querySelectorAll("[data-screen]").forEach((b) => b.setAttribute("aria-current", String(b.dataset.screen === state.screen)));
+  }
+
+  function groupOf(id) {
+    let g = "";
+    for (const s of SCREENS) { if (s.group) g = s.group; if (s.id === id) return g; }
+    return g;
+  }
+
+  function go(id) {
+    clearTimeout(timer);
+    state.screen = id;
+    if (id !== "reset" && id !== "resetField") state.show = false;
+    render();
+    if (id === "resetLoading") timer = setTimeout(() => go("reset"), 700);
+  }
+
+  document.getElementById("frame").addEventListener("click", (e) => {
+    const el = e.target.closest("[data-go],[data-act]");
+    if (!el) return;
+    e.preventDefault();
+    if (el.dataset.act === "toggle") {
+      const input = document.getElementById("new-password");
+      const typed = input ? input.value : "";
+      state.show = !state.show;
+      render();
+      const again = document.getElementById("new-password");
+      if (again) again.value = typed;
+      document.querySelector('[data-act="toggle"]').focus();
+      return;
+    }
+    if (el.dataset.go === "forgotAgain") { state.typed = email(); go("forgot"); return; }
+    if (el.dataset.go === "forgot") state.typed = "";
+    go(el.dataset.go);
+  });
+
+  document.getElementById("frame").addEventListener("submit", (e) => {
+    e.preventDefault();
+    if (e.target.id === "forgot-form") {
+      const value = e.target.email.value.trim();
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(value)) { go("forgotField"); document.getElementById("f-email").focus(); return; }
+      go("forgotLoading");
+      timer = setTimeout(() => go("sent"), 900);
+    }
+    if (e.target.id === "reset-form") {
+      const value = e.target.newPassword.value;
+      if (value.length < 8) { go("resetField"); document.getElementById("new-password").focus(); return; }
+      go("resetSaving");
+      timer = setTimeout(() => go("loginOk"), 900);
+    }
+  });
+
+  document.getElementById("screens").innerHTML = SCREENS.map((s) => (s.group
+    ? `<h3>${s.group}</h3>`
+    : `<button type="button" class="jump" data-screen="${s.id}">${s.label}</button>`)).join("");
+  document.querySelectorAll("[data-view]").forEach((b) => b.addEventListener("click", () => { state.view = b.dataset.view; render(); }));
+  document.querySelectorAll("[data-screen]").forEach((b) => b.addEventListener("click", () => { state.typed = ""; go(b.dataset.screen); }));
+  document.querySelectorAll("[data-opt]").forEach((c) => c.addEventListener("change", () => { state[c.dataset.opt] = c.checked; render(); }));
+
+  render();
+</script>
+</body>
+</html>

@@ -3,8 +3,14 @@ import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { createEmailService } from "@/infrastructure/services/email-service/factory";
 import { renderTemplate } from "@/infrastructure/services/email-service/template-renderer";
+import { FinishPasswordResetUseCase } from "@/application/use-cases/auth/finish-password-reset.usecase";
+import { SendPasswordResetEmailUseCase } from "@/application/use-cases/auth/send-password-reset-email.usecase";
 
 const emailService = createEmailService();
+const sendPasswordResetEmail = new SendPasswordResetEmailUseCase({
+  emailService,
+});
+const finishPasswordReset = new FinishPasswordResetUseCase();
 
 const auth = betterAuth({
   baseURL: process.env.BETTER_AUTH_URL,
@@ -30,6 +36,21 @@ const auth = betterAuth({
     customRules: {
       "/sign-in/email": { window: 60, max: 5 },
       "/change-password": { window: 60, max: 5 },
+      // Cada pedido manda un correo a alguien que quizá no lo pidió: 3 cada
+      // 10 minutos por IP (Better Auth trae 3 por minuto) para que el
+      // formulario no sirva para llenarle la bandeja a otra persona.
+      "/request-password-reset": { window: 600, max: 3 },
+      // El token no se puede adivinar (~143 bits); esto sólo saca la ruta de la
+      // regla general de 100 cada 10 s, igual que cambiar la contraseña.
+      "/reset-password": { window: 60, max: 5 },
+    },
+  },
+  verification: {
+    // El enlace de recuperación se guarda con hash: quien lea la tabla (un
+    // respaldo, una consola) no puede usar uno pendiente.
+    storeIdentifier: {
+      default: "plain",
+      overrides: { "reset-password:": "hashed" },
     },
   },
   session: {
@@ -44,6 +65,24 @@ const auth = betterAuth({
     enabled: true,
     autoSignIn: true,
     requireEmailVerification: true,
+    // Explícito aunque es el valor por defecto: el correo dice "1 hora".
+    resetPasswordTokenExpiresIn: 60 * 60,
+    // Quien pide el enlace suele sospechar que alguien más entró: al crear la
+    // contraseña nueva se cierran todas las sesiones, también la del intruso.
+    revokeSessionsOnPasswordReset: true,
+    // Sin await: armar y enviar el correo sólo pasa si el correo existe, y esa
+    // demora revelaría qué correos tienen cuenta. El caso de uso atrapa sus
+    // errores y nunca registra el token ni el enlace. Se ignora `url`: el
+    // enlace lleva el token en el fragmento (docs/features/forgot-password).
+    sendResetPassword: async ({ user, token }) => {
+      void sendPasswordResetEmail.execute({ userId: user.id, token });
+    },
+    // Better Auth lo llama después de guardar la contraseña y antes de cerrar
+    // las sesiones; si lanzara, las sesiones quedarían abiertas. Por eso el
+    // caso de uso no lanza.
+    onPasswordReset: async ({ user }) => {
+      await finishPasswordReset.execute({ userId: user.id });
+    },
   },
   account: { modelName: "authAccount" },
   user: {
