@@ -1,0 +1,778 @@
+<!doctype html>
+<html lang="es-PE">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototipo: mi día y ficha del paciente</title>
+<style>
+  :root {
+    --teal: #0E8C82;
+    --teal-dark: #0B4F49;
+    --ink: #1F2A2A;
+    --gray: #5C6B6A;
+    --surface: #EFF5F4;
+    --coral: #FF6F59;
+    --border: #e5e7eb;
+    --ring: hsl(175 82% 30%);
+    --radius: 0.625rem;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    color: var(--ink);
+    background: #e5e7eb;
+    -webkit-font-smoothing: antialiased;
+  }
+  button { font: inherit; color: inherit; }
+  a { color: inherit; }
+  :focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+
+  /* ---------- Barra del prototipo (no es parte de la app) ---------- */
+  .proto { display: grid; grid-template-columns: 300px minmax(0, 1fr); min-height: 100vh; }
+  .proto-panel { background: #fff; border-right: 1px solid #d1d5db; padding: 20px; overflow-y: auto; max-height: 100vh; position: sticky; top: 0; }
+  .proto-panel h1 { font-size: 15px; margin: 0; color: var(--teal-dark); }
+  .proto-panel p.lead { font-size: 12px; color: var(--gray); margin: 6px 0 16px; line-height: 1.45; }
+  .proto-panel h2 { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--teal); margin: 18px 0 8px; }
+  .proto-panel label.chk { display: flex; gap: 8px; align-items: flex-start; font-size: 13px; padding: 5px 0; cursor: pointer; line-height: 1.35; }
+  .proto-panel input[type=checkbox] { margin-top: 2px; accent-color: var(--teal); }
+  .seg { display: flex; border: 1px solid #d1d5db; border-radius: 8px; overflow: hidden; }
+  .seg button { flex: 1; border: 0; background: #fff; padding: 6px; font-size: 12.5px; color: var(--gray); cursor: pointer; }
+  .seg button[aria-pressed="true"] { background: var(--teal); color: #fff; }
+  .jump { display: block; width: 100%; text-align: left; border: 1px solid #e5e7eb; background: #fff; border-radius: 8px; padding: 6px 10px; margin-bottom: 4px; font-size: 12.5px; color: var(--gray); cursor: pointer; }
+  .jump:hover { background: #f9fafb; }
+  .jump[aria-current="true"] { border-color: var(--teal); color: var(--teal); background: rgba(14,140,130,.06); }
+  .jump small { float: right; font-variant-numeric: tabular-nums; }
+  .clock { display: flex; align-items: center; gap: 10px; }
+  .clock input { flex: 1; accent-color: var(--teal); }
+  .clock output { font-weight: 700; font-variant-numeric: tabular-nums; color: var(--teal-dark); min-width: 44px; }
+  .note { font-size: 11.5px; color: var(--gray); background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 8px 10px; margin-top: 12px; line-height: 1.45; }
+  .note b { color: var(--ink); }
+  .note ol { margin: 4px 0 0; padding-left: 16px; }
+  .note li { margin: 5px 0; }
+  .tip { font-size: 11.5px; color: var(--teal-dark); background: var(--surface); border-radius: 8px; padding: 8px 10px; margin-top: 10px; line-height: 1.45; }
+  .stage { display: flex; justify-content: center; align-items: flex-start; padding: 32px 16px; min-width: 0; }
+  .frame-wrap { min-width: 0; max-width: 100%; }
+  .frame-caption { text-align: center; font-size: 12px; color: var(--gray); margin-bottom: 8px; }
+  .frame { position: relative; background: #f9fafb; box-shadow: 0 10px 30px rgba(0,0,0,.12); overflow: hidden; }
+  .frame.mobile { width: 375px; height: 780px; border-radius: 28px; border: 8px solid #1f2937; display: flex; flex-direction: column; }
+  .frame.desktop { width: 1100px; max-width: 100%; min-height: 760px; border-radius: 10px; border: 1px solid #cbd5e1; display: flex; }
+  .frame.mobile .app-main { overflow-y: auto; flex: 1; }
+
+  /* ---------- Shell del panel (= clinic/[clinicId]/layout.tsx + Sidebar) ---------- */
+  .sidebar { width: 232px; flex-shrink: 0; background: #fff; border-right: 1px solid var(--border); padding: 20px 14px; display: flex; flex-direction: column; gap: 4px; }
+  .logo { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; font-size: 18px; color: var(--teal-dark); padding: 0 8px 16px; }
+  .logo-mark { width: 26px; height: 26px; border-radius: 8px; background: var(--teal); color: #fff; display: grid; place-items: center; font-size: 14px; }
+  .nav { display: flex; align-items: center; gap: 10px; border-radius: 8px; padding: 8px 12px; font-size: 14px; color: var(--gray); text-decoration: none; border: 0; background: none; text-align: left; cursor: pointer; }
+  .nav:hover { background: #f3f4f6; color: var(--ink); }
+  .nav.active { background: var(--surface); color: var(--teal-dark); font-weight: 600; }
+  .nav svg { width: 18px; height: 18px; }
+  .sidebar .who { margin-top: auto; border-top: 1px solid var(--border); padding: 12px 8px 0; font-size: 12.5px; color: var(--gray); line-height: 1.4; }
+  .sidebar .who b { display: block; color: var(--ink); font-size: 13px; }
+  .topbar { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; background: #fff; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+  .topbar .logo { padding: 0; font-size: 17px; }
+  .icon-btn { width: 36px; height: 36px; border-radius: 8px; border: 1px solid var(--border); background: #fff; display: grid; place-items: center; color: var(--gray); cursor: pointer; flex-shrink: 0; }
+  .icon-btn:hover { background: #f9fafb; color: var(--ink); }
+  .app-main { flex: 1; min-width: 0; padding: 32px; }
+  .mobile .app-main { padding: 16px; }
+
+  /* ---------- Contenido de "Mi día" ---------- */
+  .day-head { margin-bottom: 20px; }
+  .day-head h1 { margin: 0; font-size: 24px; font-weight: 700; color: var(--teal-dark); }
+  .mobile .day-head h1 { font-size: 21px; }
+  .day-head p { margin: 2px 0 0; font-size: 14px; color: var(--gray); }
+  .day-head p::first-letter { text-transform: uppercase; }
+  .layout { display: grid; grid-template-columns: minmax(0, 380px) minmax(0, 1fr); gap: 24px; align-items: start; }
+  .mobile .layout { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  .col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+  .card { background: #fff; border: 1px solid var(--border); border-radius: 12px; min-width: 0; }
+
+  .hero { padding: 20px; border-color: rgba(14,140,130,.35); box-shadow: 0 1px 3px rgba(14,140,130,.12); }
+  .hero.live { background: linear-gradient(180deg, var(--surface), #fff 70%); }
+  .eyebrow { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+  .eyebrow .k { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--teal); display: inline-flex; align-items: center; gap: 6px; }
+  .pulse { width: 8px; height: 8px; border-radius: 50%; background: var(--teal); box-shadow: 0 0 0 0 rgba(14,140,130,.5); animation: pulse 1.8s infinite; }
+  @keyframes pulse { 70% { box-shadow: 0 0 0 8px rgba(14,140,130,0); } 100% { box-shadow: 0 0 0 0 rgba(14,140,130,0); } }
+  @media (prefers-reduced-motion: reduce) { .pulse { animation: none; } }
+  .pill { display: inline-flex; align-items: center; gap: 4px; border-radius: 999px; padding: 3px 10px; font-size: 12.5px; font-weight: 600; white-space: nowrap; }
+  .pill.teal { background: rgba(14,140,130,.1); color: var(--teal-dark); }
+  .pill.coral { background: rgba(255,111,89,.14); color: #b8412f; }
+  .pill.gray { background: #f3f4f6; color: var(--gray); }
+  .hero .time { margin: 14px 0 2px; font-size: 34px; font-weight: 700; letter-spacing: -.02em; font-variant-numeric: tabular-nums; line-height: 1.1; }
+  .hero .time span { font-size: 18px; font-weight: 500; color: var(--gray); letter-spacing: 0; }
+  .hero .name { margin: 8px 0 0; font-size: 19px; font-weight: 600; overflow-wrap: anywhere; }
+  .hero .meta { margin: 4px 0 0; font-size: 14px; color: var(--gray); }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .tag { display: inline-flex; align-items: center; gap: 4px; border-radius: 6px; padding: 2px 8px; font-size: 12px; font-weight: 500; line-height: 1.5; }
+  .tag svg { width: 13px; height: 13px; flex-shrink: 0; }
+  .tag.new { background: #eef2ff; color: #4338ca; }
+  .tag.resch { background: #fef3c7; color: #92400e; }
+  .tag.cancel { background: #fef2f2; color: #b91c1c; }
+  .tag.allergy { background: #fef2f2; color: #b91c1c; font-weight: 600; }
+  .actions { display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 40px; padding: 0 16px; border-radius: var(--radius); font-size: 14px; font-weight: 600; border: 0; cursor: pointer; text-decoration: none; white-space: nowrap; }
+  .btn svg { width: 16px; height: 16px; }
+  .btn-default { background: var(--teal); color: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+  .btn-default:hover { background: var(--teal-dark); }
+  .btn-outline { background: #fff; color: var(--ink); border: 1px solid var(--border); }
+  .btn-outline:hover { background: #f9fafb; }
+  .mobile .actions .btn { flex: 1; height: 44px; }
+  .progress { height: 6px; border-radius: 999px; background: #e5efee; overflow: hidden; margin-top: 14px; }
+  .progress i { display: block; height: 100%; background: var(--teal); border-radius: inherit; }
+  .progress-legend { display: flex; justify-content: space-between; font-size: 12px; color: var(--gray); margin-top: 4px; font-variant-numeric: tabular-nums; }
+  .then { margin-top: 16px; padding-top: 14px; border-top: 1px dashed #cfdedc; font-size: 13.5px; color: var(--gray); }
+  .then b { color: var(--ink); font-variant-numeric: tabular-nums; }
+  .hint { margin-top: 14px; font-size: 13.5px; color: var(--teal-dark); background: var(--surface); border-radius: 8px; padding: 8px 12px; }
+  .hero.done, .hero.empty { text-align: center; padding: 28px 20px; border-color: var(--border); box-shadow: none; }
+  .big-icon { width: 48px; height: 48px; border-radius: 50%; background: var(--surface); color: var(--teal); display: grid; place-items: center; margin: 0 auto 12px; }
+  .big-icon svg { width: 24px; height: 24px; }
+  .hero h2 { margin: 0; font-size: 18px; color: var(--teal-dark); }
+  .hero.done p, .hero.empty p { margin: 6px auto 0; font-size: 14px; color: var(--gray); max-width: 30ch; line-height: 1.5; }
+  .hero .link { display: inline-block; margin-top: 14px; font-size: 14px; font-weight: 600; color: var(--teal); text-decoration: none; }
+
+  .tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .tile { background: #fff; border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; }
+  .tile b { display: block; font-size: 20px; font-variant-numeric: tabular-nums; }
+  .tile span { font-size: 12px; color: var(--gray); }
+
+  /* Línea del día */
+  .tl-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 14px 16px; border-bottom: 1px solid var(--border); }
+  .tl-head h2 { margin: 0; font-size: 15px; color: var(--teal-dark); }
+  .tl-head span { font-size: 13px; color: var(--gray); }
+  .tl { list-style: none; margin: 0; padding: 8px 0; }
+  .row { display: grid; grid-template-columns: 52px 18px minmax(0, 1fr); column-gap: 10px; padding: 0 16px; position: relative; }
+  .row .t { padding-top: 12px; font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; }
+  .row .rail { position: relative; display: flex; justify-content: center; }
+  .row .rail::before { content: ""; position: absolute; top: 0; bottom: 0; width: 2px; background: #e5e7eb; }
+  .tl > .row:first-child .rail::before { top: 18px; }
+  .tl > .row:last-child .rail::before { bottom: calc(100% - 18px); }
+  .row .dot { position: relative; margin-top: 15px; width: 10px; height: 10px; border-radius: 50%; background: #fff; border: 2px solid #cbd5e1; z-index: 1; }
+  .row .body { padding: 8px 0; min-width: 0; }
+  .appt { display: block; width: 100%; text-align: left; border-radius: 10px; padding: 9px 12px; border: 1px solid transparent; background: none; cursor: pointer; }
+  .appt:hover { background: #f9fafb; border-color: var(--border); }
+  .appt .n { font-size: 14.5px; font-weight: 600; overflow-wrap: anywhere; }
+  .appt .m { font-size: 13px; color: var(--gray); margin-top: 1px; }
+  .appt .chips { margin-top: 6px; }
+  .appt .state { float: right; margin-left: 8px; }
+  .row.past .t, .row.past .appt { opacity: .55; }
+  .row.past .dot { background: #cbd5e1; }
+  .row.next .appt { border-color: rgba(14,140,130,.45); background: #fff; box-shadow: 0 1px 2px rgba(14,140,130,.12); }
+  .row.next .dot { border-color: var(--teal); }
+  .row.current .appt { background: var(--surface); border-color: rgba(14,140,130,.35); }
+  .row.current .dot { background: var(--teal); border-color: var(--teal); }
+  .row.current .t, .row.next .t { color: var(--teal-dark); }
+  .row.cancelled .appt { border: 1px dashed #fecaca; }
+  .row.cancelled .t { color: var(--gray); text-decoration: line-through; text-decoration-color: #fca5a5; }
+  .row.cancelled .dot { border-color: #fca5a5; }
+  .dim-cancelled .row.cancelled .appt, .dim-cancelled .row.cancelled .t { opacity: .5; }
+  .row.gap .body { padding: 4px 0; }
+  .free { font-size: 12.5px; color: var(--gray); padding: 6px 12px; border-radius: 8px; background: repeating-linear-gradient(-45deg, #fafafa, #fafafa 6px, #f3f4f6 6px, #f3f4f6 12px); }
+  .row.gap .dot { width: 6px; height: 6px; border: 0; background: #d1d5db; margin-top: 12px; }
+  .row.now { height: 0; }
+  .row.now .nowline { position: absolute; left: 16px; right: 16px; top: -1px; display: flex; align-items: center; gap: 8px; z-index: 2; }
+  .nowline b { font-size: 11px; font-weight: 700; color: #fff; background: var(--coral); border-radius: 999px; padding: 1px 7px; font-variant-numeric: tabular-nums; }
+  .nowline i { flex: 1; height: 2px; background: var(--coral); }
+  .collapse { display: block; width: calc(100% - 32px); margin: 4px 16px; padding: 8px; border: 1px dashed #d1d5db; border-radius: 8px; background: #fff; font-size: 13px; color: var(--gray); cursor: pointer; }
+  .collapse:hover { background: #f9fafb; color: var(--ink); }
+
+  .sk { background: linear-gradient(90deg, #f3f4f6, #e9ecef, #f3f4f6); background-size: 200% 100%; animation: sk 1.2s infinite; border-radius: 6px; }
+  @keyframes sk { to { background-position: -200% 0; } }
+  @media (prefers-reduced-motion: reduce) { .sk { animation: none; } }
+  .err { padding: 32px 20px; text-align: center; }
+  .err h2 { margin: 0; font-size: 17px; }
+  .err p { margin: 6px 0 16px; color: var(--gray); font-size: 14px; }
+
+  /* ---------- Resumen del paciente (hoja inferior / panel lateral) ---------- */
+  .scrim { position: absolute; inset: 0; background: rgba(15, 23, 42, .38); z-index: 20; animation: fade .15s ease-out; }
+  .sheet { position: absolute; z-index: 21; background: #fff; display: flex; flex-direction: column; box-shadow: 0 -8px 30px rgba(0,0,0,.18); }
+  .mobile .sheet { left: 0; right: 0; bottom: 0; max-height: 90%; border-radius: 18px 18px 0 0; animation: up .2s ease-out; }
+  .desktop .sheet { top: 0; right: 0; bottom: 0; width: 420px; border-left: 1px solid var(--border); animation: left .2s ease-out; }
+  @keyframes fade { from { opacity: 0; } }
+  @keyframes up { from { transform: translateY(40px); opacity: 0; } }
+  @keyframes left { from { transform: translateX(40px); opacity: 0; } }
+  @media (prefers-reduced-motion: reduce) { .scrim, .sheet { animation: none; } }
+  .grab { width: 40px; height: 4px; border-radius: 999px; background: #d1d5db; margin: 8px auto 0; }
+  .desktop .grab { display: none; }
+  .sheet-head { display: flex; align-items: flex-start; gap: 12px; padding: 14px 20px 12px; border-bottom: 1px solid var(--border); }
+  .avatar { width: 44px; height: 44px; border-radius: 50%; background: #f0fdfa; color: var(--teal-dark); display: grid; place-items: center; font-size: 14px; font-weight: 700; flex-shrink: 0; }
+  .sheet-head h2 { margin: 0; font-size: 17px; overflow-wrap: anywhere; }
+  .sheet-head p { margin: 2px 0 0; font-size: 13px; color: var(--gray); }
+  .sheet-head .icon-btn { margin-left: auto; }
+  .sheet-body { overflow-y: auto; padding: 16px 20px; display: flex; flex-direction: column; gap: 16px; }
+  .sheet-foot { padding: 12px 20px 16px; border-top: 1px solid var(--border); }
+  .sheet-foot .btn { width: 100%; height: 44px; }
+  .visit { border-radius: 10px; background: var(--surface); padding: 10px 12px; font-size: 13.5px; }
+  .visit b { font-variant-numeric: tabular-nums; }
+  .visit .chips { margin-top: 6px; }
+  .sec h3 { margin: 0 0 6px; font-size: 11.5px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--gray); }
+  .sec p { margin: 0; font-size: 14.5px; line-height: 1.5; }
+  .sec p.none { color: var(--gray); font-style: italic; }
+  .hchips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .hchip { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); padding: 4px 12px; font-size: 12.5px; color: var(--gray); }
+  .hchip svg { width: 14px; height: 14px; }
+  .hchip.alert { background: #fef2f2; border-color: #fecaca; color: #b91c1c; font-weight: 600; }
+  .hchip.unknown { background: #fff; border-style: dashed; border-color: #d1d5db; }
+  .hist-line { font-size: 14px; }
+  .hist-line .warn { color: #b91c1c; font-weight: 600; }
+  .mini { list-style: none; margin: 8px 0 0; padding: 0; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  .mini li { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 12px; font-size: 13px; border-top: 1px solid var(--border); }
+  .mini li:first-child { border-top: 0; }
+  .mini li span:first-child { font-variant-numeric: tabular-nums; }
+  .mini small { color: var(--gray); display: block; font-size: 12px; }
+  .st { display: inline-block; border-radius: 999px; padding: 2px 10px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+  .st.PENDING { background: #fffbeb; color: #b45309; }
+  .st.COMPLETED { background: #ecfdf5; color: #047857; }
+  .st.NO_SHOW { background: #fef2f2; color: #b91c1c; }
+  .st.CANCELLED { background: #f3f4f6; color: var(--gray); }
+  .upsell { display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; border: 1px solid var(--border); border-radius: 12px; padding: 24px 16px; }
+  .upsell .lock { width: 48px; height: 48px; border-radius: 16px; background: #f3f4f6; color: var(--gray); display: grid; place-items: center; }
+  .upsell .lock svg { width: 24px; height: 24px; }
+  .upsell h3 { margin: 0; font-size: 16px; color: var(--teal-dark); }
+  .upsell p { margin: 0; font-size: 13.5px; color: var(--gray); line-height: 1.5; max-width: 32ch; }
+  .first-note {font-size: 13.5px; color: #4338ca; background: #eef2ff; border-radius: 10px; padding: 10px 12px; }
+
+  /* ---------- Ficha completa (= patients/[patientId]/page.tsx) ---------- */
+  .back { display: inline-flex; align-items: center; gap: 4px; font-size: 14px; color: var(--gray); background: none; border: 0; padding: 0; cursor: pointer; margin-bottom: 16px; }
+  .back:hover { color: var(--ink); }
+  .back svg { width: 16px; height: 16px; }
+  .p-head { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px; padding: 16px; margin-bottom: 16px; }
+  .p-head h1 { margin: 0; font-size: 18px; font-weight: 700; overflow-wrap: anywhere; }
+  .p-head .sub { margin: 2px 0 0; font-size: 12px; color: var(--gray); overflow-wrap: anywhere; }
+  .p-head .hchips { margin-left: auto; }
+  .mobile .p-head .hchips { margin-left: 0; }
+  .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
+  .tabs button { margin-bottom: -1px; border: 0; border-bottom: 2px solid transparent; background: none; padding: 8px 12px; font-size: 14px; color: var(--gray); cursor: pointer; }
+  .tabs button[aria-selected="true"] { border-bottom-color: var(--teal); color: var(--teal); font-weight: 600; }
+  .record { padding: 20px; display: flex; flex-direction: column; gap: 20px; }
+  .record-top { display: flex; justify-content: flex-end; }
+  .fs-title { display: flex; align-items: center; gap: 12px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: var(--gray); margin-bottom: 10px; }
+  .fs-title::after { content: ""; height: 1px; flex: 1; background: var(--border); }
+  .fields { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+  .mobile .fields { grid-template-columns: minmax(0, 1fr); }
+  .field span { display: block; font-size: 12px; font-weight: 600; color: var(--gray); margin-bottom: 4px; }
+  .field div { border: 1px solid var(--border); border-radius: 8px; background: #f9fafb; padding: 8px 12px; font-size: 14px; min-height: 38px; overflow-wrap: anywhere; }
+  .field.wide { grid-column: 1 / -1; }
+  .metrics { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin-bottom: 16px; }
+  .mobile .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .metrics div { background: #fff; padding: 10px 12px; }
+  .metrics b { display: block; font-size: 18px; font-variant-numeric: tabular-nums; }
+  .metrics b.alert { color: #dc2626; }
+  .metrics b.next { color: var(--teal); }
+  .metrics span { font-size: 12px; color: var(--gray); }
+  table.hist { width: 100%; border-collapse: collapse; font-size: 14px; }
+  table.hist th { text-align: left; font-size: 12px; font-weight: 600; color: var(--gray); padding: 10px 14px; border-bottom: 1px solid var(--border); background: #f9fafb; }
+  table.hist td { padding: 10px 14px; border-bottom: 1px solid var(--border); }
+  table.hist tr:last-child td { border-bottom: 0; }
+  .hist-cards { list-style: none; margin: 0; padding: 0; }
+  .hist-cards li { padding: 12px 14px; border-top: 1px solid var(--border); font-size: 13.5px; }
+  .hist-cards li:first-child { border-top: 0; }
+  .hist-cards .r1 { display: flex; justify-content: space-between; gap: 8px; align-items: center; font-weight: 600; }
+  .hist-cards .r2 { color: var(--gray); margin-top: 2px; font-size: 13px; }
+  .foot-note { font-size: 12px; color: var(--gray); margin-top: 12px; }
+
+  @media (max-width: 900px) {
+    .proto { grid-template-columns: minmax(0, 1fr); }
+    .proto-panel { position: static; max-height: none; border-right: 0; border-bottom: 1px solid #d1d5db; }
+  }
+</style>
+</head>
+<body>
+<div class="proto">
+  <aside class="proto-panel" aria-label="Controles del prototipo">
+    <h1>Mi día · agenda del médico</h1>
+    <p class="lead">Prototipo de la pantalla de inicio del médico en una sede y del resumen del paciente. Mueve el reloj para recorrer el día. Los datos son de ejemplo.</p>
+
+    <h2>Vista</h2>
+    <div class="seg" role="group" aria-label="Vista">
+      <button type="button" data-view="mobile" aria-pressed="true">Celular</button>
+      <button type="button" data-view="desktop" aria-pressed="false">Computadora</button>
+    </div>
+    <h2>Plan de la cuenta</h2>
+    <div class="seg" role="group" aria-label="Plan">
+      <button type="button" data-plan="free" aria-pressed="false">Gratis</button>
+      <button type="button" data-plan="paid" aria-pressed="true">Consultorio</button>
+    </div>
+    <p class="tip" id="planTip"></p>
+    <p class="tip">Toca <b>Ver ficha</b> o cualquier cita de la lista para abrir el resumen del paciente. Desde ahí, <b>Abrir ficha completa</b>.</p>
+
+    <h2>Hora de la clínica</h2>
+    <div class="clock">
+      <input type="range" id="clock" min="450" max="1140" step="5" value="612" aria-label="Hora simulada">
+      <output id="clockOut" for="clock">10:12</output>
+    </div>
+    <div style="margin-top:10px" id="presets"></div>
+
+    <h2>Escenario</h2>
+    <div id="scenarios"></div>
+
+    <h2>Variantes a comparar</h2>
+    <label class="chk"><input type="checkbox" data-opt="honest" checked> Textos «según tu horario» (propuesta del punto 1)</label>
+    <label class="chk"><input type="checkbox" data-opt="allergyHero" checked> Alergia en la tarjeta de la siguiente cita</label>
+    <label class="chk"><input type="checkbox" data-opt="dim" checked> Atenuar las citas canceladas</label>
+    <label class="chk"><input type="checkbox" data-opt="collapsePast" checked> Plegar las citas que ya pasaron</label>
+    <label class="chk"><input type="checkbox" data-opt="firstTime" checked> Marcar «Primera vez»</label>
+    <label class="chk"><input type="checkbox" data-opt="recordFirst" checked> La ficha completa abre en «Ficha» para el médico</label>
+
+    <div class="tip">
+      <b>Decidido (17 oct)</b>
+      <ol style="margin:4px 0 0;padding-left:16px">
+        <li>Sin recordatorio ni confirmación de asistencia por ahora; vuelven sólo si los clientes los piden.</li>
+        <li>La ficha y el resumen son de los planes de pago. En Gratis, «Ver ficha» muestra la mejora de plan.</li>
+        <li>«Mi día» lo ve quien es médico en la sede, también si es administrador.</li>
+        <li>El historial del resumen muestra todas las citas del paciente en esta sede, con cualquier médico.</li>
+        <li>Sin botón «Llamar».</li>
+        <li>Sin huecos «Libre» en la línea del día ni «tienes X libres».</li>
+        <li>Se agrega el tratamiento del médico (Dr./Dra.). Sin tratamiento, solo el nombre completo.</li>
+        <li>El resumen no invita a completar datos de salud durante la consulta.</li>
+        <li>En Gratis no hay autogestión, así que no aparecen «Cancelada por el paciente» ni «Reprogramada».</li>
+      </ol>
+    </div>
+    <div class="note">
+      <b>Por decidir</b>
+      <ol>
+        <li><b>Textos según el horario:</b> la pantalla solo sabe la hora, no si el paciente ya entró. Compara con la casilla de arriba: con ella dice «Ahora, según tu horario» y no muestra barra de avance ni «Terminó».</li>
+        <li><b>Alergia en la pantalla de inicio:</b> pasa por security-reviewer.</li>
+        <li><b>Canceladas atenuadas:</b> reemplaza d-4 de autogestión en esta vista.</li>
+        <li><b>Fuera:</b> marcar no asistió, mover o cancelar desde el panel, motivo de consulta, notas de consulta, otros días.</li>
+      </ol>
+    </div>
+  </aside>
+
+  <div class="stage">
+    <div class="frame-wrap">
+      <div class="frame-caption" id="caption"></div>
+      <div class="frame mobile" id="frame"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const ICON = {
+    home: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>',
+    users: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
+    clock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>',
+    user: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></svg>',
+    file: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8"/></svg>',
+    phone: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg>',
+    check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>',
+    sun: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>',
+    menu: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg>',
+    x: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>',
+    left: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>',
+    lock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>',
+    alert: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4M12 17h.01"/></svg>',
+  };
+
+  // Pacientes de ejemplo. `allergies: null` = nadie preguntó (allergiesReviewedAt vacío);
+  // `[]` = revisado, sin alergias conocidas. Igual que AllergyChip.
+  const PATIENTS = {
+    rosa: { name: "Rosa", lastName: "Huamán Ccori", doc: "DNI 08451227", phone: "987 654 321", email: "rosa.huaman@correo.pe", birth: "12/03/1968", age: 58, sex: "Femenino", emergency: "Julio Huamán · 981 220 431", insurer: "Rímac EPS", blood: "O+", allergies: [], background: "Hipertensión arterial desde 2019.", meds: "Losartán 50 mg cada 24 h.",
+      history: [["14 ago 2026, 08:30", "COMPLETED"], ["10 may 2026, 09:00", "COMPLETED", "Dr. Andrés Rivas Soto", "Cardiología"], ["02 feb 2026, 08:30", "COMPLETED"]] },
+    jorge: { name: "Jorge", lastName: "Mendoza Ríos", doc: "DNI 41203398", phone: "912 345 678", email: "jmendoza@correo.pe", birth: "21/07/1985", age: 41, sex: "Masculino", emergency: "", insurer: "", blood: "", allergies: null, background: "", meds: "",
+      history: [["22 jun 2026, 11:00", "COMPLETED"]] },
+    carmen: { name: "Carmen", lastName: "Vílchez Torres", doc: "DNI 72118845", phone: "945 112 908", email: "carmen.vt@correo.pe", birth: "05/11/1991", age: 34, sex: "Femenino", emergency: "", insurer: "", blood: "", allergies: null, background: "", meds: "",
+      history: [] },
+    luis: { name: "Luis", lastName: "Quispe Mamani", doc: "DNI 06672014", phone: "956 778 201", email: "luis.quispe@correo.pe", birth: "30/01/1959", age: 67, sex: "Masculino", emergency: "Elena Mamani · 994 118 202", insurer: "Pacífico Seguros", blood: "A+", allergies: ["Penicilina"], background: "Diabetes tipo 2. Operado de vesícula en 2015.", meds: "Metformina 850 mg dos veces al día.",
+      history: [["03 sep 2026, 10:00", "COMPLETED"], ["18 jul 2026, 16:00", "NO_SHOW", "Dr. Andrés Rivas Soto", "Cardiología"], ["06 jun 2026, 10:30", "COMPLETED", "Dr. Andrés Rivas Soto", "Cardiología"], ["11 mar 2026, 09:30", "COMPLETED"]] },
+    ana: { name: "Ana Lucía", lastName: "Flores Paz", doc: "DNI 75530912", phone: "998 003 417", email: "analucia.fp@correo.pe", birth: "17/09/1997", age: 29, sex: "Femenino", emergency: "", insurer: "", blood: "B+", allergies: [], background: "", meds: "",
+      history: [["29 sep 2026, 11:00", "CANCELLED"], ["15 abr 2026, 12:00", "COMPLETED"]] },
+    pedro: { name: "Pedro", lastName: "Castillo Arana", doc: "CE 001845226", phone: "934 520 776", email: "pcastillo@correo.pe", birth: "08/02/1981", age: 45, sex: "Masculino", emergency: "", insurer: "", blood: "", allergies: null, background: "", meds: "",
+      history: [] },
+    maria: { name: "María Fernanda", lastName: "Rojas Salas", doc: "DNI 10284476", phone: "921 664 090", email: "mf.rojas@correo.pe", birth: "23/06/1974", age: 52, sex: "Femenino", emergency: "Carlos Rojas · 977 450 113", insurer: "Mapfre", blood: "O-", allergies: ["Ibuprofeno", "Mariscos"], background: "Asma leve.", meds: "Salbutamol inhalado si hay crisis.",
+      history: [["21 ago 2026, 15:30", "COMPLETED", "Carla Benavides Ortiz", "Dermatología"], ["09 jul 2026, 15:00", "NO_SHOW"], ["30 abr 2026, 15:30", "NO_SHOW"]] },
+    diego: { name: "Diego", lastName: "Salas Vera", doc: "DNI 47719083", phone: "967 340 118", email: "diego.salas@correo.pe", birth: "14/12/1993", age: 32, sex: "Masculino", emergency: "", insurer: "", blood: "", allergies: [], background: "", meds: "",
+      history: [["12 sep 2026, 17:00", "COMPLETED"]] },
+  };
+
+  // Viernes 16 de octubre de 2026, Sede Miraflores. Minutos desde 00:00, hora de pared de la clínica.
+  const DAY = [
+    { start: 510, dur: 30, p: "rosa" },
+    { start: 540, dur: 30, p: "jorge", cancelled: true },
+    { start: 570, dur: 30, p: "carmen" },
+    { start: 630, dur: 30, p: "luis", resched: "miércoles 14 de octubre, 16:00" },
+    { start: 660, dur: 45, p: "ana" },
+    { start: 900, dur: 30, p: "pedro" },
+    { start: 930, dur: 30, p: "maria" },
+    { start: 1020, dur: 30, p: "diego", cancelled: true },
+  ].map((a, i) => {
+    const patient = PATIENTS[a.p];
+    return { ...a, i, patient, name: `${patient.name} ${patient.lastName}`, end: a.start + a.dur, specialty: "Medicina general",
+      first: !patient.history.some(([, s]) => s === "COMPLETED") };
+  });
+
+  const PRESETS = [
+    { m: 490, label: "Antes de la primera" },
+    { m: 580, label: "En consulta" },
+    { m: 612, label: "Entre citas" },
+    { m: 730, label: "Hueco largo (almuerzo)" },
+    { m: 965, label: "Ya no quedan citas" },
+    { m: 1110, label: "Fin del día" },
+  ];
+  const SCENARIOS = [
+    { id: "normal", label: "Día con citas" },
+    { id: "empty", label: "Sin citas hoy" },
+    { id: "loading", label: "Cargando" },
+    { id: "error", label: "Error al cargar" },
+  ];
+  const STATUS = { PENDING: "Pendiente", COMPLETED: "Completada", NO_SHOW: "No asistió", CANCELLED: "Cancelada" };
+
+  const state = {
+    view: "mobile", now: 612, scenario: "normal", showPast: false,
+    page: "day", sheet: null, ficha: null, fichaTab: "record",
+    plan: "paid", honest: true, allergyHero: true, dim: true, collapsePast: true, firstTime: true, tiles: false, recordFirst: true,
+  };
+
+  const hhmm = (m) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+  const span = (m) => {
+    const h = Math.floor(m / 60), r = m % 60;
+    if (!h) return `${r} min`;
+    return r ? `${h} h ${r} min` : `${h} h`;
+  };
+  const initials = (p) => `${p.name[0]}${p.lastName[0]}`.toUpperCase();
+  const greeting = (now) => (now < 720 ? "Buenos días" : "Buenas tardes");
+
+  function allergyTag(p) {
+    if (!p.allergies || !p.allergies.length) return "";
+    return `<span class="tag allergy">${ICON.alert}Alergia: ${p.allergies.join(", ")}</span>`;
+  }
+
+  function tags(a, { hero = false } = {}) {
+    const out = [];
+    const selfService = state.plan === "paid";
+    if (a.cancelled && selfService) out.push('<span class="tag cancel">Cancelada por el paciente</span>');
+    if (hero && state.allergyHero && state.plan === "paid") out.push(allergyTag(a.patient));
+    if (a.resched && selfService) out.push(`<span class="tag resch">Reprogramada por el paciente (antes: ${a.resched})</span>`);
+    if (a.first && state.firstTime && !a.cancelled) out.push('<span class="tag new">Primera vez</span>');
+    const html = out.filter(Boolean).join("");
+    return html ? `<div class="chips">${html}</div>` : "";
+  }
+
+  function analyze(appts, now) {
+    const active = appts.filter((a) => !a.cancelled);
+    const current = active.find((a) => now >= a.start && now < a.end);
+    const next = active.find((a) => a.start >= now && a !== current);
+    const remaining = active.filter((a) => a.start >= now).length + (current ? 1 : 0);
+    return { active, current, next, remaining };
+  }
+
+  const fichaBtn = (a) => `<button type="button" class="btn btn-default" data-open="${a.i}">${ICON.file}Ver ficha</button>`;
+
+  function heroHtml(appts, now) {
+    if (state.scenario === "empty") {
+      return `<section class="card hero empty">
+        <div class="big-icon">${ICON.sun}</div>
+        <h2>No tienes citas hoy</h2>
+        <p>Cuando un paciente reserve para hoy, la verás aquí.</p>
+        <a class="link" href="#">Revisar mi disponibilidad</a>
+      </section>`;
+    }
+    const { active, current, next } = analyze(appts, now);
+
+    if (current) {
+      const pct = Math.round(((now - current.start) / current.dur) * 100);
+      const after = next
+        ? `<div class="then">Después: <b>${hhmm(next.start)}</b> ${next.name}${next.start === current.end ? " · a continuación" : ""}</div>`
+        : `<div class="then">Es tu última cita de hoy.</div>`;
+      return `<section class="card hero live" aria-live="polite">
+        ${state.honest
+          ? `<div class="eyebrow"><span class="k">Ahora, según tu horario</span><span class="pill teal">Hasta las ${hhmm(current.end)}</span></div>`
+          : `<div class="eyebrow"><span class="k"><span class="pulse" aria-hidden="true"></span>En consulta</span><span class="pill teal">Termina a las ${hhmm(current.end)}</span></div>`}
+        <p class="time">${hhmm(current.start)} <span>– ${hhmm(current.end)}</span></p>
+        <p class="name">${current.name}</p>
+        <p class="meta">${state.plan === "paid" ? `${current.patient.age} años · ` : ""}${current.specialty} · ${current.dur} min</p>
+        ${tags(current, { hero: true })}
+        ${state.honest ? "" : `<div class="progress" role="progressbar" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100" aria-label="Avance de la consulta"><i style="width:${pct}%"></i></div>
+        <div class="progress-legend"><span>Empezó ${hhmm(current.start)}</span><span>Quedan ${span(current.end - now)}</span></div>`}
+        <div class="actions">${fichaBtn(current)}</div>
+        ${after}
+      </section>`;
+    }
+
+    if (next) {
+      const wait = next.start - now;
+      const countdown = wait === 0 ? "Ahora" : `En ${span(wait)}`;
+      return `<section class="card hero" aria-live="polite">
+        <div class="eyebrow"><span class="k">Siguiente cita</span><span class="pill ${wait <= 10 ? "coral" : "teal"}">${countdown}</span></div>
+        <p class="time">${hhmm(next.start)} <span>– ${hhmm(next.end)}</span></p>
+        <p class="name">${next.name}</p>
+        <p class="meta">${state.plan === "paid" ? `${next.patient.age} años · ` : ""}${next.specialty} · ${next.dur} min</p>
+        ${tags(next, { hero: true })}
+        <div class="actions">${fichaBtn(next)}</div>
+      </section>`;
+    }
+
+    const laterCancelled = appts.filter((a) => a.cancelled && a.start >= now);
+    return `<section class="card hero done">
+      <div class="big-icon">${ICON.check}</div>
+      <h2>${laterCancelled.length || state.honest ? "No te quedan citas hoy" : "Terminaste por hoy"}</h2>
+      <p>${laterCancelled.length
+        ? `La cita de las ${laterCancelled.map((a) => hhmm(a.start)).join(" y ")} se canceló y el horario quedó libre.`
+        : `${state.honest ? "Tenías" : "Tuviste"} ${active.length} citas hoy.`}</p>
+    </section>`;
+  }
+
+  function tilesHtml(appts, now) {
+    if (!state.tiles || state.scenario === "empty") return "";
+    const { active, remaining } = analyze(appts, now);
+    return `<div class="tiles">
+      <div class="tile"><b>${active.length}</b><span>Citas hoy</span></div>
+      <div class="tile"><b>${remaining}</b><span>Por atender</span></div>
+      <div class="tile"><b>${appts.filter((a) => a.cancelled).length}</b><span>Canceladas</span></div>
+    </div>`;
+  }
+
+  const nowRow = (now) => `<li class="row now" aria-label="Ahora, ${hhmm(now)}"><div class="nowline"><b>${hhmm(now)}</b><i></i></div></li>`;
+
+  function timelineHtml(appts, now) {
+    if (state.scenario === "empty") return "";
+    const { current, next } = analyze(appts, now);
+    const rows = [];
+    let nowPlaced = !!current; // en consulta, la cita resaltada ya marca el "ahora"
+    const past = appts.filter((a) => (a.cancelled ? a.start < now : a.end <= now));
+    const hidePast = state.collapsePast && !state.showPast && past.length >= 2;
+
+    appts.forEach((a) => {
+      const isPast = past.includes(a);
+      if (!nowPlaced && a.start >= now) { rows.push(nowRow(now)); nowPlaced = true; }
+      if (!(hidePast && isPast)) {
+        let cls = "", badge = "";
+        if (a.cancelled) cls = "cancelled";
+        else if (a === current) { cls = "current"; badge = `<span class="pill teal state">${state.honest ? "Ahora" : "En consulta"}</span>`; }
+        else if (a === next) { cls = "next"; badge = '<span class="pill teal state">Siguiente</span>'; }
+        else if (isPast) { cls = "past"; badge = state.honest ? "" : '<span class="pill gray state">Terminó</span>'; }
+        const meta = a.cancelled ? "El horario quedó libre" : `${a.specialty} · ${a.dur} min`;
+        rows.push(`<li class="row ${cls}"><time class="t">${hhmm(a.start)}</time><span class="rail"><span class="dot"></span></span>
+          <div class="body"><button type="button" class="appt" data-open="${a.i}">${badge}<div class="n">${a.name}</div><div class="m">${meta}</div>${tags(a)}</button></div></li>`);
+      }
+    });
+    if (!nowPlaced) rows.push(nowRow(now));
+
+    const collapseBtn = state.collapsePast && past.length >= 2
+      ? `<button type="button" class="collapse" data-act="togglePast">${state.showPast ? "Ocultar las citas anteriores" : `Ver ${past.length} citas anteriores`}</button>`
+      : "";
+    return `<section class="card ${state.dim ? "dim-cancelled" : ""}">
+      <div class="tl-head"><h2>Citas de hoy</h2><span>${appts.length} en total</span></div>
+      ${collapseBtn}
+      <ol class="tl">${rows.join("")}</ol>
+    </section>`;
+  }
+
+  function dayHtml() {
+    const now = state.now;
+    const head = `<div class="day-head"><h1>${greeting(now)}, Lucía</h1><p>viernes 16 de octubre · Sede Miraflores</p></div>`;
+    if (state.scenario === "loading") {
+      const bar = (w, h = 14) => `<div class="sk" style="width:${w};height:${h}px;margin-top:10px"></div>`;
+      return `${head}<div class="layout"><div class="col"><section class="card hero" aria-busy="true">${bar("40%", 12)}${bar("55%", 32)}${bar("70%", 18)}${bar("45%")}</section></div>
+        <div class="col"><section class="card" style="padding:16px">${bar("30%")}${bar("100%", 44)}${bar("100%", 44)}${bar("100%", 44)}</section></div></div>`;
+    }
+    if (state.scenario === "error") {
+      return `${head}<section class="card err"><h2>No pudimos cargar tus citas de hoy</h2><p>Vuelve a intentarlo en unos segundos.</p><button class="btn btn-default" type="button">Reintentar</button></section>`;
+    }
+    // En Gratis el paciente no cancela ni reprograma por enlace (d-12): el día no tiene esas citas.
+    const appts = state.scenario === "empty" ? [] : state.plan === "free" ? DAY.filter((a) => !a.cancelled) : DAY;
+    return `${head}<div class="layout">
+      <div class="col">${heroHtml(appts, now)}${tilesHtml(appts, now)}</div>
+      <div class="col">${timelineHtml(appts, now)}</div>
+    </div>`;
+  }
+
+  // ---------- Resumen del paciente ----------
+  function healthChips(p) {
+    let allergy;
+    if (p.allergies && p.allergies.length) allergy = `<span class="hchip alert">${ICON.alert}Alergia: ${p.allergies.join(", ")}</span>`;
+    else if (p.allergies) allergy = '<span class="hchip">Sin alergias conocidas</span>';
+    else allergy = '<span class="hchip unknown">Alergias sin registrar</span>';
+    return `<div class="hchips">${allergy}<span class="hchip">Edad ${p.age}</span>${p.blood ? `<span class="hchip">${p.blood}</span>` : ""}</div>`;
+  }
+
+  const DOCTOR = "Dra. Lucía Paredes Quispe";
+  const docOf = (h) => h[2] || DOCTOR;
+  const specOf = (h) => h[3] || "Medicina general";
+
+  function historyLine(p) {
+    const done = p.history.filter(([, s]) => s === "COMPLETED");
+    const noShow = p.history.filter(([, s]) => s === "NO_SHOW").length;
+    if (!done.length && !noShow) return "";
+    const parts = [`${done.length} ${done.length === 1 ? "visita" : "visitas"}`];
+    if (done.length) parts.push(`última el ${done[0][0].split(",")[0]}`);
+    let html = parts.join(" · ");
+    if (noShow) html += ` · <span class="warn">faltó ${noShow} ${noShow === 1 ? "vez" : "veces"}</span>`;
+    return html;
+  }
+
+  function sheetHtml() {
+    if (state.sheet === null) return "";
+    const a = DAY[state.sheet];
+    const p = a.patient;
+    const line = historyLine(p);
+    const recent = p.history.slice(0, 3).map((h) => `<li><span>${h[0]}<small>${docOf(h)} · ${specOf(h)}</small></span><span class="st ${h[1]}">${STATUS[h[1]]}</span></li>`).join("");
+    const noData = !p.background && !p.meds && !p.allergies;
+    if (state.plan === "free") {
+      return `<div class="scrim" data-act="close"></div>
+      <section class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+        <div class="grab" aria-hidden="true"></div>
+        <header class="sheet-head">
+          <div class="avatar">${initials(p)}</div>
+          <div><h2 id="sheetTitle">${a.name}</h2></div>
+          <button type="button" class="icon-btn" data-act="close" aria-label="Cerrar">${ICON.x}</button>
+        </header>
+        <div class="sheet-body">
+          <div class="visit">${a.cancelled ? "Cita de hoy" : "Hoy"}: <b>${hhmm(a.start)} – ${hhmm(a.end)}</b> · ${a.specialty}${tags(a)}</div>
+          <div class="upsell" role="status">
+            <div class="lock">${ICON.lock}</div>
+            <h3>La ficha del paciente es de los planes de pago</h3>
+            <p>Con ella ves alergias, antecedentes, medicamentos y el historial del paciente antes de cada consulta.</p>
+            <button type="button" class="btn btn-default">Mejorar mi plan</button>
+          </div>
+        </div>
+      </section>`;
+    }
+    return `<div class="scrim" data-act="close"></div>
+      <section class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+        <div class="grab" aria-hidden="true"></div>
+        <header class="sheet-head">
+          <div class="avatar">${initials(p)}</div>
+          <div><h2 id="sheetTitle">${a.name}</h2><p>${p.age} años · ${p.sex}</p></div>
+          <button type="button" class="icon-btn" data-act="close" aria-label="Cerrar">${ICON.x}</button>
+        </header>
+        <div class="sheet-body">
+          <div class="visit">
+            ${a.cancelled ? "Cita de hoy" : "Hoy"}: <b>${hhmm(a.start)} – ${hhmm(a.end)}</b> · ${a.specialty}
+            ${tags(a)}
+          </div>
+          ${healthChips(p)}
+          ${noData ? '<p class="first-note" style="margin:0">Aún no hay datos de salud registrados.</p>' : `
+          <div class="sec"><h3>Antecedentes</h3>${p.background ? `<p>${p.background}</p>` : '<p class="none">Sin registrar</p>'}</div>
+          <div class="sec"><h3>Medicamentos</h3>${p.meds ? `<p>${p.meds}</p>` : '<p class="none">Sin registrar</p>'}</div>`}
+          <div class="sec"><h3>Historial en la sede</h3>
+            ${line ? `<p class="hist-line">${line}</p><ul class="mini">${recent}</ul>` : '<p class="first-note">Es su primera cita en el consultorio.</p>'}
+          </div>
+        </div>
+        <footer class="sheet-foot"><button type="button" class="btn btn-default" data-act="ficha" data-i="${a.i}">${ICON.file}Abrir ficha completa</button></footer>
+      </section>`;
+  }
+
+  // ---------- Ficha completa ----------
+  function fichaHtml() {
+    const a = DAY[state.ficha];
+    const p = a.patient;
+    const tabsOrder = state.recordFirst ? [["record", "Ficha"], ["history", "Historial de citas"]] : [["history", "Historial de citas"], ["record", "Ficha"]];
+    const field = (label, value, wide) => `<div class="field ${wide ? "wide" : ""}"><span>${label}</span><div>${value || "—"}</div></div>`;
+    const allergyText = p.allergies ? (p.allergies.length ? p.allergies.join(", ") : "Sin alergias conocidas") : "Sin registrar";
+
+    const record = `<section class="card record">
+      <div class="record-top"><button type="button" class="btn btn-outline">Editar ficha</button></div>
+      <div><div class="fs-title">Identificación</div><div class="fields">
+        ${field("Nombre", p.name)}${field("Apellido", p.lastName)}${field("Documento", p.doc)}${field("Fecha de nacimiento", p.birth)}${field("Sexo", p.sex)}
+      </div></div>
+      <div><div class="fs-title">Contacto</div><div class="fields">
+        ${field("Teléfono", p.phone)}${field("Email", p.email)}${field("Contacto de emergencia", p.emergency)}${field("Aseguradora", p.insurer)}
+      </div></div>
+      <div><div class="fs-title">Datos de salud</div><div class="fields">
+        ${field("Grupo sanguíneo", p.blood)}${field("Alergias", allergyText)}${field("Antecedentes", p.background, true)}${field("Medicamentos", p.meds, true)}
+      </div></div>
+    </section>`;
+
+    const rows = [[`16 oct 2026, ${hhmm(a.start)}`, a.cancelled ? "CANCELLED" : "PENDING"], ...p.history];
+    const docCell = (h) => docOf(h);
+    const done = p.history.filter(([, s]) => s === "COMPLETED");
+    const noShow = p.history.filter(([, s]) => s === "NO_SHOW").length;
+    const short = (d) => d.split(" ").slice(0, 2).join(" ");
+    const metrics = `<div class="metrics">
+      <div><b>${rows.length}</b><span>Citas totales</span></div>
+      <div><b>${done.length}</b><span>Completadas</span></div>
+      <div><b class="${noShow ? "alert" : ""}">${noShow}</b><span>${noShow === 1 ? "Inasistencia" : "Inasistencias"}</span></div>
+      <div><b>${done.length ? short(done[done.length - 1][0]) : "—"}</b><span>Primera visita</span></div>
+      <div><b>${done.length ? short(done[0][0]) : "—"}</b><span>Última visita</span></div>
+      <div><b class="${a.cancelled ? "" : "next"}">${a.cancelled ? "—" : "16 oct"}</b><span>Próxima cita</span></div>
+    </div>`;
+    const list = state.view === "mobile"
+      ? `<ul class="hist-cards">${rows.map((h) => `<li><div class="r1"><span>${h[0]}</span><span class="st ${h[1]}">${STATUS[h[1]]}</span></div><div class="r2">${docCell(h)} · ${specOf(h)} · Sede Miraflores</div></li>`).join("")}</ul>`
+      : `<table class="hist"><thead><tr><th>Fecha</th><th>Sede</th><th>Profesional</th><th>Especialidad</th><th>Estado</th></tr></thead><tbody>
+          ${rows.map((h) => `<tr><td>${h[0]}</td><td>Sede Miraflores</td><td>${docCell(h)}</td><td>${specOf(h)}</td><td><span class="st ${h[1]}">${STATUS[h[1]]}</span></td></tr>`).join("")}
+        </tbody></table>`;
+    const history = `${metrics}<section class="card" style="overflow:hidden">${list}</section>
+      <p class="foot-note">Primera y última visita cuentan solo las citas completadas: una cita cancelada o a la que no se asistió no es una visita.</p>`;
+
+    return `<button type="button" class="back" data-act="back">${ICON.left}Mi día</button>
+      <section class="card p-head">
+        <div class="avatar">${initials(p)}</div>
+        <div><h1>${a.name}</h1><p class="sub">${p.doc} · ${p.phone} · ${p.email}</p></div>
+        ${healthChips(p)}
+      </section>
+      <div class="tabs" role="tablist">${tabsOrder.map(([id, label]) => `<button type="button" role="tab" data-tab="${id}" aria-selected="${state.fichaTab === id}">${label}</button>`).join("")}</div>
+      <div role="tabpanel">${state.fichaTab === "record" ? record : history}</div>`;
+  }
+
+  function shellHtml() {
+    const content = state.page === "ficha" ? fichaHtml() : dayHtml();
+    if (state.view === "mobile") {
+      return `<div class="topbar"><span class="logo"><span class="logo-mark">W</span>WizyDoc</span><span class="icon-btn" aria-label="Menú">${ICON.menu}</span></div>
+        <main class="app-main">${content}</main>${sheetHtml()}`;
+    }
+    return `<nav class="sidebar" aria-label="Navegación">
+        <span class="logo"><span class="logo-mark">W</span>WizyDoc</span>
+        <button type="button" class="nav ${state.page === "day" ? "active" : ""}" data-act="back">${ICON.home}Mi día</button>
+        <button type="button" class="nav ${state.page === "ficha" ? "active" : ""}">${ICON.users}Pacientes</button>
+        <button type="button" class="nav">${ICON.clock}Disponibilidad</button>
+        <button type="button" class="nav">${ICON.user}Mi perfil</button>
+        <div class="who"><b>Dra. Lucía Paredes Quispe</b>Sede Miraflores · Plan ${state.plan === "paid" ? "Consultorio" : "Gratis"}</div>
+      </nav>
+      <main class="app-main">${content}</main>${sheetHtml()}`;
+  }
+
+  function render({ keepScroll = true } = {}) {
+    const frame = document.getElementById("frame");
+    const scroll = keepScroll ? frame.querySelector(".app-main")?.scrollTop ?? 0 : 0;
+    frame.className = `frame ${state.view}`;
+    frame.innerHTML = shellHtml();
+    const main = frame.querySelector(".app-main");
+    if (main) main.scrollTop = scroll;
+    const where = state.page === "ficha" ? "ficha completa" : state.sheet !== null ? "resumen del paciente" : "mi día";
+    document.getElementById("caption").textContent =
+      `${state.view === "mobile" ? "Celular · 375 px" : "Computadora"} · ${where}`;
+    document.getElementById("clockOut").textContent = hhmm(state.now);
+    document.getElementById("clock").value = state.now;
+    document.querySelectorAll("[data-view]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.view === state.view)));
+    document.querySelectorAll("[data-plan]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.plan === state.plan)));
+    document.getElementById("planTip").innerHTML = state.plan === "paid"
+      ? "<b>Consultorio:</b> resumen y ficha del paciente, alergia y edad en la tarjeta, y etiquetas de autogestión."
+      : "<b>Gratis:</b> la agenda del día completa. Sin ficha (Ver ficha muestra la mejora de plan), sin datos de salud en la tarjeta y sin autogestión.";
+    document.querySelectorAll("[data-preset]").forEach((b) => b.setAttribute("aria-current", String(Number(b.dataset.preset) === state.now)));
+    document.querySelectorAll("[data-scenario]").forEach((b) => b.setAttribute("aria-current", String(b.dataset.scenario === state.scenario)));
+    const closeBtn = frame.querySelector(".sheet [data-act=close].icon-btn");
+    if (closeBtn) closeBtn.focus({ preventScroll: true });
+  }
+
+  // Un solo listener para todo lo que se pinta dentro del marco.
+  document.getElementById("frame").addEventListener("click", (e) => {
+    const el = e.target.closest("[data-open],[data-act],[data-tab]");
+    if (!el) return;
+    if (el.dataset.open !== undefined) { state.sheet = Number(el.dataset.open); render(); return; }
+    if (el.dataset.tab) { state.fichaTab = el.dataset.tab; render(); return; }
+    switch (el.dataset.act) {
+      case "close": state.sheet = null; render(); break;
+      case "togglePast": state.showPast = !state.showPast; render(); break;
+      case "ficha":
+        state.ficha = Number(el.dataset.i); state.sheet = null; state.page = "ficha";
+        state.fichaTab = state.recordFirst ? "record" : "history";
+        render({ keepScroll: false }); break;
+      case "back": state.page = "day"; state.sheet = null; render({ keepScroll: false }); break;
+    }
+  });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && state.sheet !== null) { state.sheet = null; render(); } });
+
+  document.getElementById("presets").innerHTML = PRESETS.map((p) => `<button type="button" class="jump" data-preset="${p.m}">${p.label}<small>${hhmm(p.m)}</small></button>`).join("");
+  document.getElementById("scenarios").innerHTML = SCENARIOS.map((s) => `<button type="button" class="jump" data-scenario="${s.id}">${s.label}</button>`).join("");
+  const toDay = () => { state.page = "day"; state.sheet = null; };
+  document.querySelectorAll("[data-view]").forEach((b) => b.addEventListener("click", () => { state.view = b.dataset.view; render(); }));
+  document.querySelectorAll("[data-plan]").forEach((b) => b.addEventListener("click", () => { state.plan = b.dataset.plan; toDay(); render(); }));
+  document.querySelectorAll("[data-preset]").forEach((b) => b.addEventListener("click", () => { state.now = Number(b.dataset.preset); state.scenario = "normal"; toDay(); render(); }));
+  document.querySelectorAll("[data-scenario]").forEach((b) => b.addEventListener("click", () => { state.scenario = b.dataset.scenario; toDay(); render(); }));
+  document.getElementById("clock").addEventListener("input", (e) => { state.now = Number(e.target.value); if (state.page !== "day") toDay(); render(); });
+  document.querySelectorAll("[data-opt]").forEach((c) => c.addEventListener("change", () => { state[c.dataset.opt] = c.checked; render(); }));
+
+  render();
+</script>
+</body>
+</html>
