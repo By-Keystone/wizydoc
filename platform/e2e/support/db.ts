@@ -65,6 +65,13 @@ export interface TestPrismaAppointmentRow {
   cancellationReason: string | null;
 }
 
+export interface TestPrismaVerificationRow {
+  id: string;
+  identifier: string;
+  value: string;
+  expiresAt: Date;
+}
+
 export interface TestPrisma {
   user: {
     count(args: { where: Record<string, unknown> }): Promise<number>;
@@ -215,6 +222,16 @@ export interface TestPrisma {
       where: Record<string, unknown>;
       data: Record<string, unknown>;
     }): Promise<TestPrismaAppointmentRow>;
+  };
+  verification: {
+    count(args: { where: Record<string, unknown> }): Promise<number>;
+    findMany(args: {
+      where: Record<string, unknown>;
+    }): Promise<TestPrismaVerificationRow[]>;
+    updateMany(args: {
+      where: Record<string, unknown>;
+      data: Record<string, unknown>;
+    }): Promise<{ count: number }>;
   };
   $queryRaw<T = unknown>(
     query: TemplateStringsArray,
