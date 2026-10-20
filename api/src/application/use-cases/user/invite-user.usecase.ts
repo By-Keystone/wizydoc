@@ -5,9 +5,11 @@ import { TooManyRequests } from "@/application/errors/too-many-requests.error";
 import { UnprocessableEntity } from "@/application/errors/unprocessable-entity.errors";
 import type { IEmailService } from "@/application/ports/email-service.port";
 import { isWithinLimit } from "@/domain/entities/subscription/entitlements";
+import type { IDoctorProfileRepository } from "@/domain/repositories/doctor-profile.repository";
 import type { ITransactionManager } from "@/domain/services/transaction-manager";
 import { TokenService } from "@/domain/services/token-service";
 import { lockAccountQuota } from "@/infrastructure/postgres/lock-account-quota";
+import { DoctorProfileRepository } from "@/infrastructure/postgres/repositories/doctor-profile.repository";
 import { GetAccountEntitlements } from "@/infrastructure/postgres/queries/subscription/get-account-entitlements.query";
 import { getClient } from "@/infrastructure/postgres/transaction-context";
 import { renderTemplate } from "@/infrastructure/services/email-service/template-renderer";
@@ -74,6 +76,7 @@ export class InviteUserUseCase {
     private readonly services: InviteUserUseCaseService,
     private readonly entitlementsQuery = new GetAccountEntitlements(),
     private readonly tokens = new TokenService(),
+    private readonly doctorProfiles: IDoctorProfileRepository = new DoctorProfileRepository(),
   ) {}
 
   // Sin este filtro se podrían conectar especialidades de otra organización o cuenta.
@@ -83,14 +86,11 @@ export class InviteUserUseCase {
   ) {
     const uniqueSpecialtyIds = [...new Set(specialtyIds)];
 
-    const ownSpecialtiesCount = await getClient().specialty.count({
-      where: {
-        id: { in: uniqueSpecialtyIds },
-        organization: {
-          resource: { children: { some: { id: clinicResourceId } } },
-        },
-      },
-    });
+    const ownSpecialtiesCount =
+      await this.doctorProfiles.countSpecialtiesOfClinicOrganization(
+        clinicResourceId,
+        uniqueSpecialtyIds,
+      );
 
     // Mismo 404 para id inexistente y de otra cuenta.
     if (ownSpecialtiesCount !== uniqueSpecialtyIds.length) {

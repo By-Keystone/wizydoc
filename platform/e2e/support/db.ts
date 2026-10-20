@@ -72,6 +72,13 @@ export interface TestPrismaVerificationRow {
   expiresAt: Date;
 }
 
+export interface TestPrismaProfileRow {
+  id: string;
+  userId: string;
+  clinicId: string;
+  specialties: { id: string }[];
+}
+
 export interface TestPrisma {
   user: {
     count(args: { where: Record<string, unknown> }): Promise<number>;
@@ -138,7 +145,14 @@ export interface TestPrisma {
   };
   doctorProfile: {
     count(args: { where: Record<string, unknown> }): Promise<number>;
-    findMany(args: { where: Record<string, unknown> }): Promise<unknown[]>;
+    findMany(args: {
+      where: Record<string, unknown>;
+      select?: Record<string, unknown>;
+    }): Promise<TestPrismaProfileRow[]>;
+    findUnique(args: {
+      where: Record<string, unknown>;
+      select?: Record<string, unknown>;
+    }): Promise<TestPrismaProfileRow | null>;
     create(args: { data: Record<string, unknown> }): Promise<{ id: string }>;
     findFirst(args: {
       where: Record<string, unknown>;
@@ -196,6 +210,11 @@ export interface TestPrisma {
     findUnique(args: {
       where: Record<string, unknown>;
     }): Promise<{ id: string; name: string; organizationId: string } | null>;
+    findMany(args: {
+      where: Record<string, unknown>;
+      select?: Record<string, unknown>;
+    }): Promise<{ id: string }[]>;
+    createMany(args: { data: Record<string, unknown>[] }): Promise<unknown>;
   };
   patient: {
     create(args: { data: Record<string, unknown> }): Promise<{ id: string }>;
@@ -212,6 +231,9 @@ export interface TestPrisma {
   appointment: {
     create(args: { data: Record<string, unknown> }): Promise<{ id: string }>;
     count(args: { where: Record<string, unknown> }): Promise<number>;
+    findMany(args: {
+      where: Record<string, unknown>;
+    }): Promise<TestPrismaAppointmentRow[]>;
     findFirst(args: {
       where: Record<string, unknown>;
     }): Promise<TestPrismaAppointmentRow | null>;

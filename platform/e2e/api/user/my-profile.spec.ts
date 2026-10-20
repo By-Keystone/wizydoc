@@ -114,9 +114,11 @@ test.describe("Mi perfil: lectura (GET /user/me/profile)", () => {
     expect(Object.keys(body).sort()).toEqual([
       "clinics",
       "doctorDisplayName",
+      "editableClinics",
       "email",
       "lastName",
       "name",
+      "organizations",
       "phone",
       "treatment",
     ]);
