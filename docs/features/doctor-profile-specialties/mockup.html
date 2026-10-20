@@ -1,0 +1,723 @@
+<!doctype html>
+<html lang="es-PE">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototipo: perfil de médico y especialidades</title>
+<style>
+  :root {
+    --teal: #0E8C82;
+    --teal-dark: #0B4F49;
+    --ink: #1F2A2A;
+    --gray: #5C6B6A;
+    --surface: #EFF5F4;
+    --coral: #FF6F59;
+    --border: #e5e7eb;
+    --ring: hsl(175 82% 30%);
+    --radius: 0.625rem;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: var(--ink); background: #e5e7eb; -webkit-font-smoothing: antialiased; }
+  button, input, select { font: inherit; color: inherit; }
+  a { color: inherit; }
+  :focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+
+  /* ---------- Barra del prototipo (no es parte de la app) ---------- */
+  .proto { display: grid; grid-template-columns: 300px minmax(0, 1fr); min-height: 100vh; }
+  .proto-panel { background: #fff; border-right: 1px solid #d1d5db; padding: 20px; overflow-y: auto; max-height: 100vh; position: sticky; top: 0; }
+  .proto-panel h1 { font-size: 15px; margin: 0; color: var(--teal-dark); }
+  .proto-panel p.lead { font-size: 12px; color: var(--gray); margin: 6px 0 16px; line-height: 1.45; }
+  .proto-panel h2 { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--teal); margin: 18px 0 8px; }
+  .proto-panel label.chk { display: flex; gap: 8px; align-items: flex-start; font-size: 13px; padding: 5px 0; cursor: pointer; line-height: 1.35; }
+  .proto-panel input[type=checkbox] { margin-top: 2px; accent-color: var(--teal); }
+  .seg { display: flex; border: 1px solid #d1d5db; border-radius: 8px; overflow: hidden; }
+  .seg button { flex: 1; border: 0; background: #fff; padding: 6px 4px; font-size: 12.5px; color: var(--gray); cursor: pointer; }
+  .seg button[aria-pressed="true"] { background: var(--teal); color: #fff; }
+  .jump { display: block; width: 100%; text-align: left; border: 1px solid #e5e7eb; background: #fff; border-radius: 8px; padding: 6px 10px; margin-bottom: 4px; font-size: 12.5px; color: var(--gray); cursor: pointer; }
+  .jump:hover { background: #f9fafb; }
+  .jump[aria-current="true"] { border-color: var(--teal); color: var(--teal); background: rgba(14,140,130,.06); }
+  .note { font-size: 11.5px; color: var(--gray); background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 8px 10px; margin-top: 12px; line-height: 1.45; }
+  .note b { color: var(--ink); }
+  .note ol { margin: 4px 0 0; padding-left: 16px; }
+  .note li { margin: 5px 0; }
+  .tip { font-size: 11.5px; color: var(--teal-dark); background: var(--surface); border-radius: 8px; padding: 8px 10px; margin-top: 10px; line-height: 1.45; }
+  .stage { display: flex; justify-content: center; align-items: flex-start; padding: 32px 16px; min-width: 0; }
+  .frame-wrap { min-width: 0; max-width: 100%; }
+  .frame-caption { text-align: center; font-size: 12px; color: var(--gray); margin-bottom: 8px; }
+  .frame { position: relative; background: #f9fafb; box-shadow: 0 10px 30px rgba(0,0,0,.12); overflow: hidden; }
+  .frame.mobile { width: 375px; height: 780px; border-radius: 28px; border: 8px solid #1f2937; display: flex; flex-direction: column; }
+  .frame.desktop { width: 1100px; max-width: 100%; height: 780px; border-radius: 10px; border: 1px solid #cbd5e1; display: flex; flex-direction: column; }
+  .scroll { flex: 1; min-height: 0; overflow-y: auto; }
+
+  /* ---------- Barra superior (= TopNav) ---------- */
+  .topnav { display: flex; align-items: center; justify-content: space-between; gap: 8px; background: #f3f4f6; padding: 12px 16px; box-shadow: 0 4px 12px rgba(0,0,0,.08); border-radius: 0 0 6px 6px; position: relative; z-index: 5; flex-shrink: 0; }
+  .logo { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; font-size: 18px; color: var(--teal-dark); }
+  .logo-mark { width: 26px; height: 26px; border-radius: 8px; background: var(--teal); color: #fff; display: grid; place-items: center; font-size: 14px; }
+  .avatar { width: 32px; height: 32px; border-radius: 50%; background: #ccfbf1; color: var(--teal-dark); display: grid; place-items: center; font-size: 12px; font-weight: 700; flex-shrink: 0; }
+  .avatar.lg { width: 56px; height: 56px; font-size: 18px; }
+  .me-btn { display: inline-flex; align-items: center; gap: 8px; border: 1px solid transparent; background: none; border-radius: 999px; padding: 4px 10px 4px 4px; cursor: pointer; font-size: 14px; font-weight: 500; }
+  .me-btn:hover { background: #e5e7eb; }
+  .me-btn svg { width: 16px; height: 16px; color: var(--gray); }
+
+  /* ---------- Panel (= layout + Sidebar) ---------- */
+  .shell { flex: 1; min-height: 0; display: flex; }
+  .mobile .shell { flex-direction: column; }
+  .sidebar { width: 232px; flex-shrink: 0; background: #fff; border-right: 1px solid var(--border); padding: 20px 14px 14px; display: flex; flex-direction: column; gap: 4px; position: relative; }
+  .sidebar .logo { padding: 0 8px 16px; }
+  .nav { display: flex; align-items: center; gap: 10px; border-radius: 8px; padding: 8px 12px; font-size: 14px; color: var(--gray); border: 0; background: none; text-align: left; cursor: pointer; width: 100%; }
+  .nav:hover { background: #f3f4f6; color: var(--ink); }
+  .nav.active { background: var(--surface); color: var(--teal-dark); font-weight: 600; }
+  .nav svg { width: 16px; height: 16px; }
+  .side-me { margin-top: auto; border-top: 1px solid var(--border); padding-top: 10px; position: relative; }
+  .side-me .me-btn { width: 100%; border-radius: 10px; padding: 8px; justify-content: flex-start; text-align: left; }
+  .side-me .me-btn.on { background: var(--surface); }
+  .side-me .me-btn div { min-width: 0; flex: 1; }
+  .side-me .me-btn b { display: block; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .side-me .me-btn small { display: block; font-size: 12px; color: var(--gray); font-weight: 400; }
+  .topbar { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; background: #fff; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+  .topbar .logo { font-size: 17px; }
+  .icon-btn { width: 36px; height: 36px; border-radius: 8px; border: 1px solid var(--border); background: #fff; display: grid; place-items: center; color: var(--gray); cursor: pointer; flex-shrink: 0; }
+  .icon-btn:hover { background: #f9fafb; color: var(--ink); }
+  .main { flex: 1; min-width: 0; padding: 32px; overflow-y: auto; }
+  .mobile .main { padding: 16px; }
+  .scrim { position: absolute; inset: 0; background: rgba(15, 23, 42, .38); z-index: 20; }
+  .drawer { position: absolute; z-index: 21; top: 0; bottom: 0; left: 0; width: 82%; background: #fff; display: flex; flex-direction: column; padding: 16px 14px; gap: 4px; box-shadow: 8px 0 30px rgba(0,0,0,.18); }
+  .drawer-head { display: flex; align-items: center; justify-content: space-between; padding: 0 4px 12px; }
+
+  /* ---------- Mi perfil ---------- */
+  .profile { max-width: 46rem; margin: 0 auto; padding: 24px; display: flex; flex-direction: column; gap: 16px; }
+  .mobile .profile { padding: 16px; }
+  .in-panel .profile { padding: 0; margin: 0; }
+  .back { display: inline-flex; align-items: center; gap: 4px; font-size: 14px; color: var(--gray); background: none; border: 0; padding: 0; cursor: pointer; width: fit-content; }
+  .back svg { width: 16px; height: 16px; }
+  .p-head { display: flex; align-items: center; gap: 14px; }
+  .p-head h1 { margin: 0; font-size: 22px; color: var(--teal-dark); overflow-wrap: anywhere; }
+  .p-head p { margin: 2px 0 0; font-size: 13.5px; color: var(--gray); overflow-wrap: anywhere; }
+  .card { background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 20px; min-width: 0; }
+  .mobile .card { padding: 16px; }
+  .card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+  .card-head h2 { margin: 0; font-size: 16px; color: var(--teal-dark); }
+  .card-head p { margin: 3px 0 0; font-size: 13px; color: var(--gray); line-height: 1.45; }
+  .fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  .mobile .fields { grid-template-columns: minmax(0, 1fr); }
+  .field label, .field > span { display: block; font-size: 12px; font-weight: 600; color: var(--gray); margin-bottom: 4px; }
+  .field input, .field select, .field .ro { width: 100%; border: 1px solid #d1d5db; border-radius: 8px; padding: 9px 12px; font-size: 14px; background: #fff; min-height: 40px; }
+  .field .ro { background: #f9fafb; border-color: var(--border); overflow-wrap: anywhere; }
+  .field input:disabled, .field select:disabled { background: #f9fafb; border-color: var(--border); color: var(--ink); opacity: 1; }
+  .field.wide { grid-column: 1 / -1; }
+  .preview { font-size: 13px; color: var(--gray); margin: 10px 0 0; }
+  .preview b { color: var(--ink); }
+  .actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+  .mobile .actions .btn { flex: 1; }
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 40px; padding: 0 16px; border-radius: 8px; font-size: 14px; font-weight: 600; border: 0; cursor: pointer; white-space: nowrap; text-decoration: none; }
+  .btn svg { width: 16px; height: 16px; }
+  .btn-default { background: var(--teal); color: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+  .btn-default:hover { background: var(--teal-dark); }
+  .btn-default:disabled { background: rgba(14,140,130,.5); cursor: default; }
+  .btn-outline { background: #fff; color: var(--gray); border: 1px solid var(--border); }
+  .btn-outline:hover { background: #f9fafb; }
+  .btn-sm { height: 32px; padding: 0 12px; font-size: 12px; }
+  .btn-proto { border-style: dashed; color: #92400e; }
+
+  /* Dónde atiendes */
+  .clinic { border: 1px solid var(--border); border-radius: 10px; padding: 14px; min-width: 0; }
+  .clinic + .clinic { margin-top: 10px; }
+  .clinic.editing { border-color: #cfe5e2; box-shadow: 0 0 0 3px rgba(14,140,130,.08); }
+  .clinic-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+  .clinic-top div { min-width: 0; }
+  .clinic-top b { display: block; font-size: 14.5px; overflow-wrap: anywhere; }
+  .clinic-top span { display: block; font-size: 12.5px; color: var(--gray); overflow-wrap: anywhere; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 0; padding: 0; list-style: none; }
+  .chip { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 4px 12px; font-size: 13px; background: var(--surface); color: var(--teal-dark); border: 1px solid #cfe5e2; }
+  .muted { font-size: 13px; color: var(--gray); margin: 8px 0 0; line-height: 1.45; }
+  .subhead { font-size: 12px; font-weight: 600; color: var(--gray); text-transform: uppercase; letter-spacing: .04em; margin: 16px 0 8px; }
+  .rows { border: 1px solid var(--border); border-radius: 10px; }
+  .crow { display: flex; align-items: center; justify-content: space-between; gap: 8px 12px; padding: 12px 14px; flex-wrap: wrap; }
+  .crow + .crow { border-top: 1px solid var(--border); }
+  .crow > div { min-width: 0; }
+  .crow b { display: block; font-size: 14px; font-weight: 600; }
+  .crow span { display: block; font-size: 12.5px; color: var(--gray); }
+  .rows .clinic { border: 0; border-radius: 0; }
+  .rows .clinic + .crow, .rows .crow + .clinic { border-top: 1px solid var(--border); }
+  .link { font-size: 13px; font-weight: 600; color: var(--teal); text-decoration: none; background: none; border: 0; padding: 0; cursor: pointer; }
+  .link:hover { text-decoration: underline; text-underline-offset: 3px; }
+  .row-links { margin-top: 12px; }
+
+  /* Selector de especialidades (= SpecialtyMultiSelect) */
+  .ms { display: flex; flex-direction: column; gap: 4px; margin-top: 12px; }
+  .ms > label { font-size: 14px; }
+  .ms-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .ms-chip { display: inline-flex; align-items: center; gap: 4px; border-radius: 999px; background: rgba(14,140,130,.1); color: var(--teal); padding: 4px 10px; font-size: 12px; font-weight: 500; }
+  .ms-chip button { border: 0; background: none; color: var(--teal); padding: 0; cursor: pointer; display: grid; place-items: center; }
+  .ms-chip svg { width: 12px; height: 12px; }
+  .ms-box { position: relative; }
+  .ms-box input { width: 100%; border: 1px solid #d1d5db; border-radius: 8px; padding: 8px 12px; font-size: 14px; outline: none; }
+  .ms-box input:focus { border-color: var(--teal); box-shadow: 0 0 0 3px rgba(14,140,130,.2); }
+  .ms-drop { position: absolute; z-index: 10; left: 0; right: 0; margin-top: 4px; background: #fff; border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 10px 20px rgba(0,0,0,.1); overflow: hidden; }
+  .ms-drop ul { list-style: none; margin: 0; padding: 4px 0; max-height: 192px; overflow-y: auto; }
+  .ms-drop li button { display: block; width: 100%; text-align: left; border: 0; background: none; padding: 8px 12px; font-size: 14px; color: var(--gray); cursor: pointer; }
+  .ms-drop li button:hover { background: #f9fafb; }
+  .ms-create { display: flex; align-items: center; gap: 6px; width: 100%; border: 0; border-top: 1px solid #f3f4f6; background: none; padding: 8px 12px; font-size: 14px; font-weight: 500; color: var(--teal); cursor: pointer; text-align: left; }
+  .ms-create:hover { background: rgba(14,140,130,.1); }
+  .ms-create svg { width: 14px; height: 14px; }
+  .hint { font-size: 12.5px; color: var(--gray); background: var(--surface); border-radius: 8px; padding: 8px 12px; margin-top: 8px; line-height: 1.45; }
+  .warn { font-size: 13px; color: #92400e; background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 8px 12px; margin-top: 10px; line-height: 1.45; }
+
+  /* ---------- Usuarios (= UsersTopHeader + UsersTable) ---------- */
+  .page-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 24px; }
+  .page-head h1 { margin: 0; font-size: 24px; font-weight: 700; color: var(--teal-dark); }
+  .page-head p { margin: 4px 0 0; font-size: 14px; color: var(--gray); }
+  .tbl { overflow: hidden; border: 1px solid var(--border); border-radius: 12px; background: #fff; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  thead { background: #f9fafb; border-bottom: 1px solid var(--border); }
+  th { padding: 12px 16px; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--gray); font-weight: 600; text-align: center; }
+  td { padding: 12px 16px; text-align: center; border-top: 1px solid #f3f4f6; vertical-align: middle; }
+  tbody tr:first-child td { border-top: 0; }
+  .nm { font-weight: 500; }
+  .sub { display: block; font-size: 12px; color: var(--gray); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; }
+  .tags { display: flex; flex-wrap: wrap; gap: 4px; justify-content: center; margin-top: 4px; }
+  .mobile .tags { justify-content: flex-start; }
+  .tag { display: inline-flex; align-items: center; white-space: nowrap; border-radius: 999px; padding: 2px 8px; font-size: 11px; font-weight: 600; }
+  .tag-me { background: rgba(14,140,130,.1); color: var(--teal); }
+  .tag-pending { background: #fffbeb; color: #b45309; box-shadow: inset 0 0 0 1px #fde68a; }
+  .tag-none { background: #fffbeb; color: #b45309; box-shadow: inset 0 0 0 1px #fde68a; }
+  .badge { display: inline-flex; align-items: center; border-radius: 999px; padding: 2px 10px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+  .b-admin { background: rgba(11,79,73,.1); color: var(--teal-dark); }
+  .b-doctor { background: rgba(14,140,130,.1); color: var(--teal); }
+  .b-user { background: #f3f4f6; color: #4b5563; }
+  .spec-cell { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .spec-cell .chips { margin: 0; justify-content: center; }
+  .chip.sm { font-size: 12px; padding: 2px 10px; }
+  .edit-link { display: inline-flex; align-items: center; gap: 4px; border: 1px solid #d1d5db; background: #fff; border-radius: 8px; padding: 4px 10px; font-size: 12.5px; font-weight: 500; color: var(--gray); cursor: pointer; }
+  .edit-link:hover { background: #f9fafb; }
+  .edit-link svg { width: 14px; height: 14px; }
+  .mobile .spec-cell { align-items: flex-start; margin-top: 8px; }
+  .mobile .spec-cell .chips { justify-content: flex-start; }
+  .mobile td.nmcell { text-align: left; }
+  .empty-box { border: 1px solid var(--border); border-radius: 12px; background: #fff; padding: 32px; text-align: center; font-size: 14px; color: var(--gray); }
+
+  /* Diálogo (= ui/dialog, size S) */
+  .overlay { position: absolute; inset: 0; background: rgba(0,0,0,.4); z-index: 40; }
+  .dialog { position: absolute; z-index: 41; left: 50%; top: 50%; transform: translate(-50%, -50%); width: calc(100% - 24px); max-width: 32rem; background: #fff; border: 1px solid var(--border); border-radius: 16px; padding: 24px; box-shadow: 0 20px 40px rgba(0,0,0,.2); }
+  .dialog h2 { margin: 0; font-size: 18px; font-weight: 600; color: var(--teal-dark); padding-right: 32px; }
+  .dialog > p { margin: 6px 0 0; font-size: 14px; color: var(--gray); line-height: 1.45; }
+  .dialog .close { position: absolute; right: 16px; top: 16px; border: 0; background: none; border-radius: 8px; padding: 4px; color: var(--gray); cursor: pointer; }
+  .dialog .close:hover { background: #f3f4f6; }
+
+  /* Estados (= LoadingState, ErrorState) */
+  .state { min-height: 50vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; text-align: center; color: var(--gray); padding: 32px; }
+  .state .ico { width: 56px; height: 56px; border-radius: 16px; background: #fef2f2; display: grid; place-items: center; color: #ef4444; }
+  .state .ico svg { width: 28px; height: 28px; }
+  .state h2 { margin: 0; font-size: 18px; color: var(--teal-dark); }
+  .state p { margin: 0; font-size: 14px; max-width: 24rem; }
+  .state .retry { border: 1px solid var(--border); background: #fff; border-radius: 8px; padding: 8px 16px; font-size: 14px; font-weight: 600; color: var(--gray); cursor: pointer; }
+  .spin { width: 24px; height: 24px; animation: spin 1s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .toast { position: absolute; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 60; background: var(--ink); color: #fff; font-size: 13.5px; border-radius: 10px; padding: 10px 16px; box-shadow: 0 10px 30px rgba(0,0,0,.25); max-width: calc(100% - 32px); text-align: center; }
+  .toast.err { background: #991b1b; }
+
+  @media (max-width: 900px) {
+    .proto { grid-template-columns: minmax(0, 1fr); }
+    .proto-panel { position: static; max-height: none; border-right: 0; border-bottom: 1px solid #d1d5db; }
+  }
+</style>
+</head>
+<body>
+<div class="proto">
+  <aside class="proto-panel" aria-label="Controles del prototipo">
+    <h1>Perfil de médico y especialidades</h1>
+    <p class="lead">Prototipo de «Dónde atiendes» editable para el ADMIN y de la edición de especialidades desde los usuarios de la sede. Los datos son de ejemplo.</p>
+
+    <h2>Vista</h2>
+    <div class="seg" role="group" aria-label="Vista">
+      <button type="button" data-view="mobile" aria-pressed="true">Celular</button>
+      <button type="button" data-view="desktop" aria-pressed="false">Computadora</button>
+    </div>
+
+    <h2>Pantalla</h2>
+    <div id="screens"></div>
+
+    <h2>Quién entra</h2>
+    <div id="roles"></div>
+
+    <h2>Estado de la página</h2>
+    <div id="states"></div>
+
+    <h2>Casos</h2>
+    <label class="chk"><input type="checkbox" data-opt="multi"> Organización con tres sedes</label>
+    <label class="chk"><input type="checkbox" data-opt="noSpecialties"> Sin especialidades asignadas</label>
+    <label class="chk"><input type="checkbox" data-opt="orgEmpty"> La organización no tiene especialidades</label>
+    <label class="chk"><input type="checkbox" data-opt="ownRow"> La ADMIN también es médica de la sede (su fila aparece en «Usuarios»)</label>
+    <label class="chk"><input type="checkbox" data-opt="noUsers"> La sede no tiene usuarios (solo «Usuarios»)</label>
+    <p class="tip">En «Mi perfil» del ADMIN toca <b>Editar</b> o <b>Asignar especialidades</b>. En «Usuarios de la sede» toca <b>Editar especialidades</b> en la fila de un médico. Escribe en el buscador para ver «Crear "…"».</p>
+
+    <div class="note">
+      <b>Qué muestra este mockup</b>
+      <ol>
+        <li><b>Editan</b> el ADMIN de la organización y el dueño de la cuenta (Lucía es las dos cosas). El ADMIN directo de una sede no edita.</li>
+        <li><b>El ADMIN edita las suyas en «Mi perfil»</b>, sede por sede. Su perfil de médico se crea al guardar por primera vez (t-1). Bajo sus especialidades, sin horarios, ve: «Sin horarios en esta sede, todavía no apareces en el link de reserva.»</li>
+        <li><b>Todas las sedes que puede editar</b>: con especialidades, como bloque con chips; sin ellas, como filas de una línea (t-6).</li>
+        <li><b>El médico invitado solo las ve</b>, como hoy. <b>La recepción</b> no ve la sección.</li>
+        <li><b>Las de los demás se editan en Sedes › Ver usuarios</b> (t-4), con el selector de la invitación. La fila propia no tiene botón: lleva a «Mi perfil».</li>
+        <li><b>402:</b> no aplica, va en todos los planes.</li>
+        <li>Los botones con borde punteado («Probar error») son del prototipo.</li>
+      </ol>
+    </div>
+  </aside>
+
+  <div class="stage">
+    <div class="frame-wrap">
+      <div class="frame-caption" id="caption"></div>
+      <div class="frame mobile" id="frame"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const ICON = {
+    down: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>',
+    left: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>',
+    home: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>',
+    gear: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>',
+    patients: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="2"/><path d="M9 20l1-6-3-2 2-4h6l2 4-3 2 1 6"/></svg>',
+    user: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></svg>',
+    building: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M9 22v-4h6v4M8 6h.01M16 6h.01M12 6h.01M12 10h.01M12 14h.01M16 10h.01M16 14h.01M8 10h.01M8 14h.01"/></svg>',
+    tags: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H2v7l6.3 6.3a2.4 2.4 0 0 0 3.4 0l3.6-3.6a2.4 2.4 0 0 0 0-3.4Z"/><path d="M6 9.01V9"/><path d="m15 5 6.3 6.3a2.4 2.4 0 0 1 0 3.4L17 19"/></svg>',
+    userPlus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg>',
+    pencil: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>',
+    plus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>',
+    x: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>',
+    xl: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>',
+    menu: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg>',
+    loader: '<svg class="spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-6.2-8.6"/></svg>',
+    alert: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.7 18-8-14a2 2 0 0 0-3.4 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.7-3Z"/><path d="M12 9v4M12 17h.01"/></svg>',
+  };
+
+  const ORG = "Consultorio Paredes";
+  let ORG_SPECIALTIES = ["Cardiología", "Dermatología", "Medicina general", "Pediatría"];
+  const CLINICS = [
+    { id: "mira", name: "Sede Miraflores" },
+    { id: "sani", name: "Sede San Isidro" },
+    { id: "surc", name: "Sede Surco" },
+  ];
+  const ROLES = {
+    admin: { label: "ADMIN y dueña de la cuenta", person: { name: "Lucía", lastName: "Paredes Quispe", email: "lucia.paredes@correo.pe", phone: "+51 987 111 222", treatment: "Dra." } },
+    doctor: { label: "DOCTOR (médico invitado)", person: { name: "Andrés", lastName: "Rivas Soto", email: "andres.rivas@correo.pe", phone: "+51 954 330 118", treatment: "Dr." } },
+    reception: { label: "USER (recepción)", person: { name: "Milagros", lastName: "Huamán Torres", email: "milagros.ht@correo.pe", phone: "+51 912 778 004", treatment: "" } },
+  };
+  const OWN = {
+    admin: { mira: ["Medicina general"], sani: [], surc: [] },
+    doctor: { mira: ["Cardiología"], sani: ["Cardiología"] },
+  };
+  const USERS = [
+    { id: "u0", name: "Lucía", lastName: "Paredes Quispe", email: "lucia.paredes@correo.pe", phone: "+51987111222", role: "DOCTOR", specs: ["Medicina general"], me: true },
+    { id: "u1", name: "Andrés", lastName: "Rivas Soto", email: "andres.rivas@correo.pe", phone: "+51954330118", role: "DOCTOR", specs: ["Cardiología"] },
+    { id: "u2", name: "Carmen", lastName: "Vílchez Ramos", email: "carmen.vilchez@correo.pe", phone: "+51998210447", role: "DOCTOR", specs: [], pending: true },
+    { id: "u3", name: "Milagros", lastName: "Huamán Torres", email: "milagros.ht@correo.pe", phone: "+51912778004", role: "USER", specs: null },
+  ];
+  // Copia de los datos de ejemplo: los casos del panel parten siempre de aquí.
+  const BASE = JSON.stringify({ specs: ORG_SPECIALTIES, own: OWN, users: USERS.map((u) => u.specs) });
+  const SCREENS = [
+    { id: "profileSelect", label: "Mi perfil (desde la selección)" },
+    { id: "profilePanel", label: "Mi perfil (dentro del panel)" },
+    { id: "users", label: "Usuarios de la sede (Sedes › Ver usuarios)" },
+  ];
+  const STATES = [
+    { id: "normal", label: "Normal" },
+    { id: "loading", label: "Cargando" },
+    { id: "error", label: "Error al cargar" },
+  ];
+
+  const state = {
+    view: "mobile", screen: "profileSelect", role: "admin", page: "normal",
+    multi: false, noSpecialties: false, orgEmpty: false, ownRow: false, noUsers: false,
+    drawer: false, toast: "", toastErr: false,
+    editing: null, editFrom: null, picked: [], query: "", drop: false, saving: false, focus: null,
+    dialog: null,
+  };
+
+  const role = () => ROLES[state.role];
+  const me = () => role().person;
+  const fullName = (p) => `${p.name} ${p.lastName}`;
+  const initials = (p) => `${p.name[0]}${p.lastName[0]}`.toUpperCase();
+  const orgSpecs = () => ORG_SPECIALTIES;
+  const esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/"/g, "&quot;");
+
+  function applyCases() {
+    const base = JSON.parse(BASE);
+    const clear = state.noSpecialties || state.orgEmpty;
+    ORG_SPECIALTIES = state.orgEmpty ? [] : base.specs;
+    for (const r of Object.keys(OWN)) for (const c of Object.keys(OWN[r])) OWN[r][c] = clear ? [] : base.own[r][c];
+    USERS.forEach((u, i) => { u.specs = base.users[i] === null ? null : clear ? [] : base.users[i]; });
+  }
+  function myClinics() {
+    if (state.role === "admin") return state.multi ? CLINICS : CLINICS.slice(0, 1);
+    if (state.role === "doctor") return state.multi ? CLINICS.slice(0, 2) : CLINICS.slice(0, 1);
+    return [];
+  }
+  function ownSpecs(clinicId) {
+    return (OWN[state.role] && OWN[state.role][clinicId]) || [];
+  }
+
+  /* ---------- Selector (= SpecialtyMultiSelect) ---------- */
+  function multiSelect(labelText, inputId) {
+    const q = state.query.trim();
+    const options = orgSpecs().filter((s) => !state.picked.includes(s) && s.toLowerCase().includes(q.toLowerCase()));
+    const exact = orgSpecs().some((s) => s.toLowerCase() === q.toLowerCase());
+    const chips = state.picked.length
+      ? `<div class="ms-chips">${state.picked.map((s) => `<span class="ms-chip">${s}<button type="button" data-unpick="${esc(s)}" aria-label="Quitar ${esc(s)}">${ICON.x}</button></span>`).join("")}</div>`
+      : "";
+    const showDrop = state.drop && (q.length > 0 || options.length > 0);
+    const drop = showDrop
+      ? `<div class="ms-drop"><ul>${options.map((s) => `<li><button type="button" data-pick="${esc(s)}">${s}</button></li>`).join("")}</ul>
+          ${q && !exact ? `<button type="button" class="ms-create" data-create="${esc(q)}">${ICON.plus}Crear "${esc(q)}"</button>` : ""}</div>`
+      : "";
+    const empty = orgSpecs().length === 0
+      ? `<p class="hint">${ORG} todavía no tiene especialidades. Escribe la que atiendes y elige «Crear».</p>`
+      : "";
+    return `<div class="ms">
+      <label for="${inputId}">${labelText}</label>
+      ${chips}
+      <div class="ms-box"><input id="${inputId}" type="text" autocomplete="off" placeholder="Buscar especialidad..." value="${esc(state.query)}" data-ms>${drop}</div>
+      ${empty}
+    </div>`;
+  }
+
+  /* ---------- Mi perfil ---------- */
+  function dataCard() {
+    const p = me();
+    const attends = myClinics().length > 0;
+    const treatment = attends
+      ? `<div class="field"><label for="tr">Tratamiento</label><select id="tr" disabled><option>${p.treatment || "Sin tratamiento"}</option></select></div>`
+      : "";
+    return `<section class="card" aria-labelledby="h-data">
+      <div class="card-head"><div><h2 id="h-data">Datos personales</h2><p>Tus datos son los mismos en todas tus sedes.${attends ? " Tu nombre es el que ven tus pacientes al reservar." : ""}</p></div>
+        <button type="button" class="btn btn-outline btn-sm">Editar</button></div>
+      <div class="fields">
+        ${treatment}
+        <div class="field"><label for="fn">Nombre</label><input id="fn" value="${p.name}" disabled></div>
+        <div class="field"><label for="ln">Apellido</label><input id="ln" value="${p.lastName}" disabled></div>
+        <div class="field"><label for="ph">Celular</label><input id="ph" value="${p.phone}" disabled></div>
+        <div class="field wide"><span>Correo electrónico</span><div class="ro">${p.email}</div></div>
+      </div>
+      ${attends ? `<p class="preview">Así te ven tus pacientes al reservar: <b>${p.treatment ? p.treatment + " " : ""}${fullName(p)}</b></p>` : ""}
+    </section>`;
+  }
+
+  function editor(c) {
+    const dis = state.saving ? "disabled" : "";
+    return `<div class="clinic editing">
+      <div class="clinic-top"><div><b>${c.name}</b><span>${ORG}</span></div></div>
+      ${multiSelect(`Especialidades en ${c.name}`, `ms-${c.id}`)}
+      <div class="actions">
+        <button type="button" class="btn btn-outline btn-proto" data-act="protoError" ${dis}>Probar error</button>
+        <button type="button" class="btn btn-outline" data-act="cancelEdit" ${dis}>Cancelar</button>
+        <button type="button" class="btn btn-default" data-act="saveEdit" ${dis}>${state.saving ? "Guardando…" : "Guardar especialidades"}</button>
+      </div>
+    </div>`;
+  }
+
+  function adminWhereCard() {
+    const cs = myClinics();
+    if (!cs.length) return "";
+    const blocks = cs.filter((c) => ownSpecs(c.id).length || (state.editing === c.id && state.editFrom === "block"));
+    const rows = cs.filter((c) => !blocks.includes(c));
+    const blockHtml = blocks.map((c) => {
+      if (state.editing === c.id) return editor(c);
+      // El ADMIN todavía no tiene horarios (llegan con «el administrador también atiende»).
+      return `<div class="clinic">
+        <div class="clinic-top"><div><b>${c.name}</b><span>${ORG}</span></div>
+          <button type="button" class="btn btn-outline btn-sm" data-edit="${c.id}" data-from="block" aria-label="Editar especialidades de ${c.name}">Editar</button></div>
+        <ul class="chips">${ownSpecs(c.id).map((s) => `<li class="chip">${s}</li>`).join("")}</ul>
+        <p class="muted">Sin horarios en esta sede, todavía no apareces en el link de reserva.</p>
+      </div>`;
+    }).join("");
+    const rowHtml = rows.map((c) => {
+      if (state.editing === c.id) return editor(c);
+      return `<div class="crow"><div><b>${c.name}</b><span>${ORG} · Sin especialidades</span></div>
+        <button type="button" class="btn btn-outline btn-sm" data-edit="${c.id}" data-from="row" aria-label="Asignar especialidades en ${c.name}">Asignar especialidades</button></div>`;
+    }).join("");
+    return `<section class="card" aria-labelledby="h-where">
+      <div class="card-head"><div><h2 id="h-where">Dónde atiendes</h2><p>Elige las especialidades que atiendes en cada sede que administras.</p></div></div>
+      ${blockHtml}
+      ${rows.length ? `${blocks.length ? '<p class="subhead">Otras sedes que administras</p>' : ""}<div class="rows">${rowHtml}</div>` : ""}
+    </section>`;
+  }
+
+  function doctorWhereCard() {
+    const cs = myClinics();
+    if (!cs.length) return "";
+    const blocks = cs.map((c) => {
+      const own = ownSpecs(c.id);
+      const body = own.length
+        ? `<ul class="chips">${own.map((s) => `<li class="chip">${s}</li>`).join("")}</ul><p class="muted">Te las asigna un administrador.</p>`
+        : `<p class="muted">Aún no tienes una especialidad asignada. Un administrador de ${c.name} tiene que asignártela.</p>`;
+      return `<div class="clinic"><div class="clinic-top"><div><b>${c.name}</b><span>${ORG}</span></div></div>${body}
+        <div class="row-links"><a href="#" class="link" onclick="return false">Mi disponibilidad en esta sede →</a></div></div>`;
+    }).join("");
+    return `<section class="card" aria-labelledby="h-where">
+      <div class="card-head"><div><h2 id="h-where">Dónde atiendes</h2><p>Tus especialidades en cada sede. Tus horarios se configuran dentro de cada sede.</p></div></div>
+      ${blocks}
+    </section>`;
+  }
+
+  function pwdCard() {
+    return `<section class="card" aria-labelledby="h-pwd">
+      <div class="card-head"><div><h2 id="h-pwd">Contraseña</h2><p>Al cambiarla cerramos tu sesión en tus otros dispositivos.</p></div>
+        <button type="button" class="btn btn-outline btn-sm">Cambiar contraseña</button></div>
+    </section>`;
+  }
+
+  function profileBody(withBack) {
+    if (state.page === "loading") return loadingState();
+    if (state.page === "error") return errorState();
+    const p = me();
+    const where = state.role === "admin" ? adminWhereCard() : state.role === "doctor" ? doctorWhereCard() : "";
+    return `<div class="profile">
+      ${withBack ? `<button type="button" class="back">${ICON.left}Volver a tus workspaces</button>` : ""}
+      <div class="p-head"><span class="avatar lg" aria-hidden="true">${initials(p)}</span><div><h1>${fullName(p)}</h1><p>${p.email}</p></div></div>
+      ${dataCard()}${where}${pwdCard()}
+    </div>`;
+  }
+
+  /* ---------- Usuarios de la sede ---------- */
+  function specCell(u) {
+    if (u.specs === null) return '<span aria-label="No aplica">—</span>';
+    const chips = u.specs.length
+      ? `<ul class="chips">${u.specs.map((s) => `<li class="chip sm">${s}</li>`).join("")}</ul>`
+      : '<span class="tag tag-none">Sin especialidades</span>';
+    // La fila propia no ofrece edición: las especialidades propias se editan en «Mi perfil».
+    const action = u.me
+      ? '<button type="button" class="link" data-act="goProfilePanel">Edítalas en Mi perfil</button>'
+      : `<button type="button" class="edit-link" data-dialog="${u.id}" aria-label="Editar especialidades de ${fullName(u)}">${ICON.pencil}Editar especialidades</button>`;
+    return `<div class="spec-cell">${chips}${action}</div>`;
+  }
+
+  function roleBadge(r) {
+    const map = { ADMIN: ["b-admin", "Administrador"], DOCTOR: ["b-doctor", "Médico"], USER: ["b-user", "Usuario"] };
+    return `<span class="badge ${map[r][0]}">${map[r][1]}</span>`;
+  }
+
+  function usersTable() {
+    if (state.noUsers) return '<div class="empty-box">Esta sede aún no tiene usuarios.</div>';
+    const mobile = state.view === "mobile";
+    const head = mobile
+      ? "<th>Nombre</th><th>Rol</th>"
+      : "<th>Nombre</th><th>Correo electrónico</th><th>Teléfono</th><th>Rol</th><th>Especialidades</th>";
+    const rows = USERS.filter((u) => !u.me || state.ownRow).map((u) => {
+      const tagList = [
+        u.me ? '<span class="tag tag-me">Tú</span>' : "",
+        u.pending ? '<span class="tag tag-pending">Invitación pendiente</span>' : "",
+      ].join("");
+      const tags = tagList ? `<span class="tags">${tagList}</span>` : "";
+      if (mobile) {
+        return `<tr><td class="nmcell"><span class="nm">${fullName(u)}</span>${tags}<span class="sub">${u.email}</span>${u.specs === null ? "" : specCell(u)}</td><td>${roleBadge(u.role)}</td></tr>`;
+      }
+      return `<tr><td><span class="nm">${fullName(u)}</span>${tags}</td><td>${u.email}</td><td>${u.phone}</td><td>${roleBadge(u.role)}</td><td>${specCell(u)}</td></tr>`;
+    }).join("");
+    return `<div class="tbl"><table><thead><tr>${head}</tr></thead><tbody>${rows}</tbody></table></div>`;
+  }
+
+  function usersBody() {
+    if (state.role !== "admin") {
+      return `<div class="state"><div class="ico">${ICON.alert}</div><div><h2>Algo salió mal</h2><p>No pudimos cargar esta sección. Vuelve a intentarlo.</p></div><button type="button" class="retry">Reintentar</button></div>
+        <p class="muted" style="text-align:center">(Prototipo) ${state.role === "doctor" ? "El médico" : "La recepción"} no tiene esta pantalla en su menú. Si abre la URL, el api responde 403 y se ve el estado de error de hoy.</p>`;
+    }
+    if (state.page === "loading") return loadingState();
+    if (state.page === "error") return errorState();
+    return `<div class="page-head"><div><h1>Usuarios</h1><p>Personas con acceso a Sede Miraflores.</p></div>
+        <button type="button" class="btn btn-default">${ICON.userPlus}Invitar usuario</button></div>
+      ${usersTable()}`;
+  }
+
+  function dialog() {
+    if (!state.dialog) return "";
+    const u = USERS.find((x) => x.id === state.dialog);
+    const warn = state.picked.length === 0
+      ? `<div class="warn" aria-live="polite">Sin especialidades, ${u.name} deja de aparecer en el link de reserva de Sede Miraflores. Sus citas ya reservadas no cambian.</div>`
+      : '<div aria-live="polite"></div>';
+    return `<div class="overlay" data-act="closeDialog"></div>
+      <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dlg-t" aria-describedby="dlg-d">
+        <h2 id="dlg-t">Especialidades de ${fullName(u)}</h2>
+        <p id="dlg-d">En Sede Miraflores. Son las que el paciente elige al reservar con este médico.</p>
+        ${multiSelect("Especialidades", "ms-dialog")}
+        ${warn}
+        <div class="actions">
+          <button type="button" class="btn btn-outline btn-proto" data-act="protoError">Probar error</button>
+          <button type="button" class="btn btn-outline" data-act="closeDialog" ${state.saving ? "disabled" : ""}>Cancelar</button>
+          <button type="button" class="btn btn-default" data-act="saveDialog" ${state.saving ? "disabled" : ""}>${state.saving ? "Guardando…" : "Guardar especialidades"}</button>
+        </div>
+        <button type="button" class="close" data-act="closeDialog" aria-label="Cerrar">${ICON.xl}</button>
+      </div>`;
+  }
+
+  /* ---------- Estados ---------- */
+  function loadingState() {
+    return `<div class="state" role="status">${ICON.loader}<p>Cargando...</p></div>`;
+  }
+  function errorState() {
+    return `<div class="state"><div class="ico">${ICON.alert}</div><div><h2>Algo salió mal</h2><p>No pudimos cargar esta sección. Vuelve a intentarlo.</p></div><button type="button" class="retry" data-act="retry">Reintentar</button></div>`;
+  }
+
+  /* ---------- Marcos ---------- */
+  function topnav() {
+    const p = me();
+    const nameLabel = state.view === "mobile" ? p.name : fullName(p);
+    return `<div class="topnav"><span class="logo"><span class="logo-mark">W</span>WizyDoc</span>
+      <button type="button" class="me-btn" aria-haspopup="menu" aria-expanded="false" aria-label="Tu cuenta: ${fullName(p)}"><span class="avatar" aria-hidden="true">${initials(p)}</span>${nameLabel}${ICON.down}</button></div>`;
+  }
+
+  function navItems() {
+    const onUsers = state.screen === "users";
+    if (state.role === "admin") {
+      return `<button type="button" class="nav">${ICON.user}Usuarios</button>
+        <button type="button" class="nav ${onUsers ? "active" : ""}" ${onUsers ? 'aria-current="page"' : ""} data-act="goUsers">${ICON.building}Sedes</button>
+        <button type="button" class="nav">${ICON.tags}Especialidades</button>
+        <button type="button" class="nav">${ICON.patients}Pacientes</button>`;
+    }
+    return `<button type="button" class="nav">${ICON.home}Inicio</button>
+      ${state.role === "doctor" ? `<button type="button" class="nav">${ICON.gear}Configuración</button>` : ""}
+      <button type="button" class="nav">${ICON.patients}Pacientes</button>`;
+  }
+
+  function sideMe() {
+    const p = me();
+    const onProfile = state.screen === "profilePanel";
+    const subtitle = state.role === "admin" ? ORG : "Sede Miraflores";
+    // aria-current="page" en «Mi perfil»: el paso de accesibilidad de este ticket.
+    return `<div class="side-me">
+      <button type="button" class="me-btn ${onProfile ? "on" : ""}" data-act="goProfilePanel" aria-haspopup="menu" aria-expanded="false" aria-label="Tu cuenta: ${fullName(p)}" ${onProfile ? 'aria-current="page"' : ""}>
+        <span class="avatar" aria-hidden="true">${initials(p)}</span><div><b>${fullName(p)}</b><small>${subtitle}</small></div>${ICON.down}
+      </button></div>`;
+  }
+
+  function panel(content) {
+    if (state.view === "desktop") {
+      return `<div class="shell">
+        <nav class="sidebar" aria-label="Navegación"><span class="logo"><span class="logo-mark">W</span>WizyDoc</span>${navItems()}${sideMe()}</nav>
+        <main class="main in-panel">${content}</main></div>`;
+    }
+    const drawer = state.drawer ? `<div class="scrim" data-act="drawer"></div>
+      <nav class="drawer" aria-label="Navegación">
+        <div class="drawer-head"><span class="logo"><span class="logo-mark">W</span>WizyDoc</span><button type="button" class="icon-btn" data-act="drawer" aria-label="Cerrar menú">${ICON.xl}</button></div>
+        ${navItems()}${sideMe()}</nav>` : "";
+    return `<div class="topbar"><span class="logo"><span class="logo-mark">W</span>WizyDoc</span><button type="button" class="icon-btn" data-act="drawer" aria-label="Abrir menú">${ICON.menu}</button></div>
+      <div class="shell"><main class="main in-panel">${content}</main></div>${drawer}`;
+  }
+
+  function render() {
+    const frame = document.getElementById("frame");
+    const scroller = frame.querySelector(".scroll, .main");
+    const scroll = scroller ? scroller.scrollTop : 0;
+    frame.className = `frame ${state.view}`;
+    let html;
+    if (state.screen === "profileSelect") html = `${topnav()}<div class="scroll">${profileBody(true)}</div>`;
+    else if (state.screen === "profilePanel") html = panel(profileBody(false));
+    else html = panel(usersBody());
+    html += dialog();
+    if (state.toast) html += `<div class="toast ${state.toastErr ? "err" : ""}" role="status">${state.toast}</div>`;
+    frame.innerHTML = html;
+    const s2 = frame.querySelector(".scroll, .main");
+    if (s2) s2.scrollTop = scroll;
+    if (state.focus) {
+      const el = frame.querySelector(state.focus);
+      if (el) { el.focus(); if (el.setSelectionRange) el.setSelectionRange(el.value.length, el.value.length); }
+      state.focus = null;
+    }
+    const names = { profileSelect: "Mi perfil, desde la selección", profilePanel: "Mi perfil, dentro del panel", users: "usuarios de Sede Miraflores" };
+    document.getElementById("caption").textContent = `${state.view === "mobile" ? "Celular · 375 px" : "Computadora"} · ${names[state.screen]} · ${role().label}`;
+    document.querySelectorAll("[data-view]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.view === state.view)));
+    document.querySelectorAll("[data-screen]").forEach((b) => b.setAttribute("aria-current", String(b.dataset.screen === state.screen)));
+    document.querySelectorAll("[data-role]").forEach((b) => b.setAttribute("aria-current", String(b.dataset.role === state.role)));
+    document.querySelectorAll("[data-state]").forEach((b) => b.setAttribute("aria-current", String(b.dataset.state === state.page)));
+  }
+
+  let toastTimer;
+  function toast(msg, err = false) {
+    state.toast = msg; state.toastErr = err;
+    render();
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { state.toast = ""; render(); }, 2800);
+  }
+  function resetEdit() {
+    Object.assign(state, { editing: null, editFrom: null, picked: [], query: "", drop: false, saving: false, dialog: null });
+  }
+  // Las opciones vienen con el perfil (t-13): la edición abre sin otra carga.
+  function openEditor(clinicId, from) {
+    resetEdit();
+    state.editing = clinicId; state.editFrom = from;
+    state.picked = [...ownSpecs(clinicId)];
+    state.focus = `#ms-${clinicId}`;
+    render();
+  }
+  function pick(s) { if (!state.picked.includes(s)) state.picked = [...state.picked, s]; state.query = ""; state.drop = true; state.focus = "[data-ms]"; render(); }
+
+  const frameEl = document.getElementById("frame");
+  frameEl.addEventListener("mousedown", (e) => { if (e.target.closest("[data-pick],[data-create],[data-unpick]")) e.preventDefault(); });
+  frameEl.addEventListener("focusin", (e) => { if (e.target.matches("[data-ms]") && !state.drop) { state.drop = true; state.focus = "[data-ms]"; render(); } });
+  frameEl.addEventListener("focusout", (e) => {
+    if (!e.target.matches("[data-ms]")) return;
+    setTimeout(() => { const a = document.activeElement; if (!a || !a.closest(".ms")) { if (state.drop) { state.drop = false; render(); } } }, 0);
+  });
+  frameEl.addEventListener("input", (e) => { if (e.target.matches("[data-ms]")) { state.query = e.target.value; state.drop = true; state.focus = "[data-ms]"; render(); } });
+  frameEl.addEventListener("keydown", (e) => { if (e.key === "Escape" && state.dialog) { const id = state.dialog; resetEdit(); render(); frameEl.querySelector(`[data-dialog="${id}"]`)?.focus(); } });
+
+  frameEl.addEventListener("click", (e) => {
+    const el = e.target.closest("[data-act],[data-edit],[data-pick],[data-unpick],[data-create],[data-dialog]");
+    if (!el) return;
+    if (el.dataset.edit) { openEditor(el.dataset.edit, el.dataset.from); return; }
+    if (el.dataset.pick) { pick(el.dataset.pick); return; }
+    if (el.dataset.unpick) { state.picked = state.picked.filter((s) => s !== el.dataset.unpick); state.focus = "[data-ms]"; render(); return; }
+    if (el.dataset.create) {
+      const name = el.dataset.create;
+      ORG_SPECIALTIES = [...ORG_SPECIALTIES, name].sort((a, b) => a.localeCompare(b, "es"));
+      state.orgEmpty = false; document.querySelector('[data-opt="orgEmpty"]').checked = false;
+      pick(name); return;
+    }
+    if (el.dataset.dialog) { resetEdit(); state.dialog = el.dataset.dialog; const u = USERS.find((x) => x.id === el.dataset.dialog); state.picked = [...(u.specs || [])]; state.focus = "#ms-dialog"; render(); return; }
+    switch (el.dataset.act) {
+      case "drawer": state.drawer = !state.drawer; render(); break;
+      case "goUsers": state.screen = "users"; state.drawer = false; resetEdit(); render(); break;
+      case "goProfilePanel": state.screen = "profilePanel"; state.drawer = false; resetEdit(); render(); break;
+      case "retry": state.page = "normal"; render(); break;
+      case "protoError": toast(state.dialog ? "No se pudieron guardar las especialidades" : "No se pudieron guardar tus especialidades", true); break;
+      case "cancelEdit": { const id = state.editing; resetEdit(); render(); frameEl.querySelector(`[data-edit="${id}"]`)?.focus(); break; }
+      case "saveEdit": {
+        const id = state.editing;
+        state.saving = true; render();
+        setTimeout(() => {
+          OWN.admin[id] = [...state.picked];
+          resetEdit();
+          toast("Guardamos tus especialidades.");
+          frameEl.querySelector(`[data-edit="${id}"]`)?.focus();
+        }, 600);
+        break;
+      }
+      case "closeDialog": { const id = state.dialog; resetEdit(); render(); frameEl.querySelector(`[data-dialog="${id}"]`)?.focus(); break; }
+      case "saveDialog": {
+        const u = USERS.find((x) => x.id === state.dialog);
+        state.saving = true; render();
+        setTimeout(() => {
+          u.specs = [...state.picked];
+          resetEdit();
+          toast(`Guardamos las especialidades de ${u.name}.`);
+          frameEl.querySelector(`[data-dialog="${u.id}"]`)?.focus();
+        }, 600);
+        break;
+      }
+    }
+  });
+
+  document.getElementById("screens").innerHTML = SCREENS.map((s) => `<button type="button" class="jump" data-screen="${s.id}">${s.label}</button>`).join("");
+  document.getElementById("roles").innerHTML = Object.entries(ROLES).map(([id, r]) => `<button type="button" class="jump" data-role="${id}">${r.label}</button>`).join("");
+  document.getElementById("states").innerHTML = STATES.map((s) => `<button type="button" class="jump" data-state="${s.id}">${s.label}</button>`).join("");
+  document.querySelectorAll("[data-view]").forEach((b) => b.addEventListener("click", () => { state.view = b.dataset.view; state.drawer = false; render(); }));
+  document.querySelectorAll("[data-screen]").forEach((b) => b.addEventListener("click", () => { state.screen = b.dataset.screen; state.drawer = false; resetEdit(); render(); }));
+  document.querySelectorAll("[data-role]").forEach((b) => b.addEventListener("click", () => { state.role = b.dataset.role; resetEdit(); render(); }));
+  document.querySelectorAll("[data-state]").forEach((b) => b.addEventListener("click", () => { state.page = b.dataset.state; resetEdit(); render(); }));
+  document.querySelectorAll("[data-opt]").forEach((c) => c.addEventListener("change", () => { state[c.dataset.opt] = c.checked; applyCases(); resetEdit(); render(); }));
+
+  render();
+</script>
+</body>
+</html>
