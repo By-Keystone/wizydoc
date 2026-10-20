@@ -15,8 +15,11 @@ import {
 } from "@/application/use-cases/organization/create-organization.use-case";
 import {
   doctorSpecialtiesBodySchema,
+  organizationClinicDoctorParamsSchema,
   organizationClinicParamsSchema,
 } from "@/application/use-cases/doctor-profile/doctor-specialties.schema";
+import { DoctorSpecialtiesGuards } from "@/application/use-cases/doctor-profile/doctor-specialties.guards";
+import { UpdateDoctorSpecialtiesUseCase } from "@/application/use-cases/doctor-profile/update-doctor-specialties.usecase";
 import { UpdateMySpecialtiesUseCase } from "@/application/use-cases/doctor-profile/update-my-specialties.usecase";
 import {
   createSpecialtyBodySchema,
@@ -123,9 +126,13 @@ export default async function organizationRoutes(
     },
     async (request, reply) => {
       try {
+        const doctorProfiles = new DoctorProfileRepository();
         const useCase = new UpdateMySpecialtiesUseCase(
-          new DoctorProfileRepository(),
-          new CanEditOrganizationSpecialtiesQuery(),
+          doctorProfiles,
+          new DoctorSpecialtiesGuards(
+            doctorProfiles,
+            new CanEditOrganizationSpecialtiesQuery(),
+          ),
         );
 
         const result = await useCase.execute({
@@ -156,6 +163,62 @@ export default async function organizationRoutes(
         return reply
           .status(500)
           .send({ message: "No se pudieron guardar tus especialidades" });
+      }
+    },
+  );
+
+  // Sin `roles`, por la misma razón que la ruta anterior: el caso de uso
+  // comprueba el permiso como primer paso.
+  app.put(
+    "/organization/:resourceId/clinics/:clinicId/doctors/:doctorProfileId/specialties",
+    {
+      schema: {
+        params: organizationClinicDoctorParamsSchema,
+        body: doctorSpecialtiesBodySchema,
+      },
+      ...policy({ account: true, confirmed: true, onboarded: true }),
+    },
+    async (request, reply) => {
+      try {
+        const doctorProfiles = new DoctorProfileRepository();
+        const useCase = new UpdateDoctorSpecialtiesUseCase(
+          doctorProfiles,
+          new DoctorSpecialtiesGuards(
+            doctorProfiles,
+            new CanEditOrganizationSpecialtiesQuery(),
+          ),
+        );
+
+        const result = await useCase.execute({
+          userId: request.user.userId,
+          accountId: request.user.accountId!,
+          organizationId: request.params.resourceId,
+          clinicId: request.params.clinicId,
+          doctorProfileId: request.params.doctorProfileId,
+          specialtyIds: request.body.specialtyIds,
+        });
+
+        return reply.status(200).send(result);
+      } catch (error) {
+        if (error instanceof ApplicationError)
+          return reply
+            .status(error.statusCode)
+            .send({ message: error.message, code: error.code });
+
+        const errName = error instanceof Error ? error.name : "UnknownError";
+        request.log.error(
+          {
+            userId: request.user.userId,
+            clinicId: request.params.clinicId,
+            doctorProfileId: request.params.doctorProfileId,
+            errName,
+          },
+          "[update-doctor-specialties]",
+        );
+
+        return reply
+          .status(500)
+          .send({ message: "No se pudieron guardar las especialidades" });
       }
     },
   );

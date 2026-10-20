@@ -21,4 +21,14 @@ export interface IDoctorProfileRepository {
     clinicId: string,
     specialtyIds: string[],
   ): Promise<SpecialtySummary[]>;
+  /** Perfil con membership DOCTOR viva en esa sede; null si no cumple. */
+  findClinicDoctor(
+    doctorProfileId: string,
+    clinicId: string,
+  ): Promise<{ id: string; userId: string } | null>;
+  /** Reemplaza por completo las especialidades de un perfil existente. */
+  setSpecialties(
+    doctorProfileId: string,
+    specialtyIds: string[],
+  ): Promise<SpecialtySummary[]>;
 }

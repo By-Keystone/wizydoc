@@ -14,3 +14,8 @@ export const organizationClinicParamsSchema = z.object({
   resourceId: z.uuid(),
   clinicId: z.uuid(),
 });
+
+export const organizationClinicDoctorParamsSchema =
+  organizationClinicParamsSchema.extend({
+    doctorProfileId: z.uuid(),
+  });
