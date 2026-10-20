@@ -383,6 +383,8 @@ test.describe("Booking público", () => {
         specialties: { connect: [{ id: specialtyId }] },
       },
     });
+    await seedFullDayAvailability(removed.userId, workspace.clinicId);
+    await seedFullDayAvailability(keptMember.userId, workspace.clinicId);
     const anonymous = await createApiContext();
 
     async function listedDoctorProfileIds(): Promise<string[]> {

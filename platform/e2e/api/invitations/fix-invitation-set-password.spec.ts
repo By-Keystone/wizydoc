@@ -17,6 +17,7 @@ import {
   uniqueEmail,
   uniqueName,
 } from "../../support/users";
+import { seedFullDayAvailability } from "../../support/availability";
 import { getTestPrisma } from "../../support/db";
 import {
   backdateInvitationExpiry,
@@ -109,12 +110,13 @@ test.describe("Lo que deja de ser posible", () => {
       organizationId,
       uniqueName("Traumatología"),
     );
-    await invitePendingUser(admin, {
+    const doctor = await invitePendingUser(admin, {
       resourceId: clinicId,
       role: "DOCTOR",
       emailPrefix: "doctor-ca8",
       specialtyIds: [specialtyId],
     });
+    await seedFullDayAvailability(doctor.userId, clinicId);
 
     const anonymous = await createApiContext();
     const response = await anonymous.get(

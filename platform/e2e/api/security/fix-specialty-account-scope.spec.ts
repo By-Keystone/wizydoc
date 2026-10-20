@@ -12,6 +12,7 @@ import {
   inviteUserViaApi,
 } from "../../support/accounts";
 import { uniqueEmail, uniqueName } from "../../support/users";
+import { seedFullDayAvailability } from "../../support/availability";
 import { getTestPrisma } from "../../support/db";
 
 /**
@@ -114,6 +115,15 @@ function inviteRaw(
       ...params,
     },
   });
+}
+
+async function seedAvailabilityByEmail(
+  email: string,
+  clinicId: string,
+): Promise<void> {
+  const prisma = await getTestPrisma();
+  const user = await prisma.user.findUniqueOrThrow({ where: { email } });
+  await seedFullDayAvailability(user.id, clinicId);
 }
 
 async function expectUserAbsent(email: string): Promise<void> {
@@ -408,8 +418,9 @@ test.describe("No se puede vincular una especialidad ajena al invitar a un médi
       orgB,
       uniqueName("Especialidad-B-CA9"),
     );
+    const victimDoctorEmail = uniqueEmail("doctor-victima-ca9");
     await inviteUserViaApi(victim, {
-      email: uniqueEmail("doctor-victima-ca9"),
+      email: victimDoctorEmail,
       name: "Vera",
       lastName: "Víctima",
       phone: "+51900000003",
@@ -417,6 +428,7 @@ test.describe("No se puede vincular una especialidad ajena al invitar a un médi
       resourceId: clinicB,
       specialtyIds: [victimSpecialtyId],
     });
+    await seedAvailabilityByEmail(victimDoctorEmail, clinicB);
 
     const before = await getPublicClinicDoctors(clinicB);
 
@@ -706,8 +718,9 @@ test.describe("Lo que sigue funcionando", () => {
       orgA,
       uniqueName("Pediatría CA-21"),
     );
+    const doctorEmail = uniqueEmail("doctor-ca21");
     await inviteUserViaApi(admin, {
-      email: uniqueEmail("doctor-ca21"),
+      email: doctorEmail,
       name: "Dora",
       lastName: "Doctora",
       phone: "+51900000005",
@@ -715,6 +728,7 @@ test.describe("Lo que sigue funcionando", () => {
       resourceId: clinicA,
       specialtyIds: [specialtyId],
     });
+    await seedAvailabilityByEmail(doctorEmail, clinicA);
 
     const newName = uniqueName("Pediatría renombrada CA-21");
     const updateResponse = await putSpecialty(
@@ -788,8 +802,9 @@ test.describe("Lo que sigue funcionando", () => {
       uniqueName("Especialidad-CA24"),
     );
 
+    const doctorEmail = uniqueEmail("doctor-ca24");
     const response = await inviteUserViaApi(admin, {
-      email: uniqueEmail("doctor-ca24"),
+      email: doctorEmail,
       name: "Darío",
       lastName: "Repetido",
       phone: "+51900000006",
@@ -798,6 +813,7 @@ test.describe("Lo que sigue funcionando", () => {
       specialtyIds: [specialtyId, specialtyId],
     });
     expect(response.ok()).toBe(true);
+    await seedAvailabilityByEmail(doctorEmail, clinicA);
 
     const publicDoctors = await getPublicClinicDoctors(clinicA);
     expect(publicDoctors).toHaveLength(1);
@@ -848,8 +864,9 @@ test.describe("Consecuencia del arreglo en el booking público", () => {
       uniqueName("Especialidad-propia-EXTRA"),
     );
 
+    const legitimateEmail = uniqueEmail("doctor-legitimo-extra");
     await inviteUserViaApi(admin, {
-      email: uniqueEmail("doctor-legitimo-extra"),
+      email: legitimateEmail,
       name: "Leo",
       lastName: "Legítimo",
       phone: "+51900000008",
@@ -857,6 +874,7 @@ test.describe("Consecuencia del arreglo en el booking público", () => {
       resourceId: clinicA,
       specialtyIds: [ownSpecialtyId],
     });
+    await seedAvailabilityByEmail(legitimateEmail, clinicA);
 
     const otherAdmin = await createOnboardedAdmin({
       emailPrefix: "admin-ajeno-extra",
@@ -889,6 +907,7 @@ test.describe("Consecuencia del arreglo en el booking público", () => {
         specialties: { connect: [{ id: foreignSpecialtyId }] },
       },
     });
+    await seedFullDayAvailability(corruptedDoctor.userId, clinicA);
 
     const doctors = await getPublicClinicDoctors(clinicA);
 
