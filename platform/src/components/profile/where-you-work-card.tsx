@@ -1,23 +1,52 @@
-import type { MyProfileClinic } from "@/lib/api/user/types";
+import type {
+  MyProfileClinic,
+  MyProfileEditableClinic,
+  MyProfileOrganization,
+} from "@/lib/api/user/types";
 import { ClinicAvailabilityLink } from "./clinic-availability-link";
+import { EditableClinics } from "./editable-clinics";
 import { ProfileCard } from "./profile-card";
 
 interface Props {
   clinics: MyProfileClinic[];
+  editableClinics: MyProfileEditableClinic[];
+  organizations: MyProfileOrganization[];
   accountId: string;
 }
 
-export function WhereYouWorkCard({ clinics, accountId }: Props) {
-  if (clinics.length === 0) return null;
+export function WhereYouWorkCard({
+  clinics,
+  editableClinics,
+  organizations,
+  accountId,
+}: Props) {
+  const editableIds = new Set(editableClinics.map((clinic) => clinic.clinicId));
+  const readOnlyClinics = clinics.filter(
+    (clinic) => !editableIds.has(clinic.clinicId),
+  );
+  const canEdit = editableClinics.length > 0;
+
+  if (!canEdit && readOnlyClinics.length === 0) return null;
 
   return (
     <ProfileCard
       titleId="where-you-work-title"
       title="Dónde atiendes"
-      description="Tus especialidades en cada sede. Tus horarios se configuran dentro de cada sede."
+      description={
+        canEdit
+          ? "Elige las especialidades que atiendes en cada sede que administras."
+          : "Tus especialidades en cada sede. Tus horarios se configuran dentro de cada sede."
+      }
     >
       <div className="flex flex-col gap-2.5">
-        {clinics.map((clinic) => (
+        {canEdit && (
+          <EditableClinics
+            clinics={editableClinics}
+            organizations={organizations}
+            accountId={accountId}
+          />
+        )}
+        {readOnlyClinics.map((clinic) => (
           <div
             key={clinic.clinicId}
             className="min-w-0 rounded-[10px] border border-gray-200 p-3.5"
