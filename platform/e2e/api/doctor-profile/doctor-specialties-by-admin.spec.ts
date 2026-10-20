@@ -18,7 +18,7 @@ import {
   readAppointment,
   type PortalScenario,
 } from "../../support/appointment-portal";
-import { getTestPrisma } from "../../support/db";
+import { getTestPrisma, type TestPrismaProfileRow } from "../../support/db";
 import { API_BASE_URL } from "../../support/env";
 import {
   invitePendingUser,
@@ -145,15 +145,15 @@ async function snapshot(clinicIds: string[]) {
       specialties: { select: { id: true } },
     },
   });
-  const memberships = await prisma.userResourceMembership.findMany({
+  const memberships = (await prisma.userResourceMembership.findMany({
     where: { resourceId: { in: clinicIds } },
     select: { id: true, role: true, deletedAt: true },
-  });
+  })) as { id: string; role: string; deletedAt: Date | null }[];
   const sortById = (a: { id: string }, b: { id: string }) =>
     a.id.localeCompare(b.id);
   return {
     profiles: profiles
-      .map((p: { specialties: { id: string }[] }) => ({
+      .map((p: TestPrismaProfileRow) => ({
         ...p,
         specialties: p.specialties.map((s) => s.id).sort(),
       }))

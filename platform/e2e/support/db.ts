@@ -104,6 +104,9 @@ export interface TestPrisma {
     findUnique(args: {
       where: Record<string, unknown>;
     }): Promise<TestPrismaSubscriptionRow | null>;
+    findUniqueOrThrow(args: {
+      where: Record<string, unknown>;
+    }): Promise<TestPrismaSubscriptionRow>;
     update(args: {
       where: Record<string, unknown>;
       data: Record<string, unknown>;
@@ -137,7 +140,10 @@ export interface TestPrisma {
       where: Record<string, unknown>;
     }): Promise<{ id: string; role: string; resourceId: string } | null>;
     count(args: { where: Record<string, unknown> }): Promise<number>;
-    findMany(args: { where: Record<string, unknown> }): Promise<unknown[]>;
+    findMany(args: {
+      where: Record<string, unknown>;
+      select?: Record<string, unknown>;
+    }): Promise<unknown[]>;
     updateMany(args: {
       where: Record<string, unknown>;
       data: Record<string, unknown>;
@@ -159,7 +165,8 @@ export interface TestPrisma {
     }): Promise<{ id: string } | null>;
     findUniqueOrThrow(args: {
       where: Record<string, unknown>;
-    }): Promise<{ id: string }>;
+      select?: Record<string, unknown>;
+    }): Promise<TestPrismaProfileRow>;
     findFirstOrThrow(args: {
       where: Record<string, unknown>;
     }): Promise<{ id: string }>;
