@@ -12,6 +12,7 @@ import {
   createPortalScenario,
   type PortalScenario,
 } from "../../support/appointment-portal";
+import { seedFullDayAvailability } from "../../support/availability";
 import { getTestPrisma } from "../../support/db";
 import {
   readUserEmail,
@@ -612,9 +613,5 @@ async function addSecondDoctorProfile(
   await addDoctorToClinic(scenario, scenario.doctor.userId, clinicId, [
     scenario.specialtyId,
   ]);
-  const prisma = await getTestPrisma();
-  const profile = await prisma.doctorProfile.findFirstOrThrow({
-    where: { userId: scenario.doctor.userId, clinicId },
-  });
-  return profile.id;
+  return seedFullDayAvailability(scenario.doctor.userId, clinicId);
 }

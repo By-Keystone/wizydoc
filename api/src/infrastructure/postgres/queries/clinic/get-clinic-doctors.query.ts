@@ -31,6 +31,11 @@ export class GetClinicDoctorsQuery implements IGetClinicDoctorsQuery {
                 AND urm.resource_id = dp.resource_id
                 AND urm.deleted_at IS NULL
             )
+            -- Sin horarios no hay huecos que ofrecer.
+            AND EXISTS (
+                SELECT 1 FROM doctor_schedule ds
+                WHERE ds.doctor_profile_id = dp.id
+            )
             GROUP BY dp.id, u.id, u.name, u.last_name, u.treatment
         `;
 
