@@ -33,10 +33,6 @@ const FORBIDDEN = {
   message: "Solo un administrador puede cambiar especialidades.",
   code: "FORBIDDEN",
 };
-const OWN_SPECIALTIES = {
-  message: "Tus especialidades se editan en «Mi perfil».",
-  code: "OWN_SPECIALTIES",
-};
 const DOCTOR_NOT_FOUND = "Médico no encontrado";
 const CLINIC_NOT_FOUND = "Sede no encontrada";
 const SPECIALTY_NOT_FOUND = "Especialidad no encontrada";
@@ -354,7 +350,7 @@ test.describe("PUT doctors/:doctorProfileId/specialties: quién puede", () => {
 });
 
 test.describe("PUT doctors/:doctorProfileId/specialties: médico y sede (IDOR)", () => {
-  test("CA-39: un ADMIN de la organización que es DOCTOR de la sede recibe 403 OWN_SPECIALTIES con su propio perfil", async () => {
+  test("CA-39: un ADMIN de la organización que es DOCTOR de la sede edita su propio perfil por esta vía", async () => {
     const world = await createWorld("by-ca39");
     const orgAdmin = await createOrgAdmin(world);
     const prisma = await getTestPrisma();
@@ -370,7 +366,6 @@ test.describe("PUT doctors/:doctorProfileId/specialties: médico y sede (IDOR)",
     const ownProfileId = await createProfile(orgAdmin.userId, world.clinicId, [
       world.specialties[0].id,
     ]);
-    const before = await snapshot([world.clinicId]);
 
     const response = await put(
       orgAdmin.context,
@@ -380,13 +375,10 @@ test.describe("PUT doctors/:doctorProfileId/specialties: médico y sede (IDOR)",
       [world.specialties[2].id],
     );
 
-    await expectRejectedWithoutChanges(
-      response,
-      403,
-      OWN_SPECIALTIES,
-      [world.clinicId],
-      before,
-    );
+    expect(response.status()).toBe(200);
+    expect(await specialtyIdsOf(ownProfileId)).toEqual([
+      world.specialties[2].id,
+    ]);
   });
 
   test("CA-40: un ADMIN que no es DOCTOR de la sede recibe 404 «Médico no encontrado» con su propio perfil", async () => {

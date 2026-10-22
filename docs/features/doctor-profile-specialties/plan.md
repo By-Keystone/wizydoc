@@ -59,7 +59,7 @@ sede. De paso, el booking deja de mostrar a los médicos que no tienen horarios.
 | t-11 | **Sin `requireFeature`:** va en todos los planes. | Las especialidades son la base del booking, que es de todos los planes. |
 | t-12 | **«Médicos» en las métricas cuenta un perfil si tiene al menos un horario o si su usuario fue invitado como DOCTOR a esa sede** (hay una membership `DOCTOR` sobre la sede, viva o borrada). Aplica a la métrica de la sede (`get-clinic-metrics.query.ts`) y a la de la organización (`get-organizations-doctor-count.query.ts`). | Es la decisión 9. **Hoy las dos cuentan todas las filas de `doctor_profile`** (`doctorProfile.count({ where: { clinicId } })` y el equivalente por organización), sin mirar horarios ni memberships. Hasta este ticket solo se creaban perfiles al invitar a un DOCTOR, así que la segunda condición deja a los médicos invitados exactamente como hoy (también a los quitados de la sede, que ya se contaban; no se corrige aquí). Lo único que cambia es que el perfil del ADMIN cuenta recién cuando tiene horarios. Se aplica también a la organización para que las dos cifras no se contradigan. |
 | t-13 | **Las opciones del selector de «Mi perfil» vienen en `GET /user/me/profile`** (`organizations[].specialties`), y «Crear "…"» sale solo si `canCreateSpecialties`. | El dueño sin membership en una organización no puede llamar a `GET /:resourceId/specialties` (`member: true`) ni a `POST /:resourceId/specialty` (`roles: ["ADMIN"]`). Con las opciones en el perfil, el dueño elige en cualquier organización. Además, la edición abre sin una segunda carga. Crear especialidades sigue exigiendo membership `ADMIN` (no se cambia esa ruta). |
-| t-14 | **El endpoint de un médico rechaza el perfil propio:** si el `userId` del perfil es el de la sesión, responde 403 `{ message: "Tus especialidades se editan en «Mi perfil».", code: "OWN_SPECIALTIES" }`. | Es la decisión 3. |
+| t-14 | **Revertida el 22 de octubre de 2026.** El endpoint de un médico **acepta el perfil propio**: un ADMIN que es DOCTOR de la sede puede editar sus especialidades tanto en «Mi perfil» como en Sedes › Ver usuarios. Ya no existe `OWN_SPECIALTIES`. | Decisión del humano: «un admin puede editar sus especialidades tanto en su perfil como en el panel de usuarios, no hay problema». |
 
 ## Requiere confirmación del humano
 
@@ -227,8 +227,7 @@ El `userId` sale siempre de la sesión.
 3. `repo.findClinicDoctor(doctorProfileId, clinicId)`. Si devuelve `null`, lanza
    `NotFound("Médico no encontrado")`. Cubre el perfil de otra sede o de otra cuenta, el médico
    quitado de la sede, la persona que en la sede es USER o ADMIN y el id inexistente.
-4. Si `doctor.userId === userId`, lanza
-   `Forbidden("Tus especialidades se editan en «Mi perfil».", "OWN_SPECIALTIES")` (t-14).
+4. (Revertido, t-14: el perfil propio ya no se rechaza.)
 5. `assertSpecialtiesBelongToClinicOrganization`.
 6. `repo.setSpecialties(...)` y devuelve `{ specialties }`.
 
@@ -339,7 +338,7 @@ OR: [
 | Ruta | Policy | Entrada | Salida | Errores |
 | --- | --- | --- | --- | --- |
 | `PUT /organization/:resourceId/clinics/:clinicId/me/specialties` | `policy({ account: true, confirmed: true, onboarded: true })`. Sin `roles` (t-3); lo dice un comentario. | `params: organizationClinicParamsSchema`, `body: doctorSpecialtiesBodySchema`. El usuario y la cuenta salen de `request.user`. | 200 `{ specialties: [{ id, name }] }` | 400 de validación (clave de más, id que no es uuid, más de 50). 401 sin sesión. 403 sin confirmar o sin onboarding (policy). 404 `{ message: "Sede no encontrada" }` si la sede no es de esa organización y de la cuenta. 403 `{ message: "Solo un administrador puede cambiar especialidades.", code: "FORBIDDEN" }`. 404 `{ message: "Especialidad no encontrada" }`. 500 `{ message: "No se pudieron guardar tus especialidades" }`. |
-| `PUT /organization/:resourceId/clinics/:clinicId/doctors/:doctorProfileId/specialties` | Igual. | `params: organizationClinicDoctorParamsSchema`, `body: doctorSpecialtiesBodySchema` | 200 `{ specialties: [{ id, name }] }` | Los mismos, más 404 `{ message: "Médico no encontrado" }` y 403 `{ message: "Tus especialidades se editan en «Mi perfil».", code: "OWN_SPECIALTIES" }`. 500 `{ message: "No se pudieron guardar las especialidades" }`. |
+| `PUT /organization/:resourceId/clinics/:clinicId/doctors/:doctorProfileId/specialties` | Igual. | `params: organizationClinicDoctorParamsSchema`, `body: doctorSpecialtiesBodySchema` | 200 `{ specialties: [{ id, name }] }` | Los mismos, más 404 `{ message: "Médico no encontrado" }`. 500 `{ message: "No se pudieron guardar las especialidades" }`. |
 
 - Los errores se mapean como en `routes/user/index.ts`: un `ApplicationError` responde con su
   `statusCode` y `{ message, code }`.
@@ -450,7 +449,7 @@ de esa cuenta; `$D`, un DOCTOR de esa sede con perfil `$DP`; `$X`, un ADMIN de o
 - Con `$ORG` reemplazado por `$SEDE` responde 404.
 - `PUT …/doctors/$DP/specialties` con `$A` y `{"specialtyIds":[]}` responde 200, y
   `GET /clinic/$SEDE/doctors` deja de listar al médico.
-- `PUT …/doctors/<perfil propio de $A>/specialties` responde 403 `OWN_SPECIALTIES`.
+- `PUT …/doctors/<perfil propio de $A>/specialties` responde 200 si $A es DOCTOR de la sede (t-14, revertida).
 - Con una especialidad de otra organización responde 404, y las especialidades no cambian.
 - Con `{"specialtyIds":[],"userId":"…"}` responde 400.
 - `GET /clinic/$SEDE/doctors` no lista a un médico sin horarios; después de guardarle uno, sí.
@@ -502,7 +501,7 @@ Pruebas nuevas propuestas (los IDs los pone el product-manager):
     DOCTOR.
 - `e2e/api/doctor-profile/doctor-specialties-by-admin.spec.ts`:
   - el ADMIN de la organización y el dueño cambian las de un DOCTOR;
-  - el perfil propio responde 403 `OWN_SPECIALTIES` sin cambios;
+  - el perfil propio se edita igual que los demás (t-14, revertida);
   - `GET /clinic/:resourceId/users` trae `doctorProfileId` y `specialties` (`null` y `[]` para
     USER);
   - `doctorProfileId` de otra sede, de otra cuenta o de un médico quitado, 404;
@@ -867,9 +866,8 @@ Actores (todos de la misma cuenta salvo que se diga):
 - **CA-37. [e2e]** El dueño, con y sin membership en la organización, también puede (200).
 - **CA-38. [e2e]** Un DOCTOR que cambia las de otro DOCTOR, USER de sede, USER de organización y
   ADMIN de sede reciben 403 `FORBIDDEN`, sin cambios.
-- **CA-39. [e2e]** Un ADMIN de la organización que además es DOCTOR de la sede recibe 403
-  `{ message: "Tus especialidades se editan en «Mi perfil».", code: "OWN_SPECIALTIES" }` con su
-  propio perfil, sin cambios.
+- **CA-39. [e2e]** Un ADMIN de la organización que además es DOCTOR de la sede edita su propio
+  perfil por esta vía y responde 200 (cambiado el 22 de octubre de 2026, t-14).
 - **CA-40. [e2e]** Un ADMIN que no es DOCTOR de la sede, con su propio perfil (creado en «Mi
   perfil»), recibe 404 «Médico no encontrado», sin cambios: por esta vía nunca edita las suyas.
 - **CA-41. [e2e]** Responden 404 «Médico no encontrado», sin cambios: el perfil de un médico de

@@ -1,5 +1,4 @@
 import { NotFound } from "@/application/errors/not-found.error";
-import { OwnSpecialties } from "@/application/errors/own-specialties.error";
 import type {
   IDoctorProfileRepository,
   SpecialtySummary,
@@ -26,11 +25,10 @@ export class UpdateDoctorSpecialtiesUseCase {
     dto: UpdateDoctorSpecialtiesDto,
   ): Promise<{ specialties: SpecialtySummary[] }> {
     await this.guards.assertCanEdit(dto);
+    // El ADMIN también puede editar sus propias especialidades por esta vía
+    // (decisión del 22 de octubre de 2026), igual que desde «Mi perfil»,
+    // siempre que sea DOCTOR de la sede: si no, findDoctor responde 404.
     const doctor = await this.findDoctor(dto);
-
-    // Después de findDoctor: a quien no es DOCTOR de la sede se le responde
-    // 404 aunque el perfil sea suyo; por esta vía nunca edita las propias.
-    if (doctor.userId === dto.userId) throw new OwnSpecialties();
 
     const specialtyIds =
       await this.guards.uniqueSpecialtiesOfClinicOrganization(
