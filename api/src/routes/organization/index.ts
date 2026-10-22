@@ -14,6 +14,11 @@ import {
   CreateOrganizationUseCase,
 } from "@/application/use-cases/organization/create-organization.use-case";
 import {
+  doctorSpecialtiesBodySchema,
+  organizationClinicParamsSchema,
+} from "@/application/use-cases/doctor-profile/doctor-specialties.schema";
+import { UpdateMySpecialtiesUseCase } from "@/application/use-cases/doctor-profile/update-my-specialties.usecase";
+import {
   createSpecialtyBodySchema,
   createSpecialtyParamsSchema,
   CreateSpecialtyUseCase,
@@ -37,6 +42,8 @@ import {
 import type { IEmailService } from "@/application/ports/email-service.port";
 import type { IOrganizationRepository } from "@/domain/repositories/organization.repository";
 import type { ITransactionManager } from "@/domain/services/transaction-manager";
+import { CanEditOrganizationSpecialtiesQuery } from "@/infrastructure/postgres/queries/organization/can-edit-organization-specialties.query";
+import { DoctorProfileRepository } from "@/infrastructure/postgres/repositories/doctor-profile.repository";
 import { GetOrganizationClinicsQuery } from "@/infrastructure/postgres/queries/organization/get-organization-clinics.query";
 import { GetOrganizationUsersQuery } from "@/infrastructure/postgres/queries/organization/get-organization-users.query";
 import { GetOrganizationsClinicCountQuery } from "@/infrastructure/postgres/queries/organization/get-organizations-clinic-count.query";
@@ -98,6 +105,57 @@ export default async function organizationRoutes(
         return reply.internalServerError(
           "An error occurred when creating organization",
         );
+      }
+    },
+  );
+
+  // Sin `roles`: la política no puede expresar "ADMIN de la organización o
+  // dueño de la cuenta" (el dueño puede no tener membership). Lo comprueba el
+  // caso de uso como primer paso; no agregar lógica antes de esa comprobación.
+  app.put(
+    "/organization/:resourceId/clinics/:clinicId/me/specialties",
+    {
+      schema: {
+        params: organizationClinicParamsSchema,
+        body: doctorSpecialtiesBodySchema,
+      },
+      ...policy({ account: true, confirmed: true, onboarded: true }),
+    },
+    async (request, reply) => {
+      try {
+        const useCase = new UpdateMySpecialtiesUseCase(
+          new DoctorProfileRepository(),
+          new CanEditOrganizationSpecialtiesQuery(),
+        );
+
+        const result = await useCase.execute({
+          userId: request.user.userId,
+          accountId: request.user.accountId!,
+          organizationId: request.params.resourceId,
+          clinicId: request.params.clinicId,
+          specialtyIds: request.body.specialtyIds,
+        });
+
+        return reply.status(200).send(result);
+      } catch (error) {
+        if (error instanceof ApplicationError)
+          return reply
+            .status(error.statusCode)
+            .send({ message: error.message, code: error.code });
+
+        const errName = error instanceof Error ? error.name : "UnknownError";
+        request.log.error(
+          {
+            userId: request.user.userId,
+            clinicId: request.params.clinicId,
+            errName,
+          },
+          "[update-my-specialties]",
+        );
+
+        return reply
+          .status(500)
+          .send({ message: "No se pudieron guardar tus especialidades" });
       }
     },
   );

@@ -53,7 +53,7 @@ export class UpdateMyProfileUseCase {
     // Quitarlo se permite siempre: quien dejó de atender debe poder limpiarlo.
     if (!treatment) return;
 
-    if (!(await this.getMyProfile.hasDoctorProfile(userId, accountId))) {
+    if (!(await this.getMyProfile.canSetTreatment(userId, accountId))) {
       throw new Forbidden(
         "Solo quien atiende como médico puede tener tratamiento.",
       );
