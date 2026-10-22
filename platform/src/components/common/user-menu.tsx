@@ -92,6 +92,9 @@ export function UserMenu({
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label={`Tu cuenta: ${fullName}`}
+        // El fondo marca que se está en «Mi perfil»; sin esto, un lector de
+        // pantalla no lo anuncia (los enlaces del menú lateral sí lo hacen).
+        aria-current={active ? "page" : undefined}
         onClick={() => setOpen((value) => !value)}
         className={cn(
           "flex min-w-0 items-center gap-2 rounded-full border border-transparent text-sm font-medium text-brand-ink transition-colors hover:bg-gray-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
@@ -146,6 +149,7 @@ export function UserMenu({
             <Link
               href={profileHref}
               role="menuitem"
+              aria-current={active ? "page" : undefined}
               onClick={handleSelect}
               className={ITEM_CLASS}
             >
