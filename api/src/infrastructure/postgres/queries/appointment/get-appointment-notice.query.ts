@@ -9,8 +9,12 @@ import { getClient } from "../../transaction-context";
 
 const doctorUserSelect = {
   select: {
-    user: {
-      select: { name: true, lastName: true, email: true, treatment: true },
+    membership: {
+      select: {
+        user: {
+          select: { name: true, lastName: true, email: true, treatment: true },
+        },
+      },
     },
   },
 } as const;
@@ -55,7 +59,7 @@ export class GetAppointmentNoticeQuery implements IGetAppointmentNoticeQuery {
       patientEmail: patient.email,
       patientName: patient.name,
       patientLastName: patient.lastName,
-      doctor: toDoctorContact(doctorProfile.user),
+      doctor: toDoctorContact(doctorProfile.membership.user),
       clinicId: appointment.clinicId,
       clinicName: clinic.name,
       clinicAddress: clinic.address,
@@ -71,6 +75,8 @@ export class GetAppointmentNoticeQuery implements IGetAppointmentNoticeQuery {
       where: { id: doctorProfileId },
       ...doctorUserSelect,
     });
-    return doctorProfile ? toDoctorContact(doctorProfile.user) : null;
+    return doctorProfile
+      ? toDoctorContact(doctorProfile.membership.user)
+      : null;
   }
 }

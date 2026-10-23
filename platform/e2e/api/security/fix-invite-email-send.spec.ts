@@ -72,7 +72,7 @@ test.describe("Lo que deja de ser posible", () => {
     expect(memberships).toHaveLength(0);
 
     const doctorProfiles = await prisma.doctorProfile.findMany({
-      where: { clinicId },
+      where: { membership: { resourceId: clinicId } },
     });
     expect(doctorProfiles).toHaveLength(0);
 

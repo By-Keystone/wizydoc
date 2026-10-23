@@ -79,8 +79,7 @@ async function addDoctorToClinic(
   });
   await prisma.doctorProfile.create({
     data: {
-      userId,
-      clinicId,
+      membershipId: membership.id,
       specialties: { connect: specialtyIds.map((id) => ({ id })) },
     },
   });
@@ -208,7 +207,12 @@ test.describe("Mi perfil: lectura (GET /user/me/profile)", () => {
     );
     const prisma = await getTestPrisma();
     const ownProfile = await prisma.doctorProfile.findFirstOrThrow({
-      where: { userId: scenario.doctor.userId, clinicId: scenario.clinicId },
+      where: {
+        membership: {
+          userId: scenario.doctor.userId,
+          resourceId: scenario.clinicId,
+        },
+      },
     });
     await prisma.doctorProfile.update({
       where: { id: ownProfile.id },

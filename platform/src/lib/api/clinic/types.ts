@@ -21,6 +21,11 @@ export type ClinicUser = {
   role: string;
 };
 
+export type ClinicMember = ClinicUser & {
+  doctorProfileId: string | null;
+  specialties: { id: string; name: string }[];
+};
+
 export type ClinicMetrics = {
   appointments: number;
   doctors?: number;

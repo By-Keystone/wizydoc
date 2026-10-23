@@ -87,7 +87,7 @@ async function inviteDoctor(
   });
   const prisma = await getTestPrisma();
   const profile = await prisma.doctorProfile.findFirst({
-    where: { userId: invitation.userId },
+    where: { membership: { userId: invitation.userId } },
   });
   if (!profile) throw new Error("La invitación no creó el perfil de médico");
   await seedFullDayAvailability(invitation.userId, clinicId);
@@ -198,8 +198,7 @@ test.describe("Las combinaciones ajenas se rechazan igual y sin dejar rastro", (
     const prisma = await getTestPrisma();
     const foreignProfile = await prisma.doctorProfile.create({
       data: {
-        userId: foreignDoctor.userId,
-        clinicId: foreign.clinicId,
+        membershipId: foreignDoctor.membershipId,
         specialties: { connect: [{ id: own.specialtyId }] },
       },
     });
@@ -232,8 +231,7 @@ test.describe("Las combinaciones ajenas se rechazan igual y sin dejar rastro", (
     const prisma = await getTestPrisma();
     const otherProfile = await prisma.doctorProfile.create({
       data: {
-        userId: otherDoctor.userId,
-        clinicId: otherClinicId,
+        membershipId: otherDoctor.membershipId,
         specialties: { connect: [{ id: own.specialtyId }] },
       },
     });
@@ -293,8 +291,7 @@ test.describe("Las combinaciones ajenas se rechazan igual y sin dejar rastro", (
     const prisma = await getTestPrisma();
     const corruptedProfile = await prisma.doctorProfile.create({
       data: {
-        userId: corruptedDoctor.userId,
-        clinicId: own.clinicId,
+        membershipId: corruptedDoctor.membershipId,
         specialties: { connect: [{ id: foreignSpecialtyId }] },
       },
     });

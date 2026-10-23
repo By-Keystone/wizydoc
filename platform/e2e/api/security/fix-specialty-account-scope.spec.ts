@@ -902,8 +902,7 @@ test.describe("Consecuencia del arreglo en el booking público", () => {
     const prisma = await getTestPrisma();
     await prisma.doctorProfile.create({
       data: {
-        userId: corruptedDoctor.userId,
-        clinicId: clinicA,
+        membershipId: corruptedDoctor.membershipId,
         specialties: { connect: [{ id: foreignSpecialtyId }] },
       },
     });

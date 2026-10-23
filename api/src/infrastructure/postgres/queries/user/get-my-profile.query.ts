@@ -6,26 +6,9 @@ import type {
   MyProfileOrganization,
 } from "@/application/queries/user/get-my-profile.query";
 import { formatDoctorName } from "@/domain/services/doctor-name";
-import type { Prisma } from "@prisma/client";
 import { getClient } from "../../transaction-context";
 import { CanEditOrganizationSpecialtiesQuery } from "../organization/can-edit-organization-specialties.query";
-
-// Mismo criterio que el booking para decidir quién atiende en una sede: perfil
-// de médico y membership viva y directa sobre la sede.
-function attendingProfilesWhere(
-  userId: string,
-  accountId: string,
-): Prisma.DoctorProfileWhereInput {
-  return {
-    userId,
-    clinic: {
-      resource: {
-        accountId,
-        resourceMemberships: { some: { userId, deletedAt: null } },
-      },
-    },
-  };
-}
+import { liveDoctorProfileWhere } from "../doctor-profile/live-doctor-profile";
 
 function byName(a: { name: string }, b: { name: string }) {
   return a.name.localeCompare(b.name, "es");
@@ -56,17 +39,18 @@ export class GetMyProfileQuery implements IGetMyProfileQuery {
       accountId,
     );
 
-    const [profiles, editableClinics, organizations] = await Promise.all([
+    const [profiles, organizations] = await Promise.all([
       client.doctorProfile.findMany({
-        where: attendingProfilesWhere(userId, accountId),
+        where: liveDoctorProfileWhere({ userId, accountId }),
         select: {
-          clinicId: true,
-          clinic: {
+          id: true,
+          membership: {
             select: {
-              name: true,
+              resourceId: true,
               resource: {
                 select: {
                   parentResourceId: true,
+                  clinic: { select: { name: true } },
                   parent: {
                     select: { organization: { select: { name: true } } },
                   },
@@ -77,31 +61,65 @@ export class GetMyProfileQuery implements IGetMyProfileQuery {
           specialties: {
             select: { id: true, name: true, organizationId: true },
           },
+          _count: { select: { availabilities: true } },
         },
       }),
-      this.findEditableClinics(userId, accountId, editableIds),
       this.findEditableOrganizations(userId, accountId, editableIds),
     ]);
 
-    const clinics = profiles
-      .map((profile) => {
-        const organizationId = profile.clinic.resource.parentResourceId;
-        return {
-          clinicId: profile.clinicId,
-          clinicName: profile.clinic.name,
-          organizationName:
-            profile.clinic.resource.parent?.organization?.name ?? "",
-          // Una especialidad de otra organización no se muestra, igual que en el booking.
-          specialties: profile.specialties
-            .filter((specialty) => specialty.organizationId === organizationId)
-            .map(({ id, name }) => ({ id, name }))
-            .sort(byName),
-        };
-      })
-      .sort(
-        (a, b) =>
-          a.organizationName.localeCompare(b.organizationName, "es") ||
-          a.clinicName.localeCompare(b.clinicName, "es"),
+    const rows = profiles.map((profile) => {
+      const { resource } = profile.membership;
+      const organizationId = resource.parentResourceId ?? "";
+      return {
+        doctorProfileId: profile.id,
+        clinicId: profile.membership.resourceId,
+        clinicName: resource.clinic?.name ?? "",
+        organizationId,
+        organizationName: resource.parent?.organization?.name ?? "",
+        // Una especialidad de otra organización no se muestra, igual que en el booking.
+        specialties: profile.specialties
+          .filter((specialty) => specialty.organizationId === organizationId)
+          .map(({ id, name }) => ({ id, name }))
+          .sort(byName),
+        hasSchedule: profile._count.availabilities > 0,
+      };
+    });
+
+    const sorted = rows.sort(
+      (a, b) =>
+        a.organizationName.localeCompare(b.organizationName, "es") ||
+        a.clinicName.localeCompare(b.clinicName, "es"),
+    );
+
+    const clinics = sorted.map(
+      ({ clinicId, clinicName, organizationName, specialties }) => ({
+        clinicId,
+        clinicName,
+        organizationName,
+        specialties,
+      }),
+    );
+
+    const editableClinics: MyProfileEditableClinic[] = sorted
+      .filter((row) => editableIds.includes(row.organizationId))
+      .map(
+        ({
+          doctorProfileId,
+          clinicId,
+          clinicName,
+          organizationId,
+          organizationName,
+          specialties,
+          hasSchedule,
+        }) => ({
+          clinicId,
+          clinicName,
+          organizationId,
+          organizationName,
+          specialties,
+          doctorProfileId,
+          hasSchedule,
+        }),
       );
 
     return {
@@ -115,90 +133,14 @@ export class GetMyProfileQuery implements IGetMyProfileQuery {
 
   async hasDoctorProfile(userId: string, accountId: string): Promise<boolean> {
     const count = await getClient().doctorProfile.count({
-      where: attendingProfilesWhere(userId, accountId),
+      where: liveDoctorProfileWhere({ userId, accountId }),
     });
     return count > 0;
   }
 
-  // Quien edita especialidades (ADMIN de la organización o dueño) también
-  // atiende como médico aunque su perfil aún no exista (se crea al guardarlas).
-  async canSetTreatment(userId: string, accountId: string): Promise<boolean> {
-    if (await this.hasDoctorProfile(userId, accountId)) return true;
-
-    const organizationIds = await this.canEdit.editableOrganizationIds(
-      userId,
-      accountId,
-    );
-    if (!organizationIds.length) return false;
-
-    const clinics = await getClient().clinic.count({
-      where: {
-        resource: { accountId, parentResourceId: { in: organizationIds } },
-      },
-    });
-    return clinics > 0;
-  }
-
-  private async findEditableClinics(
-    userId: string,
-    accountId: string,
-    organizationIds: string[],
-  ): Promise<MyProfileEditableClinic[]> {
-    if (!organizationIds.length) return [];
-
-    const clinics = await getClient().clinic.findMany({
-      where: {
-        resource: { accountId, parentResourceId: { in: organizationIds } },
-      },
-      select: {
-        resourceId: true,
-        name: true,
-        resource: {
-          select: {
-            parentResourceId: true,
-            parent: { select: { organization: { select: { name: true } } } },
-            resourceMemberships: {
-              where: { userId, deletedAt: null },
-              select: { id: true },
-            },
-          },
-        },
-        doctors: {
-          where: { userId },
-          select: {
-            specialties: {
-              select: { id: true, name: true, organizationId: true },
-            },
-            _count: { select: { availabilities: true } },
-          },
-        },
-      },
-    });
-
-    return clinics
-      .map((clinic) => {
-        const organizationId = clinic.resource.parentResourceId ?? "";
-        const profile = clinic.doctors[0];
-        return {
-          clinicId: clinic.resourceId,
-          clinicName: clinic.name,
-          organizationId,
-          organizationName: clinic.resource.parent?.organization?.name ?? "",
-          specialties: (profile?.specialties ?? [])
-            .filter((specialty) => specialty.organizationId === organizationId)
-            .map(({ id, name }) => ({ id, name }))
-            .sort(byName),
-          isClinicDoctor:
-            profile !== undefined &&
-            clinic.resource.resourceMemberships.length > 0,
-          hasSchedule: (profile?._count.availabilities ?? 0) > 0,
-        };
-      })
-      .sort(
-        (a, b) =>
-          a.organizationName.localeCompare(b.organizationName, "es") ||
-          a.clinicName.localeCompare(b.clinicName, "es"),
-      );
+  // El tratamiento (Dr./Dra.) es de quien atiende, no de quien administra.
+  canSetTreatment(userId: string, accountId: string): Promise<boolean> {
+    return this.hasDoctorProfile(userId, accountId);
   }
 
   private async findEditableOrganizations(

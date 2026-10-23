@@ -15,17 +15,16 @@ export interface IDoctorProfileRepository {
     clinicId: string,
     specialtyIds: string[],
   ): Promise<number>;
-  /** Crea el perfil si no existe (t-1) y reemplaza sus especialidades. */
-  upsertSpecialties(
-    userId: string,
-    clinicId: string,
+  /** Crea el perfil de la membership si no existe y reemplaza sus especialidades. */
+  upsertForMembership(
+    membershipId: string,
     specialtyIds: string[],
   ): Promise<SpecialtySummary[]>;
   /** Perfil con membership DOCTOR viva en esa sede; null si no cumple. */
   findClinicDoctor(
     doctorProfileId: string,
     clinicId: string,
-  ): Promise<{ id: string; userId: string } | null>;
+  ): Promise<{ id: string } | null>;
   /** Reemplaza por completo las especialidades de un perfil existente. */
   setSpecialties(
     doctorProfileId: string,

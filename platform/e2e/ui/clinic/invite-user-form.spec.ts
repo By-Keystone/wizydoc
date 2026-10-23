@@ -11,7 +11,6 @@ import {
 } from "../../support/accounts";
 import { PLATFORM_BASE_URL } from "../../support/env";
 import { uniqueEmail, uniqueName } from "../../support/users";
-import { softDeleteMembership } from "../../support/invitations";
 import { loginViaUi } from "../../support/ui";
 
 /**
@@ -148,6 +147,10 @@ test("CA-15 y CA-16: el formulario precarga los datos de un usuario existente y 
     fixture.reception.phone,
   );
 
+  for (const field of ["Nombre", "Apellido", "Teléfono"]) {
+    await expect(page.getByLabel(field)).not.toBeEditable();
+  }
+
   // CA-16
   await page.getByRole("button", { name: "Cambiar" }).click();
   await continueWithEmail(page, fixture.doctor.email);
@@ -216,6 +219,7 @@ test("CA-18: un correo de otra cuenta muestra Usuario nuevo y un toast de error 
   await page.getByLabel("Nombre").fill("Cualquiera");
   await page.getByLabel("Apellido").fill("Cualquiera");
   await page.getByLabel("Teléfono").fill("+51900000000");
+  await page.getByLabel("Rol").selectOption("USER");
   await page.getByRole("button", { name: "Enviar invitación" }).click();
 
   // docs/features/fix-invite-role-check/plan.md CA-6: ahora el 422 llega con
@@ -242,6 +246,7 @@ test("CA-19: un correo nuevo muestra Usuario nuevo y al completarlo y enviar se 
   await page.getByLabel("Nombre").fill("Nueva");
   await page.getByLabel("Apellido").fill("Persona");
   await page.getByLabel("Teléfono").fill("+51900000001");
+  await page.getByLabel("Rol").selectOption("USER");
   await page.getByRole("button", { name: "Enviar invitación" }).click();
 
   await expect(page.getByText("Invitación enviada")).toBeVisible();
@@ -254,8 +259,6 @@ test("CA-1: el administrador invita a una recepción (USER) y a un médico (DOCT
   const fixture = await setupFixture();
   const specialtyName = uniqueName("Especialidad CA1");
   await createSpecialty(fixture.admin, fixture.organizationId, specialtyName);
-  // El plan Gratis incluye un médico: sin liberar al del fixture, la invitación del médico nuevo da 402.
-  await softDeleteMembership(fixture.doctor.membershipId);
 
   await goToUsersPage(page, fixture);
   await expect(page.getByRole("heading", { name: "Usuarios" })).toBeVisible();
@@ -266,6 +269,7 @@ test("CA-1: el administrador invita a una recepción (USER) y a un médico (DOCT
   await page.getByLabel("Nombre").fill("Rita");
   await page.getByLabel("Apellido").fill("Recepción");
   await page.getByLabel("Teléfono").fill("+51900000101");
+  await page.getByLabel("Rol").selectOption("USER");
   await page.getByRole("button", { name: "Enviar invitación" }).click();
 
   await expect(page.getByText("Invitación enviada")).toBeVisible();

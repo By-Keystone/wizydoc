@@ -10,7 +10,7 @@ export class GetClinicDoctorsQuery implements IGetClinicDoctorsQuery {
   async execute(resourceId: string): Promise<IGetClinicDoctorsQueryResult[]> {
     const client = getClient();
 
-    // DoctorProfile no tiene deleted_at: quitar al médico se registra en su membership.
+    // Equivale a liveDoctorProfileWhere: DoctorProfile no tiene deleted_at, vive con su membership.
     const doctors = await client.$queryRaw<
       (Omit<IGetClinicDoctorsQueryResult, "displayName"> & {
         treatment: DoctorTreatment | null;
@@ -20,17 +20,14 @@ export class GetClinicDoctorsQuery implements IGetClinicDoctorsQuery {
                 json_build_object('id', s.id, 'name', s.name)
             ) as specialties
             FROM doctor_profile dp
-            INNER JOIN public.user u ON dp.user_id = u.id
-            INNER JOIN resource r ON r.id = dp.resource_id
+            INNER JOIN user_resource_membership urm ON urm.id = dp.membership_id
+            INNER JOIN public.user u ON u.id = urm.user_id
+            INNER JOIN resource r ON r.id = urm.resource_id
             INNER JOIN "_DoctorProfileToSpecialty" dps ON dps."A" = dp.id
             INNER JOIN specialty s ON s.id = dps."B" AND s.organization_id = r.parent_resource_id
-            WHERE dp.resource_id = ${resourceId}
-            AND EXISTS (
-                SELECT 1 FROM user_resource_membership urm
-                WHERE urm.user_id = dp.user_id
-                AND urm.resource_id = dp.resource_id
-                AND urm.deleted_at IS NULL
-            )
+            WHERE urm.resource_id = ${resourceId}
+            AND urm.deleted_at IS NULL
+            AND urm.role = 'DOCTOR'
             -- Sin horarios no hay huecos que ofrecer.
             AND EXISTS (
                 SELECT 1 FROM doctor_schedule ds

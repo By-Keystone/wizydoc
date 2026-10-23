@@ -187,7 +187,7 @@ test("CA-48: el médico ve «Tratamiento», su ayuda, la frase para pacientes y 
   ).toBeVisible();
 });
 
-test("CA-49: un USER no ve nada del médico (el ADMIN de la organización sí: ver profile-admin-specialties.spec.ts)", async ({
+test("CA-49: un USER no ve nada del médico (el ADMIN de la organización, sólo si atiende: ver profile-admin-specialties.spec.ts)", async ({
   page,
 }) => {
   const world = await createProfileWorld("view-nodoctor");

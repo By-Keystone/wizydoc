@@ -13,6 +13,7 @@ import {
   toWallTime,
 } from "@/domain/services/clinic-time";
 import { getClient } from "../../transaction-context";
+import { liveDoctorProfileWhere } from "./live-doctor-profile";
 
 const STRICT_TIME_PATTERN = /^([01]\d|2[0-3]):([0-5]\d)$/;
 const END_OF_DAY = "24:00";
@@ -114,25 +115,10 @@ export class GetDoctorSlotsQuery implements IGetDoctorSlotsQuery {
   }
 
   private async isBookable(doctorProfileId: string): Promise<boolean> {
-    const client = getClient();
-
-    const profile = await client.doctorProfile.findUnique({
-      where: { id: doctorProfileId },
-      select: { userId: true, clinicId: true },
-    });
-    if (!profile) return false;
-
-    const membership = await client.userResourceMembership.findUnique({
-      where: {
-        userId_resourceId: {
-          userId: profile.userId,
-          resourceId: profile.clinicId,
-        },
-        deletedAt: null,
-      },
-      select: { id: true },
+    const count = await getClient().doctorProfile.count({
+      where: { id: doctorProfileId, ...liveDoctorProfileWhere() },
     });
 
-    return membership !== null;
+    return count > 0;
   }
 }

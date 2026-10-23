@@ -64,7 +64,7 @@ test("CA-26: desde el celular, el paciente ve los médicos y especialidades de l
 
   const prisma = await getTestPrisma();
   const doctorProfile = await prisma.doctorProfile.findFirst({
-    where: { clinicId },
+    where: { membership: { resourceId: clinicId } },
   });
   if (!doctorProfile)
     throw new Error("No se encontró el perfil del médico recién invitado");

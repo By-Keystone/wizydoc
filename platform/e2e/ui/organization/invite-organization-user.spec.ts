@@ -108,13 +108,22 @@ async function goToUsersPage(page: Page, fixture: Fixture): Promise<void> {
 async function openInviteModal(page: Page): Promise<void> {
   await page.getByRole("button", { name: "Invitar usuario" }).click();
   await expect(
-    page.getByRole("dialog", { name: "Invitar a la organización" }),
+    page.getByRole("dialog", { name: "Invitar usuario" }),
   ).toBeVisible();
 }
 
 async function continueWithEmail(page: Page, email: string): Promise<void> {
   await page.getByLabel("Correo electrónico").fill(email);
   await page.getByRole("button", { name: "Continuar" }).click();
+}
+
+// Con una sola sede el formulario la propone por defecto: estas pruebas cubren «Todas las sedes».
+async function continueWithEmailForAllClinics(
+  page: Page,
+  email: string,
+): Promise<void> {
+  await continueWithEmail(page, email);
+  await page.getByLabel("Sede").selectOption("all");
 }
 
 async function fillNewUserDetails(page: Page): Promise<void> {
@@ -177,7 +186,7 @@ test("un USER de la organización que abre la página por URL ve el estado de er
   ).toHaveCount(0);
 });
 
-test("el modal valida el correo, precarga a un usuario existente y ofrece sólo Usuario y Administrador sin especialidades", async ({
+test("el modal valida el correo, precarga a un usuario existente y ofrece Usuario y Administrador con «Todas las sedes» y Médico y Usuario con especialidades al elegir una sede", async ({
   page,
 }) => {
   const fixture = await setupFixture();
@@ -192,7 +201,7 @@ test("el modal valida el correo, precarga a un usuario existente y ofrece sólo 
   ).toBeVisible();
   await expect(page.getByLabel("Nombre")).toHaveCount(0);
 
-  await continueWithEmail(page, fixture.existingUser.email);
+  await continueWithEmailForAllClinics(page, fixture.existingUser.email);
   await expect(
     page.getByText("Ya tiene una cuenta — precargamos sus datos."),
   ).toBeVisible();
@@ -214,8 +223,20 @@ test("el modal valida el correo, precarga a un usuario existente y ofrece sólo 
   ]);
   await expect(page.getByLabel("Especialidades")).toHaveCount(0);
 
+  await page.getByLabel("Sede").selectOption({ index: 1 });
+  await expect(roleSelect.locator("option")).toHaveText(["Médico", "Usuario"]);
+  await expect(roleSelect).toHaveValue("USER");
+  await roleSelect.selectOption("DOCTOR");
+  await expect(page.getByLabel("Especialidades")).toBeVisible();
+  await page.getByLabel("Sede").selectOption("all");
+  await expect(roleSelect.locator("option")).toHaveText([
+    "Usuario",
+    "Administrador",
+  ]);
+  await expect(page.getByLabel("Especialidades")).toHaveCount(0);
+
   await page.getByRole("button", { name: "Cambiar" }).click();
-  await continueWithEmail(page, uniqueEmail("nuevo-orgui"));
+  await continueWithEmailForAllClinics(page, uniqueEmail("nuevo-orgui"));
   await expect(
     page.getByText("Usuario nuevo — completa sus datos."),
   ).toBeVisible();
@@ -227,7 +248,7 @@ test("el aviso de acceso cambia con el rol elegido", async ({ page }) => {
   const fixture = await setupFixture();
   await goToUsersPage(page, fixture);
   await openInviteModal(page);
-  await continueWithEmail(page, uniqueEmail("aviso-orgui"));
+  await continueWithEmailForAllClinics(page, uniqueEmail("aviso-orgui"));
 
   const userNotice = page.getByText(USER_NOTICE_TEXT);
   const adminNoticeTitle = page.getByText(
@@ -257,7 +278,7 @@ test("enviar sin nombre muestra el error del campo y el modal sigue abierto con 
   await goToUsersPage(page, fixture);
   await openInviteModal(page);
   const email = uniqueEmail("sin-nombre-orgui");
-  await continueWithEmail(page, email);
+  await continueWithEmailForAllClinics(page, email);
 
   await page.getByLabel("Apellido").fill("Persona");
   await page.getByLabel("Teléfono").fill("+51900000001");
@@ -267,7 +288,7 @@ test("enviar sin nombre muestra el error del campo y el modal sigue abierto con 
   await expect(page.getByLabel("Apellido")).toHaveValue("Persona");
   await expect(page.getByLabel("Teléfono")).toHaveValue("+51900000001");
   await expect(
-    page.getByRole("dialog", { name: "Invitar a la organización" }),
+    page.getByRole("dialog", { name: "Invitar usuario" }),
   ).toBeVisible();
 });
 
@@ -277,7 +298,7 @@ test("si el api rechaza el envío, se ve el mensaje del api y el modal sigue abi
   const fixture = await setupFixture();
   await goToUsersPage(page, fixture);
   await openInviteModal(page);
-  await continueWithEmail(page, fixture.otherAccountAdmin.email);
+  await continueWithEmailForAllClinics(page, fixture.otherAccountAdmin.email);
   await fillNewUserDetails(page);
 
   await page.getByRole("button", { name: "Enviar invitación" }).click();
@@ -299,13 +320,13 @@ test("invitar a un USER cierra el modal, muestra Invitación enviada y la fila n
   await openInviteModal(page);
 
   const email = uniqueEmail("invitado-orgui");
-  await continueWithEmail(page, email);
+  await continueWithEmailForAllClinics(page, email);
   await fillNewUserDetails(page);
   await page.getByRole("button", { name: "Enviar invitación" }).click();
 
   await expect(page.getByText("Invitación enviada")).toBeVisible();
   await expect(
-    page.getByRole("dialog", { name: "Invitar a la organización" }),
+    page.getByRole("dialog", { name: "Invitar usuario" }),
   ).toHaveCount(0);
 
   const invitedRow = page.getByRole("row", { name: /Nueva Persona/ });

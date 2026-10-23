@@ -7,20 +7,19 @@ datasource db {
 }
 
 model User {
-  id                  String   @id @default(uuid(7)) @db.Uuid
-  email               String   @unique
+  id                  String           @id @default(uuid(7)) @db.Uuid
+  email               String           @unique
   name                String
-  lastName            String   @map("last_name")
+  lastName            String           @map("last_name")
   phone               String
   treatment           DoctorTreatment? // Dr./Dra. Sin valor se muestra solo el nombre completo.
-  role                UserRole @default(USER) // Account Role
-  confirmed           Boolean  @default(false)
-  onboardingCompleted Boolean  @default(false) @map("onboarding_completed")
-  createdAt           DateTime @default(now()) @map("created_at")
-  updatedAt           DateTime @updatedAt @map("updated_at")
-  accountId           String?  @map("account_id") @db.Uuid
+  role                UserRole         @default(USER) // Account Role
+  confirmed           Boolean          @default(false)
+  onboardingCompleted Boolean          @default(false) @map("onboarding_completed")
+  createdAt           DateTime         @default(now()) @map("created_at")
+  updatedAt           DateTime         @updatedAt @map("updated_at")
+  accountId           String?          @map("account_id") @db.Uuid
 
-  doctorProfile       DoctorProfile[]
   resourcesCreated    Resource[]
   resourceMemberships UserResourceMembership[] @relation(name: "user_membership")
   membershipsCreated  UserResourceMembership[] @relation(name: "memberships_created")
@@ -75,8 +74,7 @@ model Clinic {
   createdAt  DateTime @default(now()) @map("created_at")
   updatedAt  DateTime @updatedAt @map("updated_at")
 
-  resource     Resource        @relation(fields: [resourceId], references: [id])
-  doctors      DoctorProfile[]
+  resource     Resource      @relation(fields: [resourceId], references: [id])
   appointments Appointment[]
 
   @@map("clinic")
@@ -95,28 +93,26 @@ model UserResourceMembership {
   resource      Resource        @relation(fields: [resourceId], references: [id])
   createdByUser User            @relation(fields: [createdBy], references: [id], name: "memberships_created")
   invitation    UserInvitation?
+  doctorProfile DoctorProfile?
   deletedAt     DateTime?       @map("deleted_at")
 
   @@unique([userId, resourceId])
   @@index([accountId, role])
+  @@index([resourceId])
   @@map("user_resource_membership")
 }
 
 model DoctorProfile {
-  id        String   @id @default(uuid(7)) @db.Uuid
-  userId    String   @map("user_id") @db.Uuid
-  clinicId  String   @map("resource_id") @db.Uuid
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  clinic    Clinic   @relation(fields: [clinicId], references: [resourceId], onDelete: NoAction)
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  id           String                 @id @default(uuid(7)) @db.Uuid
+  membershipId String                 @unique @map("membership_id") @db.Uuid
+  membership   UserResourceMembership @relation(fields: [membershipId], references: [id], onDelete: NoAction)
+  createdAt    DateTime               @default(now()) @map("created_at")
+  updatedAt    DateTime               @updatedAt @map("updated_at")
 
   availabilities Availability[]
   specialties    Specialty[]
   appointments   Appointment[]
 
-  @@unique([userId, clinicId])
-  @@index([clinicId])
   @@map("doctor_profile")
 }
 
@@ -213,19 +209,19 @@ model Specialty {
 }
 
 model Appointment {
-  id              String            @id @default(uuid(7)) @db.Uuid
-  doctorProfileId String            @map("doctor_profile_id") @db.Uuid
-  clinicId        String            @map("clinic_id") @db.Uuid
-  patientId       String            @map("patient_id") @db.Uuid
-  scheduledAt     DateTime          @map("scheduled_at")
-  status          AppointmentStatus @default(PENDING)
-  durationMinutes Int               @map("duration_minutes")
-  specialty       String
-  cancelledAt     DateTime?         @map("cancelled_at")
+  id                 String              @id @default(uuid(7)) @db.Uuid
+  doctorProfileId    String              @map("doctor_profile_id") @db.Uuid
+  clinicId           String              @map("clinic_id") @db.Uuid
+  patientId          String              @map("patient_id") @db.Uuid
+  scheduledAt        DateTime            @map("scheduled_at")
+  status             AppointmentStatus   @default(PENDING)
+  durationMinutes    Int                 @map("duration_minutes")
+  specialty          String
+  cancelledAt        DateTime?           @map("cancelled_at")
   cancellationReason CancellationReason? @map("cancellation_reason")
-  rescheduleCount Int               @default(0) @map("reschedule_count")
-  createdAt       DateTime          @default(now()) @map("created_at")
-  updatedAt       DateTime          @updatedAt @map("updated_at")
+  rescheduleCount    Int                 @default(0) @map("reschedule_count")
+  createdAt          DateTime            @default(now()) @map("created_at")
+  updatedAt          DateTime            @updatedAt @map("updated_at")
 
   doctorProfile DoctorProfile            @relation(fields: [doctorProfileId], references: [id], onDelete: NoAction)
   clinic        Clinic                   @relation(fields: [clinicId], references: [resourceId], onDelete: NoAction)

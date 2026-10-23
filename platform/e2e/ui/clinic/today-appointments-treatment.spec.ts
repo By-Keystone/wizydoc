@@ -42,7 +42,7 @@ async function openDashboardOfDoctorWithAppointment(
 
   const prisma = await getTestPrisma();
   const profile = await prisma.doctorProfile.create({
-    data: { userId: doctor.userId, clinicId },
+    data: { membershipId: doctor.membershipId },
   });
   const patient = await prisma.patient.create({
     data: {

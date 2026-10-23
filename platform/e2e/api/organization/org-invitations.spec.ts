@@ -26,7 +26,7 @@ import {
 const NONEXISTENT_RESOURCE_ID = "00000000-0000-7000-8000-000000000000";
 const NOT_FOUND_RESOURCE_MESSAGE = "Resource not found";
 const NOT_FOUND_ORGANIZATION_MESSAGE = "Organización no encontrada";
-const INVITATION_SENT_MESSAGE = "Se ha enviado la invitación al usuario";
+const INVITATION_SENT_MESSAGE = "Invitación enviada.";
 const INVITATION_SUBJECT = "WizyDoc - Invitación";
 
 function inviteBody(email: string, overrides: Record<string, unknown> = {}) {
@@ -149,7 +149,7 @@ async function writeCounts(accountIds: string[]) {
       where: { membership: { accountId: { in: accountIds } } },
     }),
     prisma.doctorProfile.count({
-      where: { user: { accountId: { in: accountIds } } },
+      where: { membership: { accountId: { in: accountIds } } },
     }),
   ]);
   return { users, memberships, invitations, doctorProfiles };
@@ -186,6 +186,8 @@ test.describe("Invitar a la organización", () => {
       );
       expect(response.status()).toBe(200);
       expect(await response.json()).toEqual({
+        outcome: "created",
+        invitationSent: true,
         message: INVITATION_SENT_MESSAGE,
       });
 
@@ -345,8 +347,92 @@ test.describe("Invitar a la organización", () => {
     const user = await prisma.user.findUnique({ where: { email } });
     expect(user).not.toBeNull();
     expect(
-      await prisma.doctorProfile.count({ where: { userId: user!.id } }),
+      await prisma.doctorProfile.count({
+        where: { membership: { userId: user!.id } },
+      }),
     ).toBe(0);
+  });
+});
+
+test.describe("Cambiar el rol en la organización", () => {
+  test("nadie cambia su propio rol: 409 y el rol no cambia", async () => {
+    const fixture = await setupFixture();
+
+    const response = await postOrganizationInvitation(
+      fixture.admin.context,
+      fixture.organizationId,
+      inviteBody(fixture.admin.email, { role: "USER" }),
+    );
+
+    expect(response.status()).toBe(409);
+    expect((await response.json()).message).toBe(
+      "No puedes cambiar tu propio rol.",
+    );
+    const prisma = await getTestPrisma();
+    const membership = await prisma.userResourceMembership.findFirst({
+      where: {
+        userId: fixture.admin.userId,
+        resourceId: fixture.organizationId,
+      },
+    });
+    expect(membership?.role).toBe("ADMIN");
+  });
+
+  test("con el mismo rol, guardar a uno mismo responde 200 sin cambios", async () => {
+    const fixture = await setupFixture();
+
+    const response = await postOrganizationInvitation(
+      fixture.admin.context,
+      fixture.organizationId,
+      inviteBody(fixture.admin.email, { role: "ADMIN" }),
+    );
+
+    expect(response.status()).toBe(200);
+    expect(await response.json()).toMatchObject({
+      outcome: "updated",
+      invitationSent: false,
+    });
+  });
+
+  test("otro ADMIN no puede cambiar el rol del dueño (409), pero sí el de un tercer ADMIN", async () => {
+    const fixture = await setupFixture();
+    const secondAdmin = await createMemberWithRole({
+      accountId: fixture.admin.accountId,
+      resourceId: fixture.organizationId,
+      role: "ADMIN",
+      createdBy: fixture.admin.userId,
+      emailPrefix: "segundo-admin",
+    });
+    const thirdAdmin = await createMemberWithRole({
+      accountId: fixture.admin.accountId,
+      resourceId: fixture.organizationId,
+      role: "ADMIN",
+      createdBy: fixture.admin.userId,
+      emailPrefix: "tercer-admin",
+    });
+
+    const ownerAttempt = await postOrganizationInvitation(
+      secondAdmin.context,
+      fixture.organizationId,
+      inviteBody(fixture.admin.email, { role: "USER" }),
+    );
+    expect(ownerAttempt.status()).toBe(409);
+    expect((await ownerAttempt.json()).message).toBe(
+      "El rol del dueño de la cuenta no se puede cambiar.",
+    );
+
+    const demotion = await postOrganizationInvitation(
+      secondAdmin.context,
+      fixture.organizationId,
+      inviteBody(thirdAdmin.email, { role: "USER" }),
+    );
+    expect(demotion.status()).toBe(200);
+    expect(await demotion.json()).toMatchObject({ outcome: "updated" });
+    const prisma = await getTestPrisma();
+    const membership = await prisma.userResourceMembership.findFirst({
+      where: { userId: thirdAdmin.userId, resourceId: fixture.organizationId },
+    });
+    expect(membership?.role).toBe("USER");
   });
 });
 
@@ -523,10 +609,10 @@ test.describe("Rechazos y aislamiento al invitar a la organización", () => {
 });
 
 test.describe("Plan", () => {
-  test("con la plaza de médico ocupada en el plan Gratis, invitar un USER y un ADMIN a la organización sigue dando 200", async () => {
+  test("en el plan Gratis, asignar otro médico a una sede y un USER y un ADMIN a la organización da 200", async () => {
     const fixture = await setupFixture();
 
-    // El fixture ya tiene un DOCTOR en la sede: la plaza de médico del plan Gratis está ocupada.
+    // El fixture ya tiene un DOCTOR en la sede: el plan Gratis no limita médicos.
     const extraDoctor = await fixture.admin.context.post(
       `${API_BASE_URL}/clinic/${fixture.clinicAId}/invitations`,
       {
@@ -538,7 +624,7 @@ test.describe("Plan", () => {
         }),
       },
     );
-    expect(extraDoctor.status()).toBe(402);
+    expect(extraDoctor.status()).toBe(200);
 
     for (const role of ["USER", "ADMIN"]) {
       const response = await postOrganizationInvitation(
@@ -656,7 +742,7 @@ test.describe("Lista de usuarios de la organización", () => {
 });
 
 test.describe("Búsqueda por correo en la organización", () => {
-  test("el ADMIN recibe sólo name, lastName y phone de un usuario de la cuenta y null para uno de otra cuenta o inexistente", async () => {
+  test("el ADMIN recibe name, lastName, phone, isAccountOwner, organizationRole y las sedes de un usuario de la cuenta, y null para uno de otra cuenta o inexistente", async () => {
     const fixture = await setupFixture();
 
     const own = await lookupOrganizationUser(
@@ -670,6 +756,11 @@ test.describe("Búsqueda por correo en la organización", () => {
         name: fixture.doctorOfClinic.name,
         lastName: fixture.doctorOfClinic.lastName,
         phone: fixture.doctorOfClinic.phone,
+        isAccountOwner: false,
+        organizationRole: null,
+        clinics: [
+          { clinicId: fixture.clinicAId, role: "DOCTOR", specialties: [] },
+        ],
       },
     });
 
@@ -687,6 +778,20 @@ test.describe("Búsqueda por correo en la organización", () => {
     }
   });
 
+  test("las memberships borradas no salen en la búsqueda", async () => {
+    const fixture = await setupFixture();
+    await softDeleteMembership(fixture.doctorOfClinic.membershipId);
+
+    const response = await lookupOrganizationUser(
+      fixture.admin.context,
+      fixture.organizationId,
+      fixture.doctorOfClinic.email,
+    );
+
+    expect(response.status()).toBe(200);
+    expect((await response.json()).user).toMatchObject({ clinics: [] });
+  });
+
   test("el correo se busca sin distinguir mayúsculas", async () => {
     const fixture = await setupFixture();
 
@@ -697,7 +802,7 @@ test.describe("Búsqueda por correo en la organización", () => {
     );
 
     expect(response.status()).toBe(200);
-    expect((await response.json()).user).toEqual({
+    expect((await response.json()).user).toMatchObject({
       name: fixture.doctorOfClinic.name,
       lastName: fixture.doctorOfClinic.lastName,
       phone: fixture.doctorOfClinic.phone,

@@ -555,12 +555,6 @@ test.describe("Lo que no debe filtrarse", () => {
       role: "USER",
       emailPrefix: "ca21-accept",
     });
-    const acceptSetupContext = await createApiContext();
-    await setPassword(acceptSetupContext, {
-      token: forAccept.token,
-      password: E2E_PASSWORD,
-    });
-
     const clinicB = await createClinicResourceViaPrisma(admin, organizationId, {
       name: uniqueName("Sede B CA21"),
     });
@@ -571,6 +565,13 @@ test.describe("Lo que no debe filtrarse", () => {
       phone: "+51987654321",
       role: "USER",
       resourceId: clinicB,
+    });
+
+    // Sin contraseña todavía, la segunda sede genera su propia invitación (t-8).
+    const acceptSetupContext = await createApiContext();
+    await setPassword(acceptSetupContext, {
+      token: forAccept.token,
+      password: E2E_PASSWORD,
     });
 
     const prisma = await getTestPrisma();

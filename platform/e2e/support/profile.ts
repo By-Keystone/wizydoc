@@ -134,15 +134,38 @@ export async function addDoctorProfile(
   userId: string,
   clinicId: string,
   specialtyIds: string[],
-): Promise<void> {
+  role: "DOCTOR" | "USER" = "DOCTOR",
+): Promise<string> {
   const prisma = await getTestPrisma();
-  await prisma.doctorProfile.create({
+  const existing = await prisma.userResourceMembership.findFirst({
+    where: { userId, resourceId: clinicId },
+  });
+
+  // Un ADMIN de la organización atiende con una membership DOCTOR directa en la sede.
+  let membershipId = existing?.id;
+  if (!membershipId) {
+    const user = await prisma.user.findUniqueOrThrow({
+      where: { id: userId },
+    });
+    const created = await prisma.userResourceMembership.create({
+      data: {
+        userId,
+        resourceId: clinicId,
+        accountId: user.accountId,
+        role,
+        createdBy: userId,
+      },
+    });
+    membershipId = created.id;
+  }
+
+  const profile = await prisma.doctorProfile.create({
     data: {
-      userId,
-      clinicId,
+      membershipId,
       specialties: { connect: specialtyIds.map((id) => ({ id })) },
     },
   });
+  return profile.id;
 }
 
 /** Sede extra de la misma organización, con el médico ya como DOCTOR de ella. */

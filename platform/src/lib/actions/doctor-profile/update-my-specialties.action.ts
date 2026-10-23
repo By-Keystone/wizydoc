@@ -2,6 +2,7 @@
 
 import { toActionState } from "@/lib/actions/to-action-state";
 import type { ActionState } from "@/lib/actions/types";
+import { tags as clinicTags } from "@/lib/api/clinic";
 import { doFetchJson } from "@/lib/api/fetch";
 import { tags } from "@/lib/api/user";
 import { getSession } from "@/lib/auth/session";
@@ -15,6 +16,7 @@ const updateMySpecialtiesSchema = z.object({
 export async function updateMySpecialtiesAction(
   organizationId: string,
   clinicId: string,
+  doctorProfileId: string,
   _prevState: ActionState,
   data: FormData,
 ): Promise<ActionState> {
@@ -31,11 +33,12 @@ export async function updateMySpecialtiesAction(
 
   try {
     await doFetchJson(
-      `/organization/${encodeURIComponent(organizationId)}/clinics/${encodeURIComponent(clinicId)}/me/specialties`,
+      `/organization/${encodeURIComponent(organizationId)}/clinics/${encodeURIComponent(clinicId)}/doctors/${encodeURIComponent(doctorProfileId)}/specialties`,
       { method: "PUT", body: JSON.stringify(parsed.data) },
     );
 
     revalidateTag(tags.myProfile());
+    revalidateTag(clinicTags.clinicUsers(clinicId));
 
     return { status: "success", message: "Guardamos tus especialidades." };
   } catch (error) {

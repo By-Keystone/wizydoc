@@ -66,14 +66,12 @@ export function EditableClinicSpecialties({
         >
           Asignar especialidades
         </Button>
-        {clinic.isClinicDoctor && (
-          <div className="w-full">
-            <ClinicAvailabilityLink
-              accountId={accountId}
-              clinicId={clinic.clinicId}
-            />
-          </div>
-        )}
+        <div className="w-full">
+          <ClinicAvailabilityLink
+            accountId={accountId}
+            clinicId={clinic.clinicId}
+          />
+        </div>
       </div>
     );
   }
@@ -114,14 +112,12 @@ export function EditableClinicSpecialties({
           Sin horarios en esta sede, todavía no apareces en el link de reserva.
         </p>
       )}
-      {clinic.isClinicDoctor && (
-        <div className="mt-3">
-          <ClinicAvailabilityLink
-            accountId={accountId}
-            clinicId={clinic.clinicId}
-          />
-        </div>
-      )}
+      <div className="mt-3">
+        <ClinicAvailabilityLink
+          accountId={accountId}
+          clinicId={clinic.clinicId}
+        />
+      </div>
     </div>
   );
 }
@@ -147,6 +143,7 @@ function SpecialtiesEditor({
       const result = await updateMySpecialtiesAction(
         clinic.organizationId,
         clinic.clinicId,
+        clinic.doctorProfileId,
         { status: "idle" },
         formData,
       );

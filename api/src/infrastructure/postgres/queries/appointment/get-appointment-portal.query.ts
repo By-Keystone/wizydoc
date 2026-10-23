@@ -34,8 +34,12 @@ export class GetAppointmentPortalQuery implements IGetAppointmentPortalQuery {
             clinic: { select: { name: true, address: true } },
             doctorProfile: {
               select: {
-                user: {
-                  select: { name: true, lastName: true, treatment: true },
+                membership: {
+                  select: {
+                    user: {
+                      select: { name: true, lastName: true, treatment: true },
+                    },
+                  },
                 },
               },
             },
@@ -50,7 +54,7 @@ export class GetAppointmentPortalQuery implements IGetAppointmentPortalQuery {
     if (hasStarted(appointment, now)) return null;
 
     const { date, time } = toWallTime(appointment.scheduledAt);
-    const { user } = appointment.doctorProfile;
+    const { user } = appointment.doctorProfile.membership;
 
     return {
       status: appointment.status,

@@ -1,8 +1,11 @@
 "use server";
 
+import { toActionState } from "@/lib/actions/to-action-state";
+import type { ActionState } from "@/lib/actions/types";
 import { tags } from "@/lib/api/clinic";
 import { doFetchJson } from "@/lib/api/fetch";
-import { toActionState } from "@/lib/actions/to-action-state";
+import { tags as membershipTags } from "@/lib/api/memberships";
+import { tags as userTags } from "@/lib/api/user";
 import { getSession } from "@/lib/auth/session";
 import { revalidateTag } from "next/cache";
 import z, { treeifyError } from "zod";
@@ -14,33 +17,18 @@ const inviteUserSchema = z
     email: z.string().email(),
     phone: z.string().min(1),
     role: z.enum(["DOCTOR", "USER"]),
-    specialtyIds: z.array(z.string()).optional(),
+    specialtyIds: z.array(z.uuid()).max(50).optional(),
   })
   .refine((data) => data.role !== "DOCTOR" || !!data.specialtyIds?.length, {
     message: "Selecciona al menos una especialidad",
     path: ["specialtyIds"],
   });
 
-export type InviteUserState =
-  | { status: "idle" }
-  | {
-      status: "error";
-      message: string;
-      fieldErrors?: Partial<
-        Record<
-          keyof z.infer<typeof inviteUserSchema>,
-          { errors: string[] } | undefined
-        >
-      >;
-    }
-  | { status: "success" }
-  | { status: "auth-expired" };
-
 export async function inviteUserAction(
   clinicId: string,
-  _prevState: InviteUserState,
+  _prevState: ActionState,
   data: FormData,
-): Promise<InviteUserState> {
+): Promise<ActionState> {
   const session = await getSession();
   if (!session) return { status: "auth-expired" };
 
@@ -62,13 +50,16 @@ export async function inviteUserAction(
   }
 
   try {
-    await doFetchJson(`/clinic/${encodeURIComponent(clinicId)}/invitations`, {
-      method: "POST",
-      body: JSON.stringify(parsed.data),
-    });
+    const { message } = await doFetchJson<{ message: string }>(
+      `/clinic/${encodeURIComponent(clinicId)}/invitations`,
+      { method: "POST", body: JSON.stringify(parsed.data) },
+    );
 
     revalidateTag(tags.clinicUsers(clinicId));
-    return { status: "success" };
+    revalidateTag(userTags.myProfile());
+    revalidateTag(membershipTags.memberships());
+    revalidateTag(membershipTags.membershipsForResource(clinicId));
+    return { status: "success", message };
   } catch (error) {
     return toActionState(error);
   }

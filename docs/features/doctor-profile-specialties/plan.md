@@ -50,7 +50,7 @@ sede. De paso, el booking deja de mostrar a los médicos que no tienen horarios.
 | t-2 | **Edita quien es «editor de especialidades» de la organización:** el dueño de la cuenta (`account.ownerId = userId`) o quien tiene una membership viva con rol `ADMIN` sobre la organización. El ADMIN directo de una sede no edita. La regla vive en una sola consulta, `CanEditOrganizationSpecialtiesQuery`, que usan los dos casos de uso y «Mi perfil». | Es la decisión 4. **El dueño se identifica por `Account.ownerId`, no por `User.role`.** `User.role` (`UserRole`) tiene `@default(USER)` y `input: false` en Better Auth, y ningún código lo pone en `ADMIN`: hoy vale `USER` para todos, también para el dueño. `isAccountOwner` de `GET /user/me` ya se calcula con `account.ownerId === request.user.userId` (`routes/user/index.ts:100`), así que es el mismo criterio. |
 | t-3 | **Las rutas nuevas van bajo `/organization/:resourceId/clinics/:clinicId/…`, con `policy({ account: true, confirmed: true, onboarded: true })`, sin `roles`. La autorización la hace el caso de uso con t-2.** | La política actual no puede expresar «ADMIN de la organización **o** dueño de la cuenta». `roles: ["ADMIN"]` exige una membership sobre `:resourceId`, y el dueño puede no tenerla: si otro ADMIN creó la organización (`create-organization.use-case.ts`), o si se borró la suya. Hacerlo en el caso de uso no toca `policy.ts`, y ya hay un precedente: `POST /organization` («el rol lo comprueba el caso de uso»). Se aparta de la convención de `api/AGENTS.md` («`:resourceId` con `member` o `roles`»), así que va en «Requiere confirmación», con la alternativa. |
 | t-4 | **Pantalla de edición de los demás: la lista de usuarios de la sede dentro del panel de la organización** (`/organization/[resourceId]/clinic/[clinicId]/users`, «Sedes» → «Ver Usuarios»). **Aprobada.** | Los médicos solo existen en esa lista: se invitan a una sede y su perfil es por sede. «Usuarios» de la organización lista solo ADMIN y USER de la organización. |
-| t-5 | **En esa lista se editan las filas con rol DOCTOR, menos la propia.** La fila propia (la que se marca «Tú») muestra sus especialidades con el enlace «Edítalas en Mi perfil». El USER (recepción) no tiene perfil de médico y no se le asignan especialidades. | Es la decisión 3. El api también lo rechaza (t-14): una sola puerta para las especialidades propias. |
+| t-5 | **En esa lista se editan las filas con rol DOCTOR, también la propia.** La fila propia (la que se marca «Tú») lleva «Editar especialidades» como las demás. El USER (recepción) no tiene perfil de médico y no se le asignan especialidades. | Cambiado el 22 de octubre de 2026 junto con t-14: el ADMIN edita sus especialidades aquí o en «Mi perfil». |
 | t-6 | **«Dónde atiendes» del editor lista todas las sedes que puede editar.** Las sedes con especialidades salen como un bloque con chips y «Editar». Las demás salen como filas compactas de una línea («Sin especialidades» y «Asignar especialidades»), debajo de las primeras. Para el dueño son todas las sedes de la cuenta. **Aprobada.** | El médico independiente, que es el foco, tiene una sola sede y ve su fila con la acción. Una clínica con varias sedes no se llena de bloques vacíos. **Cambio en el PR 3:** `GET /user/me/profile` no cambia `clinics` (solo sedes con perfil, como hoy) y suma `editableClinics` con las sedes editables; así el PR 3 se despliega solo sin alterar lo que ve el platform actual. `hasDoctorProfile` no cambia. |
 | t-7 | **El booking solo lista médicos con al menos un horario** (`EXISTS` sobre `doctor_schedule` en `get-clinic-doctors.query.ts`). Es el único cambio necesario. | Hoy no se cumple: la consulta exige perfil, membership directa viva y especialidad de la organización, pero no horarios. Las especialidades del paso 1 salen de los médicos (`booking-wizard.tsx`), así que también desaparece la especialidad que nadie atiende. Reservar (`assertSlotIsOffered`) y reprogramar ya exigen un hueco. |
 | t-8 | **El ADMIN de la organización sigue sin poder reservarse**, aunque tenga perfil, especialidades y horarios. | Las cuatro comprobaciones de «reservable» exigen membership **directa** sobre la sede: `get-clinic-doctors.query.ts`, `GetDoctorSlotsQuery.isBookable`, `CreateAppointment.findBookableDoctor` y `Reschedule.isAlternativeDoctor`. El ADMIN de organización solo la hereda. Cambiar esas cuatro a la vez es tarea del otro ticket (ver «Dependencias»). |
@@ -369,7 +369,7 @@ OR: [
 | `platform/src/components/profile/where-you-work-card.tsx` | Recibe además `organizations`. Parte `clinics` en dos grupos (t-6): las sedes con `canEditSpecialties` se pintan con `EditableClinicSpecialties`, y las demás, como hoy. La descripción de la tarjeta depende de si hay alguna sede editable. «Mi disponibilidad en esta sede →» solo sale si `isClinicDoctor`. |
 | `platform/src/components/profile/editable-clinic-specialties.tsx` (nuevo, cliente) | Props: `clinic: MyProfileClinic`, `organization: MyProfileOrganization` y `variant: "block" \| "row"`. En lectura muestra un bloque con chips, «Editar» y, si `!hasSchedule`, el aviso de la decisión 8; o una fila compacta con «Asignar especialidades». En edición pinta `SpecialtyMultiSelect` con `initialSelected = clinic.specialties`, `initialSpecialties = organization.specialties` y `allowCreate = organization.canCreateSpecialties`, y envía con `useFormAction(updateMySpecialtiesAction)`. Es nuevo porque la tarjeta es de servidor y la edición necesita estado. |
 | `platform/src/components/clinic/doctor-specialties-dialog.tsx` (nuevo, cliente) | Props: `organizationId`, `clinicId`, `clinicName`, `doctor: { doctorProfileId; name; lastName; specialties }` y `organizationSpecialties: Specialty[]`. Es el botón «Editar especialidades» y su `Dialog` (`components/ui/dialog.tsx`, tamaño `S`) con `SpecialtyMultiSelect`. Sigue el patrón de `invite-user/modal.tsx`. |
-| `platform/src/components/clinic/users-table.tsx` | Prop opcional nueva: `specialtyEditing?: { organizationId; clinicId; clinicName; organizationSpecialties; profileHref }`. Si viene, agrega la columna «Especialidades» (`hidden sm:table-cell`): chips o la etiqueta «Sin especialidades»; en las filas DOCTOR con `doctorProfileId`, `DoctorSpecialtiesDialog`, salvo en la fila propia (`row.email === currentUserEmail`), que lleva el enlace «Edítalas en Mi perfil» (`profileHref`); «—» en las demás. Debajo de `sm`, lo mismo va dentro de la celda «Nombre», bajo el correo (`sm:hidden`). Sin la prop, la tabla de la organización no cambia. |
+| `platform/src/components/clinic/users-table.tsx` | Prop opcional nueva: `specialtyEditing?: { organizationId; clinicId; clinicName; organizationSpecialties }`. Si viene, agrega la columna «Especialidades» (`hidden sm:table-cell`): chips o la etiqueta «Sin especialidades»; en las filas DOCTOR con `doctorProfileId`, también la propia, `DoctorSpecialtiesDialog`; «—» en las demás. Debajo de `sm`, lo mismo va dentro de la celda «Nombre», bajo el correo (`sm:hidden`). Sin la prop, la tabla de la organización no cambia. |
 | `platform/src/components/clinic/users-top-header.tsx` | Prop opcional nueva, `subtitle?: string`, bajo el `h1`, con el estilo de `organization/users-top-header.tsx`. |
 | `platform/src/components/common/user-menu.tsx` | El botón del avatar y el ítem «Mi perfil» suman `aria-current={active ? "page" : undefined}`. `sidebar.tsx` ya calcula `active`. |
 
@@ -377,7 +377,7 @@ OR: [
 
 | Archivo | Cambio |
 | --- | --- |
-| `platform/src/app/account/[accountId]/organization/[resourceId]/clinic/[clinicId]/users/page.tsx` | Suma `getMe()` y `userMembershipsApi.getMembershipForResource(clinicId)` al `Promise.all`, para tener el correo propio y el nombre de la sede. Pasa `currentUserEmail` y `specialtyEditing` (con `profileHref = /account/{accountId}/organization/{resourceId}/me`) a `UsersTable`, y `subtitle="Personas con acceso a {sede}."` a `UsersTopHeader`. |
+| `platform/src/app/account/[accountId]/organization/[resourceId]/clinic/[clinicId]/users/page.tsx` | Suma `getMe()` y `userMembershipsApi.getMembershipForResource(clinicId)` al `Promise.all`, para tener el correo propio y el nombre de la sede. Pasa `currentUserEmail` y `specialtyEditing` a `UsersTable`, y `subtitle="Personas con acceso a {sede}."` a `UsersTopHeader`. |
 | Las tres páginas `…/me/page.tsx` | Sin cambios. `MyProfile` pasa `profile.organizations` a `WhereYouWorkCard`. |
 
 ## Aislamiento entre cuentas
@@ -405,9 +405,9 @@ más estricto.
 | rg-5 | **El ADMIN de la organización puede guardar horarios por api** | `PUT /clinic/:resourceId/availability` acepta `roles: ["ADMIN", "DOCTOR"]` y desde ahora encuentra su perfil. Con eso cuenta en las métricas (t-12) y desaparece el aviso, pero sigue sin poder reservarse (t-8). No hay UI para eso hasta el otro ticket. |
 | rg-6 | **Organización con muchas sedes** | Cada sede sin especialidades ocupa una línea (t-6). Con más de 10 sedes la tarjeta se alarga. |
 | rg-7 | **Las rutas nuevas no validan el rol en la política** (t-3) | Si alguien quita la comprobación del caso de uso, cualquier usuario de la cuenta podría editar. Lo cubren los e2e de rol y el comentario en la ruta. |
-| cl-1 | ADMIN que además es DOCTOR directo en una sede | La sede sale una sola vez, editable y con «Mi disponibilidad» (`isClinicDoctor`). En la lista de la sede su fila dice «Tú» y lleva «Edítalas en Mi perfil». |
+| cl-1 | ADMIN que además es DOCTOR directo en una sede | La sede sale una sola vez, editable y con «Mi disponibilidad» (`isClinicDoctor`). En la lista de la sede su fila dice «Tú» y lleva «Editar especialidades». |
 | cl-2 | ADMIN de dos organizaciones | Las sedes de las dos, cada una con las especialidades de su organización. |
-| cl-3 | ADMIN directo de una sede, sin rol en la organización (solo se crea desde el api) | No edita: 403. Si tiene perfil, ve la sede en solo lectura, como el DOCTOR. |
+| cl-3 | ADMIN directo de una sede, sin rol en la organización (solo se crea desde el api) | No edita: 403. Si tiene perfil, ve la sede en solo lectura, como el DOCTOR. Por URL ve `ErrorState`, limitación previa de `member: true` en `GET /:resourceId/specialties`. |
 | cl-4 | El médico tiene la invitación pendiente | Su fila es DOCTOR y tiene perfil (se crea al invitarlo), así que se edita. |
 | cl-5 | Médico quitado de la sede | No sale en la lista y el `PUT` responde 404. |
 | cl-6 | Dos editores cambian al mismo médico a la vez | Gana el último que guarda. |
@@ -462,7 +462,7 @@ de esa cuenta; `$D`, un DOCTOR de esa sede con perfil `$DP`; `$X`, un ADMIN de o
 - Como ADMIN con tres sedes: el bloque y las filas compactas.
 - Como DOCTOR: solo lectura, sin botones. Como recepción: sin «Dónde atiendes».
 - «Sedes» → «Ver Usuarios»: editar a un médico, el aviso al vaciar, la organización sin
-  especialidades, y la fila propia con «Edítalas en Mi perfil» y sin botón.
+  especialidades, y la fila propia con «Editar especialidades».
 - El avatar con `aria-current="page"` en «Mi perfil».
 - Sin desplazamiento horizontal a 375 px.
 
@@ -519,7 +519,7 @@ Pruebas nuevas propuestas (los IDs los pone el product-manager):
   - la columna y los chips, y «Sin especialidades»;
   - el diálogo con el foco y Escape, el aviso al vaciar, guardar y toast;
   - USER sin botón;
-  - la fila propia sin botón y con «Edítalas en Mi perfil»;
+  - la fila propia con «Editar especialidades» y guardar;
   - a 375 px, la acción bajo el nombre.
 - `e2e/ui/profile/profile-navigation.spec.ts`: `aria-current="page"` en el avatar del pie en
   `/me`, y su ausencia en las demás páginas.
@@ -607,7 +607,7 @@ ClinicUsersPage (modificada)
 └─ UsersTable currentUserEmail specialtyEditing={…} ← getClinicUsers(clinicId), getOrganizationSpecialties(resourceId), getMe()
     ├─ fila DOCTOR ajena: chips o «Sin especialidades» y DoctorSpecialtiesDialog (nuevo)
     │   └─ SpecialtyMultiSelect (reutilizado)
-    └─ fila propia: chips y enlace «Edítalas en Mi perfil»
+    └─ fila propia: chips y DoctorSpecialtiesDialog, como las demás
 ```
 
 ### Qué dato alimenta cada parte
@@ -652,9 +652,8 @@ ClinicUsersPage (modificada)
 - Subtítulo: «Personas con acceso a {Sede}.».
 - Columna «Especialidades»: chips; la etiqueta ámbar «Sin especialidades» en un DOCTOR sin
   ninguna; «—» para los demás roles.
-- Botón de cada DOCTOR ajeno: «Editar especialidades», con el nombre accesible «Editar
+- Botón de cada DOCTOR, también el propio: «Editar especialidades», con el nombre accesible «Editar
   especialidades de {Nombre Apellido}».
-- Fila propia: los chips y el enlace «Edítalas en Mi perfil».
 - Diálogo:
   - título «Especialidades de {Nombre Apellido}»;
   - descripción «En {Sede}. Son las que el paciente elige al reservar con este médico.»;
@@ -674,7 +673,7 @@ ClinicUsersPage (modificada)
 | Vacío | Editor sin especialidades en ninguna sede: solo filas. Organización sin especialidades: el texto de arriba. Sin sedes, o la recepción: sin «Dónde atiendes», como hoy. | La sede sin usuarios: «Esta sede aún no tiene usuarios.», como hoy. El médico sin especialidades: la etiqueta. |
 | Error | Toast con el mensaje. El bloque sigue en edición, con lo elegido. | Toast con el mensaje. El diálogo sigue abierto. Si falla la carga de la página, `ErrorState` con «Reintentar». |
 | Sesión vencida | `auth-expired`: toast «Tu sesión ha expirado. Vuelve a iniciar sesión.» y `/login` (`useFormAction`). | Lo mismo. |
-| 403 / 404 | El DOCTOR y la recepción no ven botones. Si el api rechaza (por ejemplo, porque el ADMIN perdió el rol con la página abierta), toast con el mensaje y el bloque vuelve a lectura. | El DOCTOR y el USER no llegan desde el menú; por URL, `GET /clinic/:id/users` responde 403 y se ve `ErrorState`, como hoy. El ADMIN directo de sede que abra la URL ve los botones, pero el api responde 403 y se ve un toast (cl-3). |
+| 403 / 404 | El DOCTOR y la recepción no ven botones. Si el api rechaza (por ejemplo, porque el ADMIN perdió el rol con la página abierta), toast con el mensaje y el bloque vuelve a lectura. | El DOCTOR y el USER no llegan desde el menú; por URL, `GET /clinic/:id/users` responde 403 y se ve `ErrorState`, como hoy. El ADMIN directo de sede ya veía `ErrorState` antes de este PR, porque `GET /:resourceId/specialties` (`member: true`) le responde 404; no ve tabla ni botones (cl-3). Limitación previa. |
 | 402 | No aplica (t-11). | No aplica. |
 
 ### Interacciones
@@ -694,7 +693,6 @@ ClinicUsersPage (modificada)
 - Escape o «Cancelar» lo cierran sin guardar. El foco vuelve al botón (Radix).
 - Con la selección vacía aparece el aviso (`aria-live="polite"`). Se puede guardar igual.
 - Si sale bien: toast, el diálogo se cierra y `revalidateTag(clinicUsers)` refresca la fila.
-- «Edítalas en Mi perfil» navega a `…/organization/{resourceId}/me`.
 
 ### Diferencias por rol
 
@@ -704,7 +702,7 @@ ClinicUsersPage (modificada)
 | ADMIN de la organización | Las sedes de sus organizaciones, editables. También ve «Tratamiento» y la vista previa. | Edita a todos los DOCTOR menos a sí mismo. |
 | DOCTOR | Sus sedes en solo lectura, como hoy. | No lo ve. |
 | USER (recepción) | No ve la sección, como hoy. | No lo ve. |
-| ADMIN directo de sede (solo por api) | Solo lectura, si tiene perfil (cl-3). | No le aparece en el menú. Por URL ve la tabla, pero guardar responde 403. |
+| ADMIN directo de sede (solo por api) | Solo lectura, si tiene perfil (cl-3). | No le aparece en el menú. Por URL ve `ErrorState` (limitación previa: `GET /:resourceId/specialties` le responde 404). |
 
 ### Accesibilidad
 
@@ -961,8 +959,8 @@ Actores (todos de la misma cuenta salvo que se diga):
 - **CA-75. [e2e]** Con la organización sin especialidades, el diálogo muestra el mismo texto que
   «Mi perfil» y «Crear "…"» funciona.
 - **CA-76. [e2e]** La fila propia (ADMIN que también es DOCTOR de la sede) dice «Tú», muestra sus
-  chips y el enlace «Edítalas en Mi perfil», que lleva a `…/organization/{resourceId}/me`; no
-  tiene «Editar especialidades».
+  chips y «Editar especialidades», y guardar desde ahí cambia sus especialidades (22 de octubre
+  de 2026; antes llevaba el enlace «Edítalas en Mi perfil»).
 - **CA-77. [e2e]** A 375 px las especialidades y la acción van bajo el nombre, el diálogo cabe y
   no hay desplazamiento horizontal.
 - **CA-78. [e2e]** Un DOCTOR o un USER que abre la URL ve el estado de error de hoy, sin tabla ni

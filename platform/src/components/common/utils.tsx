@@ -17,6 +17,7 @@ type NavLink = {
     Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>
   >;
   roles?: MembershipRole[];
+  requiresDoctorProfile?: boolean;
 };
 
 const clinicNavLinks: NavLink[] = [
@@ -29,12 +30,18 @@ const clinicNavLinks: NavLink[] = [
     href: "profile/availability",
     label: "Configuración",
     icon: Settings,
-    roles: [MembershipRole.DOCTOR],
+    requiresDoctorProfile: true,
   },
   {
     href: "patients",
     label: "Pacientes",
     icon: PersonStanding,
+  },
+  {
+    href: "users",
+    label: "Usuarios",
+    icon: UserRound,
+    roles: [MembershipRole.ADMIN],
   },
 ];
 
@@ -53,11 +60,17 @@ const orgNavLinks: NavLink[] = [
 export function getNavLinks({
   role,
   resourceType,
+  attends,
 }: {
   role: MembershipRole;
   resourceType: "ORGANIZATION" | "CLINIC";
+  attends: boolean;
 }): NavLink[] {
   const base = resourceType === "ORGANIZATION" ? orgNavLinks : clinicNavLinks;
 
-  return base.filter((link) => (link.roles ? link.roles.includes(role) : true));
+  return base.filter(
+    (link) =>
+      (link.roles ? link.roles.includes(role) : true) &&
+      (link.requiresDoctorProfile ? attends : true),
+  );
 }

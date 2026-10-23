@@ -5,7 +5,7 @@ import type {
 } from "@/application/queries/clinic/get-clinic-metrics.query";
 import { addDays, startOfDay, today } from "@/domain/services/clinic-time";
 import { getClient } from "../../transaction-context";
-import { countedDoctorProfileWhere } from "../doctor-profile/counted-doctor-profile";
+import { liveDoctorProfileWhere } from "../doctor-profile/live-doctor-profile";
 
 export class GetClinicMetricsQuery implements IGetClinicMetricsQuery {
   async execute(dto: GetClinicMetricsDto): Promise<ClinicMetrics> {
@@ -20,15 +20,15 @@ export class GetClinicMetricsQuery implements IGetClinicMetricsQuery {
     const [appointments, doctors, memberships] = await Promise.all([
       client.appointment.count({
         where: {
-          doctorProfile: {
-            clinicId: dto.resourceId,
-            ...(dto.role === "DOCTOR" && { userId: dto.userId }),
-          },
+          clinicId: dto.resourceId,
+          ...(dto.role === "DOCTOR" && {
+            doctorProfile: { membership: { userId: dto.userId } },
+          }),
           scheduledAt: { gte: startOfToday, lt: startOfTomorrow },
         },
       }),
       client.doctorProfile.count({
-        where: countedDoctorProfileWhere(dto.resourceId),
+        where: liveDoctorProfileWhere({ clinicId: dto.resourceId }),
       }),
       client.userResourceMembership.count({
         where: { resourceId: dto.resourceId, deletedAt: null },

@@ -93,8 +93,7 @@ export async function addPortalDoctor(
   const prisma = await getTestPrisma();
   const profile = await prisma.doctorProfile.create({
     data: {
-      userId: member.userId,
-      clinicId: options.clinicId,
+      membershipId: member.membershipId,
       specialties: { connect: [{ id: options.specialtyId }] },
     },
   });

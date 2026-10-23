@@ -9,7 +9,7 @@ export interface MyProfileClinic {
 
 export interface MyProfileEditableClinic extends MyProfileClinic {
   organizationId: string;
-  isClinicDoctor: boolean;
+  doctorProfileId: string;
   hasSchedule: boolean;
 }
 

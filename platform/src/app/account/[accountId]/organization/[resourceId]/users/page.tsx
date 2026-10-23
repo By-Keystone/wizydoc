@@ -3,7 +3,9 @@ import { Users } from "lucide-react";
 import { UsersTable } from "@/components/clinic/users-table";
 import { OrganizationUsersTopHeader } from "@/components/organization/users-top-header";
 import { userMembershipsApi } from "@/lib/api/memberships";
+import { clinicApi } from "@/lib/api/clinic";
 import { organizationsApi } from "@/lib/api/organizations";
+import { specialtyApi } from "@/lib/api/specialty";
 import { getMe } from "@/lib/auth/me";
 
 interface Props {
@@ -13,10 +15,12 @@ interface Props {
 export default async function OrganizationUsersPage({ params }: Props) {
   const { accountId, resourceId } = await params;
 
-  const [users, me, membership] = await Promise.all([
+  const [users, me, membership, clinics, specialties] = await Promise.all([
     organizationsApi.getOrganizationUsers(resourceId),
     getMe(),
     userMembershipsApi.getMembershipForResource(resourceId),
+    clinicApi.getOrganizationClinics(resourceId),
+    specialtyApi.getOrganizationSpecialties(resourceId),
   ]);
 
   const isOnlyCurrentUser = users.length === 1 && users[0].email === me?.email;
@@ -26,6 +30,9 @@ export default async function OrganizationUsersPage({ params }: Props) {
       <OrganizationUsersTopHeader
         organizationId={resourceId}
         organizationName={membership.resourceName}
+        clinics={clinics.map(({ id, name }) => ({ id, name }))}
+        specialties={specialties}
+        currentUserEmail={me?.email}
       />
       <UsersTable
         users={users}
@@ -42,8 +49,9 @@ export default async function OrganizationUsersPage({ params }: Props) {
               Aún no has invitado a nadie a la organización
             </h2>
             <p className="mx-auto mt-1 max-w-md text-sm text-brand-gray">
-              Invita aquí a quien deba trabajar en todas las sedes. Para sumar a
-              alguien a una sola sede —por ejemplo, a un médico—, hazlo desde{" "}
+              Invita aquí a quien trabaje en todas las sedes, o asigna a cada
+              médico la sede donde atiende. Los médicos aparecen en los usuarios
+              de su sede, en{" "}
               <Link
                 href={`/account/${accountId}/organization/${resourceId}/clinics`}
                 className="font-medium text-brand-teal hover:text-brand-teal-dark"

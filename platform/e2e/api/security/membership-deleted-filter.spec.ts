@@ -352,7 +352,7 @@ test.describe("Booking público", () => {
     });
     const prisma = await getTestPrisma();
     const profile = await prisma.doctorProfile.findFirst({
-      where: { userId: invitation.userId },
+      where: { membership: { userId: invitation.userId } },
     });
     if (!profile) throw new Error("La invitación no creó el perfil de médico");
     return {
@@ -378,8 +378,7 @@ test.describe("Booking público", () => {
     const prisma = await getTestPrisma();
     const kept = await prisma.doctorProfile.create({
       data: {
-        userId: keptMember.userId,
-        clinicId: workspace.clinicId,
+        membershipId: keptMember.membershipId,
         specialties: { connect: [{ id: specialtyId }] },
       },
     });

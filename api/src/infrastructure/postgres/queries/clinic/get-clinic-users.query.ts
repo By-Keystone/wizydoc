@@ -35,8 +35,7 @@ export class GetClinicUsersQuery {
           ON urm.resource_id = ${resourceId}
         INNER JOIN public.user u ON u.id = urm.user_id
         LEFT JOIN doctor_profile dp
-          ON dp.user_id = u.id
-          AND dp.resource_id = c.resource_id
+          ON dp.membership_id = urm.id
           AND urm.role = 'DOCTOR'
         WHERE c.resource_id = ${resourceId}
           AND urm.deleted_at IS NULL

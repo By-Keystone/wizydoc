@@ -1,8 +1,8 @@
 import { doFetchJson } from "../fetch";
 import type {
   ClinicAppointment,
+  ClinicMember,
   ClinicMetrics,
-  ClinicUser,
   ClinicWithUser,
 } from "./types";
 
@@ -18,7 +18,7 @@ export const clinicApi = {
       method: "GET",
       next: { tags: [tags.organizationClinics(organizationId)] },
     }),
-  getClinicUsers: (clinicId: string): Promise<ClinicUser[]> =>
+  getClinicUsers: (clinicId: string): Promise<ClinicMember[]> =>
     doFetchJson(`/clinic/${clinicId}/users`, {
       method: "GET",
       next: { tags: [tags.clinicUsers(clinicId)] },

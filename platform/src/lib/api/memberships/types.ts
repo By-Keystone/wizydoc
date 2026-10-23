@@ -19,6 +19,7 @@ export interface ClinicMembership {
   };
   role: MembershipRole;
   accessVia: "DIRECT" | "INHERITED_FROM_ORG";
+  doctorProfileId: string | null;
 }
 
 export type UserMembership = OrganizationMembership | ClinicMembership;

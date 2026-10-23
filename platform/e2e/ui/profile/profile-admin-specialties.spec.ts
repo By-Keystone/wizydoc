@@ -29,7 +29,7 @@ const SAVED = "Guardamos tus especialidades.";
 const NO_SCHEDULE =
   "Sin horarios en esta sede, todavía no apareces en el link de reserva.";
 const FORBIDDEN = "Solo un administrador puede cambiar especialidades.";
-const OTHER_CLINICS = "Otras sedes que administras";
+const OTHER_CLINICS = "Otras sedes donde atiendes";
 
 const section = (page: Page) =>
   page.getByRole("region", { name: "Dónde atiendes", exact: true });
@@ -72,21 +72,25 @@ async function orgAdminOf(world: ProfileWorld, label: string) {
   });
 }
 
-async function softDeleteMemberships(userId: string) {
+async function softDeleteOrganizationMembership(
+  userId: string,
+  organizationId: string,
+) {
   const prisma = await getTestPrisma();
   await prisma.userResourceMembership.updateMany({
-    where: { userId },
+    where: { userId, resourceId: organizationId },
     data: { deletedAt: new Date() },
   });
 }
 
 async function storedSpecialtyIds(userId: string, clinicId: string) {
   const prisma = await getTestPrisma();
-  const profile = await prisma.doctorProfile.findUnique({
-    where: { userId_clinicId: { userId, clinicId } },
+  const profile = await prisma.doctorProfile.findFirst({
+    where: { membership: { userId, resourceId: clinicId } },
     select: { specialties: { select: { id: true } } },
   });
-  return profile?.specialties.map((s: { id: string }) => s.id).sort() ?? null;
+  const specialties = profile?.specialties as { id: string }[] | undefined;
+  return specialties?.map((s) => s.id).sort() ?? null;
 }
 
 async function slowServerActions(page: Page) {
@@ -191,6 +195,7 @@ for (const viewport of VIEWPORTS) {
           const label = `flow-${actor.key}-${workspace.key}-${viewport.key}`;
           const world = await createProfileWorld(label);
           const user = await actor.of(world, label);
+          await addDoctorProfile(user.userId, world.clinicId, []);
           const searchable = uniqueName("Neuro");
           const searchableId = await createSpecialty(
             world.admin,
@@ -204,7 +209,7 @@ for (const viewport of VIEWPORTS) {
           await expect(section(page)).toBeVisible();
           await expect(
             section(page).getByText(
-              "Elige las especialidades que atiendes en cada sede que administras.",
+              "Elige las especialidades que atiendes en cada sede.",
               { exact: true },
             ),
           ).toBeVisible();
@@ -329,6 +334,7 @@ test("CA-56: con la organización sin especialidades, «Crear» la crea, la elig
 }) => {
   const world = await createBareWorld("create");
   const user = bareOwner(world);
+  await addDoctorProfile(user.userId, world.clinicId, []);
   const created = uniqueName("Pediatría");
 
   await loginAndOpenProfile(page, user, {
@@ -374,7 +380,8 @@ test("CA-57: el dueño sin membership no ve «Crear» y, sin especialidades, lee
 }) => {
   const world = await createBareWorld("owner-nocreate");
   const user = bareOwner(world);
-  await softDeleteMemberships(user.userId);
+  await addDoctorProfile(user.userId, world.clinicId, []);
+  await softDeleteOrganizationMembership(user.userId, world.organizationId);
 
   await loginAndOpenProfile(page, user);
   await assignButton(page, world.clinicName).click();
@@ -394,7 +401,8 @@ test("CA-57: el dueño sin membership no ve «Crear» con especialidades y puede
 }) => {
   const world = await createProfileWorld("owner-nomember");
   const user = adminAsProfileUser(world);
-  await softDeleteMemberships(user.userId);
+  await addDoctorProfile(user.userId, world.clinicId, []);
+  await softDeleteOrganizationMembership(user.userId, world.organizationId);
 
   await loginAndOpenProfile(page, user);
   await assignButton(page, world.clinicName).click();
@@ -425,12 +433,15 @@ test("CA-58: «Cancelar» descarta lo editado sin enviar nada y devuelve el foco
   const world = await createProfileWorld("cancel");
   const user = await orgAdminOf(world, "cancel");
   const second = uniqueName("Sede-segunda");
-  await createClinicResourceViaPrisma(world.admin, world.organizationId, {
-    name: second,
-  });
+  const secondClinicId = await createClinicResourceViaPrisma(
+    world.admin,
+    world.organizationId,
+    { name: second },
+  );
   const extra = uniqueName("Extra");
   await createSpecialty(world.admin, world.organizationId, extra);
   await addDoctorProfile(user.userId, world.clinicId, [world.specialtyId]);
+  await addDoctorProfile(user.userId, secondClinicId, []);
   const calls = trackServerActions(page);
 
   await loginAndOpenProfile(page, user, {
@@ -489,7 +500,7 @@ test("CA-59: quitar todos los chips y guardar deja la sede otra vez como fila", 
   expect(await storedSpecialtyIds(user.userId, world.clinicId)).toEqual([]);
 });
 
-test("CA-60: con tres sedes, el bloque va primero y las dos filas, bajo «Otras sedes que administras»", async ({
+test("CA-60: con tres sedes, el bloque va primero y las dos filas, bajo «Otras sedes donde atiendes»", async ({
   page,
 }) => {
   const world = await createProfileWorld("three");
@@ -497,9 +508,12 @@ test("CA-60: con tres sedes, el bloque va primero y las dos filas, bajo «Otras 
   const rowA = uniqueName("Sede-fila-a");
   const rowB = uniqueName("Sede-fila-b");
   for (const name of [rowA, rowB]) {
-    await createClinicResourceViaPrisma(world.admin, world.organizationId, {
-      name,
-    });
+    const rowClinicId = await createClinicResourceViaPrisma(
+      world.admin,
+      world.organizationId,
+      { name },
+    );
+    await addDoctorProfile(user.userId, rowClinicId, []);
   }
   await addDoctorProfile(user.userId, world.clinicId, [world.specialtyId]);
 
@@ -514,7 +528,7 @@ test("CA-60: con tres sedes, el bloque va primero y las dos filas, bajo «Otras 
       buttons: Array.from(element.querySelectorAll("button")).map((button) =>
         button.getAttribute("aria-label"),
       ),
-      headingAt: text.indexOf("Otras sedes que administras"),
+      headingAt: text.indexOf("Otras sedes donde atiendes"),
       blockAt: text.indexOf("Editar"),
     };
   });
@@ -531,7 +545,7 @@ test("CA-60: con tres sedes, el bloque va primero y las dos filas, bajo «Otras 
   const placement = await section(page).evaluate((element) => {
     const text = element.textContent ?? "";
     return {
-      heading: text.indexOf("Otras sedes que administras"),
+      heading: text.indexOf("Otras sedes donde atiendes"),
       editor: text.indexOf("Guardar especialidades"),
     };
   });
@@ -539,11 +553,17 @@ test("CA-60: con tres sedes, el bloque va primero y las dos filas, bajo «Otras 
   await cancelButton(page).click();
   await expect(assignButton(page, rowA)).toBeFocused();
 
+  const availabilityLink = page.getByRole("link", {
+    name: "Mi disponibilidad en esta sede →",
+  });
   await editButton(page, world.clinicName).focus();
+  await page.keyboard.press("Tab");
+  await expect(availabilityLink.first()).toBeFocused();
   await page.keyboard.press("Tab");
   await expect(
     page.getByRole("button", { name: /^Asignar especialidades en / }).first(),
   ).toBeFocused();
+  await page.keyboard.press("Tab");
   await page.keyboard.press("Tab");
   await expect(
     page.getByRole("button", { name: /^Asignar especialidades en / }).last(),
@@ -555,6 +575,7 @@ test("CA-61: si el api falla, el toast muestra su mensaje y el bloque sigue en e
 }) => {
   const world = await createProfileWorld("api-fail");
   const user = adminAsProfileUser(world);
+  await addDoctorProfile(user.userId, world.clinicId, []);
   const doomed = uniqueName("Borrada");
   const doomedId = await createSpecialty(
     world.admin,
@@ -584,6 +605,7 @@ test("CA-61: con la sesión vencida avisa que expiró y lleva a /login", async (
 }) => {
   const world = await createProfileWorld("expired");
   const user = adminAsProfileUser(world);
+  await addDoctorProfile(user.userId, world.clinicId, []);
 
   await loginAndOpenProfile(page, user);
   await assignButton(page, world.clinicName).click();
@@ -607,6 +629,7 @@ test("CA-62: si el ADMIN pierde el rol con la página abierta, guardar avisa y l
 }) => {
   const world = await createProfileWorld("lost-role");
   const user = await orgAdminOf(world, "lost-role");
+  await addDoctorProfile(user.userId, world.clinicId, []);
 
   await loginAndOpenProfile(page, user, {
     kind: "organization",
@@ -617,14 +640,14 @@ test("CA-62: si el ADMIN pierde el rol con la página abierta, guardar avisa y l
   await section(page)
     .getByRole("button", { name: world.specialtyName, exact: true })
     .click();
-  await softDeleteMemberships(user.userId);
+  await softDeleteOrganizationMembership(user.userId, world.organizationId);
 
   await saveButton(page).click();
 
   await expect(toast(page, FORBIDDEN)).toBeVisible();
   await expect(searchField(page, world.clinicName)).toHaveCount(0);
   await expect(assignButton(page, world.clinicName)).toBeVisible();
-  expect(await storedSpecialtyIds(user.userId, world.clinicId)).toBeNull();
+  expect(await storedSpecialtyIds(user.userId, world.clinicId)).toEqual([]);
 });
 
 test("CA-63: el DOCTOR ve sus sedes en solo lectura con el enlace a su disponibilidad", async ({
@@ -673,7 +696,7 @@ test("CA-63: la recepción no ve «Dónde atiendes»", async ({ page }) => {
   await expect(section(page)).toHaveCount(0);
 });
 
-test("CA-64: el ADMIN sin perfil ve «Tratamiento», lo guarda y ve la vista previa; el enlace de disponibilidad sale una vez por cada sede donde también es DOCTOR, también en las filas", async ({
+test("CA-64: el ADMIN que atiende ve «Tratamiento», lo guarda y ve la vista previa; el enlace de disponibilidad sale una vez por cada sede donde atiende, también en las filas", async ({
   page,
 }) => {
   const world = await createProfileWorld("treatment");
@@ -724,7 +747,7 @@ test("CA-64: el ADMIN sin perfil ve «Tratamiento», lo guarda y ve la vista pre
     section(page).getByRole("link", {
       name: "Mi disponibilidad en esta sede →",
     }),
-  ).toHaveCount(2);
+  ).toHaveCount(3);
   await expect(
     section(page).getByText(world.clinicName, { exact: true }),
   ).toHaveCount(1);
@@ -749,25 +772,29 @@ test("CA-64: el ADMIN sin perfil ve «Tratamiento», lo guarda y ve la vista pre
   ).toBeVisible();
 });
 
-test("CA-64: el ADMIN sin ninguna sede con perfil también guarda el tratamiento", async ({
+test("CA-64: el ADMIN que no atiende no ve «Tratamiento» y lee cómo asignarse desde Usuarios", async ({
   page,
 }) => {
   const world = await createProfileWorld("treatment-bare");
   const user = await orgAdminOf(world, "treatment-bare");
 
   await loginAndOpenProfile(page, user);
-  const treatment = personal(page).getByLabel("Tratamiento", { exact: true });
-  await expect(treatment).toBeVisible();
-  await personal(page)
-    .getByRole("button", { name: "Editar", exact: true })
-    .click();
-  await treatment.selectOption("DR");
-  await personal(page)
-    .getByRole("button", { name: "Guardar cambios", exact: true })
-    .click();
 
-  await expect(toast(page, "Guardamos tus datos.")).toBeVisible();
-  expect((await readStoredUser(user.userId)).treatment).toBe("DR");
+  await expect(
+    personal(page).getByLabel("Tratamiento", { exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    section(page).getByText(
+      "Todavía no atiendes en ninguna sede. Para recibir citas, asígnate como médico desde Usuarios.",
+      { exact: true },
+    ),
+  ).toBeVisible();
+  await expect(
+    section(page).getByRole("link", { name: "Ir a Usuarios", exact: true }),
+  ).toHaveAttribute(
+    "href",
+    `/account/${user.accountId}/organization/${world.organizationId}/users`,
+  );
 });
 
 test.describe("a 375 px", () => {
@@ -789,9 +816,12 @@ test.describe("a 375 px", () => {
       );
     }
     for (const name of [uniqueName("Sede-b"), uniqueName("Sede-c")]) {
-      await createClinicResourceViaPrisma(world.admin, world.organizationId, {
-        name,
-      });
+      const extraClinicId = await createClinicResourceViaPrisma(
+        world.admin,
+        world.organizationId,
+        { name },
+      );
+      await addDoctorProfile(user.userId, extraClinicId, []);
     }
     await addDoctorProfile(user.userId, world.clinicId, ids);
 
@@ -823,6 +853,7 @@ test("Escape cierra la lista de sugerencias sin cancelar la edición", async ({
 }) => {
   const world = await createProfileWorld("escape");
   const user = adminAsProfileUser(world);
+  await addDoctorProfile(user.userId, world.clinicId, []);
 
   await loginAndOpenProfile(page, user);
   await assignButton(page, world.clinicName).click();
