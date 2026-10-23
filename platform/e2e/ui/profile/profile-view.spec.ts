@@ -187,7 +187,7 @@ test("CA-48: el médico ve «Tratamiento», su ayuda, la frase para pacientes y 
   ).toBeVisible();
 });
 
-test("CA-49: un USER y un ADMIN sin perfil de médico no ven nada del médico", async ({
+test("CA-49: un USER no ve nada del médico (el ADMIN de la organización sí: ver profile-admin-specialties.spec.ts)", async ({
   page,
 }) => {
   const world = await createProfileWorld("view-nodoctor");
@@ -195,7 +195,7 @@ test("CA-49: un USER y un ADMIN sin perfil de médico no ven nada del médico", 
     label: "view-nodoctor",
   });
 
-  for (const user of [receptionist, adminAsProfileUser(world)]) {
+  for (const user of [receptionist]) {
     await loginAndOpenProfile(page, user);
 
     await expect(region(page, "Datos personales")).toBeVisible();

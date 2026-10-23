@@ -38,7 +38,12 @@ export function MyProfile({ profile, accountId, backHref }: Props) {
       </div>
 
       <PersonalDataCard profile={profile} />
-      <WhereYouWorkCard clinics={profile.clinics} accountId={accountId} />
+      <WhereYouWorkCard
+        clinics={profile.clinics}
+        editableClinics={profile.editableClinics}
+        organizations={profile.organizations}
+        accountId={accountId}
+      />
       <PasswordCard />
     </div>
   );
