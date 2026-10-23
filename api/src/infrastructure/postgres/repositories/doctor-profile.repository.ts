@@ -5,7 +5,9 @@ import type {
 import { Prisma } from "@prisma/client";
 import { getClient } from "../transaction-context";
 
-function sortedByName(specialties: SpecialtySummary[]): SpecialtySummary[] {
+export function sortedByName(
+  specialties: SpecialtySummary[],
+): SpecialtySummary[] {
   return specialties
     .map(({ id, name }) => ({ id, name }))
     .sort((a, b) => a.name.localeCompare(b.name, "es"));
@@ -69,5 +71,35 @@ export class DoctorProfileRepository implements IDoctorProfileRepository {
       }
       throw error;
     }
+  }
+
+  findClinicDoctor(
+    doctorProfileId: string,
+    clinicId: string,
+  ): Promise<{ id: string; userId: string } | null> {
+    return getClient().doctorProfile.findFirst({
+      where: {
+        id: doctorProfileId,
+        clinicId,
+        user: {
+          resourceMemberships: {
+            some: { resourceId: clinicId, role: "DOCTOR", deletedAt: null },
+          },
+        },
+      },
+      select: { id: true, userId: true },
+    });
+  }
+
+  async setSpecialties(
+    doctorProfileId: string,
+    specialtyIds: string[],
+  ): Promise<SpecialtySummary[]> {
+    const updated = await getClient().doctorProfile.update({
+      where: { id: doctorProfileId },
+      data: { specialties: { set: specialtyIds.map((id) => ({ id })) } },
+      select: { specialties: { select: { id: true, name: true } } },
+    });
+    return sortedByName(updated.specialties);
   }
 }
