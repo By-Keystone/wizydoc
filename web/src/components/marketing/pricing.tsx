@@ -50,7 +50,7 @@ const plans = [
     period: "/ mes",
     description:
       "Para que tus pacientes se gestionen solos y su información se quede contigo.",
-    badge: "Recomendado",
+    badge: "El más popular",
     highlight: true,
     features: [
       "1 sede",
@@ -180,7 +180,7 @@ export function Pricing() {
               key={plan.name}
               className={
                 plan.highlight
-                  ? "relative border-brand-teal shadow-xl ring-2 ring-brand-teal"
+                  ? "relative border-brand-coral shadow-xl ring-2 ring-brand-coral"
                   : ""
               }
             >
@@ -188,7 +188,7 @@ export function Pricing() {
                 <div className="absolute -top-3.5 left-1/2 z-10 -translate-x-1/2">
                   <Badge
                     variant="blue"
-                    className="bg-brand-teal px-3 py-1 text-xs text-white shadow-sm"
+                    className="whitespace-nowrap bg-brand-coral px-3 py-1 text-xs text-white shadow-sm"
                   >
                     {plan.badge}
                   </Badge>
@@ -252,8 +252,8 @@ export function Pricing() {
             Compara los planes
           </h3>
 
-          <div className="mt-8 overflow-x-auto">
-            <table className="w-full min-w-[720px] border-collapse text-left">
+          <div className="relative mx-auto mt-8 max-w-4xl overflow-x-auto">
+            <table className="w-full min-w-[560px] border-collapse text-left">
               <caption className="sr-only">
                 Comparación de características entre los planes Gratis,
                 Consultorio, Clínica y Red
@@ -262,7 +262,7 @@ export function Pricing() {
                 <tr className="border-b border-gray-200">
                   <th
                     scope="col"
-                    className="py-4 pr-4 text-sm font-semibold text-brand-gray"
+                    className="py-3 pr-3 text-sm font-semibold text-brand-gray"
                   >
                     Características
                   </th>
@@ -270,8 +270,8 @@ export function Pricing() {
                     <th
                       key={plan.name}
                       scope="col"
-                      className={`px-4 py-4 text-center text-sm font-semibold ${
-                        plan.highlight ? "text-brand-teal" : "text-brand-ink"
+                      className={`px-3 py-3 text-center text-sm font-semibold ${
+                        plan.highlight ? "text-brand-coral" : "text-brand-ink"
                       }`}
                     >
                       {plan.name}
@@ -284,15 +284,15 @@ export function Pricing() {
                   <tr key={row.label} className="border-b border-gray-100">
                     <th
                       scope="row"
-                      className="py-4 pr-4 text-sm font-normal text-brand-gray"
+                      className="py-3 pr-3 text-sm font-normal text-brand-gray"
                     >
                       {row.label}
                     </th>
                     {row.values.map((value, index) => (
                       <td
                         key={plans[index].name}
-                        className={`px-4 py-4 text-center ${
-                          plans[index].highlight ? "bg-brand-teal/5" : ""
+                        className={`px-3 py-3 text-center ${
+                          plans[index].highlight ? "bg-brand-coral/5" : ""
                         }`}
                       >
                         <ComparisonCell value={value} />
