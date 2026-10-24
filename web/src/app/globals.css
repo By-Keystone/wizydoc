@@ -26,4 +26,24 @@
   body {
     @apply bg-background text-foreground antialiased;
   }
+
+  h1,
+  h2 {
+    text-wrap: balance;
+  }
+}
+
+@layer components {
+  .dot-grid {
+    background-image: radial-gradient(
+      rgb(14 140 130 / 0.22) 1px,
+      transparent 1px
+    );
+    background-size: 22px 22px;
+    mask-image: radial-gradient(
+      ellipse 75% 65% at 50% 35%,
+      #000 35%,
+      transparent 100%
+    );
+  }
 }
