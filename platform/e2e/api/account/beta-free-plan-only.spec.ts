@@ -285,8 +285,8 @@ test.describe("Las cuentas existentes no cambian", () => {
       ),
     );
 
-    // Gratis sólo incluye 1 médico (entitlements.ts): el segundo sólo entra porque la
-    // cuenta quedó en Consultorio (3 médicos + 1 adicional sembrado arriba).
+    // Ya no hay límite de médicos en ningún plan: el segundo entra igual, y la
+    // invitación no debe tocar la suscripción que se sembró arriba.
     await inviteUserViaApi(admin, {
       email: uniqueEmail("ca15-doctor-1"),
       name: "Doctor",
