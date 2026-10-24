@@ -132,7 +132,7 @@ test("CA-10: el dueño nuevo crea su organización y una sede desde /select", as
   await expect(page.getByText("Organización creada")).toBeVisible();
   await expect(page.getByText(organizationName)).toBeVisible();
 
-  await page.getByText("Entrar").click();
+  await page.getByRole("button", { name: "Entrar" }).click();
   await expect(page).toHaveURL(
     new RegExp(`/account/${owner.accountId}/organization/[^/]+$`),
   );

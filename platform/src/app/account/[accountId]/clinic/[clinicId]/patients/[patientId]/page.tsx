@@ -43,7 +43,7 @@ export default async function PatientDetailPage({ params }: Props) {
     return (
       <div className="flex flex-col gap-4">
         {backLink}
-        <PlanFeatureNotice />
+        <PlanFeatureNotice plan="CONSULTORIO" />
       </div>
     );
   }

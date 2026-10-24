@@ -11,7 +11,13 @@ import {
   Loader2,
   XCircle,
 } from "lucide-react";
+import {
+  AppointmentSummary,
+  ChangeComparison,
+  type Moment,
+} from "@/components/booking/appointment-summary";
 import { DateTimeStep } from "@/components/booking/datetime-step";
+import { formatWhen } from "@/components/booking/format";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -24,13 +30,7 @@ import type {
   AppointmentPortal,
   CancellationReason,
 } from "@/lib/api/appointments/types";
-import {
-  AppointmentSummary,
-  ChangeComparison,
-  type Moment,
-} from "./appointment-summary";
 import { CANCELLATION_REASONS } from "./cancellation-reasons";
-import { formatWhen } from "./format";
 import { LinkUnavailable } from "./link-unavailable";
 
 type View =

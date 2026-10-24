@@ -18,8 +18,7 @@ export async function registerViaUi(
   await page.goto("/register");
 
   await page.getByLabel("Nombre").fill(params.name);
-  // Bug de accesibilidad: el label "Apellido" referencia `id="lastname"`, no el `id="lastName"` real.
-  await page.locator('input[name="lastName"]').fill(params.lastName);
+  await page.getByLabel("Apellido").fill(params.lastName);
   await page.getByLabel("Correo electrónico").fill(params.email);
   await page.getByLabel("Celular").fill(params.phone);
   await page.getByLabel("Contraseña").fill(params.password ?? E2E_PASSWORD);

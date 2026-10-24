@@ -72,7 +72,7 @@ export default function RegisterPage() {
             </div>
             <div className="flex flex-col gap-1.5">
               <label
-                htmlFor="lastname"
+                htmlFor="lastName"
                 className="text-sm font-medium text-brand-gray"
               >
                 Apellido

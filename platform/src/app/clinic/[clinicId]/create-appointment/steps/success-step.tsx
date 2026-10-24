@@ -1,24 +1,17 @@
 import { CheckCircle } from "lucide-react";
-import type { BookingPatient } from "./patient-step";
+import {
+  AppointmentSummary,
+  type SummarizedAppointment,
+} from "@/components/booking/appointment-summary";
 import { Button } from "@/components/ui/button";
 
 interface Props {
-  specialtyName: string;
-  doctorName: string;
-  date: string;
-  time: string;
-  patient: BookingPatient;
+  appointment: SummarizedAppointment;
+  patientName: string;
   onClick: () => void;
 }
 
-export function SuccessStep({
-  specialtyName,
-  doctorName,
-  date,
-  time,
-  patient,
-  onClick,
-}: Props) {
+export function SuccessStep({ appointment, patientName, onClick }: Props) {
   return (
     <div className="text-center">
       <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-green-100">
@@ -28,21 +21,17 @@ export function SuccessStep({
         ¡Cita reservada!
       </h2>
       <p className="mt-2 text-sm text-brand-gray">
-        Te esperamos, {patient.name}. Guarda los detalles de tu cita.
+        Te esperamos, {patientName}. Guarda los detalles de tu cita.
       </p>
 
-      <div className="mt-6 rounded-xl border border-gray-200 bg-brand-surface px-4 py-3 text-left text-sm text-brand-gray">
-        <p>
-          <span className="font-medium text-brand-ink">{specialtyName}</span>{" "}
-          con <span className="font-medium text-brand-ink">{doctorName}</span>
-        </p>
-        <p className="mt-0.5">
-          {date} a las {time}
-        </p>
-        <p className="mt-0.5">Teléfono: {patient.phone}</p>
+      <div className="text-left">
+        <AppointmentSummary appointment={appointment} />
       </div>
+      <p className="mt-4 text-[13px] text-brand-gray">
+        Te enviamos la confirmación a tu correo.
+      </p>
 
-      <Button onClick={onClick} variant={"coral"}>
+      <Button onClick={onClick} variant="coral" className="mt-6">
         Reserva de nuevo
       </Button>
     </div>

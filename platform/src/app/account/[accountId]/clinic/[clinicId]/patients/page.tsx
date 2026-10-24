@@ -37,7 +37,7 @@ export default async function ClinicPatientsPage({ params }: Props) {
           }
         />
       ) : (
-        <PlanFeatureNotice />
+        <PlanFeatureNotice plan="CONSULTORIO" />
       )}
     </div>
   );

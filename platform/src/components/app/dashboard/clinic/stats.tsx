@@ -22,7 +22,12 @@ export async function ClinicStats({ resourceId }: Props) {
   const metrics = await loadMetrics(resourceId);
 
   if (!metrics) {
-    return <PlanFeatureNotice className="sm:col-span-2 lg:col-span-4" />;
+    return (
+      <PlanFeatureNotice
+        plan="CLINICA"
+        className="sm:col-span-2 lg:col-span-4"
+      />
+    );
   }
 
   const { appointments, doctors, memberships } = metrics;

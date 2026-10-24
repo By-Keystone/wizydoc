@@ -21,7 +21,11 @@ export default async function PatientsPage() {
       <h1 className="mb-6 text-2xl font-bold text-brand-teal-dark">
         Pacientes
       </h1>
-      {patients ? <PatientsTable patients={patients} /> : <PlanFeatureNotice />}
+      {patients ? (
+        <PatientsTable patients={patients} />
+      ) : (
+        <PlanFeatureNotice plan="CONSULTORIO" />
+      )}
     </div>
   );
 }

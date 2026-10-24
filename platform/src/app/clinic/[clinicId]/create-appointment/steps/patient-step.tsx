@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Loader2 } from "lucide-react";
+import { formatWhen } from "@/components/booking/format";
 import { Button } from "@/components/ui/button";
 import { Field, Input, Select } from "@/components/common/form";
 import { PhoneInput } from "@/components/ui/phone-input";
@@ -86,9 +87,7 @@ export function PatientStep({
           <span className="font-medium text-brand-ink">{specialtyName}</span>{" "}
           con <span className="font-medium text-brand-ink">{doctorName}</span>
         </p>
-        <p className="mt-0.5">
-          {date} a las {time}
-        </p>
+        <p className="mt-0.5">{formatWhen(date, time)}</p>
       </div>
 
       <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4">

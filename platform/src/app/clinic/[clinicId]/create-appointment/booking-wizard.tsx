@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
+import type { ClinicLocation } from "@/lib/api/clinic/types";
 import type { ClinicDoctor } from "@/lib/api/doctors/types";
 import { createAppointmentAction } from "@/lib/actions/appointment/create-appointment.action";
 import { StepperProgress } from "./steps/stepper-progress";
@@ -19,10 +20,11 @@ interface Specialty {
 
 interface Props {
   doctors: ClinicDoctor[];
+  clinic: ClinicLocation | null;
   clinicId: string;
 }
 
-export function BookingWizard({ doctors, clinicId }: Props) {
+export function BookingWizard({ doctors, clinic, clinicId }: Props) {
   const [step, setStep] = useState(1);
   const [specialty, setSpecialty] = useState<Specialty | null>(null);
   const [doctor, setDoctor] = useState<ClinicDoctor | null>(null);
@@ -136,11 +138,16 @@ export function BookingWizard({ doctors, clinicId }: Props) {
 
           {step === 5 && specialty && doctor && dateTime && patient && (
             <SuccessStep
-              specialtyName={specialty.name}
-              doctorName={doctor.displayName}
-              date={dateTime.date}
-              time={dateTime.time}
-              patient={patient}
+              appointment={{
+                specialty: specialty.name,
+                doctorName: doctor.displayName,
+                date: dateTime.date,
+                time: dateTime.time,
+                durationMinutes: dateTime.durationMinutes,
+                clinicName: clinic?.name,
+                clinicAddress: clinic?.address,
+              }}
+              patientName={patient.name}
               onClick={reset}
             />
           )}
