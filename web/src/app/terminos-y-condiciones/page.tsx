@@ -4,8 +4,9 @@ import type { Metadata } from "next";
  * PENDIENTE ANTES DE PUBLICAR:
  * 1. Reemplazar los valores de `titular` con los datos reales del comercio.
  * 2. Revisión de un abogado peruano, sobre todo las secciones 9 (datos
- *    personales: se tratan datos de salud, que son sensibles bajo la Ley 29733)
- *    y 11 (limitación de responsabilidad).
+ *    personales: se tratan datos de salud, que son sensibles bajo la Ley 29733),
+ *    6 (cómo atiende el consultorio los derechos ARCO de sus pacientes después
+ *    de bajar a Gratis) y 11 (limitación de responsabilidad).
  */
 const titular = {
   razonSocial: "[RAZÓN SOCIAL]",
@@ -15,7 +16,7 @@ const titular = {
   telefono: "[TELÉFONO]",
 };
 
-const ultimaActualizacion = "26 de septiembre de 2026";
+const ultimaActualizacion = "24 de octubre de 2026";
 
 export const metadata: Metadata = {
   title: "Términos y condiciones",
@@ -132,45 +133,81 @@ export default function TerminosYCondicionesPage() {
 
         <Section title="5. Planes, precios y facturación">
           <p>
-            WizyDoc ofrece un plan gratuito y planes de pago. Los precios
-            vigentes son: Consultorio, S/ 79 al mes; Clínica, S/ 199 al mes; y
-            Red, con precio a medida según el alcance acordado. Los precios
-            están expresados en soles peruanos (PEN).
+            WizyDoc ofrece un plan gratuito (Gratis) y planes de pago. Los
+            precios vigentes son: Consultorio, S/ 79 al mes o S/ 790 al año;
+            Clínica, S/ 199 al mes o S/ 1,990 al año; y Red, con precio a medida
+            según el alcance acordado. Los precios están expresados en soles
+            peruanos (PEN) e incluyen IGV.
           </p>
           <p>
-            Además del precio base, aplican los siguientes cargos variables:
-            médico adicional en el plan Consultorio, S/ 25 al mes; médico
-            adicional en el plan Clínica, S/ 20 al mes; y sede adicional, S/ 40
-            al mes en ambos planes.
+            Ningún plan limita la cantidad de médicos ni de pacientes. Cada plan
+            se diferencia por la cantidad de citas que se pueden reservar al mes
+            y por la cantidad de sedes: Gratis y Consultorio incluyen una sede;
+            Clínica incluye tres sedes y permite agregar sedes adicionales por
+            S/ 40 al mes cada una. Las funciones y límites de cada plan se
+            publican en la página de precios.
+          </p>
+          <p>
+            El plan Gratis permite hasta 10 citas reservadas al mes. Cuando una
+            Cuenta llega al límite de citas de su plan, sus pacientes no podrán
+            reservar nuevas citas en línea hasta el mes siguiente o hasta que el
+            Usuario pase a un plan mayor. Las citas ya reservadas no se ven
+            afectadas.
           </p>
           <p>
             La suscripción a un plan de pago genera un{" "}
             <strong className="text-brand-ink">
-              cobro recurrente mensual automático
+              cobro recurrente por adelantado
             </strong>{" "}
-            sobre la tarjeta registrada por el Usuario, que se renueva
-            automáticamente por periodos iguales mientras el Usuario no cancele.
-            El procesamiento de pagos se realiza a través de Culqi; WizyDoc no
-            almacena los datos completos de la tarjeta.
+            sobre la tarjeta registrada por el Usuario, que este autoriza al
+            contratar el plan: se cobra al inicio de cada periodo (cada mes en
+            el pago mensual, cada año en el anual) y el plan se activa o se
+            renueva una vez confirmado el pago, por periodos iguales mientras el
+            Usuario no cancele. El procesamiento de pagos se realiza a través de
+            Culqi; WizyDoc no almacena los datos completos de la tarjeta.
           </p>
           <p>
-            Si un cobro es rechazado, WizyDoc podrá reintentarlo y, de persistir
-            el rechazo, suspender el acceso a las funciones del plan de pago
-            hasta regularizar el pago.
+            Si el cobro de un nuevo periodo es rechazado, WizyDoc podrá
+            reintentarlo y, de persistir el rechazo, suspender las funciones del
+            plan de pago hasta regularizar el pago.
+          </p>
+          <p>
+            Durante la etapa beta, el registro se realiza en el plan Gratis y
+            los planes de pago se activan a solicitud del Usuario.
           </p>
         </Section>
 
-        <Section title="6. Cancelación y vigencia">
+        <Section title="6. Cancelación, cambio de plan y vigencia">
           <p>
             La contratación no tiene periodo de permanencia mínima. El Usuario
-            puede cancelar su suscripción en cualquier momento desde la
-            plataforma o escribiendo a {titular.correo}.
+            puede dejar su plan de pago en cualquier momento escribiendo a{" "}
+            {titular.correo}. WizyDoc confirmará la solicitud por correo e
+            indicará la fecha en que surte efecto.
           </p>
           <p>
-            La cancelación surte efecto al finalizar el periodo mensual ya
-            pagado: el Usuario conserva el acceso a su plan hasta esa fecha y no
-            se le realizarán cobros posteriores. Al vencer, la Cuenta pasa al
-            plan gratuito con sus límites correspondientes.
+            La cancelación surte efecto al terminar el periodo ya pagado: hasta
+            esa fecha el Usuario conserva su plan y no se le realizarán cobros
+            posteriores. Desde esa fecha, la Cuenta pasa al plan Gratis.
+          </p>
+          <p>
+            <strong className="text-brand-ink">
+              Al pasar al plan Gratis se pierden de inmediato todas las
+              funciones del plan anterior.
+            </strong>{" "}
+            En particular: los datos de salud y el historial de citas de los
+            pacientes dejan de mostrarse, ni siquiera en modo de solo lectura;
+            no se pueden importar ni exportar datos; y los enlaces para que el
+            paciente cancele o reprograme su cita, incluso los ya enviados,
+            dejan de funcionar. Los datos básicos del paciente (nombre,
+            apellido, documento, teléfono, correo, sexo, fecha de nacimiento,
+            contacto de emergencia y aseguradora) siguen visibles y editables.
+          </p>
+          <p>
+            Esta información no se borra al cambiar de plan: se conserva y
+            vuelve a mostrarse si el Usuario contrata otra vez un plan que la
+            incluya. Como titular del banco de datos, el Usuario debe prever
+            cómo atenderá los pedidos de acceso de sus pacientes antes de pasar
+            al plan Gratis.
           </p>
         </Section>
 
