@@ -1,32 +1,32 @@
-import { Calendar, CheckCircle2, Building2, RefreshCw } from "lucide-react";
+import { Calendar, ClipboardList, RefreshCw, Smartphone } from "lucide-react";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 
 /**
  * Una sola tarjeta lleva el coral. Es la que responde a por qué alguien cambia
- * de herramienta —dejar de llamar para confirmar—; las demás son la razón por la
- * que se queda. Si el acento lo llevasen las cuatro, no acentuaría ninguna.
+ * de herramienta —dejar de coordinar citas—; las demás son la razón por la que
+ * se queda. Si el acento lo llevasen las cuatro, no acentuaría ninguna.
  */
 const features = [
   {
-    icon: CheckCircle2,
+    icon: Smartphone,
     featured: true,
-    title: "Confirmación automática",
+    title: "Tus pacientes reservan solos",
     description:
-      "Cada reserva se confirma sola y le llega al paciente al instante, con el médico, la fecha y la sede. Sin que tengas que llamar a nadie.",
+      "Eligen fecha y horario desde tu link, en el celular y en menos de un minuto. La confirmación les llega por correo al instante, sin que tengas que llamar a nadie.",
   },
   {
     icon: Calendar,
     featured: false,
-    title: "Agenda personalizada",
+    title: "Tus horarios, tus reglas",
     description:
-      "Cada médico define sus bloques de disponibilidad. Tus pacientes solo ven los turnos realmente libres, sin conflictos ni errores.",
+      "Defines tus bloques de atención por día. Tus pacientes solo ven los turnos realmente libres, sin cruces ni errores.",
   },
   {
-    icon: Building2,
+    icon: ClipboardList,
     featured: false,
-    title: "Múltiples sedes",
+    title: "La información de tus pacientes es tuya",
     description:
-      "Gestiona todas tus sedes desde un solo panel. Cada sede tiene sus propios médicos, horarios y configuración.",
+      "Cada reserva alimenta la ficha del paciente, con sus datos y su historial de citas. Es de tu consultorio, no de un directorio. Incluida desde el plan Consultorio.",
   },
   {
     icon: RefreshCw,
@@ -47,11 +47,11 @@ export function Features() {
             Funcionalidades
           </p>
           <h2 className="mt-3 text-3xl font-extrabold tracking-tight text-brand-teal-dark sm:text-4xl">
-            Todo lo que tu sede necesita
+            Tú atiendes, las citas se gestionan solas
           </h2>
           <p className="mt-4 text-lg text-brand-gray">
-            Diseñado para simplificar la operación diaria de médicos
-            independientes y sedes pequeñas y medianas.
+            Pensado para el médico independiente: solo lo necesario para dejar
+            de coordinar citas por teléfono y WhatsApp.
           </p>
         </div>
 

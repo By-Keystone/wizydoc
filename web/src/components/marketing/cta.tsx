@@ -8,11 +8,11 @@ export function CTA() {
     <section className="bg-gradient-to-br from-brand-teal-dark to-brand-teal py-24">
       <div className="mx-auto max-w-4xl px-4 text-center sm:px-6 lg:px-8">
         <h2 className="text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
-          Tu sede merece una agenda que trabaje por ti
+          Deja de coordinar citas
         </h2>
         <p className="mt-4 text-lg text-white/80">
-          Únete a las sedes que ya reducen cancelaciones y mejoran la
-          experiencia de sus pacientes con WizyDoc.
+          Tus pacientes reservan desde un link y tú solo te ocupas de
+          atenderlos.
         </p>
 
         <div className="mt-10 flex flex-wrap justify-center gap-4">
@@ -33,8 +33,7 @@ export function CTA() {
         </div>
 
         <p className="mt-5 text-sm text-white/70">
-          Sin tarjeta de crédito · Configuración en 5 minutos · Cancela cuando
-          quieras
+          Sin tarjeta de crédito · Listo en 5 minutos
         </p>
       </div>
     </section>

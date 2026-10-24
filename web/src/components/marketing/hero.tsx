@@ -18,7 +18,7 @@ export function Hero() {
           {/* Copy */}
           <div className="max-w-xl">
             <Badge variant="teal" className="mb-5">
-              Confirmación automática de cada cita
+              Deja de coordinar citas por teléfono y WhatsApp
             </Badge>
 
             <h1 className="text-4xl font-extrabold tracking-tight text-brand-teal-dark sm:text-5xl lg:text-6xl">
