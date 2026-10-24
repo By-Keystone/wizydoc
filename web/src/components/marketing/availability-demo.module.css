@@ -1,0 +1,402 @@
+/* iPhone 16 Pro: pantalla de 402 × 874 pt dentro de un marco de 426 × 898, escalado entero. */
+.device {
+  --phone-scale: 0.6;
+  position: relative;
+  width: calc(426px * var(--phone-scale));
+  height: calc(898px * var(--phone-scale));
+}
+
+@media (min-width: 640px) {
+  .device {
+    --phone-scale: 0.64;
+  }
+}
+
+.frame {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 426px;
+  height: 898px;
+  transform: scale(var(--phone-scale));
+  transform-origin: top left;
+  border-radius: 74px;
+  padding: 12px;
+  background: #1b1b1d;
+  box-shadow:
+    inset 0 0 0 2px #6e6c69,
+    inset 0 0 0 5px #2a2a2c,
+    0 40px 80px rgb(11 79 73 / 0.25);
+}
+
+.frame::before,
+.frame::after {
+  content: "";
+  position: absolute;
+  left: -3px;
+  width: 4px;
+  border-radius: 2px;
+  background: #5a5856;
+}
+
+.frame::before {
+  top: 200px;
+  height: 34px;
+}
+
+.frame::after {
+  top: 260px;
+  height: 64px;
+  box-shadow: 0 84px 0 #5a5856;
+}
+
+.screen {
+  position: relative;
+  width: 402px;
+  height: 874px;
+  overflow: hidden;
+  border-radius: 62px;
+  background: #f9fafb;
+}
+
+.island {
+  position: absolute;
+  top: 11px;
+  left: 50%;
+  z-index: 30;
+  width: 126px;
+  height: 37px;
+  transform: translateX(-50%);
+  border-radius: 20px;
+  background: #000;
+}
+
+.statusBar {
+  position: absolute;
+  inset: 0 0 auto;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 54px;
+  padding: 6px 34px 0 46px;
+  background: #fff;
+  color: #000;
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.statusIcons {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.homeIndicator {
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  z-index: 30;
+  width: 134px;
+  height: 5px;
+  transform: translateX(-50%);
+  border-radius: 3px;
+  background: #111;
+}
+
+.appBar {
+  position: absolute;
+  top: 54px;
+  right: 0;
+  left: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 56px;
+  padding: 0 20px;
+  border-bottom: 1px solid #e5e7eb;
+  background: #fff;
+}
+
+.appLogo {
+  width: auto;
+  height: 26px;
+}
+
+.avatar {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: #e3efec;
+  color: #0b4f49;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.viewport {
+  position: absolute;
+  inset: 110px 0 0;
+  overflow: hidden;
+}
+
+.page {
+  padding: 20px 17px 60px;
+  transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.pageTitle {
+  color: #0b4f49;
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 32px;
+}
+
+.pageIntro {
+  margin-top: 4px;
+  color: #5c6b6a;
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.week {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 24px;
+  padding: 24px;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.05);
+}
+
+.day {
+  padding-bottom: 16px;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.day:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.dayHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.dayName {
+  color: #5c6b6a;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.addRange {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: #0e8c82;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.noAvailability {
+  color: #5c6b6a;
+  font-size: 12px;
+}
+
+.ranges {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.range {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  animation: range-in 0.35s ease-out;
+}
+
+.isLeaving .range {
+  animation: range-out 0.3s ease-in forwards;
+}
+
+.time {
+  min-width: 84px;
+  padding: 6px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: #fff;
+  color: #1f2a2a;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+  line-height: 20px;
+  text-align: center;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
+  animation: value-in 0.35s ease-out;
+}
+
+.isFocused {
+  border-color: #0e8c82;
+  box-shadow: 0 0 0 3px rgb(14 140 130 / 0.2);
+}
+
+.separator {
+  color: #5c6b6a;
+  font-size: 14px;
+}
+
+.trash {
+  display: grid;
+  color: #5c6b6a;
+}
+
+.save {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 40px;
+  margin-top: 24px;
+  padding: 0 20px;
+  border-radius: 8px;
+  background: #0e8c82;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  transition: opacity 0.2s;
+}
+
+.isSaving {
+  opacity: 0.6;
+}
+
+.spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgb(255 255 255 / 0.4);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+.toast {
+  position: absolute;
+  right: 16px;
+  bottom: 34px;
+  left: 16px;
+  z-index: 25;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 16px;
+  border: 1px solid #bffcd9;
+  border-radius: 8px;
+  background: #ecfdf3;
+  box-shadow: 0 4px 12px rgb(0 0 0 / 0.1);
+  color: #008a2e;
+  font-size: 13px;
+  font-weight: 500;
+  opacity: 0;
+  transform: translateY(140%);
+  transition:
+    transform 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.2),
+    opacity 0.3s;
+}
+
+.isToastVisible {
+  opacity: 1;
+  transform: none;
+}
+
+/* La punta del índice está en (27, 4) del viewBox de 64: el margen la lleva al punto tocado. */
+.finger {
+  position: absolute;
+  z-index: 40;
+  width: 60px;
+  height: 60px;
+  margin: -4px 0 0 -25px;
+  filter: drop-shadow(0 8px 12px rgb(31 42 42 / 0.28));
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    left 0.55s cubic-bezier(0.4, 0, 0.2, 1),
+    top 0.55s cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 0.25s;
+}
+
+.isFingerVisible {
+  opacity: 1;
+}
+
+.fingerPress {
+  display: block;
+  transform-origin: 42% 6%;
+  animation: press 0.28s ease-out;
+}
+
+.ripple {
+  position: absolute;
+  z-index: 39;
+  width: 48px;
+  height: 48px;
+  margin: -24px 0 0 -24px;
+  border: 3px solid rgb(14 140 130 / 0.6);
+  border-radius: 50%;
+  background: rgb(14 140 130 / 0.12);
+  opacity: 0;
+  pointer-events: none;
+  animation: ripple 0.55s ease-out;
+}
+
+@keyframes range-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+
+@keyframes range-out {
+  to {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+
+@keyframes value-in {
+  from {
+    color: transparent;
+    transform: translateY(3px);
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes press {
+  50% {
+    transform: translateY(3px) scale(0.92);
+  }
+}
+
+@keyframes ripple {
+  from {
+    opacity: 1;
+    transform: scale(0.3);
+  }
+  to {
+    opacity: 0;
+    transform: scale(1.3);
+  }
+}

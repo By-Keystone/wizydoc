@@ -3,21 +3,31 @@ import { ArrowRight, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PLATFORM_URL } from "@/lib/platform-url";
+import { AvailabilityDemo } from "./availability-demo";
 
-const slots = ["09:00", "09:30", "10:30", "11:00", "11:30", "12:00"];
+const highlights = [
+  "Tus pacientes reservan en línea 24/7",
+  "Cada reserva queda confirmada al instante",
+  "Sin llamadas ni agendas en papel",
+];
 
 export function Hero() {
   return (
-    <section className="relative overflow-hidden bg-gradient-to-br from-brand-surface via-white to-brand-surface py-20 sm:py-28">
-      {/* Decorative blobs */}
-      <div className="pointer-events-none absolute -top-40 -right-40 h-96 w-96 rounded-full bg-brand-teal/10 blur-3xl" />
-      <div className="pointer-events-none absolute -bottom-40 -left-40 h-96 w-96 rounded-full bg-brand-teal-dark/10 blur-3xl" />
+    <section className="relative overflow-hidden bg-gradient-to-b from-brand-surface via-white to-white py-20 sm:py-28">
+      <div className="dot-grid pointer-events-none absolute inset-0" />
+      <div className="pointer-events-none absolute -top-32 -right-32 h-96 w-96 rounded-full bg-brand-teal/10 blur-3xl" />
 
       <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 gap-16 lg:grid-cols-2 lg:items-center">
-          {/* Copy */}
-          <div className="max-w-xl">
-            <Badge variant="teal" className="mb-5">
+          <div className="mx-auto max-w-xl text-center lg:mx-0 lg:text-left">
+            <Badge
+              variant="teal"
+              className="mb-5 gap-2 border border-brand-teal/20 bg-white/80 px-3 py-1 shadow-sm backdrop-blur"
+            >
+              <span className="relative flex h-2 w-2">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand-teal opacity-60 motion-reduce:animate-none" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-brand-teal" />
+              </span>
               Deja de coordinar citas por teléfono y WhatsApp
             </Badge>
 
@@ -35,30 +45,37 @@ export function Hero() {
               que coordines nada.
             </p>
 
-            <ul className="mt-6 flex flex-col gap-2">
-              {[
-                "Tus pacientes reservan en línea 24/7",
-                "Cada reserva queda confirmada al instante",
-                "Sin llamadas ni agendas en papel",
-              ].map((item) => (
+            <ul className="mx-auto mt-6 flex w-fit flex-col gap-2 text-left lg:mx-0">
+              {highlights.map((highlight) => (
                 <li
-                  key={item}
-                  className="flex items-center gap-2 text-sm text-brand-gray"
+                  key={highlight}
+                  className="flex items-center gap-2.5 text-sm text-brand-gray"
                 >
-                  <Check className="h-4 w-4 shrink-0 text-brand-teal" />
-                  {item}
+                  <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-brand-teal/10 text-brand-teal">
+                    <Check className="h-3 w-3" />
+                  </span>
+                  {highlight}
                 </li>
               ))}
             </ul>
 
-            <div className="mt-10 flex flex-wrap items-center gap-4">
-              <Button size="lg" asChild>
+            <div className="mt-10 flex flex-wrap items-center justify-center gap-4 lg:justify-start">
+              <Button
+                size="lg"
+                className="group rounded-xl shadow-lg shadow-brand-teal/25"
+                asChild
+              >
                 <a href={`${PLATFORM_URL}/register`}>
                   Comenzar gratis
-                  <ArrowRight className="ml-2 h-4 w-4" />
+                  <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5 motion-reduce:transition-none" />
                 </a>
               </Button>
-              <Button size="lg" variant="outline" asChild>
+              <Button
+                size="lg"
+                variant="outline"
+                className="rounded-xl"
+                asChild
+              >
                 <Link href="#how-it-works">Ver cómo funciona</Link>
               </Button>
             </div>
@@ -68,83 +85,9 @@ export function Hero() {
             </p>
           </div>
 
-          {/* App mockup */}
-          <div className="relative flex justify-center lg:justify-end">
-            {/* Aviso de confirmación */}
-            <div className="absolute -top-4 -left-4 z-10 flex items-center gap-2 rounded-xl border border-brand-teal/20 bg-brand-teal/5 px-3 py-2 shadow-lg">
-              <div className="h-2 w-2 animate-pulse rounded-full bg-brand-teal" />
-              <p className="text-xs font-medium text-brand-teal-dark">
-                Cita confirmada ✓
-              </p>
-            </div>
-
-            {/* Main card */}
-            <div className="w-full max-w-sm rounded-2xl border border-gray-200 bg-white p-6 shadow-2xl">
-              {/* Doctor header */}
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-medium text-brand-gray">
-                    Reservar cita
-                  </p>
-                  <p className="mt-0.5 font-semibold text-brand-ink">
-                    Dr. García
-                  </p>
-                  <p className="text-xs text-brand-teal">Medicina General</p>
-                </div>
-                <div className="flex h-11 w-11 items-center justify-center rounded-full bg-brand-teal/10">
-                  <span className="text-sm font-bold text-brand-teal">MG</span>
-                </div>
-              </div>
-
-              {/* Date */}
-              <div className="mt-5">
-                <p className="mb-3 text-xs font-medium text-brand-gray">
-                  Martes, 15 de abril — Horarios disponibles
-                </p>
-                <div className="grid grid-cols-3 gap-2">
-                  {slots.map((slot) => (
-                    <button
-                      type="button"
-                      key={slot}
-                      className={`rounded-lg py-2 text-xs font-semibold transition-colors ${
-                        slot === "09:30"
-                          ? "bg-brand-teal text-white"
-                          : "border border-gray-200 bg-brand-surface text-brand-ink hover:border-brand-teal/40 hover:bg-brand-teal/5"
-                      }`}
-                    >
-                      {slot}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Patient data */}
-              <div className="mt-5 rounded-xl bg-brand-surface p-3">
-                <p className="text-xs text-brand-gray">Paciente</p>
-                <p className="mt-0.5 text-sm font-medium text-brand-ink">
-                  María Rodríguez
-                </p>
-                <p className="text-xs text-brand-gray">+51 987 654 321</p>
-              </div>
-
-              {/* Confirm button */}
-              <button
-                type="button"
-                className="mt-4 w-full rounded-xl bg-brand-teal py-3 text-sm font-semibold text-white transition-colors hover:bg-brand-teal-dark"
-              >
-                Confirmar cita — 09:30
-              </button>
-
-              <p className="mt-3 text-center text-xs text-brand-gray">
-                Recibirás la confirmación de tu cita
-              </p>
-            </div>
-
-            {/* Floating stat */}
-            <div className="absolute -bottom-4 -right-4 rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-lg">
-              <p className="text-2xl font-bold text-brand-ink">24/7</p>
-              <p className="text-xs text-brand-gray">reservas sin llamadas</p>
-            </div>
+          <div className="relative flex justify-center">
+            <div className="pointer-events-none absolute top-1/3 left-1/2 h-72 w-72 -translate-x-1/2 rounded-full bg-brand-teal/20 blur-3xl" />
+            <AvailabilityDemo />
           </div>
         </div>
       </div>
