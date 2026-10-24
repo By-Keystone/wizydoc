@@ -29,6 +29,7 @@ const plans = [
     name: "Gratis",
     icon: Stethoscope,
     price: "S/ 0",
+    annualPrice: null,
     period: "para siempre",
     description: "Para el médico independiente que quiere empezar hoy.",
     badge: null,
@@ -45,6 +46,7 @@ const plans = [
     name: "Consultorio",
     icon: ClipboardList,
     price: "S/ 79",
+    annualPrice: "S/ 790",
     period: "/ mes",
     description:
       "Para que tus pacientes se gestionen solos y su información se quede contigo.",
@@ -62,6 +64,7 @@ const plans = [
     name: "Clínica",
     icon: Building2,
     price: "S/ 199",
+    annualPrice: "S/ 1,990",
     period: "/ mes",
     description: "Para clínicas con varias sedes y equipo médico.",
     badge: null,
@@ -78,6 +81,7 @@ const plans = [
     name: "Red",
     icon: Network,
     price: "A medida",
+    annualPrice: null,
     period: "",
     description: "Para redes de clínicas que necesitan escala y soporte.",
     badge: null,
@@ -98,6 +102,7 @@ const comparison: { label: string; values: [Cell, Cell, Cell, Cell] }[] = [
     label: "Precio",
     values: ["S/ 0", "S/ 79 al mes", "S/ 199 al mes", "A medida"],
   },
+  { label: "Precio anual", values: ["—", "S/ 790", "S/ 1,990", "A medida"] },
   {
     label: "Médicos",
     values: ["Sin límite", "Sin límite", "Sin límite", "Sin límite"],
@@ -203,6 +208,11 @@ export function Pricing() {
                   </span>
                   <span className="text-sm text-brand-gray">{plan.period}</span>
                 </div>
+                {plan.annualPrice && (
+                  <p className="mt-1 text-xs font-medium text-brand-teal">
+                    o {plan.annualPrice} al año · 2 meses gratis
+                  </p>
+                )}
                 <p className="mt-2 text-sm text-brand-gray">
                   {plan.description}
                 </p>
