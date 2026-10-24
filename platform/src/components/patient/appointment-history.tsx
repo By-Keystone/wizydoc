@@ -2,13 +2,9 @@ import type {
   AppointmentHistoryEntry,
   PatientMetrics,
 } from "@/lib/api/patients/types";
+import { AppointmentStatusBadge } from "../common/appointment-status-badge";
 import { type Column, Table } from "../common/table";
-import {
-  formatDateTime,
-  formatShortDate,
-  STATUS_LABELS,
-  STATUS_STYLES,
-} from "./format";
+import { formatDateTime, formatShortDate } from "./format";
 
 interface Props {
   history: AppointmentHistoryEntry[];
@@ -68,13 +64,7 @@ const columns: Column<AppointmentHistoryEntry>[] = [
     key: "status",
     header: "Estado",
     align: "left",
-    cell: (row) => (
-      <span
-        className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold ${STATUS_STYLES[row.status]}`}
-      >
-        {STATUS_LABELS[row.status]}
-      </span>
-    ),
+    cell: (row) => <AppointmentStatusBadge status={row.status} />,
   },
 ];
 
@@ -83,7 +73,7 @@ export function AppointmentHistory({ history, metrics }: Props) {
     <div className="flex flex-col gap-4">
       <div className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-gray-200 bg-gray-200 sm:grid-cols-3 lg:grid-cols-6">
         <Stat value={metrics.totalAppointments} label="Citas totales" />
-        <Stat value={metrics.completedCount} label="Completadas" />
+        <Stat value={metrics.completedCount} label="Atendidas" />
         <Stat
           value={metrics.noShowCount}
           label={metrics.noShowCount === 1 ? "Inasistencia" : "Inasistencias"}
@@ -112,7 +102,7 @@ export function AppointmentHistory({ history, metrics }: Props) {
       />
 
       <p className="text-xs text-brand-gray">
-        Primera y última visita cuentan solo las citas completadas: una cita
+        Primera y última visita cuentan solo las citas atendidas: una cita
         cancelada o a la que no se asistió no es una visita.
       </p>
     </div>

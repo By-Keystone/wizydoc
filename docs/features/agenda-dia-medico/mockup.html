@@ -414,7 +414,7 @@
     { id: "loading", label: "Cargando" },
     { id: "error", label: "Error al cargar" },
   ];
-  const STATUS = { PENDING: "Pendiente", COMPLETED: "Completada", NO_SHOW: "No asistió", CANCELLED: "Cancelada" };
+  const STATUS = { PENDING: "Pendiente", COMPLETED: "Atendida", NO_SHOW: "No asistió", CANCELLED: "Cancelada" };
 
   const state = {
     view: "mobile", now: 612, scenario: "normal", showPast: false,
@@ -680,7 +680,7 @@
     const short = (d) => d.split(" ").slice(0, 2).join(" ");
     const metrics = `<div class="metrics">
       <div><b>${rows.length}</b><span>Citas totales</span></div>
-      <div><b>${done.length}</b><span>Completadas</span></div>
+      <div><b>${done.length}</b><span>Atendidas</span></div>
       <div><b class="${noShow ? "alert" : ""}">${noShow}</b><span>${noShow === 1 ? "Inasistencia" : "Inasistencias"}</span></div>
       <div><b>${done.length ? short(done[done.length - 1][0]) : "—"}</b><span>Primera visita</span></div>
       <div><b>${done.length ? short(done[0][0]) : "—"}</b><span>Última visita</span></div>
@@ -692,7 +692,7 @@
           ${rows.map((h) => `<tr><td>${h[0]}</td><td>Sede Miraflores</td><td>${docCell(h)}</td><td>${specOf(h)}</td><td><span class="st ${h[1]}">${STATUS[h[1]]}</span></td></tr>`).join("")}
         </tbody></table>`;
     const history = `${metrics}<section class="card" style="overflow:hidden">${list}</section>
-      <p class="foot-note">Primera y última visita cuentan solo las citas completadas: una cita cancelada o a la que no se asistió no es una visita.</p>`;
+      <p class="foot-note">Primera y última visita cuentan solo las citas atendidas: una cita cancelada o a la que no se asistió no es una visita.</p>`;
 
     return `<button type="button" class="back" data-act="back">${ICON.left}Mi día</button>
       <section class="card p-head">

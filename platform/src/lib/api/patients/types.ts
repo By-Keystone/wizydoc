@@ -1,3 +1,5 @@
+import type { AppointmentStatus } from "@/lib/api/appointments/types";
+
 export type Patient = {
   id: string;
   name: string;
@@ -37,13 +39,6 @@ export type PatientRecord = Patient & {
   updatedAt: string;
   updatedBy: string | null;
 };
-
-export type AppointmentStatus =
-  | "PENDING"
-  | "CONFIRMED"
-  | "CANCELLED"
-  | "COMPLETED"
-  | "NO_SHOW";
 
 export type AppointmentHistoryEntry = {
   id: string;
