@@ -11,6 +11,17 @@ import { seedFullDayAvailability } from "../../support/availability";
 
 const DOCTOR_NAME = "Ernesto";
 const DOCTOR_LAST_NAME = "Salazar";
+const SPANISH_MONTH = new Intl.DateTimeFormat("es-PE", { month: "long" });
+
+function nextMonday(): Date {
+  const today = new Date();
+  const daysUntilNextMonday = (8 - today.getDay()) % 7 || 7;
+  return new Date(
+    today.getFullYear(),
+    today.getMonth(),
+    today.getDate() + daysUntilNextMonday,
+  );
+}
 
 /**
  * docs/features/fix-invitation-set-password/plan.md — CA-5 ([e2e]): el
@@ -85,4 +96,77 @@ test("CA-5: el paciente reserva una cita de punta a punta con un médico invitad
 
   await expect(page.getByText("¡Cita reservada!")).toBeVisible();
   await expect(page.getByText(specialtyName)).toBeVisible();
+});
+
+test("el paso de éxito muestra la sede, su dirección y la fecha legible", async ({
+  page,
+}) => {
+  const admin = await createOnboardedAdmin({ emailPrefix: "admin-success" });
+  const organizationId = await createOrganizationResource(
+    admin,
+    uniqueName("ORG-success"),
+  );
+  const clinicName = uniqueName("Sede Miraflores");
+  const clinicAddress = "Av. Larco 345, Miraflores";
+  const clinicId = await createClinicResource(admin, organizationId, {
+    name: clinicName,
+    address: clinicAddress,
+  });
+  const specialtyName = uniqueName("Cardiología");
+  const specialtyId = await createSpecialty(
+    admin,
+    organizationId,
+    specialtyName,
+  );
+  const doctor = await invitePendingUser(admin, {
+    resourceId: clinicId,
+    role: "DOCTOR",
+    emailPrefix: "doctor-success",
+    name: DOCTOR_NAME,
+    lastName: DOCTOR_LAST_NAME,
+    specialtyIds: [specialtyId],
+  });
+  await seedFullDayAvailability(doctor.userId, clinicId);
+
+  await page.goto(`/clinic/${clinicId}/create-appointment`);
+  await page.getByRole("button", { name: specialtyName, exact: true }).click();
+  await page.getByRole("button", { name: "Siguiente", exact: true }).click();
+  await page
+    .getByRole("button", {
+      name: `${DOCTOR_NAME} ${DOCTOR_LAST_NAME}`,
+      exact: true,
+    })
+    .click();
+  await page.getByRole("button", { name: "Siguiente", exact: true }).click();
+
+  const monday = nextMonday();
+  await page.getByRole("button", { name: "Semana siguiente" }).click();
+  await page
+    .getByRole("button", { name: new RegExp(`^Lu\\s*${monday.getDate()}$`) })
+    .click();
+  const firstSlot = page.getByRole("button", { name: /^\d{2}:\d{2}$/ }).first();
+  const time = (await firstSlot.innerText()).trim();
+  await firstSlot.click();
+  await page.getByRole("button", { name: "Siguiente", exact: true }).click();
+
+  const readableWhen = `Lunes ${monday.getDate()} de ${SPANISH_MONTH.format(monday).toLowerCase()}, ${time}`;
+  const isoDate = /\d{4}-\d{2}-\d{2}/;
+  await expect(page.getByText(readableWhen, { exact: true })).toBeVisible();
+
+  await page.getByLabel("Nombre").fill("Camila");
+  await page.getByLabel("Apellido").fill("Rivas");
+  await page.getByLabel("N° de documento").fill("45678914");
+  await page.getByLabel("Fecha de nacimiento").fill("1990-05-20");
+  await page.getByLabel("Teléfono").fill("988888888");
+  await page.getByLabel("Email").fill(uniqueEmail("paciente-success"));
+  await page.getByRole("button", { name: "Confirmar reserva" }).click();
+
+  await expect(page.getByText("¡Cita reservada!")).toBeVisible();
+  await expect(page.getByText(readableWhen)).toBeVisible();
+  await expect(page.getByText(isoDate)).toHaveCount(0);
+  await expect(page.getByText(clinicName, { exact: true })).toBeVisible();
+  await expect(page.getByText(clinicAddress, { exact: true })).toBeVisible();
+  await expect(
+    page.getByText("Te enviamos la confirmación a tu correo."),
+  ).toBeVisible();
 });

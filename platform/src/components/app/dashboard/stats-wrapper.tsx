@@ -1,16 +1,16 @@
 import { Welcome } from "./welcome";
 import type { ReactNode } from "react";
-import { CopyButton } from "./copy-button";
 
 interface Props {
+  actions?: ReactNode;
   children: ReactNode;
 }
 
-export function StatisticsWrapper({ children }: Props) {
+export function StatisticsWrapper({ actions, children }: Props) {
   return (
     <>
       <Welcome />
-      <CopyButton />
+      {actions}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {children}
       </div>

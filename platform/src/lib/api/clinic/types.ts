@@ -5,6 +5,8 @@ export type Clinic = {
   phone: string;
 };
 
+export type ClinicLocation = Pick<Clinic, "name" | "address">;
+
 export type ClinicWithUser = Clinic & {
   createdBy: {
     name: string;

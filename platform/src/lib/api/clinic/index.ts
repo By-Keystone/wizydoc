@@ -1,6 +1,7 @@
 import { doFetchJson } from "../fetch";
 import type {
   ClinicAppointment,
+  ClinicLocation,
   ClinicMember,
   ClinicMetrics,
   ClinicWithUser,
@@ -28,6 +29,8 @@ export const clinicApi = {
       method: "GET",
       next: { revalidate: 60 },
     }),
+  getLocation: (clinicId: string): Promise<ClinicLocation> =>
+    doFetchJson(`/clinic/${clinicId}/location`),
   getTodayAppointments: (clinicId: string): Promise<ClinicAppointment[]> =>
     doFetchJson(`/clinic/${clinicId}/appointments/today`, {
       method: "GET",

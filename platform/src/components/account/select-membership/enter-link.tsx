@@ -1,6 +1,6 @@
 "use client";
 
-import type { MouseEvent, ReactNode } from "react";
+import type { ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { setResource } from "@/lib/actions/account/set-resource.action";
 
@@ -21,16 +21,15 @@ export function EnterLink({
 }: Props) {
   const router = useRouter();
 
-  const stop = async (e: MouseEvent) => {
-    e.stopPropagation();
+  const enter = async () => {
     await setResource(resourceId, resourceType);
 
     router.push(href);
   };
 
   return (
-    <div onClick={stop} className={className}>
+    <button type="button" onClick={enter} className={className}>
       {children}
-    </div>
+    </button>
   );
 }

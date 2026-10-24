@@ -4,11 +4,17 @@ import { formatWhen } from "./format";
 
 export type Moment = { date: string; time: string };
 
+export type SummarizedAppointment = Pick<
+  AppointmentPortal,
+  "date" | "time" | "durationMinutes" | "specialty" | "doctorName"
+> &
+  Partial<Pick<AppointmentPortal, "clinicName" | "clinicAddress">>;
+
 export function AppointmentSummary({
   appointment,
   muted = false,
 }: {
-  appointment: AppointmentPortal;
+  appointment: SummarizedAppointment;
   muted?: boolean;
 }) {
   return (
@@ -29,12 +35,22 @@ export function AppointmentSummary({
         <dd className="font-medium text-brand-ink">{appointment.specialty}</dd>
         <dt className="text-[13px]">Profesional</dt>
         <dd className="font-medium text-brand-ink">{appointment.doctorName}</dd>
-        <dt className="text-[13px]">Sede</dt>
-        <dd className="font-medium text-brand-ink">{appointment.clinicName}</dd>
-        <dt className="text-[13px]">Dirección</dt>
-        <dd className="font-medium text-brand-ink">
-          {appointment.clinicAddress}
-        </dd>
+        {appointment.clinicName && (
+          <>
+            <dt className="text-[13px]">Sede</dt>
+            <dd className="font-medium text-brand-ink">
+              {appointment.clinicName}
+            </dd>
+          </>
+        )}
+        {appointment.clinicAddress && (
+          <>
+            <dt className="text-[13px]">Dirección</dt>
+            <dd className="font-medium text-brand-ink">
+              {appointment.clinicAddress}
+            </dd>
+          </>
+        )}
       </dl>
     </div>
   );

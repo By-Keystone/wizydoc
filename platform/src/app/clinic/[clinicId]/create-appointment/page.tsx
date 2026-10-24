@@ -1,4 +1,6 @@
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { clinicApi } from "@/lib/api/clinic";
+import type { ClinicLocation } from "@/lib/api/clinic/types";
 import { doctorsApi } from "@/lib/api/doctors";
 import type { ClinicDoctor } from "@/lib/api/doctors/types";
 import { BookingWizard } from "./booking-wizard";
@@ -11,8 +13,12 @@ export default async function CreateAppointmentPage({ params }: Props) {
   const { clinicId } = await params;
 
   let doctors: ClinicDoctor[] = [];
+  let clinic: ClinicLocation | null = null;
   try {
-    doctors = await doctorsApi.getDoctorsByResourceId(clinicId);
+    [doctors, clinic] = await Promise.all([
+      doctorsApi.getDoctorsByResourceId(clinicId),
+      clinicApi.getLocation(clinicId).catch(() => null),
+    ]);
   } catch (error) {
     console.error("[create-appointment] error fetching doctors:", error);
   }
@@ -37,5 +43,7 @@ export default async function CreateAppointmentPage({ params }: Props) {
     );
   }
 
-  return <BookingWizard doctors={doctors} clinicId={clinicId} />;
+  return (
+    <BookingWizard doctors={doctors} clinic={clinic} clinicId={clinicId} />
+  );
 }

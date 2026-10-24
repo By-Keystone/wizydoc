@@ -1,5 +1,6 @@
 import { ClinicStats } from "@/components/app/dashboard/clinic/stats";
 import { TodayAppointments } from "@/components/app/dashboard/clinic/today-appointments";
+import { CopyButton } from "@/components/app/dashboard/copy-button";
 import { StatisticsWrapper } from "@/components/app/dashboard/stats-wrapper";
 
 interface Props {
@@ -11,7 +12,7 @@ export default async function ClinicDashboardPage({ params }: Props) {
 
   return (
     <div>
-      <StatisticsWrapper>
+      <StatisticsWrapper actions={<CopyButton clinicId={clinicId} />}>
         <ClinicStats resourceId={clinicId} />
       </StatisticsWrapper>
 

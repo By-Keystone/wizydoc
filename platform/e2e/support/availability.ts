@@ -21,6 +21,7 @@ export interface ClinicDoctor {
   email: string;
   accountId: string;
   clinicId: string;
+  clinicName: string;
   doctorProfileId: string;
 }
 
@@ -43,8 +44,9 @@ export async function createClinicDoctor(label: string): Promise<ClinicDoctor> {
     admin,
     uniqueName(`ORG-${label}`),
   );
+  const clinicName = uniqueName(`Sede-${label}`);
   const clinicId = await createClinicResource(admin, organizationId, {
-    name: uniqueName(`Sede-${label}`),
+    name: clinicName,
   });
   const member = await createMemberWithRole({
     accountId: admin.accountId,
@@ -62,6 +64,7 @@ export async function createClinicDoctor(label: string): Promise<ClinicDoctor> {
     email: member.email,
     accountId: admin.accountId,
     clinicId,
+    clinicName,
     doctorProfileId: profile.id,
   };
 }
