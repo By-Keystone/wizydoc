@@ -41,10 +41,10 @@ export function Navbar() {
 
           {/* Desktop CTAs */}
           <div className="hidden md:flex items-center gap-3">
-            <Button variant="ghost" asChild>
+            <Button variant="ghost" className="rounded-xl" asChild>
               <a href={`${PLATFORM_URL}/login`}>Iniciar sesión</a>
             </Button>
-            <Button asChild>
+            <Button className="rounded-xl" asChild>
               <a href={`${PLATFORM_URL}/register`}>Comenzar gratis</a>
             </Button>
           </div>
@@ -74,10 +74,10 @@ export function Navbar() {
             </Link>
           ))}
           <div className="flex flex-col gap-2 pt-2 border-t border-gray-100">
-            <Button variant="outline" asChild className="w-full">
+            <Button variant="outline" asChild className="w-full rounded-xl">
               <a href={`${PLATFORM_URL}/login`}>Iniciar sesión</a>
             </Button>
-            <Button asChild className="w-full">
+            <Button asChild className="w-full rounded-xl">
               <a href={`${PLATFORM_URL}/register`}>Comenzar gratis</a>
             </Button>
           </div>

@@ -16,6 +16,7 @@ import {
   CardFooter,
 } from "@/components/ui/card";
 import { PLATFORM_URL } from "@/lib/platform-url";
+import { cn } from "@/lib/utils";
 
 // En la beta toda cuenta empieza en Gratis y los planes de pago se asignan a
 // pedido: todos los botones llevan al registro.
@@ -154,7 +155,10 @@ function ComparisonCell({ value }: { value: Cell }) {
 
 export function Pricing() {
   return (
-    <section id="pricing" className="bg-white py-24">
+    <section
+      id="pricing"
+      className="bg-gradient-to-b from-white to-brand-surface/60 py-24"
+    >
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mx-auto max-w-2xl text-center">
@@ -178,11 +182,11 @@ export function Pricing() {
           {plans.map(({ icon: Icon, ...plan }) => (
             <Card
               key={plan.name}
-              className={
-                plan.highlight
-                  ? "relative border-brand-coral shadow-xl ring-2 ring-brand-coral"
-                  : ""
-              }
+              className={cn(
+                "lift rounded-3xl bg-white",
+                plan.highlight &&
+                  "relative border-brand-coral shadow-[0_20px_44px_-20px_rgba(255,111,89,.55)] ring-2 ring-brand-coral",
+              )}
             >
               {plan.badge && (
                 <div className="absolute -top-3.5 left-1/2 z-10 -translate-x-1/2">
@@ -203,7 +207,7 @@ export function Pricing() {
                   {plan.name}
                 </p>
                 <div className="mt-2 flex items-baseline gap-1">
-                  <span className="text-4xl font-extrabold text-brand-ink">
+                  <span className="text-4xl font-extrabold text-brand-ink tabular-nums">
                     {plan.price}
                   </span>
                   <span className="text-sm text-brand-gray">{plan.period}</span>
@@ -236,7 +240,7 @@ export function Pricing() {
                 <Button
                   asChild
                   variant={plan.highlight ? "default" : "outline"}
-                  className="w-full"
+                  className="w-full rounded-xl"
                   size="lg"
                 >
                   <a href={REGISTER_URL}>Empezar gratis</a>
@@ -252,7 +256,7 @@ export function Pricing() {
             Compara los planes
           </h3>
 
-          <div className="relative mx-auto mt-8 max-w-4xl overflow-x-auto">
+          <div className="relative mx-auto mt-8 max-w-4xl overflow-x-auto rounded-2xl border border-gray-200 bg-white shadow-sm">
             <table className="w-full min-w-[560px] border-collapse text-left">
               <caption className="sr-only">
                 Comparación de características entre los planes Gratis,
@@ -262,7 +266,7 @@ export function Pricing() {
                 <tr className="border-b border-gray-200">
                   <th
                     scope="col"
-                    className="py-3 pr-3 text-sm font-semibold text-brand-gray"
+                    className="py-3 pr-3 pl-5 text-sm font-semibold text-brand-gray"
                   >
                     Características
                   </th>
@@ -281,10 +285,13 @@ export function Pricing() {
               </thead>
               <tbody>
                 {comparison.map((row) => (
-                  <tr key={row.label} className="border-b border-gray-100">
+                  <tr
+                    key={row.label}
+                    className="border-b border-gray-100 last:border-0"
+                  >
                     <th
                       scope="row"
-                      className="py-3 pr-3 text-sm font-normal text-brand-gray"
+                      className="py-3 pr-3 pl-5 text-sm font-normal text-brand-gray"
                     >
                       {row.label}
                     </th>

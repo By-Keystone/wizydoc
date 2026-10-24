@@ -1,0 +1,835 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Landing WizyDoc — actual y propuesta</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<script src="https://cdn.tailwindcss.com/3.4.16"></script>
+<script>
+  const TAILWIND_CONFIG = {
+    theme: {
+      extend: {
+        colors: {
+          brand: {
+            teal: "#0E8C82",
+            "teal-dark": "#0B4F49",
+            ink: "#1F2A2A",
+            gray: "#5C6B6A",
+            surface: "#EFF5F4",
+            coral: "#FF6F59",
+          },
+        },
+        fontFamily: { sans: ["Inter", "system-ui", "sans-serif"] },
+      },
+    },
+  };
+  tailwind.config = TAILWIND_CONFIG;
+</script>
+<style>
+  body { -webkit-font-smoothing: antialiased; }
+  .review-toolbar { position: sticky; top: 0; z-index: 100; display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; padding: 12px 16px; background: #111816; color: #fff; font-family: Inter, sans-serif; }
+  .review-toolbar strong { font-size: 14px; }
+  .review-toolbar .group { display: flex; flex-wrap: wrap; gap: 6px; }
+  .review-toolbar button { font-size: 13px; font-weight: 500; border: 1px solid #3A4543; background: transparent; color: #fff; padding: 7px 12px; border-radius: 8px; cursor: pointer; }
+  .review-toolbar button[aria-pressed="true"] { background: #fff; color: #111816; border-color: #fff; }
+  .review-note { max-width: 1200px; margin: 16px auto 0; padding: 0 16px; font-size: 14px; line-height: 1.55; color: #3A4543; font-family: Inter, sans-serif; }
+  .review-note b { color: #111816; }
+  .review-note ul { margin: 8px 0 0 18px; display: grid; gap: 4px; }
+  .review-frame { display: block; margin: 16px auto 48px; width: min(1280px, calc(100% - 32px)); border: 0; border-radius: 12px; background: #fff; box-shadow: 0 10px 40px rgba(0,0,0,.12); transition: width .25s ease; }
+  .review-frame.is-mobile { width: 390px; border-radius: 28px; }
+
+  h1, h2 { text-wrap: balance; }
+  .tabular { font-variant-numeric: tabular-nums; }
+  .dot-grid { background-image: radial-gradient(rgba(14,140,130,.22) 1px, transparent 1px); background-size: 22px 22px; -webkit-mask-image: radial-gradient(ellipse 75% 65% at 50% 35%, #000 35%, transparent 100%); mask-image: radial-gradient(ellipse 75% 65% at 50% 35%, #000 35%, transparent 100%); }
+  .dot-grid-light { background-image: radial-gradient(rgba(255,255,255,.2) 1px, transparent 1px); background-size: 22px 22px; -webkit-mask-image: radial-gradient(ellipse 80% 75% at 50% 50%, #000 25%, transparent 100%); mask-image: radial-gradient(ellipse 80% 75% at 50% 50%, #000 25%, transparent 100%); }
+  .lift { transition: transform .2s ease, box-shadow .2s ease; }
+  .lift:hover { transform: translateY(-4px); box-shadow: 0 22px 44px -22px rgba(11,79,73,.38); }
+  .nudge svg { transition: transform .2s ease; }
+  .nudge:hover svg { transform: translateX(3px); }
+  @media (prefers-reduced-motion: reduce) { .lift, .lift:hover, .nudge svg { transform: none; transition: none; } }
+  .no-scrollbar { scrollbar-width: none; }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  [data-carousel-dots] button { width: 8px; height: 8px; border-radius: 999px; background: rgba(14,140,130,.25); transition: width .25s ease, background-color .25s ease; }
+  [data-carousel-dots] button[aria-current="true"] { width: 24px; background: #0E8C82; }
+
+  /* iPhone 16 Pro: pantalla de 402 × 874 pt, escalada con --phone-scale */
+  .iphone-slot { --phone-scale: .6; position: relative; width: calc(426px * var(--phone-scale)); height: calc(898px * var(--phone-scale)); }
+  @media (min-width: 640px) { .iphone-slot { --phone-scale: .64; } }
+  .iphone { position: absolute; top: 0; left: 0; width: 426px; height: 898px; transform: scale(var(--phone-scale)); transform-origin: top left; border-radius: 74px; padding: 12px; background: #1B1B1D; box-shadow: inset 0 0 0 2px #6E6C69, inset 0 0 0 5px #2A2A2C, 0 40px 80px rgba(11,79,73,.25); }
+  .iphone::before, .iphone::after { content: ""; position: absolute; width: 4px; border-radius: 2px; background: #5A5856; left: -3px; }
+  .iphone::before { top: 200px; height: 34px; }
+  .iphone::after { top: 260px; height: 64px; box-shadow: 0 84px 0 #5A5856; }
+  .screen { position: relative; width: 402px; height: 874px; border-radius: 62px; overflow: hidden; background: #F9FAFB; }
+  .island { position: absolute; top: 11px; left: 50%; transform: translateX(-50%); width: 126px; height: 37px; border-radius: 20px; background: #000; z-index: 30; }
+  .status { position: absolute; top: 0; left: 0; right: 0; height: 54px; display: flex; align-items: center; justify-content: space-between; padding: 6px 34px 0 46px; font-weight: 600; font-size: 17px; color: #000; z-index: 20; background: #fff; }
+  .status-icons { display: flex; gap: 6px; align-items: center; }
+  .home-bar { position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); width: 134px; height: 5px; border-radius: 3px; background: #111; z-index: 30; }
+  .app-bar { position: absolute; top: 54px; left: 0; right: 0; height: 56px; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; background: #fff; border-bottom: 1px solid #E5E7EB; z-index: 20; }
+  .app-bar img { height: 26px; width: auto; }
+  .avatar { width: 34px; height: 34px; border-radius: 50%; background: #E3EFEC; color: #0B4F49; display: grid; place-items: center; font-size: 13px; font-weight: 700; }
+  .viewport { position: absolute; top: 110px; left: 0; right: 0; bottom: 0; overflow: hidden; }
+  .page { padding: 20px 17px 60px; transition: transform .8s cubic-bezier(.4,0,.2,1); }
+  .page h2 { font-size: 24px; line-height: 32px; font-weight: 700; color: #0B4F49; }
+  .page .intro { margin-top: 4px; font-size: 14px; line-height: 20px; color: #5C6B6A; }
+  .days-card { margin-top: 24px; display: flex; flex-direction: column; gap: 16px; border: 1px solid #E5E7EB; border-radius: 16px; background: #fff; padding: 24px; box-shadow: 0 1px 2px rgba(0,0,0,.05); }
+  .day { border-bottom: 1px solid #F3F4F6; padding-bottom: 16px; }
+  .day:last-child { border-bottom: 0; padding-bottom: 0; }
+  .day-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+  .day-name { font-size: 14px; font-weight: 500; color: #5C6B6A; }
+  .add { display: flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 500; color: #0E8C82; }
+  .empty { font-size: 12px; color: #5C6B6A; }
+  .slots { display: flex; flex-direction: column; gap: 8px; }
+  .slot { display: flex; align-items: center; gap: 8px; animation: slot-in .35s ease-out; }
+  .slot.is-leaving { animation: slot-out .3s ease-in forwards; }
+  @keyframes slot-in { from { opacity: 0; transform: translateY(-6px); } }
+  @keyframes slot-out { to { opacity: 0; transform: translateY(-6px); } }
+  .time { min-width: 84px; padding: 6px 12px; border: 1px solid #D1D5DB; border-radius: 8px; font-size: 14px; line-height: 20px; color: #1F2A2A; background: #fff; text-align: center; font-variant-numeric: tabular-nums; transition: border-color .15s, box-shadow .15s; }
+  .time.is-focused { border-color: #0E8C82; box-shadow: 0 0 0 3px rgba(14,140,130,.2); }
+  .time.is-changed { animation: value-change .35s ease-out; }
+  @keyframes value-change { 0% { color: transparent; transform: translateY(3px); } 100% { color: #1F2A2A; transform: none; } }
+  .dash { font-size: 14px; color: #5C6B6A; }
+  .trash { color: #5C6B6A; display: grid; }
+  .save { margin-top: 24px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 40px; padding: 0 20px; border-radius: 8px; background: #0E8C82; color: #fff; font-size: 14px; font-weight: 600; transition: opacity .2s; }
+  .save.is-pending { opacity: .6; }
+  .spinner { width: 16px; height: 16px; border-radius: 50%; border: 2px solid rgba(255,255,255,.4); border-top-color: #fff; animation: spin .7s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .toast { position: absolute; left: 16px; right: 16px; bottom: 34px; z-index: 25; display: flex; align-items: center; gap: 8px; padding: 16px; border-radius: 8px; border: 1px solid #BFFCD9; background: #ECFDF3; color: #008A2E; font-size: 13px; font-weight: 500; box-shadow: 0 4px 12px rgba(0,0,0,.1); transform: translateY(140%); opacity: 0; transition: transform .45s cubic-bezier(.2,.9,.3,1.2), opacity .3s; }
+  .toast.is-visible { transform: none; opacity: 1; }
+  /* La punta del índice está en (27, 4) del viewBox de 64: el margen la lleva al punto tocado. */
+  .finger { position: absolute; z-index: 40; width: 60px; height: 60px; margin: -4px 0 0 -25px; pointer-events: none; opacity: 0; filter: drop-shadow(0 8px 12px rgba(31,42,42,.28)); transition: left .55s cubic-bezier(.4,0,.2,1), top .55s cubic-bezier(.4,0,.2,1), opacity .25s; }
+  .finger svg { display: block; transform-origin: 42% 6%; }
+  .finger.is-visible { opacity: 1; }
+  .finger.is-pressing svg { animation: press .28s ease-out; }
+  @keyframes press { 50% { transform: translateY(3px) scale(.92); } }
+  .ripple { position: absolute; z-index: 39; width: 48px; height: 48px; margin: -24px 0 0 -24px; border-radius: 50%; border: 3px solid rgba(14,140,130,.6); background: rgba(14,140,130,.12); opacity: 0; pointer-events: none; }
+  .ripple.is-rippling { animation: ripple .55s ease-out; }
+  @keyframes ripple { from { opacity: 1; transform: scale(.3); } to { opacity: 0; transform: scale(1.3); } }
+</style>
+</head>
+<body class="bg-[#E9ECEB] font-sans text-brand-ink">
+
+<div class="review-toolbar">
+  <strong>Landing WizyDoc · actual y propuesta</strong>
+  <div class="group">
+    <button type="button" data-version="proposal" aria-pressed="true">Propuesta</button>
+    <button type="button" data-version="current" aria-pressed="false">Actual</button>
+  </div>
+  <div class="group">
+    <button type="button" id="replay">Reiniciar animación</button>
+    <button type="button" data-width="desktop" aria-pressed="true">Escritorio</button>
+    <button type="button" data-width="mobile" aria-pressed="false">Celular</button>
+  </div>
+</div>
+<div class="review-note">
+  <b>Misma landing, un poco más tecnológica y amigable.</b> Se mantienen la estructura, los textos, Inter y los colores de marca. Cambia la presentación:
+  <ul>
+    <li><b>Hero:</b> trama de puntos sutil en el fondo, un punto «en vivo» en la etiqueta, viñetas con check en círculo y botones con esquinas más redondas.</li>
+    <li><b>Funcionalidades:</b> cada tarjeta muestra la pantalla real en miniatura (horarios libres, rangos, ficha, botones del correo) en lugar del ícono. El plan necesario pasa a una etiqueta.</li>
+    <li><b>Cómo funciona:</b> cada paso trae un ejemplo concreto y una línea los une.</li>
+    <li><b>Precios:</b> tarjetas blancas, «El más popular» en coral y la tabla más angosta, dentro de un recuadro.</li>
+    <li><b>Llamado final:</b> bloque redondeado con la misma trama de puntos.</li>
+    <li><b>En toda la página:</b> esquinas más redondas, sombras suaves con tinte teal y tarjetas que se elevan un poco al pasar el mouse.</li>
+  </ul>
+</div>
+<iframe class="review-frame" id="review-frame" title="Vista previa de la landing" scrolling="no"></iframe>
+
+<script type="text/plain" id="carousels">
+  document.querySelectorAll("[data-carousel]").forEach((track) => {
+    const dots = document.querySelector(`[data-carousel-dots="${track.dataset.carousel}"]`);
+    const items = [...track.children];
+    const buttons = [...dots.children];
+    const centerOf = (item) => item.offsetLeft + item.offsetWidth / 2;
+
+    function activeIndex() {
+      const visibleCenter = track.scrollLeft + track.clientWidth / 2;
+      return items.reduce((closest, item, index) =>
+        Math.abs(centerOf(item) - visibleCenter) < Math.abs(centerOf(items[closest]) - visibleCenter) ? index : closest, 0);
+    }
+
+    const paintDots = () => {
+      const current = activeIndex();
+      buttons.forEach((button, index) => button.setAttribute("aria-current", String(index === current)));
+    };
+
+    track.addEventListener("scroll", () => requestAnimationFrame(paintDots), { passive: true });
+    buttons.forEach((button, index) => button.addEventListener("click", () => {
+      track.scrollTo({ left: centerOf(items[index]) - track.clientWidth / 2, behavior: "smooth" });
+    }));
+  });
+</script>
+
+<script type="text/plain" id="agenda-animation">
+  function startAgendaAnimation() {
+    const DAYS = [
+      { label: "Lunes", value: 1 },
+      { label: "Martes", value: 2 },
+      { label: "Miércoles", value: 3 },
+      { label: "Jueves", value: 4 },
+      { label: "Viernes", value: 5 },
+      { label: "Sábado", value: 6 },
+      { label: "Domingo", value: 0 },
+    ];
+    const DEFAULT_RANGE = { start: "09:00", end: "17:00" };
+    const SCRIPT = [
+      { day: 1, end: "13:00" },
+      { day: 1, start: "15:00", end: "19:00" },
+      { day: 3, end: "13:00" },
+      { day: 5, end: "13:00" },
+    ];
+    const PLUS_ICON = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>';
+    const TRASH_ICON = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6"/></svg>';
+
+    const screen = document.getElementById("screen");
+    const page = document.getElementById("page");
+    const daysCard = document.getElementById("days");
+    const saveButton = document.getElementById("save");
+    const toast = document.getElementById("toast");
+    const finger = document.getElementById("finger");
+    const ripple = document.getElementById("ripple");
+    const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    let runId = 0;
+
+    const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+    function renderEmptyWeek() {
+      daysCard.innerHTML = DAYS.map(({ label, value }) => `
+        <div class="day" data-day="${value}">
+          <div class="day-head">
+            <span class="day-name">${label}</span>
+            <span class="add">${PLUS_ICON}Agregar rango</span>
+          </div>
+          <p class="empty">Sin disponibilidad</p>
+          <div class="slots"></div>
+        </div>`).join("");
+    }
+
+    const dayElement = (day) => daysCard.querySelector(`[data-day="${day}"]`);
+
+    function addRange(day) {
+      const dayRoot = dayElement(day);
+      dayRoot.querySelector(".empty").hidden = true;
+      const slot = document.createElement("div");
+      slot.className = "slot";
+      slot.innerHTML = `<span class="time" data-field="start">${DEFAULT_RANGE.start}</span><span class="dash">—</span><span class="time" data-field="end">${DEFAULT_RANGE.end}</span><span class="trash">${TRASH_ICON}</span>`;
+      dayRoot.querySelector(".slots").appendChild(slot);
+      return slot;
+    }
+
+    function setTime(timeElement, value) {
+      timeElement.textContent = value;
+      timeElement.classList.remove("is-changed");
+      void timeElement.offsetWidth;
+      timeElement.classList.add("is-changed");
+    }
+
+    function pointOf(element) {
+      const origin = screen.getBoundingClientRect();
+      const scale = origin.width / screen.offsetWidth;
+      const target = element.getBoundingClientRect();
+      return {
+        x: (target.left + target.width / 2 - origin.left) / scale,
+        y: (target.top + target.height / 2 - origin.top) / scale,
+      };
+    }
+
+    async function tap(element, currentRun) {
+      const { x, y } = pointOf(element);
+      finger.style.left = `${x}px`;
+      finger.style.top = `${y}px`;
+      finger.classList.add("is-visible");
+      await sleep(600);
+      if (currentRun !== runId) return false;
+      ripple.style.left = `${x}px`;
+      ripple.style.top = `${y}px`;
+      for (const animated of [finger, ripple]) {
+        animated.classList.remove("is-pressing", "is-rippling");
+        void animated.offsetWidth;
+      }
+      finger.classList.add("is-pressing");
+      ripple.classList.add("is-rippling");
+      await sleep(220);
+      return currentRun === runId;
+    }
+
+    const scrollPageTo = (offset) => { page.style.transform = `translateY(${-offset}px)`; };
+
+    function offsetToShowSave() {
+      const viewportHeight = page.parentElement.offsetHeight;
+      const bottomOfSave = saveButton.offsetTop + saveButton.offsetHeight + 120;
+      return Math.max(0, bottomOfSave - viewportHeight);
+    }
+
+    function showFinalState() {
+      renderEmptyWeek();
+      for (const step of SCRIPT) {
+        const slot = addRange(step.day);
+        if (step.start) slot.querySelector('[data-field="start"]').textContent = step.start;
+        slot.querySelector('[data-field="end"]').textContent = step.end;
+      }
+      toast.classList.add("is-visible");
+    }
+
+    async function play() {
+      const currentRun = ++runId;
+      const stillRunning = () => currentRun === runId;
+
+      while (stillRunning()) {
+        renderEmptyWeek();
+        scrollPageTo(0);
+        toast.classList.remove("is-visible");
+        finger.classList.remove("is-visible");
+        await sleep(1000);
+
+        for (const step of SCRIPT) {
+          const addButton = dayElement(step.day).querySelector(".add");
+          if (!(await tap(addButton, currentRun))) return;
+          const slot = addRange(step.day);
+          await sleep(450);
+          if (!stillRunning()) return;
+
+          for (const field of ["start", "end"]) {
+            if (!step[field]) continue;
+            const timeElement = slot.querySelector(`[data-field="${field}"]`);
+            if (!(await tap(timeElement, currentRun))) return;
+            timeElement.classList.add("is-focused");
+            await sleep(350);
+            setTime(timeElement, step[field]);
+            await sleep(450);
+            timeElement.classList.remove("is-focused");
+          }
+          await sleep(200);
+        }
+
+        finger.classList.remove("is-visible");
+        scrollPageTo(offsetToShowSave());
+        await sleep(950);
+        if (!(await tap(saveButton, currentRun))) return;
+        saveButton.classList.add("is-pending");
+        saveButton.innerHTML = '<span class="spinner"></span>Guardando...';
+        await sleep(900);
+        if (!stillRunning()) return;
+        saveButton.classList.remove("is-pending");
+        saveButton.textContent = "Guardar disponibilidad";
+        finger.classList.remove("is-visible");
+        toast.classList.add("is-visible");
+        await sleep(2800);
+        if (!stillRunning()) return;
+
+        toast.classList.remove("is-visible");
+        await sleep(400);
+        daysCard.querySelectorAll(".slot").forEach((slot) => slot.classList.add("is-leaving"));
+        await sleep(300);
+      }
+    }
+
+    function restart() {
+      if (prefersReducedMotion) {
+        runId++;
+        showFinalState();
+        return;
+      }
+      play();
+    }
+
+    window.restartAgendaAnimation = restart;
+    restart();
+  }
+  startAgendaAnimation();
+
+  // Lavish aísla el artifact en un sandbox sin origen: la página y esta vista previa sólo pueden hablarse por mensajes.
+  const reportHeight = () => parent.postMessage({ type: "landing-height", height: document.body.offsetHeight }, "*");
+  new ResizeObserver(reportHeight).observe(document.body);
+  window.addEventListener("message", (event) => {
+    if (event.data?.type === "restart-agenda") window.restartAgendaAnimation();
+  });
+</script>
+
+<script>
+  const icon = (paths, className = "h-5 w-5") => `<svg class="${className}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths}</svg>`;
+  const ICONS = {
+    smartphone: '<rect width="14" height="20" x="5" y="2" rx="2" ry="2"/><path d="M12 18h.01"/>',
+    calendar: '<path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/>',
+    clipboard: '<rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/>',
+    refresh: '<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/>',
+    userPlus: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6"/><path d="M22 11h-6"/>',
+    calendarDays: '<path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14h.01"/><path d="M8 18h.01"/><path d="M12 18h.01"/><path d="M16 18h.01"/>',
+    checkCircle: '<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>',
+    stethoscope: '<path d="M11 2v2"/><path d="M5 2v2"/><path d="M5 3H4a2 2 0 0 0-2 2v4a6 6 0 0 0 12 0V5a2 2 0 0 0-2-2h-1"/><path d="M8 15a6 6 0 0 0 12 0v-3"/><circle cx="20" cy="10" r="2"/>',
+    building: '<path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/>',
+    network: '<rect x="16" y="16" width="6" height="6" rx="1"/><rect x="2" y="16" width="6" height="6" rx="1"/><rect x="9" y="2" width="6" height="6" rx="1"/><path d="M5 16v-3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3"/><path d="M12 12V8"/>',
+    check: '<path d="M20 6 9 17l-5-5"/>',
+    x: '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
+    minus: '<path d="M5 12h14"/>',
+    arrowRight: '<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>',
+    menu: '<path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h16"/>',
+    linkedin: '<path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect width="4" height="12" x="2" y="9"/><circle cx="4" cy="4" r="2"/>',
+    instagram: '<rect width="20" height="20" x="2" y="2" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><path d="M17.5 6.5h.01"/>',
+  };
+
+  const PHONE = `
+    <div class="iphone-slot">
+      <div class="iphone">
+        <div class="screen" id="screen">
+          <div class="island"></div>
+          <div class="status">
+            <span>9:41</span>
+            <span class="status-icons" aria-hidden="true">
+              <svg width="18" height="12" viewBox="0 0 18 12"><rect x="0" y="8" width="3" height="4" rx="1"/><rect x="5" y="5.5" width="3" height="6.5" rx="1"/><rect x="10" y="3" width="3" height="9" rx="1"/><rect x="15" y="0" width="3" height="12" rx="1"/></svg>
+              <svg width="16" height="12" viewBox="0 0 16 12"><path d="M8 2.2c2.3 0 4.4.9 6 2.4l1.2-1.3A10.4 10.4 0 0 0 8 .4 10.4 10.4 0 0 0 .8 3.3L2 4.6a8.6 8.6 0 0 1 6-2.4Zm0 3.6c1.3 0 2.5.5 3.4 1.3l1.2-1.3A6.9 6.9 0 0 0 8 4c-1.8 0-3.4.7-4.6 1.8l1.2 1.3c.9-.8 2.1-1.3 3.4-1.3Zm0 3.5-2.2 2.3L8 12l2.2-2.4A3.1 3.1 0 0 0 8 9.3Z"/></svg>
+              <svg width="27" height="13" viewBox="0 0 27 13"><rect x=".5" y=".5" width="23" height="12" rx="3.5" fill="none" stroke="currentColor" opacity=".4"/><rect x="2" y="2" width="20" height="9" rx="2"/><path d="M25 4.5v4c.8-.3 1.5-1.1 1.5-2s-.7-1.7-1.5-2Z" opacity=".4"/></svg>
+            </span>
+          </div>
+          <div class="app-bar"><img src="logo.png" alt="" /><span class="avatar">LP</span></div>
+          <div class="viewport">
+            <div class="page" id="page">
+              <h2>Mi Disponibilidad</h2>
+              <p class="intro">Define tus horarios de atención en esta sede. Puedes agregar varios rangos por día (por ejemplo, mañana y tarde).</p>
+              <div class="days-card" id="days"></div>
+              <span class="save" id="save">Guardar disponibilidad</span>
+            </div>
+          </div>
+          <div class="toast" id="toast" role="status">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm3.86-9.86a.75.75 0 0 0-1.22-.88l-3.24 4.5-1.6-1.6a.75.75 0 1 0-1.06 1.06l2.22 2.22a.75.75 0 0 0 1.14-.09l3.76-5.21Z" clip-rule="evenodd"/></svg>
+            Disponibilidad guardada correctamente
+          </div>
+          <div class="ripple" id="ripple"></div>
+          <div class="finger" id="finger" aria-hidden="true">
+            <svg width="60" height="60" viewBox="0 0 64 64"><path d="M27 4c-3 0-5 2-5 5v25l-3-3c-2-2-5-2-7 0s-2 5 0 7l9 11c3 4 7 7 13 7h8c8 0 13-6 13-13V31c0-3-2-5-5-5-1 0-2 0-3 1 0-3-2-5-5-5-1 0-3 1-3 2-1-2-3-3-5-3-1 0-2 0-3 1V9c0-3-2-5-5-5Z" fill="#fff" stroke="#1F2A2A" stroke-width="2.5" stroke-linejoin="round"/><path d="M32 22v10M40 25v8" stroke="#1F2A2A" stroke-width="2" stroke-linecap="round" opacity=".35"/></svg>
+          </div>
+          <div class="home-bar"></div>
+        </div>
+      </div>
+    </div>`;
+
+  const HERO_BULLETS = [
+    "Tus pacientes reservan en línea 24/7",
+    "Cada reserva queda confirmada al instante",
+    "Sin llamadas ni agendas en papel",
+  ];
+
+  const FEATURES = [
+    {
+      icon: ICONS.smartphone,
+      featured: true,
+      title: "Tus pacientes reservan solos",
+      currentText: "Eligen fecha y horario desde tu link, en el celular y en menos de un minuto. La confirmación les llega por correo al instante, sin que tengas que llamar a nadie.",
+      proposalText: "Eligen fecha y horario desde tu link, en el celular y en menos de un minuto. La confirmación les llega por correo al instante.",
+      plan: null,
+      preview: "booking",
+    },
+    {
+      icon: ICONS.calendar,
+      featured: false,
+      title: "Tus horarios, tus reglas",
+      currentText: "Defines tus bloques de atención por día. Tus pacientes solo ven los turnos realmente libres, sin cruces ni errores.",
+      proposalText: "Defines tus bloques de atención por día. Tus pacientes solo ven los turnos realmente libres, sin cruces ni errores.",
+      plan: null,
+      preview: "hours",
+    },
+    {
+      icon: ICONS.clipboard,
+      featured: false,
+      title: "La información de tus pacientes es tuya",
+      currentText: "Cada reserva alimenta la ficha del paciente, con sus datos y su historial de citas. Es de tu consultorio, no de un directorio. Incluida desde el plan Consultorio.",
+      proposalText: "Cada reserva alimenta la ficha del paciente, con sus datos y su historial de citas. Es de tu consultorio, no de un directorio.",
+      plan: "Desde Consultorio",
+      preview: "record",
+    },
+    {
+      icon: ICONS.refresh,
+      featured: false,
+      title: "El paciente cancela y reprograma solo",
+      currentText: "Desde el link de su correo, hasta 12 horas antes de la cita y sin llamarte. Incluido desde el plan Consultorio.",
+      proposalText: "Desde el link de su correo, hasta 12 horas antes de la cita y sin llamarte.",
+      plan: "Desde Consultorio",
+      preview: "selfService",
+    },
+  ];
+
+  const STEPS = [
+    {
+      icon: ICONS.userPlus,
+      title: "Crea tu cuenta",
+      text: "Regístrate gratis y crea tu consultorio. Tú mismo atiendes en él; si trabajas con otros médicos, invítalos cuando quieras.",
+      example: `<div class="flex items-center gap-2"><span class="min-w-0 flex-1 truncate rounded-lg bg-white px-2.5 py-1.5 text-[11px] text-brand-gray ring-1 ring-gray-200">lucia.paredes@gmail.com</span><span class="shrink-0 rounded-lg bg-brand-teal px-2.5 py-1.5 text-[11px] font-semibold text-white">Crear cuenta</span></div>`,
+    },
+    {
+      icon: ICONS.calendarDays,
+      title: "Define tus horarios",
+      text: "Configuras tus bloques de atención por día. Lunes 09:00–13:00, miércoles 15:00–19:00 — como tú quieras.",
+      example: `<div class="tabular flex flex-wrap gap-1.5 text-[11px] font-semibold text-brand-ink"><span class="rounded-lg bg-white px-2.5 py-1.5 ring-1 ring-gray-200">Lun 09:00–13:00</span><span class="rounded-lg bg-white px-2.5 py-1.5 ring-1 ring-gray-200">Mié 15:00–19:00</span></div>`,
+    },
+    {
+      icon: ICONS.checkCircle,
+      title: "Comparte tu link y recibe reservas",
+      text: "Ponlo en tu WhatsApp o en tus redes. Tus pacientes eligen fecha y horario, y WizyDoc les envía la confirmación por correo.",
+      example: `<p class="ml-auto w-fit max-w-full rounded-2xl rounded-br-md bg-white px-3 py-2 text-[11px] text-brand-ink ring-1 ring-gray-200">Reserva tu cita conmigo aquí: <span class="font-semibold text-brand-teal underline decoration-brand-teal/40 underline-offset-2">Reservar cita</span></p>`,
+    },
+  ];
+
+  const PLANS = [
+    { name: "Gratis", icon: ICONS.stethoscope, price: "S/ 0", annual: null, period: "para siempre", description: "Para el médico independiente que quiere empezar hoy.", highlight: false, features: ["10 citas al mes", "1 sede", "Médicos sin límite", "Reserva de citas en línea", "Agenda de cada médico"] },
+    { name: "Consultorio", icon: ICONS.clipboard, price: "S/ 79", annual: "S/ 790", period: "/ mes", description: "Para que tus pacientes se gestionen solos y su información se quede contigo.", highlight: true, features: ["1 sede", "Médicos sin límite", "El paciente cancela y reprograma desde el link", "Ficha del paciente", "Historial de citas"] },
+    { name: "Clínica", icon: ICONS.building, price: "S/ 199", annual: "S/ 1,990", period: "/ mes", description: "Para clínicas con varias sedes y equipo médico.", highlight: false, features: ["3 sedes incluidas", "Sede adicional por S/ 40", "Médicos sin límite", "Métricas por sede", "Todo lo del plan Consultorio"] },
+    { name: "Red", icon: ICONS.network, price: "A medida", annual: null, period: "", description: "Para redes de clínicas que necesitan escala y soporte.", highlight: false, features: ["Sedes a medida", "Médicos sin límite", "Soporte prioritario", "Todo lo del plan Clínica"] },
+  ];
+
+  const COMPARISON = [
+    ["Precio", ["S/ 0", "S/ 79 al mes", "S/ 199 al mes", "A medida"]],
+    ["Precio anual", ["—", "S/ 790", "S/ 1,990", "A medida"]],
+    ["Médicos", ["Sin límite", "Sin límite", "Sin límite", "Sin límite"]],
+    ["Sedes incluidas", ["1", "1", "3", "A medida"]],
+    ["Sede adicional", ["—", "—", "S/ 40", "A medida"]],
+    ["Reserva de citas", [true, true, true, true]],
+    ["Agenda de cada médico", [true, true, true, true]],
+    ["El paciente cancela y reprograma desde el link", [false, true, true, true]],
+    ["Ficha del paciente", [false, true, true, true]],
+    ["Historial de citas", [false, true, true, true]],
+    ["Métricas por sede", [false, false, true, true]],
+    ["Soporte prioritario", [false, false, false, true]],
+  ];
+
+  function comparisonCell(value) {
+    if (value === true) return `${icon(ICONS.check, "mx-auto h-5 w-5 text-brand-teal")}<span class="sr-only">Incluido</span>`;
+    if (value === false) return `${icon(ICONS.x, "mx-auto h-5 w-5 text-gray-300")}<span class="sr-only">No incluido</span>`;
+    if (value === "—") return `${icon(ICONS.minus, "mx-auto h-5 w-5 text-gray-300")}<span class="sr-only">No disponible</span>`;
+    return `<span class="tabular text-sm text-brand-ink">${value}</span>`;
+  }
+
+  const FEATURE_PREVIEWS = {
+    booking: `<div class="h-[132px] rounded-2xl bg-[#FFF3F0] p-4">
+        <p class="text-[11px] font-medium text-brand-gray">Mar 13 · Horarios libres</p>
+        <div class="tabular mt-2 grid grid-cols-3 gap-1.5 text-[11px] font-semibold text-brand-ink">
+          <span class="rounded-lg bg-white py-1.5 text-center ring-1 ring-gray-200">09:00</span>
+          <span class="rounded-lg bg-brand-coral py-1.5 text-center text-white shadow-sm">09:30</span>
+          <span class="rounded-lg bg-white py-1.5 text-center ring-1 ring-gray-200">10:30</span>
+          <span class="rounded-lg bg-white py-1.5 text-center ring-1 ring-gray-200">11:00</span>
+          <span class="rounded-lg bg-white py-1.5 text-center ring-1 ring-gray-200">11:30</span>
+          <span class="rounded-lg bg-white py-1.5 text-center ring-1 ring-gray-200">12:00</span>
+        </div>
+      </div>`,
+    hours: `<div class="tabular flex h-[132px] flex-col gap-1.5 rounded-2xl bg-brand-surface p-4 text-[11px]">
+        <div class="flex items-center justify-between rounded-lg bg-white px-2.5 py-1.5 ring-1 ring-gray-200"><span class="font-medium text-brand-gray">Lunes</span><span class="font-semibold text-brand-ink">09:00 – 13:00</span></div>
+        <div class="flex items-center justify-between rounded-lg bg-white px-2.5 py-1.5 ring-1 ring-gray-200"><span class="font-medium text-brand-gray">Lunes</span><span class="font-semibold text-brand-ink">15:00 – 19:00</span></div>
+        <div class="flex items-center justify-between rounded-lg bg-white px-2.5 py-1.5 ring-1 ring-gray-200"><span class="font-medium text-brand-gray">Miércoles</span><span class="font-semibold text-brand-ink">09:00 – 13:00</span></div>
+      </div>`,
+    record: `<div class="h-[132px] rounded-2xl bg-brand-surface p-4">
+        <div class="flex items-center gap-2.5">
+          <span class="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-brand-teal/15 text-[11px] font-bold text-brand-teal-dark">MR</span>
+          <div class="min-w-0"><p class="truncate text-xs font-semibold text-brand-ink">María Rodríguez</p><p class="text-[11px] text-brand-gray">3 citas · última el 13 de octubre</p></div>
+        </div>
+        <div class="mt-3 flex flex-wrap gap-1.5">
+          <span class="rounded-full bg-white px-2 py-0.5 text-[10px] font-medium text-brand-gray ring-1 ring-gray-200">Medicina general</span>
+          <span class="rounded-full bg-white px-2 py-0.5 text-[10px] font-medium text-brand-gray ring-1 ring-gray-200">Aseguradora</span>
+          <span class="rounded-full bg-white px-2 py-0.5 text-[10px] font-medium text-brand-gray ring-1 ring-gray-200">Contacto de emergencia</span>
+        </div>
+      </div>`,
+    selfService: `<div class="h-[132px] rounded-2xl bg-brand-surface p-4">
+        <p class="text-[11px] text-brand-gray">Tu cita del martes 13 · 09:30</p>
+        <div class="mt-2 flex gap-1.5">
+          <span class="flex-1 rounded-lg bg-brand-teal py-1.5 text-center text-[11px] font-semibold text-white">Reprogramar</span>
+          <span class="flex-1 rounded-lg bg-white py-1.5 text-center text-[11px] font-semibold text-brand-gray ring-1 ring-gray-200">Cancelar</span>
+        </div>
+        <p class="mt-2 text-[10px] text-brand-gray">Disponible hasta 12 horas antes</p>
+      </div>`,
+  };
+
+  function navbar(version) {
+    const corner = version === "proposal" ? "rounded-xl" : "rounded-lg";
+    return `
+      <nav class="sticky top-0 z-50 w-full border-b border-gray-100 bg-white/90 backdrop-blur-md">
+        <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div class="flex h-16 items-center justify-between">
+            <a class="flex shrink-0 items-center"><img src="logo.png" alt="WizyDoc" class="h-8 w-auto" /></a>
+            <div class="hidden items-center gap-8 md:flex">
+              <a class="text-sm text-brand-gray hover:text-brand-ink">Funcionalidades</a>
+              <a class="text-sm text-brand-gray hover:text-brand-ink">Cómo funciona</a>
+              <a class="text-sm text-brand-gray hover:text-brand-ink">Precios</a>
+            </div>
+            <div class="hidden items-center gap-3 md:flex">
+              <a class="inline-flex h-10 items-center justify-center ${corner} px-5 py-2 text-sm font-semibold text-brand-gray hover:bg-gray-100 hover:text-brand-ink">Iniciar sesión</a>
+              <a class="inline-flex h-10 items-center justify-center ${corner} bg-brand-teal px-5 py-2 text-sm font-semibold text-white shadow hover:bg-brand-teal-dark">Comenzar gratis</a>
+            </div>
+            <button type="button" class="rounded-md p-2 text-gray-500 md:hidden" aria-label="Abrir menú">${icon(ICONS.menu)}</button>
+          </div>
+        </div>
+      </nav>`;
+  }
+
+  function hero(version) {
+    const isProposal = version === "proposal";
+    const badge = isProposal
+      ? `<div class="mb-5 inline-flex items-center gap-2 rounded-full border border-brand-teal/20 bg-white/80 px-3 py-1 text-xs font-semibold text-brand-teal-dark shadow-sm backdrop-blur"><span class="relative flex h-2 w-2"><span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand-teal opacity-60"></span><span class="relative inline-flex h-2 w-2 rounded-full bg-brand-teal"></span></span>Deja de coordinar citas por teléfono y WhatsApp</div>`
+      : `<div class="mb-5 inline-flex items-center rounded-full bg-brand-teal-dark/10 px-2.5 py-0.5 text-xs font-semibold text-brand-teal-dark">Deja de coordinar citas por teléfono y WhatsApp</div>`;
+    const bullets = HERO_BULLETS.map((text) => isProposal
+      ? `<li class="flex items-center gap-2.5 text-sm text-brand-gray"><span class="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-brand-teal/10 text-brand-teal">${icon(ICONS.check, "h-3 w-3")}</span>${text}</li>`
+      : `<li class="flex items-center gap-2 text-sm text-brand-gray">${icon(ICONS.check, "h-4 w-4 shrink-0 text-brand-teal")}${text}</li>`).join("");
+    const corner = isProposal ? "rounded-xl" : "rounded-lg";
+    const background = isProposal
+      ? `<div class="dot-grid pointer-events-none absolute inset-0"></div><div class="pointer-events-none absolute -right-32 -top-32 h-96 w-96 rounded-full bg-brand-teal/10 blur-3xl"></div>`
+      : `<div class="pointer-events-none absolute -right-40 -top-40 h-96 w-96 rounded-full bg-brand-teal/10 blur-3xl"></div><div class="pointer-events-none absolute -bottom-40 -left-40 h-96 w-96 rounded-full bg-brand-teal-dark/10 blur-3xl"></div>`;
+    const phoneGlow = isProposal ? `<div class="pointer-events-none absolute left-1/2 top-1/3 h-72 w-72 -translate-x-1/2 rounded-full bg-brand-teal/20 blur-3xl"></div>` : "";
+    return `
+      <section class="relative overflow-hidden ${isProposal ? "bg-gradient-to-b from-brand-surface via-white to-white" : "bg-gradient-to-br from-brand-surface via-white to-brand-surface"} py-20 sm:py-28">
+        ${background}
+        <div class="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div class="grid grid-cols-1 gap-16 lg:grid-cols-2 lg:items-center">
+            <div class="${isProposal ? "mx-auto max-w-xl text-center lg:mx-0 lg:text-left" : "max-w-xl"}">
+              ${badge}
+              <h1 class="text-4xl font-extrabold tracking-tight text-brand-teal-dark sm:text-5xl lg:text-6xl">La agenda de tu <span class="bg-gradient-to-r from-brand-teal to-brand-teal-dark bg-clip-text text-transparent">consultorio</span>, en piloto automático.</h1>
+              <p class="mt-6 text-lg leading-relaxed text-brand-gray">Defines tus horarios y las citas se crean solas: tus pacientes reservan desde un link y reciben su confirmación al instante, sin que coordines nada.</p>
+              <ul class="${isProposal ? "mx-auto mt-6 flex w-fit flex-col gap-2 text-left lg:mx-0" : "mt-6 flex flex-col gap-2"}">${bullets}</ul>
+              <div class="mt-10 flex flex-wrap items-center gap-4 ${isProposal ? "justify-center lg:justify-start" : ""}">
+                <a class="nudge inline-flex h-12 items-center justify-center whitespace-nowrap ${corner} bg-brand-teal px-8 text-base font-semibold text-white shadow ${isProposal ? "shadow-lg shadow-brand-teal/25" : ""} hover:bg-brand-teal-dark">Comenzar gratis${icon(ICONS.arrowRight, "ml-2 h-4 w-4")}</a>
+                <a class="inline-flex h-12 items-center justify-center whitespace-nowrap ${corner} border border-gray-200 bg-white px-8 text-base font-semibold text-brand-gray hover:bg-gray-50">Ver cómo funciona</a>
+              </div>
+              <p class="mt-4 text-xs text-brand-gray">Sin tarjeta de crédito. Empieza en menos de 5 minutos.</p>
+            </div>
+            <div class="relative flex justify-center">
+              ${phoneGlow}
+              <div class="relative">${PHONE}</div>
+            </div>
+          </div>
+        </div>
+      </section>`;
+  }
+
+  function carouselDots(name, count, hiddenFrom) {
+    const dots = Array.from({ length: count }, (_, index) => `<button type="button" data-index="${index}" aria-label="Ver ${index + 1} de ${count}" aria-current="${index === 0}"></button>`).join("");
+    return `<div class="mt-5 flex justify-center gap-2 ${hiddenFrom}:hidden" data-carousel-dots="${name}">${dots}</div>`;
+  }
+
+  function sectionHeader(kicker, title, subtitle) {
+    return `
+      <div class="mx-auto max-w-2xl text-center">
+        <p class="text-sm font-semibold uppercase tracking-widest text-brand-teal">${kicker}</p>
+        <h2 class="mt-3 text-3xl font-extrabold tracking-tight text-brand-teal-dark sm:text-4xl">${title}</h2>
+        ${subtitle ? `<p class="mt-4 text-lg text-brand-gray">${subtitle}</p>` : ""}
+      </div>`;
+  }
+
+  function features(version) {
+    const header = sectionHeader("Funcionalidades", "Tú atiendes, las citas se gestionan solas", "Pensado para el médico independiente: solo lo necesario para dejar de coordinar citas por teléfono y WhatsApp.");
+    const cards = FEATURES.map((feature) => {
+      if (version === "current") {
+        return `
+          <div class="group rounded-2xl border border-gray-200 bg-brand-surface shadow-sm transition-shadow hover:shadow-md ${feature.featured ? "border-brand-coral/30" : ""}">
+            <div class="flex flex-col space-y-1.5 p-6">
+              <div class="flex h-11 w-11 items-center justify-center rounded-xl ${feature.featured ? "bg-brand-coral text-white" : "bg-white text-brand-teal"}">${icon(feature.icon)}</div>
+              <h3 class="mt-4 font-semibold text-brand-teal-dark">${feature.title}</h3>
+            </div>
+            <div class="p-6 pt-0"><p class="text-sm leading-relaxed text-brand-gray">${feature.currentText}</p></div>
+          </div>`;
+      }
+      return `
+        <div class="lift flex w-[86%] shrink-0 snap-center flex-col rounded-3xl border bg-white p-5 sm:w-auto ${feature.featured ? "border-brand-coral/30 shadow-[0_14px_34px_-18px_rgba(255,111,89,.55)]" : "border-gray-200/80 shadow-sm"}">
+          ${FEATURE_PREVIEWS[feature.preview]}
+          <h3 class="mt-5 font-semibold text-brand-teal-dark">${feature.title}</h3>
+          ${feature.plan ? `<span class="mt-2 inline-flex w-fit rounded-full bg-brand-teal/10 px-2 py-0.5 text-[11px] font-semibold text-brand-teal">${feature.plan}</span>` : ""}
+          <p class="mt-2 text-sm leading-relaxed text-brand-gray">${feature.proposalText}</p>
+        </div>`;
+    }).join("");
+    return `
+      <section class="bg-white py-24">
+        <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          ${header}
+          ${version === "proposal"
+            ? `<div class="no-scrollbar relative -mx-4 mt-16 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-2 sm:mx-0 sm:grid sm:grid-cols-2 sm:gap-6 sm:overflow-visible sm:px-0 sm:pb-0 lg:grid-cols-4" data-carousel="features">${cards}</div>${carouselDots("features", FEATURES.length, "sm")}`
+            : `<div class="mt-16 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">${cards}</div>`}
+        </div>
+      </section>`;
+  }
+
+  function howItWorks(version) {
+    const header = sectionHeader("Cómo funciona", "En 3 pasos, listo para recibir pacientes", "Sin instalaciones. Sin configuraciones complejas. Empieza hoy.");
+    if (version === "current") {
+      const steps = STEPS.map((step, index) => `
+        <div class="relative flex flex-col items-center text-center">
+          ${index < STEPS.length - 1 ? `<div class="absolute left-[calc(50%+2.5rem)] top-10 hidden h-px w-[calc(100%-5rem)] border-t-2 border-dashed border-gray-300 md:block"></div>` : ""}
+          <div class="relative flex h-20 w-20 items-center justify-center rounded-2xl bg-white shadow-md ring-1 ring-gray-200">
+            ${icon(step.icon, "h-8 w-8 text-brand-teal")}
+            <span class="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full bg-brand-teal text-xs font-bold text-white">${index + 1}</span>
+          </div>
+          <h3 class="mt-6 text-lg font-semibold text-brand-teal-dark">${step.title}</h3>
+          <p class="mt-2 max-w-xs text-sm leading-relaxed text-brand-gray">${step.text}</p>
+        </div>`).join("");
+      return `<section class="bg-brand-surface py-24"><div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">${header}<div class="mt-16 grid grid-cols-1 gap-8 md:grid-cols-3">${steps}</div></div></section>`;
+    }
+    const steps = STEPS.map((step, index) => `
+      <div class="lift relative flex w-[86%] shrink-0 snap-center flex-col rounded-3xl border border-gray-200/80 bg-white p-6 shadow-sm md:w-auto">
+        <span class="grid h-9 w-9 place-items-center rounded-xl bg-brand-teal text-sm font-bold text-white shadow-md shadow-brand-teal/30">${index + 1}</span>
+        <h3 class="mt-5 text-lg font-semibold text-brand-teal-dark">${step.title}</h3>
+        <p class="mt-2 text-sm leading-relaxed text-brand-gray">${step.text}</p>
+        <div class="mt-auto pt-5"><div class="rounded-2xl bg-brand-surface p-3">${step.example}</div></div>
+      </div>`).join("");
+    return `
+      <section class="relative overflow-hidden bg-brand-surface py-24">
+        <div class="dot-grid pointer-events-none absolute inset-0 opacity-60"></div>
+        <div class="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          ${header}
+          <div class="relative mt-16">
+            <div class="pointer-events-none absolute left-[10%] right-[10%] top-[42px] hidden h-px bg-gradient-to-r from-transparent via-brand-teal/50 to-transparent md:block"></div>
+            <div class="no-scrollbar relative -mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-2 md:mx-0 md:grid md:grid-cols-3 md:gap-6 md:overflow-visible md:px-0 md:pb-0" data-carousel="steps">${steps}</div>
+            ${carouselDots("steps", STEPS.length, "md")}
+          </div>
+        </div>
+      </section>`;
+  }
+
+  function pricing(version) {
+    const isProposal = version === "proposal";
+    const accent = isProposal ? "coral" : "teal";
+    const cards = PLANS.map((plan) => `
+      <div class="${isProposal ? "lift rounded-3xl bg-white" : "rounded-2xl bg-brand-surface"} border border-gray-200 shadow-sm ${plan.highlight ? `relative border-brand-${accent} shadow-xl ring-2 ring-brand-${accent} ${isProposal ? "shadow-[0_20px_44px_-20px_rgba(255,111,89,.55)]" : ""}` : ""}">
+        ${plan.highlight ? `<div class="absolute -top-3.5 left-1/2 z-10 -translate-x-1/2"><span class="inline-flex whitespace-nowrap rounded-full bg-brand-${accent} px-3 py-1 text-xs font-semibold text-white shadow-sm">${isProposal ? "El más popular" : "Recomendado"}</span></div>` : ""}
+        <div class="flex flex-col space-y-1.5 p-6 ${plan.highlight ? "pt-8" : ""}">
+          <div class="mb-3 flex h-11 w-11 items-center justify-center rounded-xl bg-brand-teal/10 text-brand-teal">${icon(plan.icon)}</div>
+          <p class="text-sm font-semibold text-brand-gray">${plan.name}</p>
+          <div class="mt-2 flex items-baseline gap-1"><span class="tabular text-4xl font-extrabold text-brand-ink">${plan.price}</span><span class="text-sm text-brand-gray">${plan.period}</span></div>
+          ${plan.annual ? `<p class="mt-1 text-xs font-medium text-brand-teal">o ${plan.annual} al año · 2 meses gratis</p>` : ""}
+          <p class="mt-2 text-sm text-brand-gray">${plan.description}</p>
+        </div>
+        <div class="p-6 pt-0"><ul class="flex flex-col gap-3">${plan.features.map((feature) => `<li class="flex items-start gap-2.5 text-sm text-brand-gray">${icon(ICONS.check, "mt-0.5 h-4 w-4 shrink-0 text-brand-teal")}${feature}</li>`).join("")}</ul></div>
+        <div class="flex items-center p-6 pt-0"><a class="inline-flex h-12 w-full items-center justify-center ${isProposal ? "rounded-xl" : "rounded-lg"} px-8 text-base font-semibold ${plan.highlight ? "bg-brand-teal text-white shadow hover:bg-brand-teal-dark" : "border border-gray-200 bg-white text-brand-gray hover:bg-gray-50"}">Empezar gratis</a></div>
+      </div>`).join("");
+    const headerCells = PLANS.map((plan) => `<th scope="col" class="${isProposal ? "px-3 py-3" : "px-4 py-4"} text-center text-sm font-semibold ${plan.highlight ? `text-brand-${accent}` : "text-brand-ink"}">${plan.name}</th>`).join("");
+    const rows = COMPARISON.map(([label, values]) => `
+      <tr class="border-b border-gray-100 ${isProposal ? "last:border-0" : ""}">
+        <th scope="row" class="${isProposal ? "py-3 pl-5 pr-3" : "py-4 pr-4"} text-sm font-normal text-brand-gray">${label}</th>
+        ${values.map((value, index) => `<td class="${isProposal ? "px-3 py-3" : "px-4 py-4"} text-center ${PLANS[index].highlight ? `bg-brand-${accent}/5` : ""}">${comparisonCell(value)}</td>`).join("")}
+      </tr>`).join("");
+    const table = isProposal
+      ? `<div class="relative mx-auto mt-8 max-w-4xl overflow-x-auto rounded-2xl border border-gray-200 bg-white shadow-sm"><table class="w-full min-w-[560px] border-collapse text-left"><thead><tr class="border-b border-gray-200"><th scope="col" class="py-3 pl-5 pr-3 text-sm font-semibold text-brand-gray">Características</th>${headerCells}</tr></thead><tbody>${rows}</tbody></table></div>`
+      : `<div class="relative mt-8 overflow-x-auto"><table class="w-full min-w-[720px] border-collapse text-left"><thead><tr class="border-b border-gray-200"><th scope="col" class="py-4 pr-4 text-sm font-semibold text-brand-gray">Características</th>${headerCells}</tr></thead><tbody>${rows}</tbody></table></div>`;
+    return `
+      <section class="${isProposal ? "bg-gradient-to-b from-white to-brand-surface/60" : "bg-white"} py-24">
+        <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          ${sectionHeader("Precios", "Un plan para cada necesidad", "Comienza gratis y crece a tu ritmo.")}
+          <p class="mt-2 text-center text-sm text-brand-gray">Durante la beta, todas las cuentas empiezan en Gratis y los planes de pago se activan a pedido.</p>
+          <div class="mt-16 grid grid-cols-1 items-start gap-8 md:grid-cols-2 lg:grid-cols-4">${cards}</div>
+          <div class="mt-20">
+            <h3 class="text-center text-2xl font-bold tracking-tight text-brand-teal-dark">Compara los planes</h3>
+            ${table}
+          </div>
+        </div>
+      </section>`;
+  }
+
+  function finalCallToAction(version) {
+    const content = `
+      <h2 class="text-3xl font-extrabold tracking-tight text-white sm:text-4xl">Deja de coordinar citas</h2>
+      <p class="mt-4 text-lg text-white/80">Tus pacientes reservan desde un link y tú solo te ocupas de atenderlos.</p>
+      <div class="mt-10 flex flex-wrap justify-center gap-4 ${version === "proposal" ? "lg:justify-start" : ""}">
+        <a class="nudge inline-flex h-12 items-center justify-center ${version === "proposal" ? "rounded-xl" : "rounded-lg"} bg-brand-coral px-8 text-base font-semibold text-white shadow hover:bg-brand-coral/90">Comenzar gratis${icon(ICONS.arrowRight, "ml-2 h-4 w-4")}</a>
+        <a class="inline-flex h-12 items-center justify-center ${version === "proposal" ? "rounded-xl" : "rounded-lg"} px-8 text-base font-semibold text-white hover:bg-white/10">Ver cómo funciona</a>
+      </div>
+      <p class="mt-5 text-sm text-white/70">Sin tarjeta de crédito · Listo en 5 minutos</p>`;
+    if (version === "current") {
+      return `<section class="bg-gradient-to-br from-brand-teal-dark to-brand-teal py-24"><div class="mx-auto max-w-4xl px-4 text-center sm:px-6 lg:px-8">${content}</div></section>`;
+    }
+    return `
+      <section class="bg-gradient-to-b from-brand-surface/60 to-white px-4 pb-20 pt-28 sm:px-6 lg:px-8">
+        <div class="relative mx-auto max-w-6xl rounded-[2rem] bg-gradient-to-br from-brand-teal-dark to-brand-teal shadow-xl shadow-brand-teal/20">
+          <div class="pointer-events-none absolute inset-0 overflow-hidden rounded-[2rem]">
+            <div class="dot-grid-light absolute inset-0"></div>
+            <div class="absolute -right-24 -top-24 h-72 w-72 rounded-full bg-white/10 blur-3xl"></div>
+          </div>
+          <div class="relative grid items-end gap-6 px-6 sm:px-12 lg:grid-cols-[1.1fr_.9fr] lg:gap-10 lg:px-16">
+            <div class="pt-14 text-center sm:pt-16 lg:py-20 lg:text-left">${content}</div>
+            <div class="relative flex justify-center lg:justify-end lg:pr-6">
+              <div class="pointer-events-none absolute bottom-0 left-1/2 h-56 w-56 -translate-x-1/2 rounded-full bg-white/15 blur-2xl lg:h-72 lg:w-72"></div>
+              <img src="cta-medico.png" alt="Médico revisando su agenda en una tablet" class="relative w-56 max-w-full sm:w-64 lg:-mt-24 lg:w-[380px]" />
+            </div>
+          </div>
+        </div>
+      </section>`;
+  }
+
+  function footer() {
+    const groups = [
+      ["Producto", ["Funcionalidades", "Precios", "Cómo funciona"]],
+      ["Legal", ["Términos y condiciones"]],
+    ].map(([group, items]) => `
+      <div>
+        <p class="text-xs font-semibold uppercase tracking-widest text-brand-gray">${group}</p>
+        <ul class="mt-4 flex flex-col gap-3">${items.map((item) => `<li><a class="text-sm text-brand-gray hover:text-brand-ink">${item}</a></li>`).join("")}</ul>
+      </div>`).join("");
+    return `
+      <footer class="border-t border-gray-200 bg-white">
+        <div class="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
+          <div class="grid grid-cols-2 gap-10 md:grid-cols-4">
+            <div class="col-span-2 md:col-span-1">
+              <img src="logo.png" alt="WizyDoc" class="h-8 w-auto" />
+              <p class="mt-4 max-w-xs text-sm leading-relaxed text-brand-gray">La agenda de los consultorios médicos en Perú: tus pacientes reservan solos y tú solo atiendes.</p>
+            </div>
+            ${groups}
+            <div>
+              <p class="text-xs font-semibold uppercase tracking-widest text-brand-gray">Síguenos</p>
+              <ul class="mt-4 flex flex-col gap-3">
+                <li><a class="flex items-center gap-2 text-sm text-brand-gray hover:text-brand-ink">${icon(ICONS.linkedin, "h-4 w-4")}LinkedIn</a></li>
+                <li><a class="flex items-center gap-2 text-sm text-brand-gray hover:text-brand-ink">${icon(ICONS.instagram, "h-4 w-4")}Instagram (@wizydoc.app)</a></li>
+              </ul>
+            </div>
+          </div>
+          <div class="mt-12 flex flex-col items-center justify-between gap-4 border-t border-gray-100 pt-8 sm:flex-row">
+            <p class="text-xs text-brand-gray">© 2026 WizyDoc. Todos los derechos reservados.</p>
+            <p class="text-xs text-brand-gray">Hecho con cuidado para el sector salud.</p>
+          </div>
+        </div>
+      </footer>`;
+  }
+
+  function landing(version) {
+    return navbar(version) + "<main>" + hero(version) + features(version) + howItWorks(version) + pricing(version) + finalCallToAction(version) + "</main>" + footer();
+  }
+
+  const frame = document.getElementById("review-frame");
+  const closeScript = "</" + "script>";
+
+  function renderVersion(version) {
+    frame.srcdoc = [
+      '<!doctype html><html lang="es"><head><meta charset="utf-8" />',
+      '<meta name="viewport" content="width=device-width, initial-scale=1" />',
+      `<base href="${document.baseURI.replaceAll("&", "&amp;")}" />`,
+      '<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />',
+      `<script src="https://cdn.tailwindcss.com/3.4.16">${closeScript}`,
+      `<script>tailwind.config = ${JSON.stringify(TAILWIND_CONFIG)};${closeScript}`,
+      `<style>${document.querySelector("head style").textContent}</style>`,
+      '</head><body class="bg-white font-sans text-brand-ink antialiased">',
+      landing(version),
+      `<script>${document.getElementById("agenda-animation").textContent}${closeScript}`,
+      version === "proposal" ? `<script>${document.getElementById("carousels").textContent}${closeScript}` : "",
+    ].join("");
+  }
+
+  window.addEventListener("message", (event) => {
+    if (event.source === frame.contentWindow && event.data?.type === "landing-height") {
+      frame.style.height = `${event.data.height}px`;
+    }
+  });
+
+  const restartAnimation = () => frame.contentWindow.postMessage({ type: "restart-agenda" }, "*");
+  document.getElementById("replay").addEventListener("click", restartAnimation);
+
+  document.querySelectorAll("[data-version]").forEach((button) => {
+    button.addEventListener("click", () => {
+      document.querySelectorAll("[data-version]").forEach((other) => other.setAttribute("aria-pressed", String(other === button)));
+      renderVersion(button.dataset.version);
+    });
+  });
+
+  document.querySelectorAll("[data-width]").forEach((button) => {
+    button.addEventListener("click", () => {
+      document.querySelectorAll("[data-width]").forEach((other) => other.setAttribute("aria-pressed", String(other === button)));
+      frame.classList.toggle("is-mobile", button.dataset.width === "mobile");
+      setTimeout(restartAnimation, 300);
+    });
+  });
+
+  renderVersion("proposal");
+</script>
+</body>
+</html>
