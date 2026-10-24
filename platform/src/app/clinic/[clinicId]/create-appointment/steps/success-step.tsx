@@ -17,10 +17,13 @@ export function SuccessStep({ appointment, patientName, onClick }: Props) {
       <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-green-100">
         <CheckCircle className="h-7 w-7 text-green-600" />
       </div>
-      <h2 className="text-2xl font-bold text-brand-teal-dark">
+      <h2
+        tabIndex={-1}
+        className="text-2xl font-bold text-brand-teal-dark outline-none"
+      >
         ¡Cita reservada!
       </h2>
-      <p className="mt-2 text-sm text-brand-gray">
+      <p className="mt-2 break-words text-sm text-brand-gray">
         Te esperamos, {patientName}. Guarda los detalles de tu cita.
       </p>
 

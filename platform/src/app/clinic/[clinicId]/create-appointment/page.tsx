@@ -1,17 +1,19 @@
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import type { Metadata } from "next";
+import { cache } from "react";
+import { Card, CardContent } from "@/components/ui/card";
 import { clinicApi } from "@/lib/api/clinic";
 import type { ClinicLocation } from "@/lib/api/clinic/types";
 import { doctorsApi } from "@/lib/api/doctors";
 import type { ClinicDoctor } from "@/lib/api/doctors/types";
+import { BookingHeader, getHeadingText } from "./booking-header";
 import { BookingWizard } from "./booking-wizard";
+import { findSoleDoctor } from "./booking-steps";
 
 interface Props {
   params: Promise<{ clinicId: string }>;
 }
 
-export default async function CreateAppointmentPage({ params }: Props) {
-  const { clinicId } = await params;
-
+const loadBookingData = cache(async (clinicId: string) => {
   let doctors: ClinicDoctor[] = [];
   let clinic: ClinicLocation | null = null;
   try {
@@ -22,17 +24,28 @@ export default async function CreateAppointmentPage({ params }: Props) {
   } catch (error) {
     console.error("[create-appointment] error fetching doctors:", error);
   }
+  return { doctors, clinic };
+});
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { clinicId } = await params;
+  const { doctors, clinic } = await loadBookingData(clinicId);
+
+  return {
+    title: `${getHeadingText(clinic, findSoleDoctor(doctors))} · WizyDoc`,
+  };
+}
+
+export default async function CreateAppointmentPage({ params }: Props) {
+  const { clinicId } = await params;
+  const { doctors, clinic } = await loadBookingData(clinicId);
 
   if (doctors.length === 0) {
     return (
       <div className="w-full max-w-md">
         <Card>
-          <CardHeader>
-            <h1 className="text-2xl font-bold text-brand-teal-dark">
-              Reservar cita
-            </h1>
-          </CardHeader>
-          <CardContent>
+          <CardContent className="p-5 sm:p-8">
+            <BookingHeader clinic={clinic} doctor={null} specialty={null} />
             <p className="text-sm text-brand-gray">
               Esta clínica todavía no tiene doctores disponibles para reservar
               citas.

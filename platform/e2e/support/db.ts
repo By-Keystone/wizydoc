@@ -125,6 +125,13 @@ export interface TestPrisma {
     create(args: {
       data: Record<string, unknown>;
     }): Promise<{ resourceId: string }>;
+    update(args: {
+      where: Record<string, unknown>;
+      data: Record<string, unknown>;
+    }): Promise<{ resourceId: string }>;
+    delete(args: {
+      where: Record<string, unknown>;
+    }): Promise<{ resourceId: string }>;
   };
   resource: {
     create(args: { data: Record<string, unknown> }): Promise<{ id: string }>;

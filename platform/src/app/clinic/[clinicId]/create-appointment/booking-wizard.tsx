@@ -1,10 +1,20 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import type { ClinicLocation } from "@/lib/api/clinic/types";
 import type { ClinicDoctor } from "@/lib/api/doctors/types";
 import { createAppointmentAction } from "@/lib/actions/appointment/create-appointment.action";
+import { BookingHeader } from "./booking-header";
+import {
+  type BookingStep,
+  type Specialty,
+  findSoleDoctor,
+  listDoctorsOf,
+  listSpecialties,
+  listSteps,
+  pickInitialSelection,
+} from "./booking-steps";
 import { StepperProgress } from "./steps/stepper-progress";
 import { SpecialtyStep } from "./steps/specialty-step";
 import { DoctorStep } from "./steps/doctor-step";
@@ -13,11 +23,6 @@ import { getDoctorSlotsAction } from "@/lib/actions/doctor-profile/get-slots.act
 import { PatientStep, type BookingPatient } from "./steps/patient-step";
 import { SuccessStep } from "./steps/success-step";
 
-interface Specialty {
-  id: string;
-  name: string;
-}
-
 interface Props {
   doctors: ClinicDoctor[];
   clinic: ClinicLocation | null;
@@ -25,9 +30,12 @@ interface Props {
 }
 
 export function BookingWizard({ doctors, clinic, clinicId }: Props) {
-  const [step, setStep] = useState(1);
-  const [specialty, setSpecialty] = useState<Specialty | null>(null);
-  const [doctor, setDoctor] = useState<ClinicDoctor | null>(null);
+  const initialSelection = pickInitialSelection(doctors);
+  const firstStep = listSteps(doctors, initialSelection.specialty)[0];
+
+  const [specialty, setSpecialty] = useState(initialSelection.specialty);
+  const [doctor, setDoctor] = useState(initialSelection.doctor);
+  const [step, setStep] = useState<BookingStep | "success">(firstStep);
   const [dateTime, setDateTime] = useState<{
     date: string;
     time: string;
@@ -35,27 +43,33 @@ export function BookingWizard({ doctors, clinic, clinicId }: Props) {
   } | null>(null);
   const [patient, setPatient] = useState<BookingPatient | null>(null);
 
-  const specialties = useMemo(() => {
-    const byId = new Map<string, Specialty>();
-    for (const d of doctors) {
-      for (const s of d.specialties) {
-        byId.set(s.id, s);
-      }
-    }
-    return Array.from(byId.values());
-  }, [doctors]);
+  const cardContentRef = useRef<HTMLDivElement>(null);
+  const previousStep = useRef(step);
 
-  const doctorsForSpecialty = useMemo(() => {
-    if (!specialty) return [];
-    return doctors.filter((d) =>
-      d.specialties.some((s) => s.id === specialty.id),
-    );
-  }, [doctors, specialty]);
+  useEffect(() => {
+    if (previousStep.current === step) return;
+    previousStep.current = step;
+    cardContentRef.current?.querySelector("h2")?.focus();
+  }, [step]);
+
+  const steps = listSteps(doctors, specialty);
+  const stepIndex = step === "success" ? -1 : steps.indexOf(step);
+  const goBack = () => setStep(steps[stepIndex - 1]);
+  const goBackUnlessFirst = stepIndex > 0 ? goBack : undefined;
+
+  const chooseSpecialty = (chosen: Specialty) => {
+    if (chosen.id !== specialty?.id) {
+      setDoctor(findSoleDoctor(listDoctorsOf(doctors, chosen.id)));
+    }
+    setSpecialty(chosen);
+    const stepsOfChosen = listSteps(doctors, chosen);
+    setStep(stepsOfChosen[stepsOfChosen.indexOf("specialty") + 1]);
+  };
 
   const reset = () => {
-    setStep(1);
-    setSpecialty(null);
-    setDoctor(null);
+    setSpecialty(initialSelection.specialty);
+    setDoctor(initialSelection.doctor);
+    setStep(firstStep);
     setDateTime(null);
     setPatient(null);
   };
@@ -63,43 +77,55 @@ export function BookingWizard({ doctors, clinic, clinicId }: Props) {
   return (
     <div className="w-full max-w-md">
       <Card>
-        <CardContent className="p-8">
-          {step <= 4 && <StepperProgress currentStep={step} totalSteps={4} />}
+        <CardContent ref={cardContentRef} className="p-5 sm:p-8">
+          {step !== "success" && (
+            <>
+              <BookingHeader
+                clinic={clinic}
+                doctor={doctor ?? findSoleDoctor(doctors)}
+                specialty={specialty}
+              />
+              <StepperProgress
+                currentStep={stepIndex + 1}
+                totalSteps={steps.length}
+              />
+            </>
+          )}
 
-          {step === 1 && (
+          {step === "specialty" && (
             <SpecialtyStep
-              specialties={specialties}
-              onNext={(s) => {
-                setSpecialty(s);
-                setStep(2);
-              }}
+              specialties={listSpecialties(doctors)}
+              initialSelectedId={specialty?.id}
+              onNext={chooseSpecialty}
             />
           )}
 
-          {step === 2 && specialty && (
+          {step === "doctor" && specialty && (
             <DoctorStep
-              doctors={doctorsForSpecialty}
-              onNext={(d) => {
-                setDoctor(d);
-                setStep(3);
+              doctors={listDoctorsOf(doctors, specialty.id)}
+              specialtyName={specialty.name}
+              initialSelectedId={doctor?.doctorProfileId}
+              onNext={(chosen) => {
+                setDoctor(chosen);
+                setStep("datetime");
               }}
-              onBack={() => setStep(1)}
+              onBack={goBackUnlessFirst}
             />
           )}
 
-          {step === 3 && doctor && (
+          {step === "datetime" && doctor && (
             <DateTimeStep
               slotsSourceId={doctor.doctorProfileId}
               loadSlots={getDoctorSlotsAction}
               onNext={(selection) => {
                 setDateTime(selection);
-                setStep(4);
+                setStep("patient");
               }}
-              onBack={() => setStep(2)}
+              onBack={goBackUnlessFirst}
             />
           )}
 
-          {step === 4 && specialty && doctor && dateTime && (
+          {step === "patient" && specialty && doctor && dateTime && (
             <PatientStep
               specialtyName={specialty.name}
               doctorName={doctor.displayName}
@@ -130,13 +156,13 @@ export function BookingWizard({ doctors, clinic, clinicId }: Props) {
                 }
 
                 setPatient(p);
-                setStep(5);
+                setStep("success");
               }}
-              onBack={() => setStep(3)}
+              onBack={goBack}
             />
           )}
 
-          {step === 5 && specialty && doctor && dateTime && patient && (
+          {step === "success" && specialty && doctor && dateTime && patient && (
             <SuccessStep
               appointment={{
                 specialty: specialty.name,

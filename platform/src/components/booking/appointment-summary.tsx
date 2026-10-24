@@ -30,7 +30,7 @@ export function AppointmentSummary({
           {appointment.durationMinutes} minutos
         </span>
       </p>
-      <dl className="mt-3 grid grid-cols-[92px_1fr] gap-x-3 gap-y-2">
+      <dl className="mt-3 grid grid-cols-[92px_minmax(0,1fr)] gap-x-3 gap-y-2 break-words">
         <dt className="text-[13px]">Especialidad</dt>
         <dd className="font-medium text-brand-ink">{appointment.specialty}</dd>
         <dt className="text-[13px]">Profesional</dt>
