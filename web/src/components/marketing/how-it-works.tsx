@@ -4,9 +4,9 @@ const steps = [
   {
     number: "01",
     icon: UserPlus,
-    title: "Registra tu sede y médicos",
+    title: "Registra tu sede y tu equipo",
     description:
-      "Crea tu perfil, agrega tus sedes y da de alta a tus médicos con su especialidad y duración de cita preferida.",
+      "Crea tu cuenta y tus sedes. Si atiendes, ya eres médico de tu sede; invita al resto de tu equipo con su especialidad.",
   },
   {
     number: "02",

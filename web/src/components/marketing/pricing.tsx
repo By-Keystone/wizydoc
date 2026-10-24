@@ -1,4 +1,3 @@
-import Link from "next/link";
 import {
   Building2,
   Check,
@@ -16,7 +15,15 @@ import {
   CardContent,
   CardFooter,
 } from "@/components/ui/card";
+import { PLATFORM_URL } from "@/lib/platform-url";
 
+// En la beta toda cuenta empieza en Gratis y los planes de pago se asignan a
+// pedido: todos los botones llevan al registro.
+const REGISTER_URL = `${PLATFORM_URL}/register`;
+
+// Los planes limitan citas al mes y sedes, nunca médicos (docs/PRODUCT.md,
+// «Planes»). Sólo se anuncia lo que ya existe: los topes de citas de los planes
+// de pago, la exportación y la importación aún no.
 const plans = [
   {
     name: "Gratis",
@@ -27,13 +34,12 @@ const plans = [
     badge: null,
     highlight: false,
     features: [
-      "1 médico",
+      "10 citas al mes",
       "1 sede",
+      "Médicos sin límite",
       "Reserva de citas en línea",
-      "Agenda de citas del doctor",
+      "Agenda de cada médico",
     ],
-    cta: "Empezar gratis",
-    href: "/register",
   },
   {
     name: "Consultorio",
@@ -41,18 +47,16 @@ const plans = [
     price: "S/ 79",
     period: "/ mes",
     description:
-      "Para consultorios que quieren llevar historia clínica de sus pacientes.",
-    badge: "Más popular",
+      "Para que tus pacientes se gestionen solos y su información se quede contigo.",
+    badge: "Recomendado",
     highlight: true,
     features: [
-      "3 médicos incluidos",
       "1 sede",
+      "Médicos sin límite",
+      "El paciente cancela y reprograma desde el link",
       "Ficha del paciente",
       "Historial de citas",
-      "Médico adicional por S/ 25",
     ],
-    cta: "Suscribirse",
-    href: "/register?plan=CONSULTORIO",
   },
   {
     name: "Clínica",
@@ -63,14 +67,12 @@ const plans = [
     badge: null,
     highlight: false,
     features: [
-      "8 médicos incluidos",
       "3 sedes incluidas",
+      "Sede adicional por S/ 40",
+      "Médicos sin límite",
       "Métricas por sede",
-      "Médico adicional por S/ 20",
       "Todo lo del plan Consultorio",
     ],
-    cta: "Suscribirse",
-    href: "/register?plan=CLINICA",
   },
   {
     name: "Red",
@@ -81,13 +83,11 @@ const plans = [
     badge: null,
     highlight: false,
     features: [
-      "Médicos y sedes a medida",
-      "Exportación de datos",
+      "Sedes a medida",
+      "Médicos sin límite",
       "Soporte prioritario",
       "Todo lo del plan Clínica",
     ],
-    cta: "Hablar con ventas",
-    href: "/contact",
   },
 ];
 
@@ -98,16 +98,21 @@ const comparison: { label: string; values: [Cell, Cell, Cell, Cell] }[] = [
     label: "Precio",
     values: ["S/ 0", "S/ 79 al mes", "S/ 199 al mes", "A medida"],
   },
-  { label: "Médicos incluidos", values: ["1", "3", "8", "A medida"] },
-  { label: "Médico adicional", values: ["—", "S/ 25", "S/ 20", "A medida"] },
+  {
+    label: "Médicos",
+    values: ["Sin límite", "Sin límite", "Sin límite", "Sin límite"],
+  },
   { label: "Sedes incluidas", values: ["1", "1", "3", "A medida"] },
-  { label: "Sede adicional", values: ["—", "S/ 40", "S/ 40", "A medida"] },
+  { label: "Sede adicional", values: ["—", "—", "S/ 40", "A medida"] },
   { label: "Reserva de citas", values: [true, true, true, true] },
-  { label: "Agenda de citas de doctores", values: [true, true, true, true] },
+  { label: "Agenda de cada médico", values: [true, true, true, true] },
+  {
+    label: "El paciente cancela y reprograma desde el link",
+    values: [false, true, true, true],
+  },
   { label: "Ficha del paciente", values: [false, true, true, true] },
   { label: "Historial de citas", values: [false, true, true, true] },
   { label: "Métricas por sede", values: [false, false, true, true] },
-  { label: "Exportación de datos", values: [false, false, false, true] },
   { label: "Soporte prioritario", values: [false, false, false, true] },
 ];
 
@@ -155,8 +160,11 @@ export function Pricing() {
             Un plan para cada necesidad
           </h2>
           <p className="mt-4 text-lg text-brand-gray">
-            Comienza gratis y crece a tu ritmo. Sin permanencia. Cancela cuando
-            quieras.
+            Comienza gratis y crece a tu ritmo.
+          </p>
+          <p className="mt-2 text-sm text-brand-gray">
+            Durante la beta, todas las cuentas empiezan en Gratis y los planes
+            de pago se activan a pedido.
           </p>
         </div>
 
@@ -221,7 +229,7 @@ export function Pricing() {
                   className="w-full"
                   size="lg"
                 >
-                  <Link href={plan.href}>{plan.cta}</Link>
+                  <a href={REGISTER_URL}>Empezar gratis</a>
                 </Button>
               </CardFooter>
             </Card>
