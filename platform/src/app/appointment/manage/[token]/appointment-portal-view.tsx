@@ -18,7 +18,7 @@ import {
 } from "@/components/booking/appointment-summary";
 import { DateTimeStep } from "@/components/booking/datetime-step";
 import { formatWhen } from "@/components/booking/format";
-import { Badge } from "@/components/ui/badge";
+import { AppointmentStatusBadge } from "@/components/common/appointment-status-badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import type { ActionFailure } from "@/lib/actions/types";
@@ -73,16 +73,6 @@ function ProcessingLabel({
       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
       Procesando...
     </>
-  );
-}
-
-function StatusBadge({ status }: { status: AppointmentPortal["status"] }) {
-  if (status === "CANCELLED") return <Badge variant="gray">Cancelada</Badge>;
-  if (status === "CONFIRMED") return <Badge variant="green">Confirmada</Badge>;
-  return (
-    <Badge variant="gray" className="bg-amber-50 text-amber-700">
-      Pendiente
-    </Badge>
   );
 }
 
@@ -297,7 +287,7 @@ export function AppointmentPortalView({ token, initialAppointment }: Props) {
           <h1 className="text-xl font-bold text-brand-teal-dark">
             Hola, {appointment.patientName}
           </h1>
-          <StatusBadge status={appointment.status} />
+          <AppointmentStatusBadge status={appointment.status} />
         </div>
 
         {isWithinDeadline(appointment) ? (
