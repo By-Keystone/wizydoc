@@ -28,6 +28,7 @@ import {
   markInvitationAcceptedWithoutCredential,
   markInvitationExpiredStatus,
   softDeleteMembership,
+  ageInvitationsOf,
 } from "../../support/invitations";
 
 /**
@@ -351,6 +352,8 @@ test.describe("Lo que deja de ser posible", () => {
       role: "USER" as const,
     };
     await inviteUserViaApi(admin, { ...inviteBody, resourceId: clinicA });
+    // Pasado el enfriamiento por persona, la segunda sede también recibe su invitación.
+    await ageInvitationsOf(email);
     await inviteUserViaApi(admin, { ...inviteBody, resourceId: clinicB });
 
     const prisma = await getTestPrisma();
@@ -558,6 +561,7 @@ test.describe("Lo que no debe filtrarse", () => {
     const clinicB = await createClinicResourceViaPrisma(admin, organizationId, {
       name: uniqueName("Sede B CA21"),
     });
+    await ageInvitationsOf(forAccept.email);
     await inviteUserViaApi(admin, {
       email: forAccept.email,
       name: "Lucía",

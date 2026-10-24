@@ -202,9 +202,8 @@ for (const scope of ["clinic", "organization"] as const) {
         where: { resourceId, user: { email } },
       });
       expect(membership?.role).toBe(newRole);
-      expect((await countMembershipsAndProfiles(email)).doctorProfiles).toBe(
-        scope === "clinic" ? 1 : 0,
-      );
+      // En la organización, el nuevo ADMIN queda como médico (perfil vacío) de su única sede.
+      expect((await countMembershipsAndProfiles(email)).doctorProfiles).toBe(1);
     });
 
     test("guardar dos veces seguidas responde 200 sin correo ni cambio de token; pasado el enfriamiento reenvía", async () => {

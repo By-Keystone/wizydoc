@@ -69,12 +69,14 @@ test.describe("Lo que deja de ser posible", () => {
     const memberships = await prisma.userResourceMembership.findMany({
       where: { resourceId: clinicId },
     });
-    expect(memberships).toHaveLength(0);
+    // Sólo la membership DOCTOR automática del dueño; el correo inválido no crea nada.
+    expect(memberships).toHaveLength(1);
+    expect((memberships[0] as { userId: string }).userId).toBe(admin.userId);
 
     const doctorProfiles = await prisma.doctorProfile.findMany({
       where: { membership: { resourceId: clinicId } },
     });
-    expect(doctorProfiles).toHaveLength(0);
+    expect(doctorProfiles).toHaveLength(1);
 
     // La invitación depende de una membership ya creada (FK a membershipId): sin membership, tampoco hay invitación.
     const invitations = await prisma.userInvitation.findMany({

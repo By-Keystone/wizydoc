@@ -24,7 +24,7 @@ import {
   invitePendingUser,
   softDeleteMembership,
 } from "../../support/invitations";
-import { addDoctorProfile } from "../../support/profile";
+import { addDoctorProfile, findDoctorProfileId } from "../../support/profile";
 import { expect, test } from "../../support/test";
 import { signIn, uniqueName } from "../../support/users";
 
@@ -383,12 +383,16 @@ test.describe("PUT doctors/:doctorProfileId/specialties: médico y sede (IDOR)",
       [world.specialties[0].id],
       "USER",
     );
-    const ownerProfileId = await createProfile(
+    // El dueño ya atiende por defecto: pasa a Usuario y su perfil deja de estar vivo.
+    const prisma = await getTestPrisma();
+    await prisma.userResourceMembership.updateMany({
+      where: { userId: world.admin.userId, resourceId: world.clinicId },
+      data: { role: "USER" },
+    });
+    const ownerProfileId = (await findDoctorProfileId(
       world.admin.userId,
       world.clinicId,
-      [],
-      "USER",
-    );
+    )) as string;
     const before = await snapshot([world.clinicId]);
 
     const byAdmin = await put(
@@ -842,7 +846,7 @@ test.describe("GET /clinic/:resourceId/users", () => {
     const before = emails(
       await listClinicUsers(world.admin.context, world.clinicId),
     );
-    expect(before).toHaveLength(4);
+    expect(before).toHaveLength(5);
 
     for (const ids of [[world.specialties[0].id], []]) {
       const response = await put(

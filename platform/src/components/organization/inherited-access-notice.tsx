@@ -19,7 +19,9 @@ export const InheritedAccessNotice = ({ role, organizationName }: Props) => {
             Verá y editará las fichas de los pacientes, incluidos sus datos de
             salud, la agenda y el equipo de todas las sedes. También podrá
             invitar a otras personas y crear sedes y organizaciones. Elige este
-            rol sólo para quien lo necesite.
+            rol sólo para quien lo necesite. También quedará como médico de cada
+            sede, sin especialidades ni horarios: no aparece en el link de
+            reserva hasta que los tenga.
           </p>
         </div>
       </div>

@@ -1,6 +1,9 @@
 "use server";
 
 import { tags } from "@/lib/api/clinic";
+import { tags as membershipTags } from "@/lib/api/memberships";
+import { tags as organizationTags } from "@/lib/api/organizations";
+import { tags as userTags } from "@/lib/api/user";
 import { doFetchJson } from "@/lib/api/fetch";
 import { toActionState } from "@/lib/actions/to-action-state";
 import { getSession } from "@/lib/auth/session";
@@ -57,6 +60,10 @@ export async function createClinicAction(
     });
 
     revalidateTag(tags.organizationClinics(organizationId));
+    // Quien crea la sede (y todo ADMIN) atiende ahí desde el primer momento.
+    revalidateTag(organizationTags.organizationUsers(organizationId));
+    revalidateTag(membershipTags.memberships());
+    revalidateTag(userTags.myProfile());
     return { status: "success" };
   } catch (error) {
     return toActionState(error);

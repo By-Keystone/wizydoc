@@ -688,3 +688,306 @@ Cada paso termina con `pnpm typecheck` en el proyecto que toca.
 2. **t-16, índice en `UserResourceMembership(resourceId)`.** Es la única línea que toca ese
    modelo (sin columnas ni roles). Recomendado: dejarlo. Si no se quiere, se quita y todo lo
    demás sigue igual.
+
+---
+
+# Iteración 2: equipo de la organización, varias sedes y perfil automático del ADMIN
+
+**Fecha:** 23 de octubre de 2026. **Base:** fc4fdfa (`feat/doctor-specialties-6-users`, PR #110,
+sin mergear). Misma rama, sin commits del planner.
+**Sin mockup:** reutiliza `Table`, `Badge`, `Dialog`, `Input`, `Select` y `Label`; los textos
+nuevos están aquí.
+**Sin cambios de schema ni migración.** No estamos en producción: sin backfill ni compatibilidad
+de datos. No se tocan `policy.ts`, `auth.ts`, `entitlements.ts` ni `.env*`.
+
+## Objetivo
+
+Todo ADMIN de la organización queda como médico (perfil vacío) de cada sede, y el médico
+independiente sólo tiene que elegir especialidad y horarios para recibir citas. La lista de
+usuarios de la organización muestra a todo el equipo con sus accesos, y el formulario único
+asigna varias sedes a la vez.
+
+## Decisiones del humano (firmes)
+
+1. **Usuarios de la SEDE:** sólo memberships directas en esa sede. No cambia.
+2. **Usuarios de la ORGANIZACIÓN:** todas las personas con acceso a la organización o a alguna
+   de sus sedes, una fila por persona con sus accesos («Todas las sedes · Rol», «Sede X · Rol»).
+   Sólo memberships vivas, acotadas a esa organización y su cuenta.
+3. **Perfil automático del ADMIN:** al crear una sede, cada ADMIN vivo de la organización padre
+   recibe en ella una membership DOCTOR directa y un perfil vacío, en la misma transacción. La
+   misma regla vale al pasar a ADMIN de la organización por el formulario. Dejar de ser ADMIN no
+   borra esas memberships. El perfil vacío no sale en el booking.
+4. **«Médicos» en las métricas** de sede y de organización cuenta sólo perfiles vivos con al
+   menos un horario.
+5. **Varias sedes a la vez** en el formulario único: «Todas las sedes» (Administrador o Usuario) o
+   de 1 a N sedes concretas (Médico o Usuario, y las especialidades si es Médico, aplicados a
+   todas). Un solo correo por persona. Desde la página de una sede, la sede sigue fija.
+6. Sin botón «Atender en esta sede» en «Mi perfil»; se ajusta el aviso «Todavía no atiendes…».
+
+## Decisiones técnicas
+
+| # | Decisión | Por qué |
+| --- | --- | --- |
+| it2-1 | **Hay un solo camino que crea sedes, y ahí va la regla.** El onboarding (`CompleteAccountSetupUseCase`) sólo crea la cuenta y la suscripción. `POST /organization` crea la organización y la membership ADMIN de quien la crea (`OrganizationRepository.save`). La sede sólo nace en `POST /organization/:resourceId/clinics` → `CreateClinicUseCase` → `ClinicRepository.save`, que en el platform usa «Crear sede» (`components/clinic/modal.tsx`, también en el primer uso). La regla va en `CreateClinicUseCase`, dentro de su `inTransaction`. | Verificado en el código: no hay otro `resource.create({ type: "CLINIC" })` en `api/src` ni un seed. Con un solo punto de entrada no hay que duplicar la regla. `createClinicResourceViaPrisma` de e2e no pasa por aquí (ver «e2e»). |
+| it2-2 | **Repositorio nuevo `MembershipRepository` con `grantAttending({ userId, clinicId, accountId, createdBy })`.** Sobre `(userId, clinicId)`: sin membership, crea una DOCTOR y un perfil vacío (`"created"`); con una borrada, la revive como DOCTOR y asegura su perfil sin tocar especialidades (`"revived"`); con una viva, de cualquier rol, no hace nada (`"kept"`). El perfil se asegura con `doctorProfile.upsert({ where: { membershipId }, create: { membershipId }, update: {} })`. | Los dos caminos (crear sede y pasar a ADMIN) aplican la misma regla, y `api/AGENTS.md` pide que el acceso a datos reutilizable vaya en un repositorio. No se usa `upsertForMembership` porque hace `set` de especialidades y vaciaría las de un perfil revivido. |
+| it2-3 | **Al crear una sede**, `grantAttending` para cada ADMIN de la organización padre: `userResourceMembership` con `resourceId = organizationId`, `accountId`, `role: "ADMIN"`, `deletedAt: null`. A los USER y DOCTOR de la organización no les pasa nada. No se crean invitaciones ni se envían correos. `createdBy` = quien crea la sede. | Decisión 3. Sin correo, porque el ADMIN ya tiene acceso a la sede por herencia y la membership nueva sólo dice que atiende. |
+| it2-4 | **Al pasar a ADMIN por el formulario** (`POST /organization/:resourceId/invitations` con `role: "ADMIN"` sobre alguien que **no** tenía una membership ADMIN viva en la organización: `created`, `revived` o `updated` desde USER): `grantAttending` en cada sede de la organización. Volver a guardar a quien ya era ADMIN no hace nada. | Coherencia con it2-3. Disparar sólo en la transición es predecible: guardar un ADMIN sin cambios no crea filas. Con la regla de it2-2: **una membership USER viva no se toca**, porque es una decisión explícita de un ADMIN (por ejemplo, Médico → Usuario, cl-7). Convertirla en DOCTOR reactivaría horarios viejos en el booking sin que nadie lo pida, y como ADMIN ya puede asignarse Médico ahí con el formulario. **Una borrada se revive como DOCTOR con su perfil**, igual que en t-5 (revivir es la misma fila), porque «el ADMIN atiende en todas las sedes». Si ese perfil tenía especialidad y horarios, vuelve al booking. Se acepta: hoy sólo hay borradas sembradas, porque no existe UI para quitar a alguien. |
+| it2-5 | **La promoción toma `lockAccountQuota(accountId)` antes de guardar la membership.** `CreateClinicUseCase` ya lo toma antes de crear la sede. | Sin el bloqueo, si alguien es promovido mientras se crea una sede, ninguna de las dos transacciones ve lo que hace la otra y el nuevo ADMIN queda sin membership en esa sede. Con READ COMMITTED, quien espera el bloqueo ve después lo que confirmó la otra. Un comentario explica que se reutiliza el bloqueo de cuota para serializar altas de sede y promociones. |
+| it2-6 | **Dejar de ser ADMIN no borra nada.** En las sedes donde tiene una DOCTOR directa, su rol efectivo pasa a DOCTOR (`maxRole(USER heredado, DOCTOR)`): sólo sus citas y «Configuración». Deja de ser editor de especialidades (su «Mi perfil» queda en sólo lectura). Si no debe atender, se le pasa a Usuario sede por sede con el formulario. | Decisión 3 del humano. |
+| it2-7 | **El booking ya exige especialidad y horarios. No se cambia.** `get-clinic-doctors.query.ts` hace `INNER JOIN "_DoctorProfileToSpecialty"` y `specialty` de la organización, y un `EXISTS` sobre `doctor_schedule`. `create-appointment` (`findBookableDoctor`) exige `specialties.some`. `reschedule-appointment` (`isAlternativeDoctor`) también. | Verificado: el perfil vacío no aparece, no se puede reservar con él ni sale como alternativa al reprogramar. |
+| it2-8 | **«Médicos» = perfiles vivos con al menos un horario.** Nuevo `countedDoctorProfileWhere(filter)` = `liveDoctorProfileWhere(filter)` + `availabilities: { some: {} }`. `liveDoctorProfileWhere` suma un filtro `organizationId` (`membership.resource.parentResourceId`). Se usa en la métrica de sede y en la de organización. **Revierte la t-13 de este plan.** El humano la citó como t-12: aquí la t-12 es «Mi perfil», y la regla de contar con horarios venía de la t-12 de `doctor-profile-specialties/plan.md`. | Decisión 4: los ADMIN que no atienden no cuentan. La organización sigue contando perfiles, no personas, como hoy: alguien que atiende en dos sedes cuenta dos veces. |
+| it2-9 | **Varias sedes = N llamadas secuenciales a `POST /clinic/:resourceId/invitations` desde la server action.** No hay ruta nueva ni cambia ninguna política. La action primero comprueba que todas las sedes sean de la organización, con `clinicApi.getOrganizationClinics(organizationId)`. Si no, error sin ninguna llamada. Las llamadas van una a una y se para en el primer error. Si falla a mitad, la action responde `error` con lo que se guardó y lo que falló. Reintentar es seguro: asignar es idempotente (lo ya guardado vuelve como `updated` con los mismos datos). | Cumple la regla de `api/AGENTS.md`: el id de la sede siempre en `:resourceId`, y cada llamada pasa por la política y por `findInvitationResource`. Las llamadas son secuenciales por dos razones: la primera crea al usuario y las siguientes lo encuentran (en paralelo chocarían en el único del correo → 409), y así funciona la regla del correo de it2-10. Se descarta `POST /organization/:resourceId/clinic-assignments` con `clinicIds` en el cuerpo: sería atómica, pero rompe esa regla y obliga a validar cada id del cuerpo. No compensa, porque asignar es idempotente y un error a mitad se arregla reintentando. |
+| it2-10 | **Un correo por persona: el enfriamiento de 5 minutos pasa a ser por persona.** En `sendInvitationIfNeeded`, si la persona no tiene contraseña y **cualquiera** de sus invitaciones (de cualquier membership) está `INVITED`, sin aceptar y emitida hace menos de 5 minutos, no se crea ni se renueva la invitación de esta membership, no se envía correo y `invitationSent` es `false`. Esto reemplaza `wasIssuedRecently` (por membership), que queda incluido. El `WHERE` de `renewInvitation` no cambia (protege la concurrencia). | Al asignar 3 sedes, la primera llamada envía el correo y las otras dos caen dentro del enfriamiento. La membership sin invitación vale igual, porque el acceso depende sólo de la membership (t-8): la persona crea su contraseña con el primer enlace. Cambia cl-8 (ver «Casos límite»). El usuario es de una sola cuenta, así que filtrar por `membership.userId` ya queda acotado a la cuenta. |
+| it2-11 | **`GET /organization/:resourceId/users` devuelve una fila por persona con `accesses[]`**, en Prisma (no en SQL crudo), acotada por la organización de la URL **y** por el `accountId` de la sesión. `invitationStatus` pasa a `"pending" \| null`: `"pending"` si la persona no tiene contraseña (sin `authAccount` con `providerId = "credential"`). `"expired"` desaparece de esta lista. | El token es por membership y una persona puede tener varias invitaciones o ninguna (it2-10). Un «expirada» por persona exigiría reglas de agregación arbitrarias, y la acción del ADMIN es la misma en los dos casos: editarla y guardar, que reenvía si pasaron 5 minutos (t-8). Es lo que propuso el humano. |
+| it2-12 | **Dónde se edita cada acceso, siempre con el formulario único.** «Todas las sedes · Rol»: Usuarios de la organización › «Invitar usuario», con su correo y el alcance «Todas las sedes». «Sede X · Rol»: en ese mismo formulario, con «Sedes específicas» y sólo X marcada (precarga rol y especialidades), o en Usuarios de la sede X (sede fija). Las especialidades se editan además desde la columna de Usuarios de la sede y desde «Mi perfil». La acción «Editar» por fila sigue fuera de alcance, como en la iteración 1. | Con una sola sede marcada, la precarga y los avisos de la iteración 1 quedan iguales. Con varias, rol y especialidades se aplican a todas (decisión 5), y después se edita sede por sede. |
+| it2-13 | **Alcance en el formulario: radios «Todas las sedes de {Organización}» / «Sedes específicas»**, y con «Sedes específicas», una casilla por sede (`name="clinicIds"`). Con `fixedClinicId` no hay radios: queda el campo de sólo lectura «Sede» de hoy, más un `hidden` `clinicIds`. | Ya hay casillas nativas en el proyecto (`patient/record-form.tsx`). No hace falta un componente nuevo de selección múltiple: son pocas sedes (Clínica: 3). |
+| it2-14 | **«Mi perfil»:** no hace falta un botón. El aviso «Todavía no atiendes…» ahora sólo sale si el editor no tiene ningún perfil vivo, es decir, si su organización aún no tiene sedes (o si en todas tiene una USER directa). Texto nuevo y enlace a «Sedes». Una consecuencia aceptada: en cuanto hay una sede, todo ADMIN de la organización ve «Tratamiento» y una fila editable por sede, porque atiende por defecto. | Decisión 6. Para el médico independiente, que es el caso foco, el aviso aparece justo antes de crear su primera sede. |
+| it2-15 | **El aviso de «Administrador» del formulario dice que quedará como médico de cada sede.** | Sin el aviso, quien promueve a alguien se sorprende al verlo como «Médico» en cada sede. |
+
+## api: archivos
+
+| Archivo | Cambio |
+| --- | --- |
+| `api/src/infrastructure/postgres/queries/doctor-profile/live-doctor-profile.ts` | `liveDoctorProfileWhere` suma `organizationId?: string` → `membership.resource = { parentResourceId: organizationId }`. **Nuevo** `countedDoctorProfileWhere(filter)` = `{ ...liveDoctorProfileWhere(filter), availabilities: { some: {} } }`, con el comentario «un ADMIN atiende por defecto con perfil vacío; sólo cuenta quien tiene horarios». |
+| `api/src/infrastructure/postgres/queries/clinic/get-clinic-metrics.query.ts` | `doctors`: `countedDoctorProfileWhere({ clinicId: dto.resourceId })`. |
+| `api/src/infrastructure/postgres/queries/organization/get-organizations-doctor-count.query.ts` | `doctorProfile.count({ where: countedDoctorProfileWhere({ organizationId: dto.resourceId }) })`. |
+| `api/src/domain/repositories/membership.repository.ts` (nuevo) | `export type AttendingOutcome = "created" \| "revived" \| "kept";` y la interfaz `IMembershipRepository`: `findOrganizationAdminIds(organizationId, accountId): Promise<string[]>`, `findOrganizationClinicIds(organizationId, accountId): Promise<string[]>` y `grantAttending(input: { userId; clinicId; accountId; createdBy }): Promise<AttendingOutcome>`, cada una con su comentario de una línea. |
+| `api/src/infrastructure/postgres/repositories/membership.repository.ts` (nuevo) | `findOrganizationAdminIds`: `userResourceMembership.findMany({ where: { resourceId: organizationId, accountId, role: "ADMIN", deletedAt: null }, select: { userId: true } })`. `findOrganizationClinicIds`: `resource.findMany({ where: { parentResourceId: organizationId, accountId, type: "CLINIC" }, select: { id: true } })`. `grantAttending`: `findUnique` por `userId_resourceId` **sin** filtrar `deletedAt` (comentario: la excepción de `api/AGENTS.md`, porque se revive), y luego `create({ data: { userId, resourceId: clinicId, accountId, createdBy, role: "DOCTOR" } })` o `update({ where: { id }, data: { deletedAt: null, role: "DOCTOR" } })`, y por último el `upsert` del perfil de it2-2. Usa `getClient()`: corre dentro de la transacción de quien lo llama. |
+| `api/src/application/use-cases/clinic/create-clinic.usecase.ts` | El constructor suma `memberships: IMembershipRepository = new MembershipRepository()` (el último parámetro, para no tocar la ruta). En `execute`, `const clinic = await this.clinicRepository.save(dto);` y luego el método privado `grantAttendingToOrganizationAdmins(dto, clinic.resourceId)`: `findOrganizationAdminIds(dto.organizationId, dto.accountId)` y `grantAttending` para cada uno, **en serie** (`for…of`: el cliente de una transacción interactiva no admite consultas en paralelo). Todo queda dentro del `inTransaction` y después de `lockAccountQuota`. La respuesta de la ruta no cambia (201). |
+| `api/src/application/use-cases/user/invite-user.usecase.ts` | El constructor suma `memberships: IMembershipRepository = new MembershipRepository()` (al final). Método privado `becomesOrganizationAdmin(data, existing)`: `data.resourceType === "ORGANIZATION" && data.role === "ADMIN" && !(existing && !existing.deletedAt && existing.role === "ADMIN")`. En `assign`, después de `assertRoleCanChange`: si se convierte en ADMIN, `lockAccountQuota(data.accountId)` (it2-5). Después de `saveMembership`: si se convierte en ADMIN, el método privado `grantAttendingInOrganizationClinics(user.id, data)` (`findOrganizationClinicIds` y `grantAttending` en serie). En `issueInvitation`, antes de todo, `if (await this.wasPersonInvitedRecently(user.id)) return null;` (it2-10), y se borra `wasIssuedRecently`. `issueInvitation` pasa a recibir `userId`. `wasPersonInvitedRecently(userId)`: `userInvitation.count({ where: { membership: { userId }, status: "INVITED", acceptedAt: null, expiresAt: { gt: new Date(now + INVITATION_TTL_MS - INVITATION_RESEND_COOLDOWN_MS), lte: new Date(now + INVITATION_TTL_MS) } } }) > 0`. El límite `lte` conserva la excepción de hoy: las invitaciones viejas de 7 días se pueden renovar siempre. Los mensajes no cambian. |
+| `api/src/application/queries/organization/get-organization-users.query.ts` | Tipos nuevos: `OrganizationUserAccess = { clinicId: string \| null; clinicName: string \| null; role: "ADMIN" \| "DOCTOR" \| "USER" }` (`clinicId: null` = «Todas las sedes») y `OrganizationUserRow = { name; lastName; email; phone; invitationStatus: "pending" \| null; accesses: OrganizationUserAccess[] }`. `IGetOrganizationUsersQuery.execute(resourceId: string, accountId: string): Promise<OrganizationUserRow[] \| null>`. |
+| `api/src/infrastructure/postgres/queries/organization/get-organization-users.query.ts` | Se reescribe en Prisma. 1) `organization.findFirst({ where: { resourceId, accountId }, select: { resourceId: true } })`; si no existe, `null`. Así una sede en `:resourceId` (la política acepta al ADMIN heredado) no se lee como organización. 2) `userResourceMembership.findMany({ where: { accountId, deletedAt: null, resource: { accountId, OR: [{ id: resourceId }, { parentResourceId: resourceId, type: "CLINIC" }] } }, select: { role, createdAt, resourceId, resource: { select: { type: true, clinic: { select: { name: true } } } }, user: { select: { id, name, lastName, email, phone } } }, orderBy: [{ createdAt: "asc" }, { id: "asc" }] })`. 3) `authAccount.findMany({ where: { userId: { in: ids }, providerId: "credential" }, select: { userId: true } })`. 4) Agrupa por `user.id` en el orden de la primera membership. Los accesos van con la organización primero y después las sedes por nombre (`localeCompare(…, "es")`). El `id` del usuario no sale en la respuesta. |
+| `api/src/routes/organization/index.ts` | `GET /organization/:resourceId/users`: `query.execute(request.params.resourceId, request.user.accountId!)`. Con `null` → `404 { message: "Organización no encontrada" }`. La política no cambia. |
+
+Sin cambios: `get-clinic-users.query.ts` (decisión 1), `get-clinic-doctors.query.ts`,
+`create-appointment`, `reschedule-appointment` (it2-7), `ClinicRepository`, `OrganizationRepository`,
+`lookup-account-user` y las rutas de sede.
+
+## Endpoints modificados
+
+No hay endpoints nuevos ni políticas nuevas.
+
+| Ruta | Policy (sin cambios) | Qué cambia | Respuestas y errores |
+| --- | --- | --- | --- |
+| `POST /organization/:resourceId/clinics` | `{ account, confirmed, onboarded, roles: ["ADMIN"] }` | En la misma transacción: membership DOCTOR + perfil vacío para cada ADMIN vivo de la organización. | 201 como hoy. 402 por el plan y 404 «Organización no encontrada», como hoy. Si falla `grantAttending`, la transacción revierte y no queda sede (500, log con `errName` y `errCode`). |
+| `POST /organization/:resourceId/invitations` | `roles: ["ADMIN"]` | Si se convierte en ADMIN: bloqueo de cuota y `grantAttending` en cada sede. Correo con enfriamiento por persona. | 200 `{ outcome, invitationSent, message }` como hoy. Mismos 400/403/404/409/422. Un `P2002` en `grantAttending` → 409 «Alguien acaba de cambiar el acceso…» (t-15, ya existe). |
+| `POST /clinic/:resourceId/invitations` | `roles: ["ADMIN"]` | Correo con enfriamiento por persona (it2-10). | Igual que hoy. |
+| `GET /organization/:resourceId/users` | `roles: ["ADMIN"]` | Forma nueva: una fila por persona con `accesses`. | 200 `OrganizationUserRow[]`. 404 por la política (otra cuenta, sin membership) o «Organización no encontrada» (`:resourceId` es una sede). 403 para DOCTOR o USER. |
+| `GET /clinic/:resourceId/metrics` y `GET /organization/:resourceId/metrics/doctor-count` | Sin cambios | «Médicos» sólo con horarios (it2-8). | Misma forma. |
+
+## Autorización y multi-tenant
+
+| Dato | Cómo queda acotado |
+| --- | --- |
+| Memberships y perfiles automáticos al crear una sede | La organización la valida la política (ADMIN en `:resourceId`) y `assertOrganizationInAccount` (de la cuenta de la sesión y de tipo organización). Los ADMIN se leen con `resourceId = organizationId` **y** `accountId` de la sesión. La sede es la recién creada. |
+| Memberships y perfiles automáticos al promover | Las sedes se leen con `parentResourceId = organizationId` de la URL ya validada (`findInvitationResource`) **y** `accountId` de la sesión. El usuario ya pasó por `findOrCreateUser` (422 si es de otra cuenta). |
+| Lista de la organización | `organization.findFirst({ resourceId, accountId })` con el `accountId` de la sesión. Las memberships, por `accountId` y por la organización o sus sedes. Las contraseñas, sólo por ids de esos usuarios y sólo si existen (no sale nada de `authAccount`). Sin `id` de usuario ni `accountId` en la respuesta. |
+| Varias sedes | Cada llamada la autoriza la política sobre su `:resourceId` (otra cuenta → 404; sin rol → 403/404) y la valida el caso de uso (sede de la cuenta; especialidades de la organización padre). La comprobación de la action (sedes ∈ organización) es UX y evita escrituras parciales; no es la barrera de seguridad. |
+| Correo por persona | `membership.userId` del usuario ya validado en la cuenta. |
+
+## platform: archivos
+
+| Archivo | Cambio |
+| --- | --- |
+| `platform/src/lib/api/organizations/types.ts` | `OrganizationUserAccess` y `OrganizationUser = { name; lastName; email; phone; invitationStatus: "pending" \| null; accesses: OrganizationUserAccess[] }` (deja de extender `ClinicUser`). |
+| `platform/src/components/clinic/users-table.tsx` | Sólo exporta `roleDisplay`, `statusTagClass` e `invitationTag` para reutilizarlos. Nada más cambia (la sede sigue con una fila por membership). |
+| `platform/src/components/organization/organization-users-table.tsx` (nuevo) | `OrganizationUsersTable({ users, currentUserEmail, emptyMessage })` con `Table` de `components/common/table`. Columnas: **Nombre** (nombre y apellido, las etiquetas «Tú» e «Invitación pendiente» con `statusTagClass` e `invitationTag.pending`, y el correo debajo en < sm, como hoy), **Correo electrónico** (`hidden sm:table-cell`), **Teléfono** (`hidden md:table-cell`) y **Accesos**: `<ul aria-label="Accesos de {Nombre} {Apellido}" className="flex flex-col items-center gap-1">` con un `<li>` por acceso y un `Badge` de `roleDisplay[role].variant` con el texto «Todas las sedes · Administrador» o «{Sede} · Médico» (`whitespace-normal break-words`). `getRowKey` = `email`. Se justifica porque la fila tiene otra forma (varios accesos en vez de un rol) y `UsersTable` es de sede. |
+| `platform/src/app/account/[accountId]/organization/[resourceId]/users/page.tsx` | Usa `OrganizationUsersTable`. `isOnlyCurrentUser` igual. Texto del vacío: «Invita a quien trabaje en todas las sedes, o asigna a cada médico las sedes donde atiende.» (sin el enlace a Sedes). |
+| `platform/src/components/organization/users-top-header.tsx` | Subtítulo: «Personas con acceso a {Organización} o a alguna de sus sedes.». |
+| `platform/src/lib/utils.ts` | **Nuevo** `formatList(items: string[]): string` con `new Intl.ListFormat("es", { type: "conjunction" })` («A, B y C»). Lo usan la action y el aviso. |
+| `platform/src/lib/actions/user/invite-user.action.ts` | Firma nueva: `inviteUserAction(organizationId: string, _prev: ActionState, data: FormData)`. El esquema de hoy suma `clinicIds: z.array(z.uuid()).min(1, { error: "Elige al menos una sede" }).max(50)` (deduplicado con `new Set` antes de validar). Pasos: 1) `getSession()`. 2) Validar; un error devuelve `fieldErrors`. 3) `clinicApi.getOrganizationClinics(organizationId)` (un error pasa por `toActionState`). Si algún id no está, `{ status: "error", message: "Alguna de las sedes elegidas no es de esta organización." }` sin más llamadas. 4) Ordena las elegidas por nombre (`"es"`). Por cada una, en serie, `doFetchJson<{ outcome; invitationSent: boolean; message: string }>(\`/clinic/${encodeURIComponent(id)}/invitations\`, { method: "POST", body: JSON.stringify(cuerpo sin clinicIds) })`. Al primer error, se para y guarda `toActionState(error)` y el nombre de la sede. 5) Si se guardó alguna, revalida `clinicTags.clinicUsers(id)` y `membershipTags.membershipsForResource(id)` de cada sede guardada, más `organizationTags.organizationUsers(organizationId)`, `userTags.myProfile()` y `membershipTags.memberships()`. 6) Respuesta: con `auth-expired`, lo devuelve. Si falló sin guardar nada, el error tal cual. Si falló a mitad: `error` con «Guardamos {lista guardada}. No se pudo en {Sede} ({mensaje sin punto final}). Vuelve a intentarlo: lo ya guardado no se duplica.». Si todo salió bien con una sede, el `message` del api. Con varias: si es uno mismo (`session.user.email` = correo, sin mayúsculas) y Médico, «Listo. Ya atiendes en {lista}. Configura tus horarios en cada sede para aparecer en el link de reserva.»; si alguna `invitationSent`, «Invitación enviada. {Nombre} aparece en los usuarios de {lista}.»; si no, «Listo. Guardamos el acceso de {Nombre} a {lista}.». |
+| `platform/src/lib/actions/organization/invite-organization-user.action.ts` | Si `role === "ADMIN"` y el api respondió 200, lee `clinicApi.getOrganizationClinics(organizationId)` y revalida `clinicTags.clinicUsers(id)` de cada sede: las memberships DOCTOR nuevas salen en sus tablas. Lo demás igual. |
+| `platform/src/lib/actions/clinic/create-clinic.action.ts` | Además de `organizationClinics`, revalida `organizationTags.organizationUsers(organizationId)`, `membershipTags.memberships()` y `userTags.myProfile()`: quien crea la sede ahora atiende ahí. |
+| `platform/src/components/clinic/invite-user/assignment-notice.tsx` | `AssignmentScope = { clinicIds: string[] \| null }` (`null` = todas). `Assignment` suma `existingClinics: { clinicId: string; role: Role }[]` (las elegidas donde ya tiene una membership viva). `existingRole` es el del alcance con «Todas» o con una sola sede, y `null` con varias. `existingSpecialties` sólo con una sede DOCTOR. `mode`: `"new"` sin persona; con sedes, `"edit"` si todas las elegidas tienen membership viva, y si no `"assign"`. `blocked: "clinic-admin"` si alguna elegida es ADMIN directa. `AssignmentNotice` recibe `clinicNames: string[]` en vez de `clinicName`. **Con una sola sede, los avisos son los de hoy, letra por letra.** Con varias (`{L}` = `formatList(nombres)`): Médico y uno mismo → gris «Te asignas como médico de {L}. Sigues siendo administrador; configura tus horarios en cada sede para aparecer en el link de reserva.»; Médico, otra persona → gris «Atenderá en {L} con las mismas especialidades; después puedes cambiarlas sede por sede. Aparece en el link de reserva de cada sede cuando tenga horarios ahí.»; Usuario → gris «Verá la agenda del día de {L} y las fichas de sus pacientes. Podrá actualizar el contacto de un paciente, pero no su información de salud.». Además, debajo y en ámbar, si `existingClinics` no está vacío (`{L'}` = sus nombres): con Usuario y alguna que era DOCTOR, «{Nombre} dejará de atender en {L'} y saldrá del link de reserva. Sus citas ya reservadas no cambian.»; si no, «{Nombre} ya tiene acceso a {L'}: ahí se reemplazan su rol y sus especialidades.». |
+| `platform/src/components/clinic/invite-user/form.tsx` | Estado: `scopeMode: "all" \| "clinics"` y `selectedClinicIds: string[]`. Por defecto: con `fixedClinicId`, `clinics` y `[fixedClinicId]`; con una sola sede, `clinics` y esa; si no, `all`. **Sin `fixedClinicId`:** un `<fieldset aria-describedby={noticeId}>` con `<legend>` «Acceso» (clases de `Label`), dos `<input type="radio" name="scopeMode">` con su `<label>`: «Todas las sedes de {Organización}» y «Sedes específicas» (este último sólo si `clinics.length > 0`). Con «Sedes específicas», un grupo `role="group" aria-label="Sedes"` en una caja `rounded-lg border border-gray-200 p-3` (`max-h-48 overflow-y-auto`) con un `<label>` por sede: `<input type="checkbox" name="clinicIds" value={id} className="h-4 w-4 rounded border-gray-300 accent-brand-teal">`, el nombre y, si la persona ya tiene membership viva ahí, «· {Médico\|Usuario\|Administrador}» en `text-xs text-brand-gray`. Error del grupo («Elige al menos una sede»), local o de `fieldErrors.clinicIds`, en un `<p role="alert">` enlazado por `aria-describedby`. **Con `fixedClinicId`:** el `Input` de sólo lectura «Sede» de hoy y `<input type="hidden" name="clinicIds" value={fixedClinicId}>`. **Rol:** opciones según `scopeMode`, como hoy. `initialRole(person, scope)` con varias sedes: el rol común si todas tienen membership viva con el mismo rol DOCTOR o USER; si no, «Médico». El rol se reinicia al cambiar de modo o cuando la «clave de precarga» cambia (`selectedClinicIds.length === 1 ? id : "multi"`). **Especialidades:** `SpecialtyMultiSelect` con `key = \`${role}-${clave de precarga}\`` (pasar de 2 a 3 sedes no borra lo elegido). **Enviar:** con `clinics` y ninguna marcada, error local, foco en la primera casilla y sin petición. `onSubmit(scope: { clinicIds: string[] \| null }, formData)`. Se quitan `ALL_CLINICS`, el `Select` de sede y `scopeValue`. |
+| `platform/src/components/clinic/invite-user/modal.tsx` | `submit(scope, formData)`: con `null`, la action de organización como hoy. Si no, la validación de especialidades de hoy, y luego `clinicForm.submit(formData)` con `inviteUserAction(organizationId, …)`. Se borra `scopeClinicId` y `setSubmittedToClinic` usa `scope.clinicIds !== null`. `InviteUserFields` suma `clinicIds: string[]`. Descripción sin sede fija: «Dale acceso a todas las sedes de {Organización} o a las sedes que elijas.». |
+| `platform/src/components/organization/inherited-access-notice.tsx` | El texto de ADMIN suma al final: «También quedará como médico de cada sede, sin especialidades ni horarios: no aparece en el link de reserva hasta que los tenga.». |
+| `platform/src/components/profile/where-you-work-card.tsx` | Aviso sin perfiles: «Todavía no atiendes en ninguna sede. Al crear una sede quedas como médico de ella; después eliges aquí tus especialidades.». El enlace pasa a «Ir a Sedes» → `/account/{accountId}/organization/{organizationId}/clinics`. Misma condición de hoy. |
+
+**Estados de la lista de la organización** (sin pantallas nuevas): la carga y el error usan los
+`loading.tsx` y `error.tsx` de la organización. El 403 de un DOCTOR o USER que entra por URL va
+a `error.tsx`, como hoy. No hay 402: todo va en todos los planes.
+
+**Accesibilidad del formulario.** Orden de tabulación: correo › Nombre › Apellido › Teléfono ›
+radios de Acceso › casillas (sólo con «Sedes específicas») › Rol › Especialidades › Atrás ›
+botón principal. El aviso sigue en `aria-live="polite"`. Las casillas son nativas, con su
+`<label>` envolvente.
+
+## Casos límite
+
+| Id | Caso | Qué pasa |
+| --- | --- | --- |
+| it2-cl-1 | **Crear una sede con dos ADMIN y un USER de la organización** | En la transacción de la sede: dos memberships DOCTOR directas con perfil vacío (sin especialidades ni horarios), ninguna para el USER. Sin invitaciones ni correos. Usuarios de la sede: los dos ADMIN como «Médico» con «Sin especialidades». Booking vacío. Métricas: Médicos 0; con especialidad y un horario, el ADMIN aparece en el booking y cuenta 1. Si falla algo, no queda sede. |
+| it2-cl-2 | **Un ADMIN de la organización con una USER directa viva en una sede**, y se le promueve (o se crea otra sede) | Al crear una sede no puede pasar (la sede es nueva). Al promoverlo, esa USER no se toca (it2-4): ahí su rol efectivo es ADMIN, sin perfil vivo y sin «Configuración». Puede asignarse Médico con el formulario. |
+| it2-cl-3 | **Un ADMIN de la organización con una membership borrada en una sede**, al promoverlo | Se revive como DOCTOR, la misma fila y el mismo perfil, con sus especialidades y horarios. Si tenía las dos cosas, vuelve al booking (it2-4). |
+| it2-cl-4 | **Asignar 3 sedes donde una ya existe y otra está borrada** (Médico, especialidad E) | Tres llamadas en serie por orden de nombre. La existente queda `updated`: rol DOCTOR, especialidades = [E] (si era USER, se crea o reactiva su perfil). La borrada queda `revived`: el mismo perfil con [E], y conserva horarios e historial. La tercera queda `created`. Como mucho un correo (it2-10), en la primera llamada que emite. El formulario avisó en ámbar «{Nombre} ya tiene acceso a {Sede}: ahí se reemplazan su rol y sus especialidades.». La borrada no sale en la búsqueda, así que el formulario la trata como nueva (t-10). |
+| it2-cl-5 | **Una sede de otra organización entre las elegidas** | El formulario sólo ofrece las de su organización. Si el `FormData` se manipula: la action responde «Alguna de las sedes elegidas no es de esta organización.» sin llamar al api. Por el api directo, cada llamada es independiente: ADMIN sólo de A en una sede de B → 404 de la política; ADMIN de las dos → Usuario vale, Médico con especialidades de A → 404 «Especialidad no encontrada». Otra cuenta → 404. |
+| it2-cl-6 | **Error a mitad** (p. ej., alguien siembra un ADMIN directo en la segunda sede mientras el formulario está abierto → 409 «El rol de un administrador de la sede no se puede cambiar.») | Se guardó la primera y no se intenta la tercera. Toast de error «Guardamos {Sede 1}. No se pudo en {Sede 2} (…). Vuelve a intentarlo: lo ya guardado no se duplica.» El modal sigue abierto y las tablas ya muestran lo guardado. |
+| it2-cl-7 | **Dueño** | Es ADMIN de la organización que crea (`OrganizationRepository.save`), así que al crear cualquier sede de ella recibe DOCTOR + perfil (verificado: la membership ADMIN nace con la organización, antes de que exista una sede). En una organización creada por otro ADMIN no tiene membership (rg-4 del plan anterior) y no recibe nada, salvo que lo promuevan a ADMIN. Ahí no tiene membership previa, así que no le aplica el 409 del dueño. Nadie lo degrada (t-6). |
+| it2-cl-8 | **ADMIN degradado a USER** | Sus DOCTOR de sede siguen vivas (it2-6): en esas sedes es DOCTOR efectivo (sólo sus citas, «Configuración»), en el resto USER. Ya no edita especialidades. Su perfil sigue vivo: sale en el booking sólo si tiene especialidad y horarios, y cuenta en Médicos sólo con horarios. En la lista de la organización: «Todas las sedes · Usuario» y «{Sede} · Médico». Si lo vuelven a promover, sus DOCTOR quedan `kept`. |
+| it2-cl-9 | **Segunda sede a quien tiene la invitación pendiente** (reemplaza cl-8) | Dentro de 5 minutos desde la última invitación de esa persona: membership (y perfil), pero ni invitación nueva ni correo (`invitationSent: false`). Pasados los 5 minutos: invitación para esa membership y correo. Accede a las dos sedes desde que crea su contraseña con cualquier enlace. |
+| it2-cl-10 | **Volver a guardar a un ADMIN sin cambios** | `updated`, sin `grantAttending` (no hay transición) ni bloqueo. |
+| it2-cl-11 | **Un ADMIN de la organización borrado** (`deletedAt`) al crear una sede | No recibe nada (sólo memberships vivas). |
+| it2-cl-12 | **ADMIN de otra organización de la misma cuenta** al crear una sede en A | No recibe nada: los ADMIN se leen por la organización padre. |
+| it2-cl-13 | **Promoción y alta de sede a la vez** | Las serializa `lockAccountQuota`: el nuevo ADMIN termina con membership DOCTOR en la sede nueva, la cree quien la cree primero. Un `P2002` en `(userId, resourceId)` (asignación manual simultánea) → 409 de t-15. |
+| it2-cl-14 | **Persona con acceso sólo a otra organización de la cuenta** | No sale en la lista de esta organización. |
+
+## e2e
+
+### Cambios en `support/`
+
+- `support/profile.ts` › `addDoctorProfile`: `doctorProfile.upsert({ where: { membershipId }, create: { membershipId, specialties: { connect } }, update: { specialties: { set } } })`. Una sede creada por api ya le da al ADMIN membership DOCTOR y perfil, y `create` chocaría en `membership_id`.
+- **Regla para cualquier seed por Prisma:** en una sede creada con `createClinicResource` (api), el ADMIN de la organización ya tiene membership DOCTOR y perfil vacío. Un `userResourceMembership.create` para él en esa sede choca en `(user_id, resource_id)`: hay que reutilizar la existente (`findUniqueOrThrow` por `userId_resourceId`) o pasar por `addDoctorProfile`. Revisa `support/lookup-fixture.ts`, `support/availability.ts` y los specs que siembran perfiles del ADMIN.
+- `support/accounts.ts` › `createClinicResourceViaPrisma`: no cambia, y su comentario suma «no aplica la regla del ADMIN que atiende (it2-3): úsala cuando el ADMIN no deba tener perfil en esa sede».
+- **Nuevo** `support/profile.ts` › `findDoctorProfileId(userId, clinicId): Promise<string \| null>` (`doctorProfile.findFirst({ where: { membership: { userId, resourceId: clinicId } } })`).
+
+### Specs que se rompen
+
+| Spec | Qué se rompe | Cómo queda |
+| --- | --- | --- |
+| `api/doctor-profile/doctor-metrics.spec.ts` | CA-11 (el ADMIN cuenta sin horarios) | El ADMIN (y cualquier médico) cuenta sólo con un horario; sin horarios, 0. CA-12 sigue. Sede y organización coinciden. |
+| `api/doctor-profile/admin-attends.spec.ts` | «asignarse crea la membership…» (`created`), «sin asignarse no hay perfil», CA-32 (403 antes de asignarse), `editableClinics` vacío al inicio | En la sede creada por api, el ADMIN ya tiene membership DOCTOR y perfil vacío: asignarse con especialidades → `updated`, mismo `doctorProfileId`. Sin especialidad ni horarios no sale en el booking. CA-32: 403 sólo para un ADMIN de una organización sin sedes, y 200 en cuanto existe una. `editableClinics` trae la sede desde el principio, con `specialties: []`. |
+| `api/booking/booking-requires-schedule.spec.ts` | CA-8 (el ADMIN «asignado») | El ADMIN con perfil automático, especialidad y horarios aparece. Sin especialidad (sólo horarios), no aparece. |
+| `api/user/my-profile.spec.ts` | CA-25 y CA-36 («ADMIN sin perfil»), si el ADMIN es el de una sede creada por api | Para «ADMIN sin perfil», usar un ADMIN de una organización sin sedes, o una sede de `createClinicResourceViaPrisma`. |
+| `api/invitations/assign-member.spec.ts` | «segunda sede a quien tiene la invitación pendiente: otra invitación y otro correo»; los casos que siembran al ADMIN en la sede | it2-cl-9: dentro de 5 minutos no hay invitación ni correo; tras retrasar `expiresAt` de la primera invitación más de 5 minutos, sí. |
+| `ui/invitations/accept-invitation-existing-password.spec.ts` (CA-4) | La segunda invitación pendiente ya no se crea dentro de 5 minutos | Antes de asignar la segunda sede, retrasar con Prisma el `expiresAt` de la primera invitación más de 5 minutos. Lo demás igual. |
+| `ui/organization/invite-organization-user.spec.ts` | Columna «Rol» → «Accesos»; «Invitación expirada» ya no existe en la organización; la pista hacia Sedes; el subtítulo | «ve su fila con Tú»: con el acceso «Todas las sedes · Administrador» (más «{Sede} · Médico» si la sede se creó por api) y el texto nuevo del vacío, sin enlace. La prueba de «Invitación expirada» se reescribe: «Invitación pendiente» mientras no tenga contraseña, también con el token vencido, y desaparece al crearla. «la tabla de la sede… nunca Invitación pendiente» sigue igual. |
+| `ui/organization/assign-from-organization.spec.ts` | El `Select` «Sede» pasa a radios y casillas; «el ADMIN se asigna como Médico: ve Configuración» | El alcance se elige con «Todas las sedes» / «Sedes específicas» y las casillas. El ADMIN que creó la sede por api ya ve «Configuración». La prueba pasa a «elige especialidad y horario y aparece en el booking». |
+| `ui/clinic/clinic-space-users.spec.ts` | «el ADMIN se asigna como Médico, ve Configuración» | Lo ve desde que se crea la sede. La tabla trae su fila «Médico» con «Tú». |
+| `ui/profile/profile-admin-specialties.spec.ts` (CA-64 «no atiende») | El aviso y el enlace | Con un ADMIN de una organización sin sedes: «Todavía no atiendes en ninguna sede. Al crear una sede quedas como médico de ella; después eliges aquí tus especialidades.» y «Ir a Sedes». CA-55 a CA-63: el ADMIN ya tiene la fila de la sede creada por api; los que sembraban su perfil pasan por `addDoctorProfile` (upsert). |
+| `ui/profile/profile-view.spec.ts` (CA-49) y `profile-edit.spec.ts` | «El ADMIN no ve Tratamiento» | Lo ve si su organización tiene sede; para el caso negativo, una organización sin sedes. |
+| `ui/clinic/invite-user-form.spec.ts`, `ui/clinic/clinic-users-specialties.spec.ts`, `ui/invitations/invite-doctor.spec.ts` | Cuentan filas de la tabla de la sede o esperan sólo al invitado | Contar con la fila del ADMIN («Médico», «Sin especialidades»), o buscar por correo. |
+| `ui/organization/invite-organization-user.spec.ts` («el aviso de acceso cambia con el rol») | Texto de ADMIN | Suma la frase de it2-15. |
+
+Después, **la suite completa**: la regla de it2-3 toca toda sede creada por api. Cualquier otro
+fallo por el ADMIN de más en una sede se arregla con las reglas de `support/` de arriba, sin
+cambiar lo que prueba el spec.
+
+### Specs nuevas (los ids los pone el product-manager)
+
+- `api/doctor-profile/admin-attends-by-default.spec.ts`:
+  - it2-cl-1: sede creada por api con dos ADMIN y un USER de la organización (sembrados por
+    Prisma antes de crearla). Dos DOCTOR + perfiles vacíos, nada para el USER, sin
+    `user_invitation` nuevas ni correos. `GET /clinic/:id/doctors` vacío. `doctors: 0` en las dos
+    métricas. Con especialidad + horario aparece y cuenta 1.
+  - it2-cl-7: el dueño, tras organización y sede por api: `GET /user/me/resource/:clinicId/membership` → `role: "ADMIN"` y `doctorProfileId` no nulo.
+  - it2-cl-2 e it2-cl-3: organización con tres sedes (una por api y dos por Prisma). La persona
+    tiene una USER viva en la segunda y una borrada con perfil, especialidad y horario en la
+    tercera. Promoverla a ADMIN → primera `created` (DOCTOR + perfil), segunda sigue USER sin
+    perfil, tercera revivida DOCTOR con el mismo `doctorProfileId`, especialidad y horario.
+  - it2-cl-10: volver a guardar al ADMIN no cambia el número de memberships.
+  - it2-cl-8: degradar a USER deja vivas sus DOCTOR de sede; la membership de esa sede → `role: "DOCTOR"`.
+  - it2-cl-11 e it2-cl-12: un ADMIN borrado de la organización y un ADMIN de otra organización
+    de la cuenta no reciben nada.
+- `api/organization/organization-team.spec.ts`:
+  - una fila por persona: el ADMIN («Todas las sedes · ADMIN» + sus sedes DOCTOR), un médico de
+    una sede, un USER de la organización que además es Médico en otra. Orden de los accesos.
+  - las memberships borradas, las personas de otra organización de la cuenta y las sedes de otra
+    organización no salen.
+  - `invitationStatus`: `"pending"` sin contraseña (también con el token vencido) y `null` con
+    contraseña.
+  - claves exactas `name`, `lastName`, `email`, `phone`, `invitationStatus`, `accesses`; las de
+    cada acceso, `clinicId`, `clinicName` y `role`; nunca `id`, `userId` ni `accountId`.
+  - con el id de una sede en `:resourceId` (ADMIN heredado) → 404; organización de otra cuenta →
+    404; DOCTOR o USER → 403.
+- `api/invitations/assign-member.spec.ts` (suma): tres sedes seguidas para un correo nuevo → un
+  solo correo capturado, y sólo la primera membership tiene `user_invitation`.
+- `ui/organization/assign-many-clinics.spec.ts` (1280 y 375 px):
+  - «Sedes específicas» muestra las casillas. Sin marcar ninguna, «Elige al menos una sede»,
+    sin petición y con el foco en la primera casilla.
+  - it2-cl-4: tres sedes (USER viva, borrada, nueva) como Médico con una especialidad. Aviso
+    ámbar, el toast compuesto, un solo correo, tres memberships DOCTOR con esa especialidad, la
+    borrada con su mismo perfil. La tabla de la organización muestra los tres accesos.
+  - it2-cl-6: con el modal en el paso 2, sembrar por Prisma una ADMIN directa de la persona en la
+    segunda sede y enviar. Toast de error parcial, la primera guardada, la tercera sin tocar, y
+    el modal abierto. Reenviar después de quitar el seed → éxito.
+  - desde Usuarios de la sede no hay radios: sede fija.
+  - a 375 px, sin desplazamiento horizontal en el modal ni en la tabla.
+- `ui/organization/organization-team-table.spec.ts` (1280 y 375 px): chips de accesos con sus
+  `aria-label`, «Tú», «Invitación pendiente» que desaparece al crear la contraseña, y el texto
+  del vacío.
+
+`platform/e2e/README.md`: filas de los specs tocados y de los nuevos.
+
+## Verificación
+
+- `pnpm typecheck` y `pnpm check` limpios en `api` y `platform`. `git diff --stat` sin cambios
+  en `policy.ts`, `auth.ts`, `entitlements.ts`, `schema.prisma`, migraciones ni `.env*`.
+- **Peticiones manuales** (api local, base de desarrollo; cookies `$A` dueño y ADMIN de `$ORG`,
+  `$B` otro ADMIN de `$ORG` sembrado antes de la sede, `$U` USER de `$ORG`):
+  1. `POST /organization/$ORG/clinics` con `$A` → 201. En la base, memberships DOCTOR de `$A` y
+     `$B` en la sede, con perfil y `_count.specialties = 0`; ninguna de `$U`.
+  2. `GET /clinic/$S1/doctors` → `[]`. `GET /clinic/$S1/metrics` con `$A` → `doctors: 0`.
+     `PUT /clinic/$S1/availability` con `$A` y su especialidad (por `…/doctors/:id/specialties`)
+     → aparece en el booking y `doctors: 1`.
+  3. `GET /organization/$ORG/users` con `$A` → filas con `accesses`. Con `$S1` como `:resourceId` → 404.
+  4. `POST /organization/$ORG/invitations` con `$A` promoviendo a `$U` a ADMIN → 200, y `$U`
+     tiene DOCTOR + perfil en `$S1`.
+  5. Correo nuevo asignado como DOCTOR a dos sedes seguidas (`$S1` y una sede por Prisma) → la
+     primera con `invitationSent: true`, la segunda con `false`, y un solo correo.
+- **Navegador** (1280 y 375 px): crear organización y sede como dueño → «Configuración» en la
+  sede, «Mi perfil» con la fila editable y «Tratamiento»; antes de crear la sede, el aviso nuevo
+  con «Ir a Sedes». Asignar tres sedes desde Usuarios de la organización. Ver la tabla de
+  accesos. Desde Usuarios de la sede, la sede fija.
+- **e2e:** `cd platform && pnpm test:e2e` con la suite completa.
+
+## Orden de implementación
+
+Cada paso termina con `pnpm typecheck` en su proyecto.
+
+1. **api: métricas.** `live-doctor-profile.ts` (`organizationId`, `countedDoctorProfileWhere`) y
+   las dos consultas de métricas.
+2. **api: repositorio.** `membership.repository.ts` (dominio e infraestructura).
+3. **api: crear sede.** `create-clinic.usecase.ts`.
+4. **api: asignar.** Promoción, bloqueo y correo por persona en `invite-user.usecase.ts`.
+5. **api: lista de la organización.** La interfaz, la consulta y la ruta. `pnpm check` y las
+   peticiones manuales 1 a 5.
+6. **platform: datos.** `organizations/types.ts`, `lib/utils.ts` (`formatList`) y las acciones
+   (`invite-user`, `invite-organization-user` y `create-clinic`).
+7. **platform: tabla de la organización.** Los exports de `users-table.tsx`,
+   `organization-users-table.tsx`, la página y `users-top-header.tsx`.
+8. **platform: formulario.** `assignment-notice.tsx`, `form.tsx`, `modal.tsx` e
+   `inherited-access-notice.tsx`.
+9. **platform: «Mi perfil».** `where-you-work-card.tsx`. `pnpm check`.
+10. **e2e.** `support/`, los specs que se rompen, los nuevos y `README.md`. Suite completa.
+11. Resumen final: qué cambió, qué se verificó y qué no.
+
+## Requiere confirmación
+
+Nada bloquea. El contrato de varias sedes cumple la regla de `:resourceId` (it2-9).
+
+## Iteración 2b: degradar a un ADMIN
+
+Decidido por el humano el 23 de octubre de 2026. Sin schema ni migración. Reemplaza la regla
+it2-6 («dejar de ser ADMIN no borra nada») y el caso it2-cl-8.
+
+**Reglas**
+
+1. Cuando la membership de organización de una persona pasa de ADMIN a USER
+   (`POST /organization/:resourceId/invitations`), en cada sede de esa organización donde tenga una
+   membership directa viva con rol DOCTOR:
+   - Sin citas pendientes en esa sede (estado de `BLOCKING_APPOINTMENT_STATUSES` y inicio desde
+     ahora): se borra lógicamente la membership (`deletedAt`). No se tocan el `DoctorProfile`, sus
+     horarios ni sus especialidades. Sale del booking, deja de ver «Configuración» y sigue entrando
+     a la sede como USER heredado.
+   - Con citas pendientes: no se toca; sigue como Médico.
+   - Aplica también a las DOCTOR que se le asignaron a mano antes de ser ADMIN: el sistema no las
+     distingue. El aviso se lo muestra al ADMIN antes de guardar.
+2. Las memberships USER directas de sede no se tocan.
+3. Al volver a ser ADMIN (`grantAttending`) o al asignarle Médico en una sede se revive la misma
+   fila con el mismo perfil, horarios y especialidades: vuelve al booking sin configurar nada.
+4. Todo en la transacción del cambio de rol, con el mismo `lockAccountQuota` que la promoción, y
+   acotado por `accountId` y por la organización de la URL.
+5. La respuesta suma `stoppedAttending` (`clinicId`, `clinicName`) y `stillAttending`
+   (`clinicId`, `clinicName`, `pendingAppointments`) sólo cuando hay una degradación. El mensaje de
+   éxito lo resume.
+6. La búsqueda por correo de la organización suma, por sede, `pendingAppointments` (sólo el
+   número). El formulario avisa antes de guardar, al bajar de Administrador a Usuario:
+   «{Nombre} dejará de atender en {sedes}. Sus horarios se guardan por si vuelve a atender.» y, por
+   cada sede con citas, «En {sede} tiene {N} citas pendientes: seguirá atendiendo ahí. Pásalo a
+   Usuario en esa sede cuando ya no tenga citas.».
+
+**Por qué:** el ADMIN que atiende por defecto no debe quedar como médico fantasma al perder el
+rol, pero tampoco se pueden dejar citas ya reservadas sin médico en la agenda. Borrar sólo la
+membership conserva horarios y especialidades para el regreso, y revivir la misma fila (t-5) ya
+devuelve todo sin configurar nada.

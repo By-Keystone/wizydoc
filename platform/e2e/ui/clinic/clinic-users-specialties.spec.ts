@@ -132,7 +132,12 @@ const ACTORS: {
     key: "adm",
     label: "ADMIN de la organización",
     of: (world, label) =>
-      addMember(world, "ADMIN", { label, clinicId: world.organizationId }),
+      addMember(world, "ADMIN", {
+        label,
+        clinicId: world.organizationId,
+        name: uniqueName("Adm"),
+        lastName: "Seis",
+      }),
   },
   {
     key: "own",
@@ -267,7 +272,7 @@ for (const viewport of VIEWPORTS) {
         await expect(editButton(page, pendingUser)).toBeVisible();
         await expect(
           page.getByRole("button", { name: /^Editar especialidades de/ }),
-        ).toHaveCount(3);
+        ).toHaveCount(4);
         void receptionist;
 
         await editButton(page, without).click();
@@ -506,16 +511,7 @@ for (const actor of ACTORS) {
       const label = `self-${actor.key}-${viewport.key}`;
       const world = await createProfileWorld(label);
       const user = await actor.of(world, label);
-      const prisma = await getTestPrisma();
-      await prisma.userResourceMembership.create({
-        data: {
-          userId: user.userId,
-          resourceId: world.clinicId,
-          accountId: world.admin.accountId,
-          role: "DOCTOR",
-          createdBy: world.admin.userId,
-        },
-      });
+      // Crea su membership DOCTOR si falta; el dueño ya la tiene por la sede.
       await addDoctorProfile(user.userId, world.clinicId, [world.specialtyId]);
       const other = await addDoctor(world, {
         label: `${label}-otro`,
@@ -537,9 +533,10 @@ for (const actor of ACTORS) {
       ).toHaveCount(0);
       await expect(editButton(page, user)).toBeVisible();
       await expect(editButton(page, other)).toBeVisible();
+      // Más la fila del dueño, que atiende por defecto, cuando el actor es otro ADMIN.
       await expect(
         page.getByRole("button", { name: /^Editar especialidades de/ }),
-      ).toHaveCount(2);
+      ).toHaveCount(actor.key === "own" ? 2 : 3);
 
       await editButton(page, user).click();
       await expect(dialogOf(page, user)).toBeVisible();

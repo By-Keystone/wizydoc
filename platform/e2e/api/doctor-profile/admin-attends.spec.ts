@@ -175,19 +175,22 @@ async function listedProfileIds(clinicId: string): Promise<string[]> {
 }
 
 test.describe("El ADMIN se asigna como Médico", () => {
-  test("asignarse crea la membership DOCTOR y el perfil, sin invitación ni correo", async () => {
+  test("asignarse con especialidades actualiza el perfil automático (mismo perfil), sin invitación ni correo", async () => {
     const world = await createWorld("attends-self");
     const [alfa, , zeta] = world.specialties;
     const emailsBefore = readEmailsTo(world.admin.email).length;
+    const automatic = await profileOf(world.admin.userId, world.clinicId);
+    expect(automatic?.specialtyIds).toEqual([]);
 
     const response = await assignSelf(world, world.admin, [zeta.id, alfa.id]);
 
     expect(response.status()).toBe(200);
     expect(await response.json()).toMatchObject({
-      outcome: "created",
+      outcome: "updated",
       invitationSent: false,
     });
     const profile = await profileOf(world.admin.userId, world.clinicId);
+    expect(profile?.id).toBe(automatic?.id);
     expect(profile?.specialtyIds).toEqual([alfa.id, zeta.id].sort());
     const prisma = await getTestPrisma();
     const membership = await prisma.userResourceMembership.findFirst({
@@ -202,14 +205,16 @@ test.describe("El ADMIN se asigna como Médico", () => {
     ).toBe(0);
   });
 
-  test("con horarios y especialidad aparece en el booking; sin asignarse no hay perfil", async () => {
+  test("el perfil automático no sale en el booking hasta tener especialidad y horarios", async () => {
     const world = await createWorld("attends-booking");
-    expect(await profileOf(world.admin.userId, world.clinicId)).toBeNull();
+    const profile = await profileOf(world.admin.userId, world.clinicId);
+    expect(profile).not.toBeNull();
+    expect(await listedProfileIds(world.clinicId)).not.toContain(profile?.id);
+
+    await seedFullDayAvailability(world.admin.userId, world.clinicId);
+    expect(await listedProfileIds(world.clinicId)).not.toContain(profile?.id);
 
     await assignSelf(world, world.admin, [world.specialtyId]);
-    await seedFullDayAvailability(world.admin.userId, world.clinicId);
-
-    const profile = await profileOf(world.admin.userId, world.clinicId);
     expect(await listedProfileIds(world.clinicId)).toContain(profile?.id);
   });
 
@@ -342,10 +347,12 @@ test.describe("Médico, Usuario y de vuelta a Médico", () => {
 });
 
 test.describe("GET /user/me/profile para quien edita especialidades", () => {
-  test("editableClinics sólo trae las sedes donde atiende, con doctorProfileId y sin isClinicDoctor", async () => {
+  test("editableClinics trae desde el inicio la sede donde atiende, sin especialidades, y no las sedes sembradas sin perfil", async () => {
     const world = await createWorld("attends-profile");
     await createClinicResourceViaPrisma(world.admin, world.organizationId);
-    expect((await getProfile(world.admin.context)).editableClinics).toEqual([]);
+    const initial = (await getProfile(world.admin.context)).editableClinics;
+    expect(initial.map((c) => c.clinicId)).toEqual([world.clinicId]);
+    expect(initial[0].specialties).toEqual([]);
 
     await assignSelf(world, world.admin, [world.specialtyId]);
 
@@ -380,7 +387,7 @@ test.describe("GET /user/me/profile para quien edita especialidades", () => {
 });
 
 test.describe("Efectos en otras rutas", () => {
-  test("CA-32: el tratamiento da 403 al ADMIN que no atiende y 200 después de asignarse", async () => {
+  test("CA-32: el tratamiento da 403 al ADMIN de una organización sin sedes y 200 en cuanto existe una", async () => {
     const world = await createWorld("attends-treatment");
     const body = {
       name: "Marta",
@@ -392,14 +399,10 @@ test.describe("Efectos en otras rutas", () => {
       emailPrefix: "attends-ca32",
     });
 
-    expect(
-      (await world.admin.context.patch(PROFILE_URL, { data: body })).status(),
-    ).toBe(403);
+    await createOrganizationResource(bareOwner);
     expect(
       (await bareOwner.context.patch(PROFILE_URL, { data: body })).status(),
     ).toBe(403);
-
-    await assignSelf(world, world.admin, [world.specialtyId]);
 
     expect(
       (await world.admin.context.patch(PROFILE_URL, { data: body })).status(),

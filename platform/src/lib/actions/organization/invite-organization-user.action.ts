@@ -2,6 +2,7 @@
 
 import { toActionState } from "@/lib/actions/to-action-state";
 import type { ActionState } from "@/lib/actions/types";
+import { clinicApi, tags as clinicTags } from "@/lib/api/clinic";
 import { doFetchJson } from "@/lib/api/fetch";
 import { tags as membershipTags } from "@/lib/api/memberships";
 import { tags } from "@/lib/api/organizations";
@@ -50,6 +51,15 @@ export async function inviteOrganizationUserAction(
     revalidateTag(tags.organizationUsers(organizationId));
     revalidateTag(membershipTags.memberships());
     revalidateTag(membershipTags.membershipsForResource(organizationId));
+    // Promover o degradar a un ADMIN cambia sus memberships de sede: sus tablas cambian.
+    try {
+      const clinics = await clinicApi.getOrganizationClinics(organizationId);
+      for (const clinic of clinics) {
+        revalidateTag(clinicTags.clinicUsers(clinic.id));
+      }
+    } catch {
+      // La asignación ya salió bien: sin la lista de sedes sólo quedan tablas por refrescar.
+    }
     return { status: "success", message };
   } catch (error) {
     return toActionState(error);

@@ -7,6 +7,7 @@ import {
 import { getTestPrisma } from "../../support/db";
 import { API_BASE_URL } from "../../support/env";
 import { softDeleteMembership } from "../../support/invitations";
+import { seedFullDayAvailability } from "../../support/availability";
 import { addDoctorProfile } from "../../support/profile";
 import { expect, test } from "../../support/test";
 
@@ -54,7 +55,7 @@ async function bothCounts(
   };
 }
 
-test("CA-11: el ADMIN asignado como Médico cuenta aunque no tenga horarios", async () => {
+test("CA-11: el ADMIN con perfil automático cuenta sólo con un horario", async () => {
   const scenario = await createClinicaScenario("metrics-ca11");
   const { context } = scenario.admin;
   const baseline = await bothCounts(context, scenario);
@@ -63,7 +64,9 @@ test("CA-11: el ADMIN asignado como Médico cuenta aunque no tenga horarios", as
   await addDoctorProfile(scenario.admin.userId, scenario.clinicId, [
     scenario.specialtyId,
   ]);
+  expect(await bothCounts(context, scenario)).toEqual(baseline);
 
+  await seedFullDayAvailability(scenario.admin.userId, scenario.clinicId);
   expect(await bothCounts(context, scenario)).toEqual({
     clinic: baseline.clinic + 1,
     organization: baseline.organization + 1,
@@ -80,14 +83,12 @@ test("CA-12: el médico pasado a Usuario o quitado de la sede deja de contar", a
     clinicId: scenario.clinicId,
     admin: scenario.admin,
     specialtyId: scenario.specialtyId,
-    availability: "none",
   });
   const removed = await addPortalDoctor({
     label: "metrics-ca12-quitado",
     clinicId: scenario.clinicId,
     admin: scenario.admin,
     specialtyId: scenario.specialtyId,
-    availability: "none",
   });
   expect(await bothCounts(context, scenario)).toEqual({
     clinic: baseline.clinic + 2,

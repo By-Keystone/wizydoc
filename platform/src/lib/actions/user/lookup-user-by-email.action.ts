@@ -6,6 +6,7 @@ export type LookedUpClinicMembership = {
   clinicId: string;
   role: "ADMIN" | "DOCTOR" | "USER";
   specialties: { id: string; name: string }[];
+  pendingAppointments: number;
 };
 
 export type LookedUpUser = {

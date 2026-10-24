@@ -301,10 +301,12 @@ test.describe("Invitar a la organización", () => {
       const memberships = (await prisma.userResourceMembership.findMany({
         where: { userId: existing.userId, deletedAt: null },
       })) as { resourceId: string; role: string }[];
+      // Al pasar a ADMIN queda como médico de las sedes donde no tenía membership.
       expect(memberships.map((m) => [m.resourceId, m.role]).sort()).toEqual(
         [
           [fixture.clinicAId, "USER"],
           [fixture.organizationId, role],
+          ...(role === "ADMIN" ? [[fixture.clinicBId, "DOCTOR"]] : []),
         ].sort(),
       );
     }
@@ -677,19 +679,24 @@ test.describe("Lista de usuarios de la organización", () => {
         acceptedEmail,
       ]),
     );
-    expect(emails).not.toContain(fixture.adminOfClinic.email);
-    expect(emails).not.toContain(fixture.doctorOfClinic.email);
+    // También salen quienes sólo tienen acceso a una sede de la organización.
+    expect(emails).toEqual(
+      expect.arrayContaining([
+        fixture.adminOfClinic.email,
+        fixture.doctorOfClinic.email,
+      ]),
+    );
     expect(emails).not.toContain(deletedAdmin.email);
-    expect(rows).toHaveLength(4);
+    expect(rows).toHaveLength(6);
 
     for (const row of rows) {
       expect(Object.keys(row).sort()).toEqual([
+        "accesses",
         "email",
         "invitationStatus",
         "lastName",
         "name",
         "phone",
-        "role",
       ]);
     }
 
@@ -697,7 +704,26 @@ test.describe("Lista de usuarios de la organización", () => {
     expect(byEmail(pendingEmail)?.invitationStatus).toBe("pending");
     expect(byEmail(acceptedEmail)?.invitationStatus).toBeNull();
     expect(byEmail(fixture.admin.email)?.invitationStatus).toBeNull();
-    expect(byEmail(fixture.admin.email)?.role).toBe("ADMIN");
+    // El dueño es ADMIN de la organización y médico de su sede (perfil automático).
+    expect(
+      (
+        byEmail(fixture.admin.email)?.accesses as {
+          clinicId: string | null;
+          role: string;
+        }[]
+      ).map((access) => [access.clinicId, access.role]),
+    ).toEqual([
+      [null, "ADMIN"],
+      [fixture.clinicAId, "DOCTOR"],
+    ]);
+    expect(
+      (
+        byEmail(fixture.doctorOfClinic.email)?.accesses as {
+          clinicId: string | null;
+          role: string;
+        }[]
+      ).map((access) => [access.clinicId, access.role]),
+    ).toEqual([[fixture.clinicAId, "DOCTOR"]]);
   });
 
   test("USER de la organización recibe 403; ADMIN de sede, ADMIN de otra cuenta y sin sesión no ven nada", async () => {
@@ -728,7 +754,7 @@ test.describe("Lista de usuarios de la organización", () => {
     expect(anonymous.status()).toBe(401);
   });
 
-  test("con el id de una sede la lista sale vacía", async () => {
+  test("con el id de una sede responde 404 «Organización no encontrada»", async () => {
     const fixture = await setupFixture();
 
     const response = await getOrganizationUsers(
@@ -736,8 +762,10 @@ test.describe("Lista de usuarios de la organización", () => {
       fixture.clinicAId,
     );
 
-    expect(response.status()).toBe(200);
-    expect(await response.json()).toEqual([]);
+    expect(response.status()).toBe(404);
+    expect((await response.json()).message).toBe(
+      NOT_FOUND_ORGANIZATION_MESSAGE,
+    );
   });
 });
 
@@ -759,7 +787,12 @@ test.describe("Búsqueda por correo en la organización", () => {
         isAccountOwner: false,
         organizationRole: null,
         clinics: [
-          { clinicId: fixture.clinicAId, role: "DOCTOR", specialties: [] },
+          {
+            clinicId: fixture.clinicAId,
+            role: "DOCTOR",
+            specialties: [],
+            pendingAppointments: 0,
+          },
         ],
       },
     });

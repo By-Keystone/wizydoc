@@ -52,8 +52,9 @@ test("CA-26: desde el celular, el paciente ve los médicos y especialidades de l
     specialtyName,
   );
 
+  const doctorEmail = uniqueEmail("doctora-ca26");
   await inviteUserViaApi(admin, {
-    email: uniqueEmail("doctora-ca26"),
+    email: doctorEmail,
     name: "Daniela",
     lastName: "Flores",
     phone: "+51955555556",
@@ -64,7 +65,9 @@ test("CA-26: desde el celular, el paciente ve los médicos y especialidades de l
 
   const prisma = await getTestPrisma();
   const doctorProfile = await prisma.doctorProfile.findFirst({
-    where: { membership: { resourceId: clinicId } },
+    where: {
+      membership: { resourceId: clinicId, user: { email: doctorEmail } },
+    },
   });
   if (!doctorProfile)
     throw new Error("No se encontró el perfil del médico recién invitado");

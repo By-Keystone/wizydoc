@@ -40,14 +40,14 @@ export function WhereYouWorkCard({
         description="Tus especialidades en cada sede."
       >
         <p className="text-[13px] leading-snug text-brand-gray">
-          Todavía no atiendes en ninguna sede. Para recibir citas, asígnate como
-          médico desde Usuarios.
+          Todavía no atiendes en ninguna sede. Al crear una sede quedas como
+          médico de ella; después eliges aquí tus especialidades.
         </p>
         <Link
-          href={`/account/${accountId}/organization/${organization.organizationId}/users`}
+          href={`/account/${accountId}/organization/${organization.organizationId}/clinics`}
           className="mt-2 inline-block text-[13px] font-medium text-brand-teal hover:text-brand-teal-dark"
         >
-          Ir a Usuarios
+          Ir a Sedes
         </Link>
       </ProfileCard>
     );

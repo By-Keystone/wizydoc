@@ -284,7 +284,7 @@ test("CA-1: el administrador invita a una recepción (USER) y a un médico (DOCT
   await page.getByLabel("Apellido").fill("Médico");
   await page.getByLabel("Teléfono").fill("+51900000102");
   await page.getByLabel("Rol").selectOption("DOCTOR");
-  await page.getByLabel("Especialidades").fill(specialtyName);
+  await page.getByLabel("Especialidades", { exact: true }).fill(specialtyName);
   await page.getByRole("button", { name: specialtyName, exact: true }).click();
   await page.getByRole("button", { name: "Enviar invitación" }).click();
 

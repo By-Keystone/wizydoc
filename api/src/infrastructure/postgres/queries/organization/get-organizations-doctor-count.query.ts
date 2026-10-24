@@ -4,6 +4,7 @@ import type {
   GetOrganizationsDoctorCountDto,
 } from "../../../../application/queries/organization/get-organizations-doctor-count.query";
 import { getClient } from "../../transaction-context";
+import { countedDoctorProfileWhere } from "../doctor-profile/live-doctor-profile";
 
 export class GetOrganizationsDoctorCountQuery
   implements IGetOrganizationsDoctorCountQuery
@@ -12,13 +13,7 @@ export class GetOrganizationsDoctorCountQuery
     dto: GetOrganizationsDoctorCountDto,
   ): Promise<GetOrganizationsDoctorCountQueryResult> {
     const doctorCount = await getClient().doctorProfile.count({
-      where: {
-        membership: {
-          role: "DOCTOR",
-          deletedAt: null,
-          resource: { parentResourceId: dto.resourceId },
-        },
-      },
+      where: countedDoctorProfileWhere({ organizationId: dto.resourceId }),
     });
 
     return { doctorCount };

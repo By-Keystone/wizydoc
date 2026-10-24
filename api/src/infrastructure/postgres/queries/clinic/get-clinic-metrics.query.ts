@@ -5,7 +5,7 @@ import type {
 } from "@/application/queries/clinic/get-clinic-metrics.query";
 import { addDays, startOfDay, today } from "@/domain/services/clinic-time";
 import { getClient } from "../../transaction-context";
-import { liveDoctorProfileWhere } from "../doctor-profile/live-doctor-profile";
+import { countedDoctorProfileWhere } from "../doctor-profile/live-doctor-profile";
 
 export class GetClinicMetricsQuery implements IGetClinicMetricsQuery {
   async execute(dto: GetClinicMetricsDto): Promise<ClinicMetrics> {
@@ -28,7 +28,7 @@ export class GetClinicMetricsQuery implements IGetClinicMetricsQuery {
         },
       }),
       client.doctorProfile.count({
-        where: liveDoctorProfileWhere({ clinicId: dto.resourceId }),
+        where: countedDoctorProfileWhere({ clinicId: dto.resourceId }),
       }),
       client.userResourceMembership.count({
         where: { resourceId: dto.resourceId, deletedAt: null },

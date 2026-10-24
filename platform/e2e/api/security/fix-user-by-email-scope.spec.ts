@@ -226,7 +226,12 @@ test.describe("Lo que no debe filtrarse", () => {
         isAccountOwner: false,
         organizationRole: null,
         clinics: [
-          { clinicId: fixture.clinicAId, role: "USER", specialties: [] },
+          {
+            clinicId: fixture.clinicAId,
+            role: "USER",
+            specialties: [],
+            pendingAppointments: 0,
+          },
         ],
       },
     });
@@ -262,7 +267,12 @@ test.describe("Lo que debe seguir funcionando", () => {
         isAccountOwner: false,
         organizationRole: null,
         clinics: [
-          { clinicId: fixture.clinicAId, role: "DOCTOR", specialties: [] },
+          {
+            clinicId: fixture.clinicAId,
+            role: "DOCTOR",
+            specialties: [],
+            pendingAppointments: 0,
+          },
         ],
       },
     });

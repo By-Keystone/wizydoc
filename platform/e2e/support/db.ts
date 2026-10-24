@@ -136,9 +136,7 @@ export interface TestPrisma {
       where: Record<string, unknown>;
       data: Record<string, unknown>;
     }): Promise<unknown>;
-    findFirst(args: {
-      where: Record<string, unknown>;
-    }): Promise<{
+    findFirst(args: { where: Record<string, unknown> }): Promise<{
       id: string;
       role: string;
       resourceId: string;
@@ -165,6 +163,11 @@ export interface TestPrisma {
       select?: Record<string, unknown>;
     }): Promise<TestPrismaProfileRow | null>;
     create(args: { data: Record<string, unknown> }): Promise<{ id: string }>;
+    upsert(args: {
+      where: Record<string, unknown>;
+      create: Record<string, unknown>;
+      update: Record<string, unknown>;
+    }): Promise<{ id: string }>;
     findFirst(args: {
       where: Record<string, unknown>;
       select?: Record<string, unknown>;

@@ -25,7 +25,7 @@ interface Props {
   specialtyEditing?: SpecialtyEditing;
 }
 
-const roleDisplay: Record<
+export const roleDisplay: Record<
   string,
   { label: string; variant: BadgeProps["variant"] }
 > = {
@@ -34,10 +34,10 @@ const roleDisplay: Record<
   USER: { label: "Usuario", variant: "gray" },
 };
 
-const statusTagClass =
+export const statusTagClass =
   "inline-flex items-center whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-semibold";
 
-const invitationTag = {
+export const invitationTag = {
   pending: {
     label: "Invitación pendiente",
     className: "bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-200",

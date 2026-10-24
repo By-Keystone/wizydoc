@@ -2,6 +2,7 @@ import type {
   LookedUpAccountUser,
   LookupAccountUserDto,
 } from "@/application/queries/user/lookup-account-user.query";
+import { BLOCKING_APPOINTMENT_STATUSES } from "@/domain/entities/appointment/entity";
 import { getClient } from "../../transaction-context";
 import { sortedByName } from "../../repositories/doctor-profile.repository";
 
@@ -41,6 +42,7 @@ export class LookupAccountUserQuery {
           role: true,
           doctorProfile: {
             select: {
+              id: true,
               specialties: {
                 where: { organizationId: resourceId },
                 select: { id: true, name: true },
@@ -54,6 +56,24 @@ export class LookupAccountUserQuery {
         select: { id: true },
       }),
     ]);
+
+    const profileIds = memberships.flatMap((m) =>
+      m.role === "DOCTOR" && m.doctorProfile ? [m.doctorProfile.id] : [],
+    );
+    const pending = profileIds.length
+      ? await client.appointment.groupBy({
+          by: ["doctorProfileId"],
+          where: {
+            doctorProfileId: { in: profileIds },
+            status: { in: [...BLOCKING_APPOINTMENT_STATUSES] },
+            scheduledAt: { gte: new Date() },
+          },
+          _count: { _all: true },
+        })
+      : [];
+    const pendingByProfile = new Map(
+      pending.map((row) => [row.doctorProfileId, row._count._all]),
+    );
 
     const organizationRole =
       memberships.find((membership) => membership.resourceId === resourceId)
@@ -74,6 +94,10 @@ export class LookupAccountUserQuery {
             membership.role === "DOCTOR"
               ? sortedByName(membership.doctorProfile?.specialties ?? [])
               : [],
+          pendingAppointments:
+            membership.role === "DOCTOR" && membership.doctorProfile
+              ? (pendingByProfile.get(membership.doctorProfile.id) ?? 0)
+              : 0,
         })),
     };
   }

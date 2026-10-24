@@ -5,10 +5,13 @@ import type { IEmailService } from "@/application/ports/email-service.port";
 import { DoctorSpecialtiesGuards } from "@/application/use-cases/doctor-profile/doctor-specialties.guards";
 import { MAX_SPECIALTIES_PER_DOCTOR } from "@/application/use-cases/doctor-profile/doctor-specialties.schema";
 import type { IDoctorProfileRepository } from "@/domain/repositories/doctor-profile.repository";
+import type { IMembershipRepository } from "@/domain/repositories/membership.repository";
 import type { ITransactionManager } from "@/domain/services/transaction-manager";
 import { TokenService } from "@/domain/services/token-service";
 import { CanEditOrganizationSpecialtiesQuery } from "@/infrastructure/postgres/queries/organization/can-edit-organization-specialties.query";
+import { lockAccountQuota } from "@/infrastructure/postgres/lock-account-quota";
 import { DoctorProfileRepository } from "@/infrastructure/postgres/repositories/doctor-profile.repository";
+import { MembershipRepository } from "@/infrastructure/postgres/repositories/membership.repository";
 import { getClient } from "@/infrastructure/postgres/transaction-context";
 import { renderTemplate } from "@/infrastructure/services/email-service/template-renderer";
 import {
@@ -16,6 +19,7 @@ import {
   type MembershipRole,
   Prisma,
 } from "@prisma/client";
+import { BLOCKING_APPOINTMENT_STATUSES } from "@/domain/entities/appointment/entity";
 import z from "zod";
 
 export const INVITATION_TTL_MS = 24 * 60 * 60 * 1000;
@@ -67,10 +71,18 @@ export type InviteUserDto = InviteeFields & {
     | { resourceType: "ORGANIZATION"; role: "ADMIN" | "USER" }
   );
 
+export interface AttendingClinic {
+  clinicId: string;
+  clinicName: string;
+}
+
 export interface AssignResult {
   outcome: "created" | "revived" | "updated";
   invitationSent: boolean;
   message: string;
+  // Sólo al degradar a un ADMIN de la organización.
+  stoppedAttending?: AttendingClinic[];
+  stillAttending?: (AttendingClinic & { pendingAppointments: number })[];
 }
 
 interface InviteUserUseCaseService {
@@ -113,6 +125,7 @@ export class InviteUserUseCase {
       doctorProfiles,
       new CanEditOrganizationSpecialtiesQuery(),
     ),
+    private readonly memberships: IMembershipRepository = new MembershipRepository(),
   ) {}
 
   // La política acepta cualquier recurso donde el usuario es ADMIN (también una sede por herencia): se exige el tipo de la ruta y la cuenta de la sesión.
@@ -249,17 +262,22 @@ export class InviteUserUseCase {
     return { membershipId: existing.id, outcome: "updated" };
   }
 
-  // Una fecha de emisión futura sale de las invitaciones de 7 días: se pueden renovar siempre.
-  private wasIssuedRecently(invitation: {
-    status: InvitationStatus;
-    expiresAt: Date;
-  }) {
-    if (invitation.status !== "INVITED") return false;
-
-    const issuedAt = invitation.expiresAt.getTime() - INVITATION_TTL_MS;
-    const elapsedMs = Date.now() - issuedAt;
-
-    return elapsedMs >= 0 && elapsedMs < INVITATION_RESEND_COOLDOWN_MS;
+  // El enfriamiento es por persona: al asignar varias sedes sale un solo correo.
+  // Una emisión futura (invitaciones viejas de 7 días) queda fuera y se renueva siempre.
+  private async wasPersonInvitedRecently(userId: string) {
+    const now = Date.now();
+    const count = await getClient().userInvitation.count({
+      where: {
+        membership: { userId },
+        status: "INVITED",
+        acceptedAt: null,
+        expiresAt: {
+          gt: new Date(now + INVITATION_TTL_MS - INVITATION_RESEND_COOLDOWN_MS),
+          lte: new Date(now + INVITATION_TTL_MS),
+        },
+      },
+    });
+    return count > 0;
   }
 
   private freshInvitationFields() {
@@ -296,10 +314,17 @@ export class InviteUserUseCase {
   }
 
   private async issueInvitation(
+    userId: string,
     membershipId: string,
     invitation: ExistingMembership["invitation"],
     invitedBy: string,
   ) {
+    // Serializa por persona: sin esto, dos peticiones en paralelo cuentan antes de que la otra confirme y envían dos correos.
+    // El bloqueo dura hasta confirmar la transacción, que incluye el envío del correo.
+    await getClient()
+      .$queryRaw`SELECT 1 FROM public.user WHERE id = ${userId}::uuid FOR UPDATE`;
+    if (await this.wasPersonInvitedRecently(userId)) return null;
+
     if (!invitation) {
       const fields = this.freshInvitationFields();
       await getClient().userInvitation.create({
@@ -309,7 +334,6 @@ export class InviteUserUseCase {
     }
 
     if (invitation.status === "ACCEPTED") return null;
-    if (this.wasIssuedRecently(invitation)) return null;
 
     return await this.renewInvitation(membershipId, invitedBy);
   }
@@ -328,6 +352,7 @@ export class InviteUserUseCase {
     if (passwords > 0) return false;
 
     const fields = await this.issueInvitation(
+      user.id,
       membershipId,
       invitation,
       invitedBy,
@@ -347,6 +372,30 @@ export class InviteUserUseCase {
       to: user.email,
     });
     return true;
+  }
+
+  private stepDownSummary(stepDown: {
+    stopped: AttendingClinic[];
+    kept: (AttendingClinic & { pendingAppointments: number })[];
+  }) {
+    const list = new Intl.ListFormat("es", { type: "conjunction" });
+    const parts: string[] = [];
+    if (stepDown.stopped.length > 0) {
+      parts.push(
+        ` Dejó de atender en ${list.format(stepDown.stopped.map((c) => c.clinicName))}.`,
+      );
+    }
+    if (stepDown.kept.length > 0) {
+      parts.push(
+        ` Sigue atendiendo en ${list.format(
+          stepDown.kept.map(
+            (c) =>
+              `${c.clinicName} (${c.pendingAppointments} ${c.pendingAppointments === 1 ? "cita pendiente" : "citas pendientes"})`,
+          ),
+        )}.`,
+      );
+    }
+    return parts.join("");
   }
 
   private buildMessage(
@@ -379,6 +428,114 @@ export class InviteUserUseCase {
       : `Listo. ${fullName} ya tiene acceso a ${resourceName}.`;
   }
 
+  private becomesOrganizationAdmin(
+    data: InviteUserDto,
+    existing: ExistingMembership | null,
+  ) {
+    return (
+      data.resourceType === "ORGANIZATION" &&
+      data.role === "ADMIN" &&
+      !(existing && !existing.deletedAt && existing.role === "ADMIN")
+    );
+  }
+
+  // En serie: el cliente de una transacción interactiva no admite consultas en paralelo.
+  private async grantAttendingInOrganizationClinics(
+    userId: string,
+    data: InviteUserDto,
+  ) {
+    const clinicIds = await this.memberships.findOrganizationClinicIds(
+      data.resourceId,
+      data.accountId,
+    );
+    for (const clinicId of clinicIds) {
+      await this.memberships.grantAttending({
+        userId,
+        clinicId,
+        accountId: data.accountId,
+        createdBy: data.createdBy,
+      });
+    }
+  }
+
+  private becomesOrganizationUser(
+    data: InviteUserDto,
+    existing: ExistingMembership | null,
+  ) {
+    return (
+      data.resourceType === "ORGANIZATION" &&
+      data.role === "USER" &&
+      !!existing &&
+      !existing.deletedAt &&
+      existing.role === "ADMIN"
+    );
+  }
+
+  // Sale de las sedes donde ya no tiene citas por atender; con citas pendientes sigue como Médico.
+  // Sólo se borra la membership: el perfil, los horarios y las especialidades quedan para el regreso.
+  private async stopAttendingWithoutAppointments(
+    userId: string,
+    data: InviteUserDto,
+  ) {
+    const client = getClient();
+    const memberships = await client.userResourceMembership.findMany({
+      where: {
+        userId,
+        accountId: data.accountId,
+        role: "DOCTOR",
+        deletedAt: null,
+        resource: {
+          parentResourceId: data.resourceId,
+          accountId: data.accountId,
+        },
+      },
+      select: {
+        id: true,
+        resourceId: true,
+        resource: { select: { clinic: { select: { name: true } } } },
+        doctorProfile: { select: { id: true } },
+      },
+    });
+
+    const stopped: AttendingClinic[] = [];
+    const kept: (AttendingClinic & { pendingAppointments: number })[] = [];
+    const stoppedIds: string[] = [];
+
+    for (const membership of memberships) {
+      const clinic = {
+        clinicId: membership.resourceId,
+        clinicName: membership.resource.clinic?.name ?? "",
+      };
+      const pendingAppointments = membership.doctorProfile
+        ? await client.appointment.count({
+            where: {
+              doctorProfileId: membership.doctorProfile.id,
+              status: { in: [...BLOCKING_APPOINTMENT_STATUSES] },
+              scheduledAt: { gte: new Date() },
+            },
+          })
+        : 0;
+
+      if (pendingAppointments > 0) {
+        kept.push({ ...clinic, pendingAppointments });
+      } else {
+        stopped.push(clinic);
+        stoppedIds.push(membership.id);
+      }
+    }
+
+    if (stoppedIds.length > 0) {
+      await client.userResourceMembership.updateMany({
+        where: { id: { in: stoppedIds }, accountId: data.accountId },
+        data: { deletedAt: new Date() },
+      });
+    }
+
+    const byName = (a: AttendingClinic, b: AttendingClinic) =>
+      a.clinicName.localeCompare(b.clinicName, "es");
+    return { stopped: stopped.sort(byName), kept: kept.sort(byName) };
+  }
+
   private async assign(data: InviteUserDto): Promise<AssignResult> {
     const resource = await this.findInvitationResource(data);
 
@@ -401,6 +558,13 @@ export class InviteUserUseCase {
 
     await this.assertRoleCanChange(data, user, existing);
 
+    const promoted = this.becomesOrganizationAdmin(data, existing);
+    // Se reutiliza el bloqueo de cuota para serializar altas de sede y promociones.
+    // Ojo: se mantiene hasta confirmar, también durante el envío del correo por SES;
+    // el ticket del tope de citas debe tenerlo en cuenta si cuenta bajo este mismo bloqueo.
+    const demoted = this.becomesOrganizationUser(data, existing);
+    if (promoted || demoted) await lockAccountQuota(data.accountId);
+
     const { membershipId, outcome } = await this.saveMembership(
       data,
       user.id,
@@ -411,6 +575,11 @@ export class InviteUserUseCase {
       await this.doctorProfiles.upsertForMembership(membershipId, specialtyIds);
     }
 
+    if (promoted) await this.grantAttendingInOrganizationClinics(user.id, data);
+    const stepDown = demoted
+      ? await this.stopAttendingWithoutAppointments(user.id, data)
+      : null;
+
     const invitationSent = await this.sendInvitationIfNeeded(
       user,
       membershipId,
@@ -419,16 +588,24 @@ export class InviteUserUseCase {
       resource.name,
     );
 
+    const message = this.buildMessage(
+      data,
+      user,
+      resource.name,
+      outcome,
+      invitationSent,
+    );
+
     return {
       outcome,
       invitationSent,
-      message: this.buildMessage(
-        data,
-        user,
-        resource.name,
-        outcome,
-        invitationSent,
-      ),
+      message: stepDown
+        ? `${message}${this.stepDownSummary(stepDown)}`
+        : message,
+      ...(stepDown && {
+        stoppedAttending: stepDown.stopped,
+        stillAttending: stepDown.kept,
+      }),
     };
   }
 

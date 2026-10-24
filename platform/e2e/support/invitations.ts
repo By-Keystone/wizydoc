@@ -154,3 +154,12 @@ export async function getLatestSessionTrace(userId: string) {
     orderBy: { createdAt: "desc" },
   });
 }
+
+/** Las invitaciones de la persona quedan emitidas hace 10 minutos: pasó el enfriamiento por persona. */
+export async function ageInvitationsOf(email: string): Promise<void> {
+  const prisma = await getTestPrisma();
+  const invitations = (await prisma.userInvitation.findMany({
+    where: { membership: { user: { email } } },
+  })) as { token: string }[];
+  for (const { token } of invitations) await ageInvitationIssuance(token);
+}

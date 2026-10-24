@@ -114,8 +114,15 @@ async function startForm(page: Page, email: string) {
   await expect(page.getByLabel("Rol")).toBeVisible();
 }
 
+const allClinicsRadio = (page: Page) =>
+  page.getByRole("radio", { name: /Todas las sedes/ });
+const specificClinicsRadio = (page: Page) =>
+  page.getByRole("radio", { name: "Sedes específicas" });
+const clinicBox = (page: Page, name: string) =>
+  page.getByRole("checkbox", { name });
+
 async function pickSpecialty(page: Page, name: string) {
-  await page.getByLabel("Especialidades").fill(name);
+  await page.getByLabel("Especialidades", { exact: true }).fill(name);
   await page.getByRole("button", { name, exact: true }).click();
 }
 
@@ -140,7 +147,7 @@ async function openDoctorStep(page: Page, world: World) {
   await page.getByRole("button", { name: "Siguiente", exact: true }).click();
 }
 
-test("el selector de sede ofrece «Todas las sedes» y cada sede, y los roles cambian según el alcance", async ({
+test("el alcance ofrece «Todas las sedes» y «Sedes específicas» con una casilla por sede, y los roles cambian según el alcance", async ({
   page,
 }) => {
   const world = await createWorld("assign-org-select");
@@ -159,30 +166,34 @@ test("el selector de sede ofrece «Todas las sedes» y cada sede, y los roles ca
 
   await startForm(page, recepcion.email);
 
-  const clinicSelect = page.getByLabel("Sede");
   const roleSelect = page.getByLabel("Rol");
-  await expect(clinicSelect.locator("option")).toHaveCount(3);
-  const [all, ...clinicOptions] = await clinicSelect
-    .locator("option")
-    .allTextContents();
-  expect(all).toBe(`Todas las sedes de ${world.organizationName}`);
-  expect([...clinicOptions].sort()).toEqual(
-    [world.clinicName, secondName].sort(),
-  );
-  await expect(clinicSelect).toHaveValue("all");
+  await expect(allClinicsRadio(page)).toBeChecked();
+  await expect(specificClinicsRadio(page)).not.toBeChecked();
+  await expect(page.getByRole("checkbox")).toHaveCount(0);
   await expect(roleSelect.locator("option")).toHaveText([
     "Usuario",
     "Administrador",
   ]);
-  await expect(page.getByLabel("Especialidades")).toHaveCount(0);
+  await expect(page.getByLabel("Especialidades", { exact: true })).toHaveCount(
+    0,
+  );
 
-  await clinicSelect.selectOption({ label: secondName });
+  await specificClinicsRadio(page).check();
+  await expect(page.getByRole("checkbox")).toHaveCount(2);
+  await expect(clinicBox(page, world.clinicName)).not.toBeChecked();
+  await expect(clinicBox(page, secondName)).not.toBeChecked();
+  await clinicBox(page, secondName).check();
   await expect(roleSelect.locator("option")).toHaveText(["Médico", "Usuario"]);
   await roleSelect.selectOption("DOCTOR");
-  await expect(page.getByLabel("Especialidades")).toBeVisible();
-  await clinicSelect.selectOption("all");
+  await expect(
+    page.getByLabel("Especialidades", { exact: true }),
+  ).toBeVisible();
+
+  await allClinicsRadio(page).check();
   await expect(roleSelect).toHaveValue("USER");
-  await expect(page.getByLabel("Especialidades")).toHaveCount(0);
+  await expect(page.getByLabel("Especialidades", { exact: true })).toHaveCount(
+    0,
+  );
 });
 
 test("asignar a «Todas las sedes» como Administrador y a una sola sede como Médico muestra el mensaje del api", async ({
@@ -206,7 +217,8 @@ test("asignar a «Todas las sedes» como Administrador y a una sola sede como M�
   await page.getByLabel("Nombre").fill("Olga");
   await page.getByLabel("Apellido").fill("Sede");
   await page.getByLabel("Teléfono").fill("+51900000012");
-  await page.getByLabel("Sede").selectOption({ label: world.clinicName });
+  await specificClinicsRadio(page).check();
+  await clinicBox(page, world.clinicName).check();
   await page.getByLabel("Rol").selectOption("DOCTOR");
   await pickSpecialty(page, world.specialtyName);
   await page.getByRole("button", { name: "Enviar invitación" }).click();
@@ -218,12 +230,13 @@ test("asignar a «Todas las sedes» como Administrador y a una sola sede como M�
   ).toBeVisible();
 
   expect(await membershipRole(allClinics, world.organizationId)).toBe("ADMIN");
-  expect(await membershipRole(allClinics, world.clinicId)).toBeNull();
+  // Al pasar a ADMIN queda como médico de cada sede (perfil vacío).
+  expect(await membershipRole(allClinics, world.clinicId)).toBe("DOCTOR");
   expect(await membershipRole(oneClinic, world.clinicId)).toBe("DOCTOR");
   expect(await membershipRole(oneClinic, world.organizationId)).toBeNull();
 });
 
-test("el ADMIN se asigna como Médico: ve «Configuración» en esa sede y aparece en el booking cuando tiene horarios", async ({
+test("el ADMIN ya atiende por defecto: ve «Configuración» y, al elegir especialidad y tener horarios, aparece en el booking", async ({
   page,
 }) => {
   test.setTimeout(90_000);
@@ -235,18 +248,15 @@ test("el ADMIN se asigna como Médico: ve «Configuración» en esa sede y apare
     `/account/${world.admin.accountId}/clinic/${world.clinicId}/dashboard`,
   );
   await expect(
-    page.getByRole("link", { name: "Pacientes", exact: true }).first(),
+    page.getByRole("link", { name: "Configuración", exact: true }).first(),
   ).toBeVisible();
-  await expect(
-    page.getByRole("link", { name: "Configuración", exact: true }),
-  ).toHaveCount(0);
 
   await setSpace(page, "ORGANIZATION", world.organizationId);
   await page.goto(
     `/account/${world.admin.accountId}/organization/${world.organizationId}/users`,
   );
   await startForm(page, world.admin.email);
-  await expect(page.getByLabel("Sede")).toHaveValue(world.clinicId);
+  await expect(clinicBox(page, world.clinicName)).toBeChecked();
   await expect(page.getByLabel("Rol")).toHaveValue("DOCTOR");
   await expect(
     page.getByText(
@@ -254,25 +264,9 @@ test("el ADMIN se asigna como Médico: ve «Configuración» en esa sede y apare
     ),
   ).toBeVisible();
   await pickSpecialty(page, world.specialtyName);
-  await page.getByRole("button", { name: "Asignar", exact: true }).click();
+  await page.getByRole("button", { name: "Guardar cambios" }).click();
 
-  await expect(
-    toast(
-      page,
-      `Listo. Ya atiendes en ${world.clinicName}. Configura tus horarios para aparecer en el link de reserva.`,
-    ),
-  ).toBeVisible();
-  expect(await membershipRole(world.admin.email, world.clinicId)).toBe(
-    "DOCTOR",
-  );
-
-  await setSpace(page, "CLINIC", world.clinicId);
-  await page.goto(
-    `/account/${world.admin.accountId}/clinic/${world.clinicId}/dashboard`,
-  );
-  await expect(
-    page.getByRole("link", { name: "Configuración", exact: true }).first(),
-  ).toBeVisible();
+  await expect(toast(page, "Guardamos tus cambios.")).toBeVisible();
 
   await seedFullDayAvailability(world.admin.userId, world.clinicId);
   await openDoctorStep(page, world);
@@ -290,7 +284,7 @@ test("modo edición: precarga el rol y las especialidades y «Guardar cambios» 
 
   await startForm(page, doctorEmail);
 
-  await expect(page.getByLabel("Sede")).toHaveValue(world.clinicId);
+  await expect(clinicBox(page, world.clinicName)).toBeChecked();
   await expect(page.getByLabel("Rol")).toHaveValue("DOCTOR");
   await expect(
     page.getByRole("button", { name: `Quitar ${world.specialtyName}` }),
@@ -358,7 +352,7 @@ test("el ADMIN no puede cambiar su propio rol ni el del dueño en «Todas las se
   await openOrganizationUsers(page, world, otherAdmin.email);
 
   await startForm(page, otherAdmin.email);
-  await page.getByLabel("Sede").selectOption("all");
+  await allClinicsRadio(page).check();
   await expect(page.getByLabel("Rol")).toHaveValue("ADMIN");
   await page.getByLabel("Rol").selectOption("USER");
   await expect(
@@ -371,7 +365,7 @@ test("el ADMIN no puede cambiar su propio rol ni el del dueño en «Todas las se
   await page.getByRole("button", { name: "Cambiar" }).click();
   await page.getByLabel("Correo electrónico").fill(world.admin.email);
   await page.getByRole("button", { name: "Continuar" }).click();
-  await page.getByLabel("Sede").selectOption("all");
+  await allClinicsRadio(page).check();
   await page.getByLabel("Rol").selectOption("USER");
   await expect(
     page.getByText("El rol del dueño de la cuenta no se puede cambiar.", {

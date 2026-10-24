@@ -1,6 +1,7 @@
 import type { Page } from "@playwright/test";
 import { test, expect } from "../../support/test";
 import {
+  createApiContext,
   createClinicResource,
   createMemberWithRole,
   createOnboardedAdmin,
@@ -10,8 +11,16 @@ import {
 } from "../../support/accounts";
 import { API_BASE_URL, PLATFORM_BASE_URL } from "../../support/env";
 import { getTestPrisma } from "../../support/db";
-import { backdateInvitationExpiry } from "../../support/invitations";
-import { uniqueEmail, uniqueName } from "../../support/users";
+import {
+  backdateInvitationExpiry,
+  softDeleteMembership,
+} from "../../support/invitations";
+import {
+  authPost,
+  E2E_PASSWORD,
+  uniqueEmail,
+  uniqueName,
+} from "../../support/users";
 import { loginViaUi } from "../../support/ui";
 
 const USER_NOTICE_TITLE = "Acceso a todas las sedes";
@@ -123,7 +132,7 @@ async function continueWithEmailForAllClinics(
   email: string,
 ): Promise<void> {
   await continueWithEmail(page, email);
-  await page.getByLabel("Sede").selectOption("all");
+  await page.getByRole("radio", { name: /Todas las sedes/ }).check();
 }
 
 async function fillNewUserDetails(page: Page): Promise<void> {
@@ -132,10 +141,11 @@ async function fillNewUserDetails(page: Page): Promise<void> {
   await page.getByLabel("Teléfono").fill("+51900000001");
 }
 
-test("el ADMIN llega a Usuarios desde el menú y, estando solo, ve su fila con Tú y la pista hacia Sedes", async ({
+test("el ADMIN llega a Usuarios desde el menú y, estando solo, ve su fila con Tú y el texto nuevo del vacío", async ({
   page,
 }) => {
   const fixture = await setupFixture();
+  await softDeleteMembership(fixture.existingUser.membershipId);
   await signInIntoOrganization(page, fixture);
   await page.goto(organizationPath(fixture, "clinics"));
 
@@ -145,23 +155,26 @@ test("el ADMIN llega a Usuarios desde el menú y, estando solo, ve su fila con T
   await expect(page.getByRole("heading", { name: "Usuarios" })).toBeVisible();
   await expect(
     page.getByText(
-      `Personas con acceso a todas las sedes de ${fixture.organizationName}.`,
+      `Personas con acceso a ${fixture.organizationName} o a alguna de sus sedes.`,
     ),
   ).toBeVisible();
 
   const ownRow = page.getByRole("row", { name: /Alicia/ });
   await expect(ownRow.getByText("Tú", { exact: true })).toBeVisible();
   await expect(
-    ownRow.getByText("Administrador", { exact: true }),
+    ownRow.getByText("Todas las sedes · Administrador", { exact: true }),
   ).toBeVisible();
+  await expect(ownRow.getByText(/ · Médico$/)).toBeVisible();
   await expect(ownRow.getByText("Invitación pendiente")).toHaveCount(0);
 
   await expect(
     page.getByText("Aún no has invitado a nadie a la organización"),
   ).toBeVisible();
   await expect(
-    page.getByRole("link", { name: "Sedes", exact: true }).last(),
-  ).toHaveAttribute("href", organizationPath(fixture, "clinics"));
+    page.getByText(
+      "Invita a quien trabaje en todas las sedes, o asigna a cada médico las sedes donde atiende.",
+    ),
+  ).toBeVisible();
 });
 
 test("un USER de la organización que abre la página por URL ve el estado de error sin datos", async ({
@@ -223,12 +236,13 @@ test("el modal valida el correo, precarga a un usuario existente y ofrece Usuari
   ]);
   await expect(page.getByLabel("Especialidades")).toHaveCount(0);
 
-  await page.getByLabel("Sede").selectOption({ index: 1 });
+  await page.getByRole("radio", { name: "Sedes específicas" }).check();
+  await page.getByRole("checkbox").first().check();
   await expect(roleSelect.locator("option")).toHaveText(["Médico", "Usuario"]);
   await expect(roleSelect).toHaveValue("USER");
   await roleSelect.selectOption("DOCTOR");
   await expect(page.getByLabel("Especialidades")).toBeVisible();
-  await page.getByLabel("Sede").selectOption("all");
+  await page.getByRole("radio", { name: /Todas las sedes/ }).check();
   await expect(roleSelect.locator("option")).toHaveText([
     "Usuario",
     "Administrador",
@@ -331,7 +345,9 @@ test("invitar a un USER cierra el modal, muestra Invitación enviada y la fila n
 
   const invitedRow = page.getByRole("row", { name: /Nueva Persona/ });
   await expect(invitedRow).toBeVisible();
-  await expect(invitedRow.getByText("Usuario", { exact: true })).toBeVisible();
+  await expect(
+    invitedRow.getByText("Todas las sedes · Usuario", { exact: true }),
+  ).toBeVisible();
   await expect(invitedRow.getByText("Invitación pendiente")).toBeVisible();
   await expect(
     page.getByText("Aún no has invitado a nadie a la organización"),
@@ -342,9 +358,9 @@ test("invitar a un USER cierra el modal, muestra Invitación enviada y la fila n
     where: { membership: { user: { email } } },
   });
   expect(invitation).not.toBeNull();
-  await prisma.userInvitation.update({
-    where: { id: invitation!.id },
-    data: { status: "ACCEPTED", acceptedAt: new Date() },
+  await authPost(await createApiContext(), "/invitations/set-password", {
+    token: invitation!.token,
+    password: E2E_PASSWORD,
   });
   await page.reload();
   await expect(
@@ -354,7 +370,7 @@ test("invitar a un USER cierra el modal, muestra Invitación enviada y la fila n
   ).toHaveCount(0);
 });
 
-test("la tabla de la organización marca Invitación expirada a quien no aceptó a tiempo y Invitación pendiente a quien aún está a tiempo; al aceptar la etiqueta desaparece", async ({
+test("la tabla de la organización marca Invitación pendiente mientras no haya contraseña, también con el token vencido, y desaparece al crearla", async ({
   page,
 }) => {
   const fixture = await setupFixture();
@@ -389,20 +405,28 @@ test("la tabla de la organización marca Invitación expirada a quien no aceptó
   const pendingRow = page.getByRole("row", { name: /Vigente Prueba/ });
   const expiredRow = page.getByRole("row", { name: /Vencida Prueba/ });
   await expect(pendingRow.getByText("Invitación pendiente")).toBeVisible();
-  await expect(pendingRow.getByText("Invitación expirada")).toHaveCount(0);
-  await expect(expiredRow.getByText("Invitación expirada")).toBeVisible();
-  await expect(expiredRow.getByText("Invitación pendiente")).toHaveCount(0);
+  await expect(expiredRow.getByText("Invitación pendiente")).toBeVisible();
+  await expect(page.getByText("Invitación expirada")).toHaveCount(0);
 
-  await prisma.userInvitation.update({
-    where: { id: expiredInvitation.id },
-    data: { status: "ACCEPTED", acceptedAt: new Date() },
+  const validInvitation = await prisma.userInvitation.findFirst({
+    where: { membership: { user: { email: people[0].email } } },
+  });
+  if (!validInvitation) throw new Error("No se encontró la invitación");
+  await authPost(await createApiContext(), "/invitations/set-password", {
+    token: validInvitation.token,
+    password: E2E_PASSWORD,
   });
   await page.reload();
   await expect(
     page
-      .getByRole("row", { name: /Vencida Prueba/ })
-      .getByText("Invitación expirada"),
+      .getByRole("row", { name: /Vigente Prueba/ })
+      .getByText("Invitación pendiente"),
   ).toHaveCount(0);
+  await expect(
+    page
+      .getByRole("row", { name: /Vencida Prueba/ })
+      .getByText("Invitación pendiente"),
+  ).toBeVisible();
 });
 
 test("la tabla de usuarios de la sede muestra el rol en español y nunca Invitación pendiente", async ({

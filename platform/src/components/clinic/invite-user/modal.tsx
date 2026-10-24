@@ -33,6 +33,7 @@ interface InviteUserFields extends Record<string, unknown> {
   phone: string;
   role: string;
   specialtyIds: string[];
+  clinicIds: string[];
 }
 
 const FORM_ID = "invite-user-form";
@@ -60,16 +61,17 @@ export const InviteUserModal = ({
   );
 
   const clinicForm = useFormAction<InviteUserFields>(
-    (formData) => {
-      const clinicId = formData.get("scopeClinicId") as string;
-      return inviteUserAction(clinicId, { status: "idle" }, formData);
-    },
+    (formData) =>
+      inviteUserAction(organizationId, { status: "idle" }, formData),
     { onSuccess: () => setIsOpen(false) },
   );
 
-  const submit = (scope: { clinicId: string | null }, formData: FormData) => {
-    setSubmittedToClinic(scope.clinicId !== null);
-    if (!scope.clinicId) {
+  const submit = (
+    scope: { clinicIds: string[] | null },
+    formData: FormData,
+  ) => {
+    setSubmittedToClinic(scope.clinicIds !== null);
+    if (!scope.clinicIds) {
       organizationForm.submit(formData);
       return;
     }
@@ -81,7 +83,6 @@ export const InviteUserModal = ({
       toast.error("Selecciona al menos una especialidad");
       return;
     }
-    formData.set("scopeClinicId", scope.clinicId);
     clinicForm.submit(formData);
   };
 
@@ -91,13 +92,16 @@ export const InviteUserModal = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent size="S">
+      <DialogContent
+        size="S"
+        className="max-h-[calc(100dvh-2rem)] overflow-y-auto"
+      >
         <DialogHeader>
           <DialogTitle>Invitar usuario</DialogTitle>
           <DialogDescription>
             {fixedClinicId
               ? `Dale acceso a ${fixedClinicName}.`
-              : `Dale acceso a todas las sedes de ${organizationName} o a una sede.`}
+              : `Dale acceso a todas las sedes de ${organizationName} o a las sedes que elijas.`}
           </DialogDescription>
         </DialogHeader>
         <InviteUserForm

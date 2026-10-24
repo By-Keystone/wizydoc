@@ -772,7 +772,7 @@ test("CA-64: el ADMIN que atiende ve «Tratamiento», lo guarda y ve la vista pr
   ).toBeVisible();
 });
 
-test("CA-64: el ADMIN que no atiende no ve «Tratamiento» y lee cómo asignarse desde Usuarios", async ({
+test("CA-64: el ADMIN que no atiende no ve «Tratamiento» y lee el aviso con «Ir a Sedes»", async ({
   page,
 }) => {
   const world = await createProfileWorld("treatment-bare");
@@ -785,15 +785,15 @@ test("CA-64: el ADMIN que no atiende no ve «Tratamiento» y lee cómo asignarse
   ).toHaveCount(0);
   await expect(
     section(page).getByText(
-      "Todavía no atiendes en ninguna sede. Para recibir citas, asígnate como médico desde Usuarios.",
+      "Todavía no atiendes en ninguna sede. Al crear una sede quedas como médico de ella; después eliges aquí tus especialidades.",
       { exact: true },
     ),
   ).toBeVisible();
   await expect(
-    section(page).getByRole("link", { name: "Ir a Usuarios", exact: true }),
+    section(page).getByRole("link", { name: "Ir a Sedes", exact: true }),
   ).toHaveAttribute(
     "href",
-    `/account/${user.accountId}/organization/${world.organizationId}/users`,
+    `/account/${user.accountId}/organization/${world.organizationId}/clinics`,
   );
 });
 

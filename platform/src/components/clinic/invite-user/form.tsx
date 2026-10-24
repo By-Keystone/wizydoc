@@ -20,9 +20,16 @@ interface InviteUserFields extends Record<string, unknown> {
   phone: string;
   role: string;
   specialtyIds: string[];
+  clinicIds: string[];
 }
 
-const ALL_CLINICS = "all";
+type ScopeMode = "all" | "clinics";
+
+const ROLE_LABEL = {
+  ADMIN: "Administrador",
+  DOCTOR: "Médico",
+  USER: "Usuario",
+} as const;
 
 const ORGANIZATION_ROLE_OPTIONS = [
   { label: "Usuario", value: "USER" },
@@ -43,32 +50,46 @@ interface Props {
   specialties?: Specialty[];
   currentUserEmail?: string;
   isPending: boolean;
-  onSubmit: (scope: { clinicId: string | null }, formData: FormData) => void;
+  onSubmit: (scope: { clinicIds: string[] | null }, formData: FormData) => void;
   onCancel: () => void;
   fieldErrors?: FieldErrors<InviteUserFields>;
 }
 
-function defaultScope(clinics: Props["clinics"], fixedClinicId?: string) {
-  if (fixedClinicId) return fixedClinicId;
-  if (clinics.length === 1) return clinics[0].id;
-  return ALL_CLINICS;
+function defaultSelection(clinics: Props["clinics"], fixedClinicId?: string) {
+  if (fixedClinicId) return [fixedClinicId];
+  if (clinics.length === 1) return [clinics[0].id];
+  return [];
 }
 
-function initialRole(person: LookedUpUser | null, scopeValue: string) {
-  const options =
-    scopeValue === ALL_CLINICS
-      ? ORGANIZATION_ROLE_OPTIONS
-      : CLINIC_ROLE_OPTIONS;
-  const fallback = scopeValue === ALL_CLINICS ? "USER" : "DOCTOR";
+// Misma clave = misma precarga: pasar de 2 a 3 sedes no reinicia lo elegido.
+function preloadKey(selected: string[]) {
+  return selected.length === 1 ? selected[0] : "multi";
+}
 
-  const existing =
-    scopeValue === ALL_CLINICS
-      ? person?.organizationRole
-      : person?.clinics.find((clinic) => clinic.clinicId === scopeValue)?.role;
+function shouldResetPreload(previous: string[], next: string[]) {
+  if (previous.length === 0 || next.length === 0) return true;
+  if (previous.length === 1 && next.length === 1)
+    return previous[0] !== next[0];
+  return false;
+}
 
-  return options.some((option) => option.value === existing)
-    ? (existing as string)
-    : fallback;
+function initialRole(
+  person: LookedUpUser | null,
+  mode: ScopeMode,
+  selected: string[],
+) {
+  if (mode === "all") {
+    const existing = person?.organizationRole;
+    return existing === "ADMIN" || existing === "USER" ? existing : "USER";
+  }
+
+  const roles = selected.map(
+    (id) => person?.clinics.find((clinic) => clinic.clinicId === id)?.role,
+  );
+  const [first] = roles;
+  const common =
+    roles.length > 0 && roles.every((r) => r === first) ? first : undefined;
+  return common === "DOCTOR" || common === "USER" ? common : "DOCTOR";
 }
 
 export const InviteUserForm = ({
@@ -89,16 +110,47 @@ export const InviteUserForm = ({
   const [step, setStep] = useState<"email" | "details">("email");
   const [email, setEmail] = useState("");
   const [emailError, setEmailError] = useState<string | null>(null);
-  const [scopeValue, setScopeValue] = useState(
-    defaultScope(clinics, fixedClinicId),
+  const [selectedClinicIds, setSelectedClinicIds] = useState(
+    defaultSelection(clinics, fixedClinicId),
   );
-  const [role, setRole] = useState(initialRole(null, scopeValue));
+  const [scopeMode, setScopeMode] = useState<ScopeMode>(
+    selectedClinicIds.length > 0 ? "clinics" : "all",
+  );
+  const [role, setRole] = useState<string>(
+    initialRole(null, scopeMode, selectedClinicIds),
+  );
+  // La precarga (y con ella las especialidades elegidas) sólo se reinicia cuando cambia de verdad; pasar de 1 a 2 sedes la conserva.
+  const [preloadAnchor, setPreloadAnchor] = useState(
+    preloadKey(selectedClinicIds),
+  );
+  const [clinicsError, setClinicsError] = useState<string | null>(null);
+  const clinicsErrorId = `${formId}-clinics-error`;
   const [existingUser, setExistingUser] = useState<LookedUpUser | null>(null);
   const [isLookingUp, startLookup] = useTransition();
 
-  const scope = { clinicId: scopeValue === ALL_CLINICS ? null : scopeValue };
-  const clinicName =
-    clinics.find((clinic) => clinic.id === scope.clinicId)?.name ?? "";
+  const scope = {
+    clinicIds: scopeMode === "all" ? null : selectedClinicIds,
+  };
+  const nameOf = (id: string) =>
+    clinics.find((clinic) => clinic.id === id)?.name ?? "";
+  const clinicNames = (scope.clinicIds ?? []).map(nameOf);
+  const existingClinicNames = (existingUser?.clinics ?? [])
+    .filter((clinic) => scope.clinicIds?.includes(clinic.clinicId))
+    .map((clinic) => nameOf(clinic.clinicId));
+  // Bajar de Administrador a Usuario: sus sedes como Médico se cierran salvo las que tienen citas pendientes.
+  const steppingDown =
+    scopeMode === "all" &&
+    existingUser?.organizationRole === "ADMIN" &&
+    role === "USER"
+      ? existingUser.clinics
+          .filter((clinic) => clinic.role === "DOCTOR")
+          .map((clinic) => ({
+            name: nameOf(clinic.clinicId),
+            pendingAppointments: clinic.pendingAppointments,
+          }))
+      : [];
+  const groupError =
+    clinicsError ?? fieldError(fieldErrors, "clinicIds") ?? null;
   const assignment = resolveAssignment({
     person: existingUser,
     email,
@@ -126,18 +178,39 @@ export const InviteUserForm = ({
         value,
       );
       setExistingUser(user);
-      setRole(initialRole(user, scopeValue));
+      setRole(initialRole(user, scopeMode, selectedClinicIds));
       setStep("details");
     });
   };
 
-  const handleScopeChange = (next: string) => {
-    setScopeValue(next);
-    setRole(initialRole(existingUser, next));
+  const handleModeChange = (next: ScopeMode) => {
+    setScopeMode(next);
+    setClinicsError(null);
+    setRole(initialRole(existingUser, next, selectedClinicIds));
+    setPreloadAnchor(preloadKey(selectedClinicIds));
+  };
+
+  const handleToggleClinic = (id: string, checked: boolean) => {
+    const next = checked
+      ? [...selectedClinicIds, id]
+      : selectedClinicIds.filter((current) => current !== id);
+    setSelectedClinicIds(next);
+    setClinicsError(null);
+    if (shouldResetPreload(selectedClinicIds, next)) {
+      setRole(initialRole(existingUser, scopeMode, next));
+      setPreloadAnchor(preloadKey(next));
+    }
   };
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (scopeMode === "clinics" && selectedClinicIds.length === 0) {
+      setClinicsError("Elige al menos una sede");
+      formRef.current
+        ?.querySelector<HTMLInputElement>('input[name="clinicIds"]')
+        ?.focus();
+      return;
+    }
     onSubmit(scope, new FormData(e.currentTarget));
   };
 
@@ -265,32 +338,100 @@ export const InviteUserForm = ({
           />
 
           {fixedClinicId ? (
-            <Input
-              label="Sede"
-              name="clinicName"
-              value={clinicName}
-              readOnly
-              aria-describedby={noticeId}
-            />
+            <>
+              <Input
+                label="Sede"
+                name="clinicName"
+                value={nameOf(fixedClinicId)}
+                readOnly
+                aria-describedby={noticeId}
+              />
+              <input type="hidden" name="clinicIds" value={fixedClinicId} />
+            </>
           ) : (
-            <Select
-              label="Sede"
-              name="clinicScope"
-              value={scopeValue}
-              onChange={(e) => handleScopeChange(e.target.value)}
-              options={[
-                {
-                  label: `Todas las sedes de ${organizationName}`,
-                  value: ALL_CLINICS,
-                },
-                ...clinics.map((clinic) => ({
-                  label: clinic.name,
-                  value: clinic.id,
-                })),
-              ]}
-              disabled={isPending}
+            <fieldset
               aria-describedby={noticeId}
-            />
+              className="flex flex-col gap-2"
+            >
+              <legend className="mb-1.5 text-sm font-medium text-brand-gray">
+                Acceso
+              </legend>
+              <label className="flex items-center gap-2 text-sm text-brand-ink">
+                <input
+                  type="radio"
+                  name="scopeMode"
+                  value="all"
+                  checked={scopeMode === "all"}
+                  onChange={() => handleModeChange("all")}
+                  disabled={isPending}
+                  className="h-4 w-4 accent-brand-teal"
+                />
+                Todas las sedes de {organizationName}
+              </label>
+              {clinics.length > 0 && (
+                <label className="flex items-center gap-2 text-sm text-brand-ink">
+                  <input
+                    type="radio"
+                    name="scopeMode"
+                    value="clinics"
+                    checked={scopeMode === "clinics"}
+                    onChange={() => handleModeChange("clinics")}
+                    disabled={isPending}
+                    className="h-4 w-4 accent-brand-teal"
+                  />
+                  Sedes específicas
+                </label>
+              )}
+              {scopeMode === "clinics" && (
+                <fieldset
+                  aria-describedby={groupError ? clinicsErrorId : undefined}
+                  className="m-0 flex max-h-48 min-w-0 flex-col gap-2 overflow-y-auto rounded-lg border border-gray-200 p-3"
+                >
+                  <legend className="sr-only">Sedes</legend>
+                  {clinics.map((clinic) => {
+                    const existing = existingUser?.clinics.find(
+                      (item) => item.clinicId === clinic.id,
+                    );
+                    return (
+                      <label
+                        key={clinic.id}
+                        className="flex items-center gap-2 text-sm text-brand-ink"
+                      >
+                        <input
+                          type="checkbox"
+                          name="clinicIds"
+                          value={clinic.id}
+                          checked={selectedClinicIds.includes(clinic.id)}
+                          onChange={(e) =>
+                            handleToggleClinic(clinic.id, e.target.checked)
+                          }
+                          disabled={isPending}
+                          className="h-4 w-4 rounded border-gray-300 accent-brand-teal"
+                        />
+                        <span>
+                          {clinic.name}
+                          {existing && (
+                            <span className="text-xs text-brand-gray">
+                              {" "}
+                              · {ROLE_LABEL[existing.role]}
+                            </span>
+                          )}
+                        </span>
+                      </label>
+                    );
+                  })}
+                </fieldset>
+              )}
+              {groupError && (
+                <p
+                  id={clinicsErrorId}
+                  role="alert"
+                  className="text-xs text-red-600"
+                >
+                  {groupError}
+                </p>
+              )}
+            </fieldset>
           )}
 
           <Select
@@ -299,7 +440,7 @@ export const InviteUserForm = ({
             value={role}
             onChange={(e) => setRole(e.target.value)}
             options={
-              scope.clinicId ? CLINIC_ROLE_OPTIONS : ORGANIZATION_ROLE_OPTIONS
+              scope.clinicIds ? CLINIC_ROLE_OPTIONS : ORGANIZATION_ROLE_OPTIONS
             }
             disabled={isPending}
             aria-describedby={noticeId}
@@ -316,13 +457,16 @@ export const InviteUserForm = ({
                   : "Esta persona"
               }
               organizationName={organizationName}
-              clinicName={clinicName}
+              clinicNames={clinicNames}
+              existingClinicNames={existingClinicNames}
+              clinicNameById={nameOf}
+              steppingDown={steppingDown}
             />
           </div>
 
-          {scope.clinicId && role === "DOCTOR" && (
+          {scope.clinicIds && role === "DOCTOR" && (
             <SpecialtyMultiSelect
-              key={`${scopeValue}-${role}`}
+              key={`${role}-${preloadAnchor}`}
               organizationId={organizationId}
               initialSpecialties={specialties}
               initialSelected={assignment.existingSpecialties}

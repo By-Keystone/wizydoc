@@ -15,7 +15,7 @@ import {
   readLatestEmailTo,
 } from "../../support/email";
 import { loginViaUi } from "../../support/ui";
-import { invitePendingUser } from "../../support/invitations";
+import { ageInvitationsOf, invitePendingUser } from "../../support/invitations";
 
 const DOCTOR_PASSWORD = "Clave-Medico-2026";
 
@@ -50,8 +50,9 @@ test("CA-4: médico con dos invitaciones pendientes fija la contraseña con la p
     name: uniqueName("Sede B CA4"),
   });
 
-  // Sin contraseña todavía, una segunda sede genera una segunda invitación con su propio correo.
+  // Pasado el enfriamiento por persona (5 minutos), la segunda sede genera una segunda invitación con su propio correo.
   const emailsBefore = readEmailsTo(doctor.email).length;
+  await ageInvitationsOf(doctor.email);
   await inviteUserViaApi(admin, {
     email: doctor.email,
     name: "Lucía",

@@ -31,8 +31,13 @@ test("el ADMIN ve «Usuarios» en el menú de la sede y llega a la página dentr
 }) => {
   const scenario = await createPortalScenario("space-users-admin");
   const { admin, clinicId } = scenario;
+  const doctorEmail = await readUserEmail(scenario.doctor.userId);
 
   await enterClinic(page, admin.email, admin.accountId, clinicId, "dashboard");
+  // El ADMIN atiende por defecto desde que se crea la sede.
+  await expect(
+    page.getByRole("link", { name: "Configuración", exact: true }).first(),
+  ).toBeVisible();
   await usersLink(page).first().click();
 
   await expect(page).toHaveURL(
@@ -48,12 +53,11 @@ test("el ADMIN ve «Usuarios» en el menú de la sede y llega a la página dentr
     page.getByRole("link", { name: "Pacientes", exact: true }).first(),
   ).toBeVisible();
   await expect(
-    page
-      .getByRole("row")
-      .filter({
-        hasText: `${scenario.doctor.name} ${scenario.doctor.lastName}`,
-      }),
+    page.getByRole("row").filter({ hasText: doctorEmail }),
   ).toBeVisible();
+  const ownRow = page.getByRole("row").filter({ hasText: admin.email });
+  await expect(ownRow.getByText("Tú", { exact: true })).toBeVisible();
+  await expect(ownRow.getByText("Médico", { exact: true })).toBeVisible();
 });
 
 test("el formulario de la página de la sede trae la sede fija y sólo ofrece Médico y Usuario", async ({

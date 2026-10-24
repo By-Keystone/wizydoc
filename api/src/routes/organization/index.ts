@@ -331,7 +331,14 @@ export default async function organizationRoutes(
       try {
         const query = new GetOrganizationUsersQuery();
 
-        const users = await query.execute(request.params.resourceId);
+        const users = await query.execute(
+          request.params.resourceId,
+          request.user.accountId!,
+        );
+        if (!users)
+          return reply
+            .status(404)
+            .send({ message: "Organización no encontrada" });
 
         return reply.status(200).send(users);
       } catch (error) {

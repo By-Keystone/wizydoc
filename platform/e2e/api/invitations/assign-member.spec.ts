@@ -23,6 +23,7 @@ import {
 import { API_BASE_URL } from "../../support/env";
 import {
   ageInvitationIssuance,
+  ageInvitationsOf,
   softDeleteMembership,
 } from "../../support/invitations";
 import { expect, test } from "../../support/test";
@@ -429,6 +430,63 @@ test.describe("Regla del correo", () => {
     ).toBe("DOCTOR");
   });
 
+  test("segunda sede dentro de los 5 minutos: membership sin invitación ni correo nuevos", async () => {
+    const scenario = await createPortalScenario("assign-second-soon");
+    const secondClinicId = await createClinicResourceViaPrisma(
+      scenario.admin,
+      scenario.organizationId,
+    );
+    const person = newPerson("assign-second-soon");
+    await assignOk(scenario.admin.context, scenario.clinicId, person, {
+      role: "USER",
+    });
+    await waitForEmailTo(person.email, { subject: INVITATION_SUBJECT });
+    const emailsAfterFirst = readEmailsTo(person.email).length;
+
+    const result = await assignOk(
+      scenario.admin.context,
+      secondClinicId,
+      person,
+      { role: "USER" },
+    );
+
+    expect(result).toMatchObject({ outcome: "created", invitationSent: false });
+    expect(await invitationOf(person.email, secondClinicId)).toBeNull();
+    await expectNoEmailTo(person.email, { afterCount: emailsAfterFirst });
+  });
+
+  test("tres sedes seguidas para un correo nuevo: un solo correo y sólo la primera membership tiene invitación", async () => {
+    const scenario = await createPortalScenario("assign-three");
+    const clinics = [scenario.clinicId];
+    for (let index = 0; index < 2; index += 1) {
+      clinics.push(
+        await createClinicResourceViaPrisma(
+          scenario.admin,
+          scenario.organizationId,
+        ),
+      );
+    }
+    const person = newPerson("assign-three");
+
+    const results = [];
+    for (const clinicId of clinics) {
+      results.push(
+        await assignOk(scenario.admin.context, clinicId, person, {
+          role: "USER",
+        }),
+      );
+    }
+
+    expect(
+      results.map((r) => (r as { invitationSent: boolean }).invitationSent),
+    ).toEqual([true, false, false]);
+    await waitForEmailTo(person.email, { subject: INVITATION_SUBJECT });
+    expect(readEmailsTo(person.email)).toHaveLength(1);
+    expect(await invitationOf(person.email, clinics[0])).not.toBeNull();
+    expect(await invitationOf(person.email, clinics[1])).toBeNull();
+    expect(await invitationOf(person.email, clinics[2])).toBeNull();
+  });
+
   test("segunda sede a quien tiene la invitación pendiente: otra invitación y otro correo", async () => {
     const scenario = await createPortalScenario("assign-second-clinic");
     const secondClinicId = await createClinicResourceViaPrisma(
@@ -441,6 +499,7 @@ test.describe("Regla del correo", () => {
     });
     await waitForEmailTo(person.email, { subject: INVITATION_SUBJECT });
     const emailsAfterFirst = readEmailsTo(person.email).length;
+    await ageInvitationsOf(person.email);
 
     const result = await assignOk(
       scenario.admin.context,

@@ -28,7 +28,7 @@ export const OrganizationUsersTopHeader = ({
       <div className="min-w-0">
         <h1 className="text-2xl font-bold text-brand-teal-dark">Usuarios</h1>
         <p className="mt-1 text-sm text-brand-gray">
-          Personas con acceso a todas las sedes de {organizationName}.
+          Personas con acceso a {organizationName} o a alguna de sus sedes.
         </p>
       </div>
       <Button onClick={() => setInviteModalOpen(true)}>

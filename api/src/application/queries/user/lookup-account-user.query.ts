@@ -15,6 +15,8 @@ export type LookedUpClinicMembership = {
   clinicId: string;
   role: "ADMIN" | "DOCTOR" | "USER";
   specialties: { id: string; name: string }[];
+  // Citas por atender del médico en esa sede; sólo el número.
+  pendingAppointments: number;
 };
 
 export type LookedUpAccountUser = {
