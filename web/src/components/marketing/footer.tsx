@@ -36,8 +36,8 @@ export function Footer() {
               <Image src={logo} alt="WizyDoc" className="h-8 w-auto" />
             </Link>
             <p className="mt-4 text-sm leading-relaxed text-brand-gray max-w-xs">
-              Gestión de citas médicas para sedes médicas que quieren operar sin
-              fricciones.
+              La agenda de los consultorios médicos en Perú: tus pacientes
+              reservan solos y tú solo atiendes.
             </p>
           </div>
 

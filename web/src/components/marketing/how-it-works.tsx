@@ -4,23 +4,23 @@ const steps = [
   {
     number: "01",
     icon: UserPlus,
-    title: "Registra tu sede y tu equipo",
+    title: "Crea tu cuenta",
     description:
-      "Crea tu cuenta y tus sedes. Si atiendes, ya eres médico de tu sede; invita al resto de tu equipo con su especialidad.",
+      "Regístrate gratis y crea tu consultorio. Tú mismo atiendes en él; si trabajas con otros médicos, invítalos cuando quieras.",
   },
   {
     number: "02",
     icon: CalendarDays,
-    title: "Define la disponibilidad",
+    title: "Define tus horarios",
     description:
-      "Cada médico configura sus bloques de horario por día. Lunes 09:00–13:00, miércoles 15:00–19:00 — como tú quieras.",
+      "Configuras tus bloques de atención por día. Lunes 09:00–13:00, miércoles 15:00–19:00 — como tú quieras.",
   },
   {
     number: "03",
     icon: CheckCircle2,
-    title: "Tus pacientes reservan y reciben su confirmación",
+    title: "Comparte tu link y recibe reservas",
     description:
-      "Los pacientes eligen médico, fecha y horario desde el enlace de reserva, y WizyDoc les envía la confirmación automáticamente.",
+      "Ponlo en tu WhatsApp o en tus redes. Tus pacientes eligen fecha y horario, y WizyDoc les envía la confirmación por correo.",
   },
 ];
 

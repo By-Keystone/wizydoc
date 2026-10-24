@@ -20,9 +20,9 @@ export const metadata: Metadata = {
   description,
   keywords: [
     "citas médicas",
-    "sede médica",
+    "consultorio médico",
     "agenda médica",
-    "confirmación de citas",
+    "reserva de citas en línea",
     "gestión de citas",
   ],
   openGraph: {
