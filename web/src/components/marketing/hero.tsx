@@ -30,9 +30,9 @@ export function Hero() {
             </h1>
 
             <p className="mt-6 text-lg leading-relaxed text-brand-gray">
-              WizyDoc ayuda a médicos y clínicas a gestionar citas, definir
-              horarios y confirmar asistencias automáticamente. Todo desde un
-              solo lugar.
+              Defines tus horarios y las citas se crean solas: tus pacientes
+              reservan desde un link y reciben su confirmación al instante, sin
+              que coordines nada.
             </p>
 
             <ul className="mt-6 flex flex-col gap-2">
@@ -104,6 +104,7 @@ export function Hero() {
                 <div className="grid grid-cols-3 gap-2">
                   {slots.map((slot) => (
                     <button
+                      type="button"
                       key={slot}
                       className={`rounded-lg py-2 text-xs font-semibold transition-colors ${
                         slot === "09:30"
@@ -123,11 +124,14 @@ export function Hero() {
                 <p className="mt-0.5 text-sm font-medium text-brand-ink">
                   María Rodríguez
                 </p>
-                <p className="text-xs text-brand-gray">+52 55 1234 5678</p>
+                <p className="text-xs text-brand-gray">+51 987 654 321</p>
               </div>
 
               {/* Confirm button */}
-              <button className="mt-4 w-full rounded-xl bg-brand-teal py-3 text-sm font-semibold text-white transition-colors hover:bg-brand-teal-dark">
+              <button
+                type="button"
+                className="mt-4 w-full rounded-xl bg-brand-teal py-3 text-sm font-semibold text-white transition-colors hover:bg-brand-teal-dark"
+              >
                 Confirmar cita — 09:30
               </button>
 

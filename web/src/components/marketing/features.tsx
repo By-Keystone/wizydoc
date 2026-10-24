@@ -1,4 +1,4 @@
-import { Calendar, CheckCircle2, Building2, Clock } from "lucide-react";
+import { Calendar, CheckCircle2, Building2, RefreshCw } from "lucide-react";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 
 /**
@@ -29,11 +29,11 @@ const features = [
       "Gestiona todas tus sedes desde un solo panel. Cada sede tiene sus propios médicos, horarios y configuración.",
   },
   {
-    icon: Clock,
+    icon: RefreshCw,
     featured: false,
-    title: "Disponible 24/7",
+    title: "El paciente cancela y reprograma solo",
     description:
-      "Tus pacientes reservan cuando quieren, desde cualquier dispositivo. Tu agenda se actualiza en tiempo real.",
+      "Desde el link de su correo, hasta 12 horas antes de la cita y sin llamarte. Incluido desde el plan Consultorio.",
   },
 ];
 

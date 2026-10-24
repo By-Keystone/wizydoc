@@ -9,7 +9,7 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 const siteUrl = "https://wizydoc.app";
 const title = "WizyDoc — Gestión de citas médicas";
 const description =
-  "WizyDoc ayuda a sedes médicas a gestionar citas, definir horarios y confirmar asistencias. Sin complicaciones.";
+  "La agenda de tu consultorio: defines tus horarios y tus pacientes reservan en línea y reciben su confirmación al instante, sin que coordines nada.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
@@ -27,7 +27,7 @@ export const metadata: Metadata = {
   ],
   openGraph: {
     type: "website",
-    locale: "es_CO",
+    locale: "es_PE",
     url: siteUrl,
     siteName: "WizyDoc",
     title,
