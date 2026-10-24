@@ -28,6 +28,9 @@ export function Sidebar() {
       getNavLinks({
         role: role,
         resourceType: resourceType,
+        attends:
+          membership.resourceType === "CLINIC" &&
+          membership.doctorProfileId !== null,
       }),
     [membership],
   );

@@ -13,7 +13,7 @@ export interface MyProfileEditableClinic {
   organizationId: string;
   organizationName: string;
   specialties: { id: string; name: string }[];
-  isClinicDoctor: boolean;
+  doctorProfileId: string;
   hasSchedule: boolean;
 }
 

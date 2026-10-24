@@ -24,7 +24,7 @@ export class GetClinicAppointmentsQuery implements IGetClinicAppointmentsQuery {
       where: {
         clinicId: dto.resourceId,
         ...(dto.role === "DOCTOR" && {
-          doctorProfile: { userId: dto.userId },
+          doctorProfile: { membership: { userId: dto.userId } },
         }),
         scheduledAt: { gte: startOfToday, lt: startOfTomorrow },
       },
@@ -37,7 +37,13 @@ export class GetClinicAppointmentsQuery implements IGetClinicAppointmentsQuery {
         specialty: true,
         doctorProfile: {
           select: {
-            user: { select: { name: true, lastName: true, treatment: true } },
+            membership: {
+              select: {
+                user: {
+                  select: { name: true, lastName: true, treatment: true },
+                },
+              },
+            },
           },
         },
         patient: { select: { name: true, lastName: true, phone: true } },
@@ -48,9 +54,9 @@ export class GetClinicAppointmentsQuery implements IGetClinicAppointmentsQuery {
       ...appointment,
       time: toWallTime(appointment.scheduledAt).time,
       doctor: {
-        name: doctorProfile.user.name,
-        lastName: doctorProfile.user.lastName,
-        displayName: formatDoctorName(doctorProfile.user),
+        name: doctorProfile.membership.user.name,
+        lastName: doctorProfile.membership.user.lastName,
+        displayName: formatDoctorName(doctorProfile.membership.user),
       },
     }));
   }

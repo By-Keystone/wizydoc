@@ -28,6 +28,7 @@ import {
   markInvitationAcceptedWithoutCredential,
   markInvitationExpiredStatus,
   softDeleteMembership,
+  ageInvitationsOf,
 } from "../../support/invitations";
 
 /**
@@ -351,6 +352,8 @@ test.describe("Lo que deja de ser posible", () => {
       role: "USER" as const,
     };
     await inviteUserViaApi(admin, { ...inviteBody, resourceId: clinicA });
+    // Pasado el enfriamiento por persona, la segunda sede también recibe su invitación.
+    await ageInvitationsOf(email);
     await inviteUserViaApi(admin, { ...inviteBody, resourceId: clinicB });
 
     const prisma = await getTestPrisma();
@@ -555,15 +558,10 @@ test.describe("Lo que no debe filtrarse", () => {
       role: "USER",
       emailPrefix: "ca21-accept",
     });
-    const acceptSetupContext = await createApiContext();
-    await setPassword(acceptSetupContext, {
-      token: forAccept.token,
-      password: E2E_PASSWORD,
-    });
-
     const clinicB = await createClinicResourceViaPrisma(admin, organizationId, {
       name: uniqueName("Sede B CA21"),
     });
+    await ageInvitationsOf(forAccept.email);
     await inviteUserViaApi(admin, {
       email: forAccept.email,
       name: "Lucía",
@@ -571,6 +569,13 @@ test.describe("Lo que no debe filtrarse", () => {
       phone: "+51987654321",
       role: "USER",
       resourceId: clinicB,
+    });
+
+    // Sin contraseña todavía, la segunda sede genera su propia invitación (t-8).
+    const acceptSetupContext = await createApiContext();
+    await setPassword(acceptSetupContext, {
+      token: forAccept.token,
+      password: E2E_PASSWORD,
     });
 
     const prisma = await getTestPrisma();

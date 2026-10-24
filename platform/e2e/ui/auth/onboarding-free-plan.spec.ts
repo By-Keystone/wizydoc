@@ -23,7 +23,9 @@ test.describe("Onboarding de platform: sólo Gratis, sin tarjeta", () => {
     const planOptions = page.getByLabel("Plan").locator("option");
     await expect(planOptions).toHaveCount(1);
     await expect(planOptions.first()).toHaveAttribute("value", "FREE");
-    await expect(planOptions.first()).toHaveText("Gratis · 1 médico, 1 sede");
+    await expect(planOptions.first()).toHaveText(
+      "Gratis · 10 citas al mes, 1 sede",
+    );
   });
 
   test("CA-12: no se pide nada de facturación y el botón dice Continuar", async ({

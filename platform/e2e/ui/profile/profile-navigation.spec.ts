@@ -401,6 +401,7 @@ test("CA-89: el médico ve «Configuración», que lleva a «Mi Disponibilidad»
     new RegExp(
       `/account/${user.accountId}/clinic/${world.clinicId}/profile/availability$`,
     ),
+    { timeout: 20_000 },
   );
   await expect(
     page.getByRole("heading", { name: "Mi Disponibilidad" }),

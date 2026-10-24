@@ -27,3 +27,7 @@ export const getSettings = () => {
 
   return config[env];
 };
+
+export function formatList(items: string[]): string {
+  return new Intl.ListFormat("es", { type: "conjunction" }).format(items);
+}

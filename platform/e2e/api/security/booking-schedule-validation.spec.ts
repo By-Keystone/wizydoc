@@ -73,7 +73,7 @@ async function seedDoctor(
 
   const prisma = await getTestPrisma();
   const doctorProfile = await prisma.doctorProfile.findFirst({
-    where: { userId: doctor.userId, clinicId },
+    where: { membership: { userId: doctor.userId, resourceId: clinicId } },
   });
   if (!doctorProfile) throw new Error("No se encontró el perfil del médico");
 

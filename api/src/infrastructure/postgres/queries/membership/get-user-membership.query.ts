@@ -29,7 +29,10 @@ export class GetUserMembership implements IGetUserMembership {
 
     const direct = await getClient().userResourceMembership.findUnique({
       where: { userId_resourceId: { userId, resourceId }, deletedAt: null },
-      include: { resource: { include: resourceInclude } },
+      include: {
+        resource: { include: resourceInclude },
+        doctorProfile: { select: { id: true } },
+      },
     });
 
     if (direct?.resource.type === "ORGANIZATION") {
@@ -103,6 +106,8 @@ export class GetUserMembership implements IGetUserMembership {
       },
       role,
       accessVia,
+      doctorProfileId:
+        direct?.role === "DOCTOR" ? (direct.doctorProfile?.id ?? null) : null,
     };
   }
 }

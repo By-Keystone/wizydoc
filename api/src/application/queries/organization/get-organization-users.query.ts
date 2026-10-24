@@ -4,15 +4,24 @@ export const getOrganizationUsersSchema = z.object({
   resourceId: z.uuid(),
 });
 
+export interface OrganizationUserAccess {
+  clinicId: string | null;
+  clinicName: string | null;
+  role: "ADMIN" | "DOCTOR" | "USER";
+}
+
 export interface OrganizationUserRow {
   name: string;
   lastName: string;
   email: string;
   phone: string;
-  role: string;
-  invitationStatus: "pending" | "expired" | null;
+  invitationStatus: "pending" | null;
+  accesses: OrganizationUserAccess[];
 }
 
 export interface IGetOrganizationUsersQuery {
-  execute(resourceId: string): Promise<OrganizationUserRow[]>;
+  execute(
+    resourceId: string,
+    accountId: string,
+  ): Promise<OrganizationUserRow[] | null>;
 }

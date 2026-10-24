@@ -97,7 +97,7 @@ export function EditableClinics({ clinics, organizations, accountId }: Props) {
         <>
           {blocks.length > 0 && (
             <p className="mt-3 text-xs font-semibold uppercase tracking-[0.04em] text-brand-gray">
-              Otras sedes que administras
+              Otras sedes donde atiendes
             </p>
           )}
           <div className="divide-y divide-gray-200 rounded-[10px] border border-gray-200">

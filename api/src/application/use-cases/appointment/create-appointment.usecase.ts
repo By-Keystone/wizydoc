@@ -20,6 +20,7 @@ import {
 import { AppointmentRepository } from "@/infrastructure/postgres/repositories/appointment.repository";
 import { GetAccountEntitlements } from "@/infrastructure/postgres/queries/subscription/get-account-entitlements.query";
 import { GetDoctorSlotsQuery } from "@/infrastructure/postgres/queries/doctor-profile/get-doctor-slots.query";
+import { liveDoctorProfileWhere } from "@/infrastructure/postgres/queries/doctor-profile/live-doctor-profile";
 import {
   getClient,
   inTransaction,
@@ -135,17 +136,15 @@ export class CreateApointmentUseCase {
     return getClient().doctorProfile.findFirst({
       where: {
         id: dto.doctorProfileId,
-        clinicId: dto.clinicId,
         specialties: { some: { name: dto.specialty, organizationId } },
-        user: {
-          resourceMemberships: {
-            // DoctorProfile no tiene deletedAt: quitar al médico de la sede se registra en su membership.
-            some: { resourceId: dto.clinicId, deletedAt: null },
-          },
-        },
+        ...liveDoctorProfileWhere({ clinicId: dto.clinicId }),
       },
       select: {
-        user: { select: { name: true, lastName: true, treatment: true } },
+        membership: {
+          select: {
+            user: { select: { name: true, lastName: true, treatment: true } },
+          },
+        },
       },
     });
   }
@@ -237,7 +236,7 @@ export class CreateApointmentUseCase {
         scheduledAt,
         durationMinutes: appointment.durationMinutes,
         specialty: appointment.specialty,
-        doctorName: formatDoctorName(profile.user),
+        doctorName: formatDoctorName(profile.membership.user),
         clinicName: clinic.name,
         clinicAddress: clinic.address,
         manageUrl: accessToken

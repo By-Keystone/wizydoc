@@ -16,11 +16,9 @@ import {
 import {
   doctorSpecialtiesBodySchema,
   organizationClinicDoctorParamsSchema,
-  organizationClinicParamsSchema,
 } from "@/application/use-cases/doctor-profile/doctor-specialties.schema";
 import { DoctorSpecialtiesGuards } from "@/application/use-cases/doctor-profile/doctor-specialties.guards";
 import { UpdateDoctorSpecialtiesUseCase } from "@/application/use-cases/doctor-profile/update-doctor-specialties.usecase";
-import { UpdateMySpecialtiesUseCase } from "@/application/use-cases/doctor-profile/update-my-specialties.usecase";
 import {
   createSpecialtyBodySchema,
   createSpecialtyParamsSchema,
@@ -115,60 +113,6 @@ export default async function organizationRoutes(
   // Sin `roles`: la política no puede expresar "ADMIN de la organización o
   // dueño de la cuenta" (el dueño puede no tener membership). Lo comprueba el
   // caso de uso como primer paso; no agregar lógica antes de esa comprobación.
-  app.put(
-    "/organization/:resourceId/clinics/:clinicId/me/specialties",
-    {
-      schema: {
-        params: organizationClinicParamsSchema,
-        body: doctorSpecialtiesBodySchema,
-      },
-      ...policy({ account: true, confirmed: true, onboarded: true }),
-    },
-    async (request, reply) => {
-      try {
-        const doctorProfiles = new DoctorProfileRepository();
-        const useCase = new UpdateMySpecialtiesUseCase(
-          doctorProfiles,
-          new DoctorSpecialtiesGuards(
-            doctorProfiles,
-            new CanEditOrganizationSpecialtiesQuery(),
-          ),
-        );
-
-        const result = await useCase.execute({
-          userId: request.user.userId,
-          accountId: request.user.accountId!,
-          organizationId: request.params.resourceId,
-          clinicId: request.params.clinicId,
-          specialtyIds: request.body.specialtyIds,
-        });
-
-        return reply.status(200).send(result);
-      } catch (error) {
-        if (error instanceof ApplicationError)
-          return reply
-            .status(error.statusCode)
-            .send({ message: error.message, code: error.code });
-
-        const errName = error instanceof Error ? error.name : "UnknownError";
-        request.log.error(
-          {
-            userId: request.user.userId,
-            clinicId: request.params.clinicId,
-            errName,
-          },
-          "[update-my-specialties]",
-        );
-
-        return reply
-          .status(500)
-          .send({ message: "No se pudieron guardar tus especialidades" });
-      }
-    },
-  );
-
-  // Sin `roles`, por la misma razón que la ruta anterior: el caso de uso
-  // comprueba el permiso como primer paso.
   app.put(
     "/organization/:resourceId/clinics/:clinicId/doctors/:doctorProfileId/specialties",
     {
@@ -341,7 +285,7 @@ export default async function organizationRoutes(
           emailService,
         });
 
-        await useCase.execute({
+        const result = await useCase.execute({
           ...request.body,
           resourceType: "ORGANIZATION",
           resourceId: request.params.resourceId,
@@ -349,9 +293,7 @@ export default async function organizationRoutes(
           accountId: request.user.accountId!,
         });
 
-        return reply
-          .status(200)
-          .send({ message: "Se ha enviado la invitación al usuario" });
+        return reply.status(200).send(result);
       } catch (error) {
         if (error instanceof ApplicationError) {
           return reply
@@ -389,7 +331,14 @@ export default async function organizationRoutes(
       try {
         const query = new GetOrganizationUsersQuery();
 
-        const users = await query.execute(request.params.resourceId);
+        const users = await query.execute(
+          request.params.resourceId,
+          request.user.accountId!,
+        );
+        if (!users)
+          return reply
+            .status(404)
+            .send({ message: "Organización no encontrada" });
 
         return reply.status(200).send(users);
       } catch (error) {

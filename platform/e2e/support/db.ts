@@ -74,9 +74,9 @@ export interface TestPrismaVerificationRow {
 
 export interface TestPrismaProfileRow {
   id: string;
-  userId: string;
-  clinicId: string;
+  membershipId: string;
   specialties: { id: string }[];
+  membership?: { userId: string; resourceId: string };
 }
 
 export interface TestPrisma {
@@ -136,9 +136,12 @@ export interface TestPrisma {
       where: Record<string, unknown>;
       data: Record<string, unknown>;
     }): Promise<unknown>;
-    findFirst(args: {
-      where: Record<string, unknown>;
-    }): Promise<{ id: string; role: string; resourceId: string } | null>;
+    findFirst(args: { where: Record<string, unknown> }): Promise<{
+      id: string;
+      role: string;
+      resourceId: string;
+      deletedAt: Date | null;
+    } | null>;
     count(args: { where: Record<string, unknown> }): Promise<number>;
     findMany(args: {
       where: Record<string, unknown>;
@@ -160,16 +163,23 @@ export interface TestPrisma {
       select?: Record<string, unknown>;
     }): Promise<TestPrismaProfileRow | null>;
     create(args: { data: Record<string, unknown> }): Promise<{ id: string }>;
+    upsert(args: {
+      where: Record<string, unknown>;
+      create: Record<string, unknown>;
+      update: Record<string, unknown>;
+    }): Promise<{ id: string }>;
     findFirst(args: {
       where: Record<string, unknown>;
-    }): Promise<{ id: string } | null>;
+      select?: Record<string, unknown>;
+    }): Promise<(Partial<TestPrismaProfileRow> & { id: string }) | null>;
     findUniqueOrThrow(args: {
       where: Record<string, unknown>;
       select?: Record<string, unknown>;
     }): Promise<TestPrismaProfileRow>;
     findFirstOrThrow(args: {
       where: Record<string, unknown>;
-    }): Promise<{ id: string }>;
+      select?: Record<string, unknown>;
+    }): Promise<Partial<TestPrismaProfileRow> & { id: string }>;
     update(args: {
       where: Record<string, unknown>;
       data: Record<string, unknown>;
@@ -190,6 +200,7 @@ export interface TestPrisma {
     }): Promise<{ count: number }>;
   };
   availability: {
+    count(args: { where: Record<string, unknown> }): Promise<number>;
     createMany(args: { data: Record<string, unknown>[] }): Promise<unknown>;
     deleteMany(args: {
       where: Record<string, unknown>;

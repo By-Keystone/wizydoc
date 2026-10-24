@@ -11,8 +11,19 @@ export const lookupAccountUserBodySchema = z.object({
 
 export type LookupAccountUserDto = { resourceId: string; email: string };
 
+export type LookedUpClinicMembership = {
+  clinicId: string;
+  role: "ADMIN" | "DOCTOR" | "USER";
+  specialties: { id: string; name: string }[];
+  // Citas por atender del médico en esa sede; sólo el número.
+  pendingAppointments: number;
+};
+
 export type LookedUpAccountUser = {
   name: string;
   lastName: string;
   phone: string;
+  isAccountOwner: boolean;
+  organizationRole: "ADMIN" | "DOCTOR" | "USER" | null;
+  clinics: LookedUpClinicMembership[];
 };

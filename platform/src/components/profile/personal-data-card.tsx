@@ -39,9 +39,8 @@ export function PersonalDataCard({ profile }: Props) {
   const wasEditing = useRef(false);
   const [dismissedErrors, setDismissedErrors] = useState<unknown>();
 
-  // Quien edita especialidades también puede poner tratamiento, aunque aún no tenga perfil.
-  const isDoctor =
-    profile.clinics.length > 0 || profile.editableClinics.length > 0;
+  // El tratamiento es de quien atiende en alguna sede, no de quien sólo administra.
+  const isDoctor = profile.clinics.length > 0;
 
   const {
     submit,

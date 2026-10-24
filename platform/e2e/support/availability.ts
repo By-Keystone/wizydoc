@@ -55,7 +55,7 @@ export async function createClinicDoctor(label: string): Promise<ClinicDoctor> {
   });
   const prisma = await getTestPrisma();
   const profile = await prisma.doctorProfile.create({
-    data: { userId: member.userId, clinicId },
+    data: { membershipId: member.membershipId },
   });
   return {
     context: member.context,
@@ -76,8 +76,8 @@ export async function seedFullDayAvailability(
   clinicId: string,
 ): Promise<string> {
   const prisma = await getTestPrisma();
-  const doctorProfile = await prisma.doctorProfile.findUniqueOrThrow({
-    where: { userId_clinicId: { userId, clinicId } },
+  const doctorProfile = await prisma.doctorProfile.findFirstOrThrow({
+    where: { membership: { userId, resourceId: clinicId } },
   });
 
   await prisma.availability.createMany({

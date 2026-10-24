@@ -7,6 +7,7 @@ import {
 } from "../../support/appointment-portal";
 import { seedFullDayAvailability } from "../../support/availability";
 import { getTestPrisma } from "../../support/db";
+import { addDoctorProfile } from "../../support/profile";
 import { API_BASE_URL } from "../../support/env";
 import { expect, test } from "../../support/test";
 import { uniqueName } from "../../support/users";
@@ -104,22 +105,26 @@ test("CA-7: al borrarle los horarios, el médico sale del booking y su cita futu
   expect(after.status).toBe(before.status);
 });
 
-test("CA-8: el ADMIN de la organización con perfil, especialidad y horarios no aparece", async () => {
+test("CA-8: el ADMIN de la organización asignado como Médico, con especialidad y horarios, sí aparece", async () => {
   const scenario = await createPortalScenario("sched-ca8");
+  await addDoctorProfile(scenario.admin.userId, scenario.clinicId, [
+    scenario.specialtyId,
+  ]);
+  await seedFullDayAvailability(scenario.admin.userId, scenario.clinicId);
   const prisma = await getTestPrisma();
-  const adminProfile = await prisma.doctorProfile.create({
-    data: {
-      userId: scenario.admin.userId,
-      clinicId: scenario.clinicId,
-      specialties: { connect: [{ id: scenario.specialtyId }] },
+  const adminProfile = await prisma.doctorProfile.findFirstOrThrow({
+    where: {
+      membership: {
+        userId: scenario.admin.userId,
+        resourceId: scenario.clinicId,
+      },
     },
   });
-  await seedFullDayAvailability(scenario.admin.userId, scenario.clinicId);
 
   const ids = await listedProfileIds(scenario.clinicId);
 
   expect(ids).toContain(scenario.doctor.doctorProfileId);
-  expect(ids).not.toContain(adminProfile.id);
+  expect(ids).toContain(adminProfile.id);
 });
 
 test("CA-9: la respuesta pública conserva sus claves y no trae userId", async () => {

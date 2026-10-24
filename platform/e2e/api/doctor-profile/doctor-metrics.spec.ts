@@ -4,10 +4,11 @@ import {
   createPortalScenario,
   type PortalScenario,
 } from "../../support/appointment-portal";
-import { seedFullDayAvailability } from "../../support/availability";
 import { getTestPrisma } from "../../support/db";
 import { API_BASE_URL } from "../../support/env";
 import { softDeleteMembership } from "../../support/invitations";
+import { seedFullDayAvailability } from "../../support/availability";
+import { addDoctorProfile } from "../../support/profile";
 import { expect, test } from "../../support/test";
 
 // docs/features/doctor-profile-specialties/plan.md, PR 2: CA-11 y CA-12.
@@ -54,20 +55,15 @@ async function bothCounts(
   };
 }
 
-test("CA-11: el ADMIN con perfil y especialidades no cuenta sin horarios y sube en uno con un horario", async () => {
+test("CA-11: el ADMIN con perfil automático cuenta sólo con un horario", async () => {
   const scenario = await createClinicaScenario("metrics-ca11");
   const { context } = scenario.admin;
   const baseline = await bothCounts(context, scenario);
   expect(baseline).toEqual({ clinic: 1, organization: 1 });
 
-  const prisma = await getTestPrisma();
-  await prisma.doctorProfile.create({
-    data: {
-      userId: scenario.admin.userId,
-      clinicId: scenario.clinicId,
-      specialties: { connect: [{ id: scenario.specialtyId }] },
-    },
-  });
+  await addDoctorProfile(scenario.admin.userId, scenario.clinicId, [
+    scenario.specialtyId,
+  ]);
   expect(await bothCounts(context, scenario)).toEqual(baseline);
 
   await seedFullDayAvailability(scenario.admin.userId, scenario.clinicId);
@@ -77,26 +73,34 @@ test("CA-11: el ADMIN con perfil y especialidades no cuenta sin horarios y sube 
   });
 });
 
-test("CA-12: un DOCTOR invitado sin horarios cuenta, también si lo quitaron de la sede", async () => {
+test("CA-12: el médico pasado a Usuario o quitado de la sede deja de contar", async () => {
   const scenario = await createClinicaScenario("metrics-ca12");
   const { context } = scenario.admin;
   const baseline = await bothCounts(context, scenario);
 
-  const unscheduled = await addPortalDoctor({
-    label: "metrics-ca12-sin",
+  const demoted = await addPortalDoctor({
+    label: "metrics-ca12-usuario",
     clinicId: scenario.clinicId,
     admin: scenario.admin,
     specialtyId: scenario.specialtyId,
-    availability: "none",
+  });
+  const removed = await addPortalDoctor({
+    label: "metrics-ca12-quitado",
+    clinicId: scenario.clinicId,
+    admin: scenario.admin,
+    specialtyId: scenario.specialtyId,
   });
   expect(await bothCounts(context, scenario)).toEqual({
-    clinic: baseline.clinic + 1,
-    organization: baseline.organization + 1,
+    clinic: baseline.clinic + 2,
+    organization: baseline.organization + 2,
   });
 
-  await softDeleteMembership(unscheduled.membershipId);
-  expect(await bothCounts(context, scenario)).toEqual({
-    clinic: baseline.clinic + 1,
-    organization: baseline.organization + 1,
+  const prisma = await getTestPrisma();
+  await prisma.userResourceMembership.update({
+    where: { id: demoted.membershipId },
+    data: { role: "USER" },
   });
+  await softDeleteMembership(removed.membershipId);
+
+  expect(await bothCounts(context, scenario)).toEqual(baseline);
 });

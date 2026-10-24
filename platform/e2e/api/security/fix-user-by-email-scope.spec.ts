@@ -6,12 +6,13 @@ import { getTestPrisma } from "../../support/db";
 import { uniqueEmail } from "../../support/users";
 import { seedLookupFixture } from "../../support/lookup-fixture";
 
-/** docs/features/fix-user-by-email-scope/plan.md — CA-1 a CA-13 y CA-15 a CA-19 ([e2e]); CA-14 es [manual]. */
+/** docs/features/fix-user-by-email-scope/plan.md y docs/features/doctor-profile-membership/plan.md (t-10): la búsqueda por correo es sólo la de la organización. */
 
 function lookup(context: APIRequestContext, resourceId: string, email: string) {
-  return context.post(`${API_BASE_URL}/clinic/${resourceId}/users/lookup`, {
-    data: { email },
-  });
+  return context.post(
+    `${API_BASE_URL}/organization/${resourceId}/users/lookup`,
+    { data: { email } },
+  );
 }
 
 test.describe("Lo que deja de ser posible", () => {
@@ -33,12 +34,24 @@ test.describe("Lo que deja de ser posible", () => {
     expect(body).not.toHaveProperty("user");
   });
 
-  test("CA-2: un miembro de otra cuenta busca desde su propia sede y recibe user null", async () => {
+  test("la búsqueda por sede ya no existe: POST /clinic/:resourceId/users/lookup responde 401", async () => {
+    const fixture = await seedLookupFixture();
+
+    const response = await fixture.account1.context.post(
+      `${API_BASE_URL}/clinic/${fixture.clinicAId}/users/lookup`,
+      { data: { email: fixture.reception.email } },
+    );
+
+    expect(response.status()).toBe(401);
+    expect(await response.json()).not.toHaveProperty("user");
+  });
+
+  test("CA-2: un miembro de otra cuenta busca desde su propia organización y recibe user null", async () => {
     const fixture = await seedLookupFixture();
 
     const response = await lookup(
       fixture.account2.context,
-      fixture.clinicZId,
+      fixture.organization2Id,
       fixture.reception.email,
     );
 
@@ -46,58 +59,43 @@ test.describe("Lo que deja de ser posible", () => {
     expect(await response.json()).toEqual({ user: null });
   });
 
-  test("CA-3: un miembro de otra cuenta recibe 404 al buscar sobre una sede que no es suya", async () => {
+  test("CA-3: un miembro de otra cuenta recibe 404 al buscar sobre una organización que no es suya", async () => {
     const fixture = await seedLookupFixture();
 
     const response = await lookup(
       fixture.account2.context,
-      fixture.clinicAId,
+      fixture.organizationId,
       fixture.reception.email,
     );
 
     expect(response.status()).toBe(404);
   });
 
-  test("CA-4: recepción y el médico de la sede A reciben 403 al buscar al administrador", async () => {
+  test("CA-4: recepción y el médico de la sede A no pueden buscar al administrador", async () => {
     const fixture = await seedLookupFixture();
 
-    const responseFromReception = await lookup(
-      fixture.reception.context,
-      fixture.clinicAId,
-      fixture.account1.email,
-    );
-    expect(responseFromReception.status()).toBe(403);
-    expect((await responseFromReception.json()).message).toBe(
-      "Insufficient role on this resource",
-    );
+    for (const actor of [fixture.reception, fixture.doctor]) {
+      const response = await lookup(
+        actor.context,
+        fixture.organizationId,
+        fixture.account1.email,
+      );
 
-    const responseFromDoctor = await lookup(
-      fixture.doctor.context,
-      fixture.clinicAId,
-      fixture.account1.email,
-    );
-    expect(responseFromDoctor.status()).toBe(403);
-    expect((await responseFromDoctor.json()).message).toBe(
-      "Insufficient role on this resource",
-    );
+      expect([403, 404]).toContain(response.status());
+      expect(await response.json()).not.toHaveProperty("user");
+    }
   });
 
-  test("CA-5: el administrador de sede (sólo de A) recibe 404 al buscar con el resourceId de B", async () => {
+  test("CA-5: el administrador sólo de la sede A recibe 404 al buscar con el id de la organización", async () => {
     const fixture = await seedLookupFixture();
 
-    const responseOnA = await lookup(
+    const response = await lookup(
       fixture.adminOfClinicA.context,
-      fixture.clinicAId,
+      fixture.organizationId,
       fixture.reception.email,
     );
-    expect(responseOnA.status()).toBe(200);
 
-    const responseOnB = await lookup(
-      fixture.adminOfClinicA.context,
-      fixture.clinicBId,
-      fixture.reception.email,
-    );
-    expect(responseOnB.status()).toBe(404);
+    expect(response.status()).toBe(404);
   });
 
   test("CA-6: un atacante sin sesión recibe 401", async () => {
@@ -106,7 +104,7 @@ test.describe("Lo que deja de ser posible", () => {
 
     const response = await lookup(
       anonymous,
-      fixture.clinicAId,
+      fixture.organizationId,
       fixture.reception.email,
     );
 
@@ -141,7 +139,7 @@ test.describe("Lo que deja de ser posible", () => {
     expect(await response.json()).toEqual({ user: null });
   });
 
-  test("CA-9: la búsqueda se acota por la cuenta de la sede, no por la de la sesión", async () => {
+  test("CA-9: la búsqueda se acota por la cuenta de la organización, no por la de la sesión", async () => {
     const fixture = await seedLookupFixture();
 
     const prisma = await getTestPrisma();
@@ -153,7 +151,7 @@ test.describe("Lo que deja de ser posible", () => {
     try {
       const responseFromZ = await lookup(
         fixture.account2.context,
-        fixture.clinicZId,
+        fixture.organization2Id,
         fixture.reception.email,
       );
       expect(responseFromZ.status()).toBe(200);
@@ -161,7 +159,7 @@ test.describe("Lo que deja de ser posible", () => {
 
       const responseFromA = await lookup(
         fixture.account2.context,
-        fixture.clinicAId,
+        fixture.organizationId,
         fixture.reception.email,
       );
       expect(responseFromA.status()).toBe(404);
@@ -178,7 +176,7 @@ test.describe("Lo que deja de ser posible", () => {
 
     const response = await lookup(
       fixture.account1.context,
-      fixture.clinicAId,
+      fixture.organizationId,
       "no-es-un-correo",
     );
 
@@ -192,12 +190,12 @@ test.describe("Lo que no debe filtrarse", () => {
 
     const forNonExistentEmail = await lookup(
       fixture.account1.context,
-      fixture.clinicAId,
+      fixture.organizationId,
       uniqueEmail("no-existe"),
     );
     const forOtherAccountEmail = await lookup(
       fixture.account1.context,
-      fixture.clinicAId,
+      fixture.organizationId,
       fixture.account2.email,
     );
 
@@ -209,12 +207,12 @@ test.describe("Lo que no debe filtrarse", () => {
     expect(await forOtherAccountEmail.json()).toEqual(bodyForNonExistentEmail);
   });
 
-  test("CA-12: la respuesta sólo trae name, lastName y phone, nunca id/email/accountId/role/confirmed/onboardingCompleted", async () => {
+  test("CA-12: la respuesta sólo trae name, lastName, phone, isAccountOwner, organizationRole y clinics, nunca id/email/accountId/role/confirmed/onboardingCompleted", async () => {
     const fixture = await seedLookupFixture();
 
     const response = await lookup(
       fixture.account1.context,
-      fixture.clinicAId,
+      fixture.organizationId,
       fixture.reception.email,
     );
 
@@ -225,43 +223,75 @@ test.describe("Lo que no debe filtrarse", () => {
         name: fixture.reception.name,
         lastName: fixture.reception.lastName,
         phone: fixture.reception.phone,
+        isAccountOwner: false,
+        organizationRole: null,
+        clinics: [
+          {
+            clinicId: fixture.clinicAId,
+            role: "USER",
+            specialties: [],
+            pendingAppointments: 0,
+          },
+        ],
       },
     });
+    const raw = JSON.stringify(body);
+    for (const forbidden of [
+      '"id"',
+      '"email"',
+      '"accountId"',
+      '"confirmed"',
+      '"onboardingCompleted"',
+    ]) {
+      expect(raw).not.toContain(forbidden);
+    }
   });
 });
 
 test.describe("Lo que debe seguir funcionando", () => {
-  test("CA-17: la búsqueda alcanza a toda la cuenta, no sólo a la sede del resourceId", async () => {
+  test("CA-17: la búsqueda alcanza a toda la cuenta y trae la membership del médico en su sede", async () => {
     const fixture = await seedLookupFixture();
 
-    // El admin de organización tiene acceso heredado a B: la búsqueda es por cuenta, no por membership.
-    const responseOnB = await lookup(
+    const response = await lookup(
       fixture.account1.context,
-      fixture.clinicBId,
-      fixture.reception.email,
-    );
-    expect(responseOnB.status()).toBe(200);
-    expect(await responseOnB.json()).toEqual({
-      user: {
-        name: fixture.reception.name,
-        lastName: fixture.reception.lastName,
-        phone: fixture.reception.phone,
-      },
-    });
-
-    // Control: la ruta funciona igual con una membership directa, sin herencia.
-    const responseFromAdminOfA = await lookup(
-      fixture.adminOfClinicA.context,
-      fixture.clinicAId,
+      fixture.organizationId,
       fixture.doctor.email,
     );
-    expect(responseFromAdminOfA.status()).toBe(200);
-    expect(await responseFromAdminOfA.json()).toEqual({
+
+    expect(response.status()).toBe(200);
+    expect(await response.json()).toEqual({
       user: {
         name: fixture.doctor.name,
         lastName: fixture.doctor.lastName,
         phone: fixture.doctor.phone,
+        isAccountOwner: false,
+        organizationRole: null,
+        clinics: [
+          {
+            clinicId: fixture.clinicAId,
+            role: "DOCTOR",
+            specialties: [],
+            pendingAppointments: 0,
+          },
+        ],
       },
     });
+  });
+
+  test("el dueño sale con isAccountOwner y su rol en la organización", async () => {
+    const fixture = await seedLookupFixture();
+
+    const response = await lookup(
+      fixture.account1.context,
+      fixture.organizationId,
+      fixture.account1.email,
+    );
+
+    expect(response.status()).toBe(200);
+    const { user } = (await response.json()) as {
+      user: { isAccountOwner: boolean; organizationRole: string | null };
+    };
+    expect(user.isAccountOwner).toBe(true);
+    expect(user.organizationRole).toBe("ADMIN");
   });
 });

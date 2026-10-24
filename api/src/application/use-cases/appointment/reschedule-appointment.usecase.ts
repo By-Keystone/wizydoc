@@ -40,6 +40,7 @@ import { GetAppointmentNoticeQuery } from "@/infrastructure/postgres/queries/app
 import { GetAppointmentPortalQuery } from "@/infrastructure/postgres/queries/appointment/get-appointment-portal.query";
 import { GetRescheduleSlotsQuery } from "@/infrastructure/postgres/queries/appointment/get-reschedule-slots.query";
 import { GetDoctorSlotsQuery } from "@/infrastructure/postgres/queries/doctor-profile/get-doctor-slots.query";
+import { liveDoctorProfileWhere } from "@/infrastructure/postgres/queries/doctor-profile/live-doctor-profile";
 import { AppointmentRepository } from "@/infrastructure/postgres/repositories/appointment.repository";
 import { getClient } from "@/infrastructure/postgres/transaction-context";
 import { renderTemplate } from "@/infrastructure/services/email-service/template-renderer";
@@ -142,18 +143,13 @@ export class RescheduleAppointmentUseCase {
     const doctor = await client.doctorProfile.findFirst({
       where: {
         id: doctorProfileId,
-        clinicId: appointment.clinicId,
         specialties: {
           some: {
             name: appointment.specialty,
             organizationId: clinic.parentResourceId,
           },
         },
-        user: {
-          resourceMemberships: {
-            some: { resourceId: appointment.clinicId, deletedAt: null },
-          },
-        },
+        ...liveDoctorProfileWhere({ clinicId: appointment.clinicId }),
       },
       select: { id: true },
     });

@@ -24,6 +24,7 @@ import {
   invitePendingUser,
   softDeleteMembership,
 } from "../../support/invitations";
+import { addDoctorProfile, findDoctorProfileId } from "../../support/profile";
 import { expect, test } from "../../support/test";
 import { signIn, uniqueName } from "../../support/users";
 
@@ -133,11 +134,10 @@ async function createOtherOrganization(world: World) {
 async function snapshot(clinicIds: string[]) {
   const prisma = await getTestPrisma();
   const profiles = await prisma.doctorProfile.findMany({
-    where: { clinicId: { in: clinicIds } },
+    where: { membership: { resourceId: { in: clinicIds } } },
     select: {
       id: true,
-      userId: true,
-      clinicId: true,
+      membershipId: true,
       specialties: { select: { id: true } },
     },
   });
@@ -213,16 +213,9 @@ async function createProfile(
   userId: string,
   clinicId: string,
   specialtyIds: string[] = [],
+  role: "DOCTOR" | "USER" = "DOCTOR",
 ) {
-  const prisma = await getTestPrisma();
-  const profile = await prisma.doctorProfile.create({
-    data: {
-      userId,
-      clinicId,
-      specialties: { connect: specialtyIds.map((id) => ({ id })) },
-    },
-  });
-  return profile.id as string;
+  return addDoctorProfile(userId, clinicId, specialtyIds, role);
 }
 
 test.describe("PUT doctors/:doctorProfileId/specialties: quién puede", () => {
@@ -381,18 +374,25 @@ test.describe("PUT doctors/:doctorProfileId/specialties: médico y sede (IDOR)",
     ]);
   });
 
-  test("CA-40: un ADMIN que no es DOCTOR de la sede recibe 404 «Médico no encontrado» con su propio perfil", async () => {
+  test("CA-40: un ADMIN cuyo perfil no es de una membership DOCTOR de la sede recibe 404 «Médico no encontrado» con su propio perfil", async () => {
     const world = await createWorld("by-ca40");
     const orgAdmin = await createOrgAdmin(world);
     const adminProfileId = await createProfile(
       orgAdmin.userId,
       world.clinicId,
       [world.specialties[0].id],
+      "USER",
     );
-    const ownerProfileId = await createProfile(
+    // El dueño ya atiende por defecto: pasa a Usuario y su perfil deja de estar vivo.
+    const prisma = await getTestPrisma();
+    await prisma.userResourceMembership.updateMany({
+      where: { userId: world.admin.userId, resourceId: world.clinicId },
+      data: { role: "USER" },
+    });
+    const ownerProfileId = (await findDoctorProfileId(
       world.admin.userId,
       world.clinicId,
-    );
+    )) as string;
     const before = await snapshot([world.clinicId]);
 
     const byAdmin = await put(
@@ -644,9 +644,9 @@ test.describe("PUT doctors/:doctorProfileId/specialties: efectos", () => {
       role: "DOCTOR",
       specialtyIds: [alfa.id],
     });
-    const profile = await prisma.doctorProfile.findUniqueOrThrow({
+    const profile = await prisma.doctorProfile.findFirstOrThrow({
       where: {
-        userId_clinicId: { userId: invited.userId, clinicId: world.clinicId },
+        membership: { userId: invited.userId, resourceId: world.clinicId },
       },
     });
 
@@ -846,7 +846,7 @@ test.describe("GET /clinic/:resourceId/users", () => {
     const before = emails(
       await listClinicUsers(world.admin.context, world.clinicId),
     );
-    expect(before).toHaveLength(4);
+    expect(before).toHaveLength(5);
 
     for (const ids of [[world.specialties[0].id], []]) {
       const response = await put(

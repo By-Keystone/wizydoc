@@ -2,7 +2,7 @@ import type {
   IDoctorProfileRepository,
   SpecialtySummary,
 } from "@/domain/repositories/doctor-profile.repository";
-import { Prisma } from "@prisma/client";
+import { liveDoctorProfileWhere } from "../queries/doctor-profile/live-doctor-profile";
 import { getClient } from "../transaction-context";
 
 export function sortedByName(
@@ -42,52 +42,28 @@ export class DoctorProfileRepository implements IDoctorProfileRepository {
     });
   }
 
-  async upsertSpecialties(
-    userId: string,
-    clinicId: string,
+  async upsertForMembership(
+    membershipId: string,
     specialtyIds: string[],
   ): Promise<SpecialtySummary[]> {
     const ids = specialtyIds.map((id) => ({ id }));
 
-    const upsert = () =>
-      getClient().doctorProfile.upsert({
-        where: { userId_clinicId: { userId, clinicId } },
-        create: { userId, clinicId, specialties: { connect: ids } },
-        update: { specialties: { set: ids } },
-        select: { specialties: { select: { id: true, name: true } } },
-      });
-
-    try {
-      return sortedByName((await upsert()).specialties);
-    } catch (error) {
-      // Prisma no usa ON CONFLICT con escrituras anidadas: dos primeros
-      // guardados simultáneos chocan en el índice único y el segundo debe
-      // reintentar por la rama de actualización.
-      if (
-        error instanceof Prisma.PrismaClientKnownRequestError &&
-        error.code === "P2002"
-      ) {
-        return sortedByName((await upsert()).specialties);
-      }
-      throw error;
-    }
+    const profile = await getClient().doctorProfile.upsert({
+      where: { membershipId },
+      create: { membershipId, specialties: { connect: ids } },
+      update: { specialties: { set: ids } },
+      select: { specialties: { select: { id: true, name: true } } },
+    });
+    return sortedByName(profile.specialties);
   }
 
   findClinicDoctor(
     doctorProfileId: string,
     clinicId: string,
-  ): Promise<{ id: string; userId: string } | null> {
+  ): Promise<{ id: string } | null> {
     return getClient().doctorProfile.findFirst({
-      where: {
-        id: doctorProfileId,
-        clinicId,
-        user: {
-          resourceMemberships: {
-            some: { resourceId: clinicId, role: "DOCTOR", deletedAt: null },
-          },
-        },
-      },
-      select: { id: true, userId: true },
+      where: { id: doctorProfileId, ...liveDoctorProfileWhere({ clinicId }) },
+      select: { id: true },
     });
   }
 

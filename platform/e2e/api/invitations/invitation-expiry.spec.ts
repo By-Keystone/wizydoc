@@ -37,11 +37,6 @@ const EXPIRED_BODY = {
 const INVALID_BODY = {
   message: "El enlace de invitación no es válido o ya expiró",
 };
-const TOO_SOON_BODY = {
-  message:
-    "Ya se envió una invitación hace poco. Espera unos minutos antes de volver a enviarla.",
-};
-const ALREADY_MEMBER_BODY = { message: "Esta persona ya es miembro." };
 
 type Scope = "clinic" | "organization";
 
@@ -105,7 +100,7 @@ async function countMembershipsAndProfiles(email: string) {
   const prisma = await getTestPrisma();
   const [memberships, doctorProfiles] = await Promise.all([
     prisma.userResourceMembership.count({ where: { user: { email } } }),
-    prisma.doctorProfile.count({ where: { user: { email } } }),
+    prisma.doctorProfile.count({ where: { membership: { user: { email } } } }),
   ]);
   return { memberships, doctorProfiles };
 }
@@ -183,30 +178,35 @@ for (const scope of ["clinic", "organization"] as const) {
       });
     }
 
-    test("al renovar se conservan el rol y la ausencia de perfil de doctor aunque el cuerpo pida otro rol y especialidades", async () => {
+    test("al guardar con otro rol, el rol cambia y con DOCTOR se crea el perfil", async () => {
       const fixture = await setupFixture();
-      const email = uniqueEmail("rol-fijo");
+      const email = uniqueEmail("rol-nuevo");
       const resourceId = resourceIdOf(fixture, scope);
       expect((await invite(fixture, scope, email)).status()).toBe(200);
       await ageInvitationIssuance(
         await getInvitationTokenOf(email, resourceId),
       );
+      const newRole = scope === "clinic" ? "DOCTOR" : "ADMIN";
+      const extra =
+        scope === "clinic" ? { specialtyIds: [fixture.specialtyId] } : {};
 
       const response = await invite(fixture, scope, email, {
-        role: "ADMIN",
-        specialtyIds: [fixture.specialtyId],
+        role: newRole,
+        ...extra,
       });
 
       expect(response.status()).toBe(200);
+      expect(await response.json()).toMatchObject({ outcome: "updated" });
       const prisma = await getTestPrisma();
       const membership = await prisma.userResourceMembership.findFirst({
         where: { resourceId, user: { email } },
       });
-      expect(membership?.role).toBe("USER");
-      expect((await countMembershipsAndProfiles(email)).doctorProfiles).toBe(0);
+      expect(membership?.role).toBe(newRole);
+      // En la organización, el nuevo ADMIN queda como médico (perfil vacío) de su única sede.
+      expect((await countMembershipsAndProfiles(email)).doctorProfiles).toBe(1);
     });
 
-    test("reinvitar dos veces seguidas responde 429 sin correo ni cambio de token; pasado el enfriamiento renueva", async () => {
+    test("guardar dos veces seguidas responde 200 sin correo ni cambio de token; pasado el enfriamiento reenvía", async () => {
       const fixture = await setupFixture();
       const email = uniqueEmail("enfriamiento");
       const resourceId = resourceIdOf(fixture, scope);
@@ -216,18 +216,23 @@ for (const scope of ["clinic", "organization"] as const) {
 
       const response = await invite(fixture, scope, email);
 
-      expect(response.status()).toBe(429);
-      expect(await response.json()).toEqual(TOO_SOON_BODY);
+      expect(response.status()).toBe(200);
+      expect(await response.json()).toMatchObject({
+        outcome: "updated",
+        invitationSent: false,
+      });
       expect(await getInvitationTokenOf(email, resourceId)).toBe(token);
       expect(readEmailsTo(email)).toHaveLength(emailsBefore);
 
       await ageInvitationIssuance(token);
-      expect((await invite(fixture, scope, email)).status()).toBe(200);
+      const resent = await invite(fixture, scope, email);
+      expect(resent.status()).toBe(200);
+      expect(await resent.json()).toMatchObject({ invitationSent: true });
       expect(await getInvitationTokenOf(email, resourceId)).not.toBe(token);
       expect(readEmailsTo(email)).toHaveLength(emailsBefore + 1);
     });
 
-    test("reinvitar a quien ya tiene la invitación aceptada responde 409 y no la revierte", async () => {
+    test("guardar a quien tiene la invitación aceptada sin credencial responde 200 sin correo ni cambio de la invitación", async () => {
       const fixture = await setupFixture();
       const email = uniqueEmail("aceptada-prisma");
       const resourceId = resourceIdOf(fixture, scope);
@@ -238,14 +243,14 @@ for (const scope of ["clinic", "organization"] as const) {
 
       const response = await invite(fixture, scope, email);
 
-      expect(response.status()).toBe(409);
-      expect(await response.json()).toEqual(ALREADY_MEMBER_BODY);
+      expect(response.status()).toBe(200);
+      expect(await response.json()).toMatchObject({ invitationSent: false });
       const invitation = await getInvitationByToken(token);
       expect(invitation.status).toBe("ACCEPTED");
       expect(readEmailsTo(email)).toHaveLength(emailsBefore);
     });
 
-    test("reinvitar a quien ya aceptó responde 409 y no cambia nada", async () => {
+    test("guardar a quien ya aceptó responde 200 «updated», sin correo y con sólo las claves del resultado", async () => {
       const fixture = await setupFixture();
       const email = uniqueEmail("ya-miembro");
       const resourceId = resourceIdOf(fixture, scope);
@@ -258,14 +263,20 @@ for (const scope of ["clinic", "organization"] as const) {
 
       const response = await invite(fixture, scope, email);
 
-      expect(response.status()).toBe(409);
-      expect(await response.json()).toEqual(ALREADY_MEMBER_BODY);
+      expect(response.status()).toBe(200);
+      const body = (await response.json()) as Record<string, unknown>;
+      expect(Object.keys(body).sort()).toEqual([
+        "invitationSent",
+        "message",
+        "outcome",
+      ]);
+      expect(body).toMatchObject({ outcome: "updated", invitationSent: false });
       expect(await getInvitationTokenOf(email, resourceId)).toBe(token);
       expect((await getInvitationByToken(token)).status).toBe("ACCEPTED");
       expect(readEmailsTo(email)).toHaveLength(emailsBefore);
     });
 
-    test("reinvitar a alguien con la membership borrada responde 409 sin resucitarla", async () => {
+    test("asignar a alguien con la membership borrada la revive: la misma membership, viva", async () => {
       const fixture = await setupFixture();
       const email = uniqueEmail("borrado");
       const resourceId = resourceIdOf(fixture, scope);
@@ -273,47 +284,33 @@ for (const scope of ["clinic", "organization"] as const) {
       const token = await getInvitationTokenOf(email, resourceId);
       const { membershipId } = await getInvitationByToken(token);
       await softDeleteMembership(membershipId);
-      const emailsBefore = readEmailsTo(email).length;
 
       const response = await invite(fixture, scope, email);
 
-      expect(response.status()).toBe(409);
+      expect(response.status()).toBe(200);
+      expect(await response.json()).toMatchObject({ outcome: "revived" });
       const prisma = await getTestPrisma();
       const aliveMembership = await prisma.userResourceMembership.findFirst({
         where: { id: membershipId, deletedAt: null },
       });
-      expect(aliveMembership).toBeNull();
-      expect(await getInvitationTokenOf(email, resourceId)).toBe(token);
-      expect(readEmailsTo(email)).toHaveLength(emailsBefore);
+      expect(aliveMembership).not.toBeNull();
     });
   });
 }
 
-test("en Gratis, renovar la invitación del único médico no consume otra plaza: otro médico sigue dando 402", async () => {
+test("en Gratis se asignan varios médicos sin 402", async () => {
   const fixture = await setupFixture();
-  const email = uniqueEmail("unico-medico");
   const doctorBody = { role: "DOCTOR", specialtyIds: [fixture.specialtyId] };
-  expect((await invite(fixture, "clinic", email, doctorBody)).status()).toBe(
-    200,
-  );
-  await ageInvitationIssuance(
-    await getInvitationTokenOf(email, fixture.clinicId),
-  );
 
-  const renewal = await invite(fixture, "clinic", email, doctorBody);
-  expect(renewal.status()).toBe(200);
-  expect(await countMembershipsAndProfiles(email)).toEqual({
-    memberships: 1,
-    doctorProfiles: 1,
-  });
-
-  const otherDoctor = await invite(
-    fixture,
-    "clinic",
-    uniqueEmail("segundo-medico"),
-    doctorBody,
-  );
-  expect(otherDoctor.status()).toBe(402);
+  for (const prefix of ["primer-medico", "segundo-medico", "tercer-medico"]) {
+    const response = await invite(
+      fixture,
+      "clinic",
+      uniqueEmail(prefix),
+      doctorBody,
+    );
+    expect(response.status()).toBe(200);
+  }
 });
 
 test.describe("Respuesta del api ante un link vencido", () => {

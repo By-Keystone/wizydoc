@@ -61,7 +61,8 @@ export async function loginViaUi(
   await page.getByRole("button", { name: "Iniciar sesión" }).click();
 
   // `toHaveURL` reintenta solo: evita la carrera con el `router.push` de `login-form.tsx`.
-  await expect(page).toHaveURL(expectedUrl);
+  // El primer login tras arrancar `next dev` compila las rutas en caliente: con los 5 s por defecto falla bajo carga.
+  await expect(page).toHaveURL(expectedUrl, { timeout: 20_000 });
 }
 
 export async function completeOnboardingViaUi(

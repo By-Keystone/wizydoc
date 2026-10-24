@@ -137,7 +137,7 @@ export async function createClinicResource(
   return clinic.resourceId;
 }
 
-/** Bypassa `POST /organization/:resourceId/clinics` (el plan Gratis limita a una sede) para crear una segunda sede de control. */
+/** Bypassa `POST /organization/:resourceId/clinics` (el plan Gratis limita a una sede) para crear una segunda sede de control. No aplica la regla del ADMIN que atiende: úsala cuando el ADMIN no deba tener perfil en esa sede. */
 export async function createClinicResourceViaPrisma(
   admin: OnboardedAdmin,
   organizationId: string,

@@ -3,16 +3,23 @@
 import { useState } from "react";
 import { UserPlus } from "lucide-react";
 import { Button } from "../ui/button";
-import { InviteOrganizationUserModal } from "./invite-user-modal";
+import { InviteUserModal } from "@/components/clinic/invite-user/modal";
+import type { Specialty } from "@/lib/api/specialty/types";
 
 interface Props {
   organizationId: string;
   organizationName: string;
+  clinics: { id: string; name: string }[];
+  specialties: Specialty[];
+  currentUserEmail?: string;
 }
 
 export const OrganizationUsersTopHeader = ({
   organizationId,
   organizationName,
+  clinics,
+  specialties,
+  currentUserEmail,
 }: Props) => {
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
 
@@ -21,18 +28,21 @@ export const OrganizationUsersTopHeader = ({
       <div className="min-w-0">
         <h1 className="text-2xl font-bold text-brand-teal-dark">Usuarios</h1>
         <p className="mt-1 text-sm text-brand-gray">
-          Personas con acceso a todas las sedes de {organizationName}.
+          Personas con acceso a {organizationName} o a alguna de sus sedes.
         </p>
       </div>
       <Button onClick={() => setInviteModalOpen(true)}>
         <UserPlus className="mr-2 h-4 w-4" />
         Invitar usuario
       </Button>
-      <InviteOrganizationUserModal
+      <InviteUserModal
         isOpen={inviteModalOpen}
         setIsOpen={setInviteModalOpen}
         organizationId={organizationId}
         organizationName={organizationName}
+        clinics={clinics}
+        specialties={specialties}
+        currentUserEmail={currentUserEmail}
       />
     </div>
   );

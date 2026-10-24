@@ -1,4 +1,5 @@
 import { NotFound } from "@/application/errors/not-found.error";
+import { liveDoctorProfileWhere } from "@/infrastructure/postgres/queries/doctor-profile/live-doctor-profile";
 import {
   getClient,
   inTransaction,
@@ -116,13 +117,12 @@ export class InsertAvailabilityUseCase {
     await inTransaction(async () => {
       const client = getClient();
 
-      const doctorProfile = await client.doctorProfile.findUnique({
-        where: {
-          userId_clinicId: {
-            userId: dto.userId,
-            clinicId: dto.clinicId,
-          },
-        },
+      const doctorProfile = await client.doctorProfile.findFirst({
+        where: liveDoctorProfileWhere({
+          userId: dto.userId,
+          clinicId: dto.clinicId,
+        }),
+        select: { id: true },
       });
 
       if (!doctorProfile)

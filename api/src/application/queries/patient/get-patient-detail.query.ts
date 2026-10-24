@@ -42,7 +42,13 @@ export class GetPatientDetailQuery {
         clinic: { select: { name: true } },
         doctorProfile: {
           select: {
-            user: { select: { name: true, lastName: true, treatment: true } },
+            membership: {
+              select: {
+                user: {
+                  select: { name: true, lastName: true, treatment: true },
+                },
+              },
+            },
           },
         },
       },
@@ -76,7 +82,7 @@ export class GetPatientDetailQuery {
         specialty: appointment.specialty,
         durationMinutes: appointment.durationMinutes,
         clinicName: appointment.clinic.name,
-        doctorName: formatDoctorName(appointment.doctorProfile.user),
+        doctorName: formatDoctorName(appointment.doctorProfile.membership.user),
       })),
       metrics: buildPatientMetrics(appointments),
     };

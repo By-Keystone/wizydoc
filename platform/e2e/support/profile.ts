@@ -134,15 +134,50 @@ export async function addDoctorProfile(
   userId: string,
   clinicId: string,
   specialtyIds: string[],
-): Promise<void> {
+  role: "DOCTOR" | "USER" = "DOCTOR",
+): Promise<string> {
   const prisma = await getTestPrisma();
-  await prisma.doctorProfile.create({
-    data: {
-      userId,
-      clinicId,
-      specialties: { connect: specialtyIds.map((id) => ({ id })) },
-    },
+  const existing = await prisma.userResourceMembership.findFirst({
+    where: { userId, resourceId: clinicId },
   });
+
+  // Un ADMIN de la organización atiende con una membership DOCTOR directa en la sede.
+  let membershipId = existing?.id;
+  if (!membershipId) {
+    const user = await prisma.user.findUniqueOrThrow({
+      where: { id: userId },
+    });
+    const created = await prisma.userResourceMembership.create({
+      data: {
+        userId,
+        resourceId: clinicId,
+        accountId: user.accountId,
+        role,
+        createdBy: userId,
+      },
+    });
+    membershipId = created.id;
+  }
+
+  // Una sede creada por api ya le da al ADMIN membership DOCTOR y perfil vacío.
+  const ids = specialtyIds.map((id) => ({ id }));
+  const profile = await prisma.doctorProfile.upsert({
+    where: { membershipId },
+    create: { membershipId, specialties: { connect: ids } },
+    update: { specialties: { set: ids } },
+  });
+  return profile.id;
+}
+
+export async function findDoctorProfileId(
+  userId: string,
+  clinicId: string,
+): Promise<string | null> {
+  const prisma = await getTestPrisma();
+  const profile = await prisma.doctorProfile.findFirst({
+    where: { membership: { userId, resourceId: clinicId } },
+  });
+  return profile?.id ?? null;
 }
 
 /** Sede extra de la misma organización, con el médico ya como DOCTOR de ella. */

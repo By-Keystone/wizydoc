@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname, useParams } from "next/navigation";
 import { CalendarClock, type LucideProps } from "lucide-react";
 import type { ForwardRefExoticComponent, RefAttributes } from "react";
-import { cn, MembershipRole } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import { useApp } from "@/context/app/app.context";
 
 type SettingsLink = {
@@ -14,7 +14,7 @@ type SettingsLink = {
   icon: ForwardRefExoticComponent<
     Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>
   >;
-  roleScope?: MembershipRole[];
+  requiresDoctorProfile?: boolean;
 };
 
 const settingsLinks: SettingsLink[] = [
@@ -22,7 +22,7 @@ const settingsLinks: SettingsLink[] = [
     segment: "availability",
     label: "Mi Disponibilidad",
     icon: CalendarClock,
-    roleScope: [MembershipRole.DOCTOR],
+    requiresDoctorProfile: true,
   },
 ];
 
@@ -30,6 +30,9 @@ export function SettingsSidebar() {
   const pathname = usePathname();
   const { membership } = useApp();
   const params = useParams<{ accountId: string; clinicId: string }>();
+
+  const attends =
+    membership.resourceType === "CLINIC" && membership.doctorProfileId !== null;
 
   const base = `/account/${params.accountId}/clinic/${params.clinicId}/profile`;
 
@@ -41,29 +44,30 @@ export function SettingsSidebar() {
         Configuración
       </p>
       <nav className="flex gap-1 overflow-x-auto md:flex-col">
-        {settingsLinks.map(({ segment, label, icon: Icon, roleScope }) => {
-          const href = `${base}/${segment}`;
-          const isActive = pathname === href;
-          const shouldRender =
-            roleScope?.includes(membership.role) || !roleScope;
-          return (
-            shouldRender && (
-              <Link
-                key={label}
-                href={href}
-                className={cn(
-                  "flex shrink-0 items-center gap-3 whitespace-nowrap rounded-lg px-3 py-2 text-sm transition-colors",
-                  isActive
-                    ? "bg-brand-teal/10 font-medium text-brand-teal"
-                    : "text-brand-gray hover:bg-gray-100 hover:text-brand-ink",
-                )}
-              >
-                <Icon className="h-4 w-4 shrink-0" />
-                {label}
-              </Link>
-            )
-          );
-        })}
+        {settingsLinks.map(
+          ({ segment, label, icon: Icon, requiresDoctorProfile }) => {
+            const href = `${base}/${segment}`;
+            const isActive = pathname === href;
+            const shouldRender = !requiresDoctorProfile || attends;
+            return (
+              shouldRender && (
+                <Link
+                  key={label}
+                  href={href}
+                  className={cn(
+                    "flex shrink-0 items-center gap-3 whitespace-nowrap rounded-lg px-3 py-2 text-sm transition-colors",
+                    isActive
+                      ? "bg-brand-teal/10 font-medium text-brand-teal"
+                      : "text-brand-gray hover:bg-gray-100 hover:text-brand-ink",
+                  )}
+                >
+                  <Icon className="h-4 w-4 shrink-0" />
+                  {label}
+                </Link>
+              )
+            );
+          },
+        )}
       </nav>
     </aside>
   );
