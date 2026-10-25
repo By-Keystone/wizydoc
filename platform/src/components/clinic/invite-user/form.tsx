@@ -4,6 +4,7 @@ import { useId, useRef, useState, useTransition } from "react";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input, Select } from "@/components/common/form";
+import { roleLabel } from "@/components/common/role-display";
 import type { Specialty } from "@/lib/api/specialty/types";
 import {
   type LookedUpUser,
@@ -24,12 +25,6 @@ interface InviteUserFields extends Record<string, unknown> {
 }
 
 type ScopeMode = "all" | "clinics";
-
-const ROLE_LABEL = {
-  ADMIN: "Administrador",
-  DOCTOR: "Médico",
-  USER: "Usuario",
-} as const;
 
 const ORGANIZATION_ROLE_OPTIONS = [
   { label: "Usuario", value: "USER" },
@@ -413,7 +408,7 @@ export const InviteUserForm = ({
                           {existing && (
                             <span className="text-xs text-brand-gray">
                               {" "}
-                              · {ROLE_LABEL[existing.role]}
+                              · {roleLabel(existing.role)}
                             </span>
                           )}
                         </span>
@@ -426,7 +421,7 @@ export const InviteUserForm = ({
                 <p
                   id={clinicsErrorId}
                   role="alert"
-                  className="text-xs text-red-600"
+                  className="text-xs text-red-700"
                 >
                   {groupError}
                 </p>

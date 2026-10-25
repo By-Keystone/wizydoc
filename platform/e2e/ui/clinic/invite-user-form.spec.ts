@@ -307,7 +307,9 @@ test("CA-7: la recepción no puede abrir a mano la página de Usuarios de su pro
 
   // La recepción no tiene membership en la organización: el layout de ese
   // segmento (no el error.tsx del segmento hijo) atrapa el NoMembershipError.
-  await expect(page.getByText("No se pudo cargar el workspace")).toBeVisible();
+  await expect(
+    page.getByText("No se pudo cargar la organización"),
+  ).toBeVisible();
   await expect(page.getByRole("heading", { name: "Usuarios" })).toHaveCount(0);
   await expect(
     page.getByRole("button", { name: "Invitar usuario" }),

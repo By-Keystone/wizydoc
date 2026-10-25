@@ -116,7 +116,7 @@ export function DateTimeStep({
 
       {intro}
 
-      {error && <p className="mt-6 text-sm text-red-600">{error}</p>}
+      {error && <p className="mt-6 text-sm text-red-700">{error}</p>}
 
       {!error && (
         <>

@@ -174,7 +174,7 @@ function SpecialtiesEditor({
   return (
     <form
       ref={formRef}
-      className="min-w-0 rounded-[10px] border border-brand-teal/20 p-3.5 shadow-[0_0_0_3px_rgba(12,126,117,0.08)]"
+      className="min-w-0 rounded-[10px] border border-brand-teal/20 p-3.5 ring-[3px] ring-brand-teal/[0.08]"
       onSubmit={(event) => {
         event.preventDefault();
         submit(new FormData(event.currentTarget));

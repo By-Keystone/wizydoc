@@ -6,7 +6,7 @@ export const MOBILE_VIEWPORT = { width: 375, height: 812 };
 
 export const STEP_TITLES = {
   specialty: "¿Qué especialidad necesitas?",
-  doctor: "Elige un doctor",
+  doctor: "Elige un médico",
   datetime: "Elige fecha y horario",
   patient: "Tus datos",
   success: "¡Cita reservada!",

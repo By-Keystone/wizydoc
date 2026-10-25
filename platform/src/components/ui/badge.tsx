@@ -7,12 +7,11 @@ const badgeVariants = cva(
   {
     variants: {
       variant: {
-        blue: "bg-brand-teal/10 text-brand-teal-dark",
-        teal: "bg-brand-teal-dark/10 text-brand-teal-dark",
+        teal: "bg-brand-teal/10 text-brand-teal-dark",
         gray: "bg-gray-100 text-gray-600",
       },
     },
-    defaultVariants: { variant: "blue" },
+    defaultVariants: { variant: "teal" },
   },
 );
 

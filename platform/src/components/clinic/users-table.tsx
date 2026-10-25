@@ -1,6 +1,7 @@
-import { Badge, type BadgeProps } from "@/components/ui/badge";
+import { Badge } from "@/components/ui/badge";
 import type { ClinicUser } from "@/lib/api/clinic/types";
 import type { Specialty } from "@/lib/api/specialty/types";
+import { roleDisplay } from "../common/role-display";
 import { type Column, Table } from "../common/table";
 import { DoctorSpecialtiesDialog } from "./doctor-specialties-dialog";
 
@@ -24,15 +25,6 @@ interface Props {
   currentUserEmail?: string;
   specialtyEditing?: SpecialtyEditing;
 }
-
-export const roleDisplay: Record<
-  string,
-  { label: string; variant: BadgeProps["variant"] }
-> = {
-  ADMIN: { label: "Administrador", variant: "teal" },
-  DOCTOR: { label: "Médico", variant: "blue" },
-  USER: { label: "Usuario", variant: "gray" },
-};
 
 export const statusTagClass =
   "inline-flex items-center whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-semibold";

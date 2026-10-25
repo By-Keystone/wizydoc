@@ -22,7 +22,7 @@ function Stat({
 }) {
   const valueColor =
     tone === "alert"
-      ? "text-red-600"
+      ? "text-red-700"
       : tone === "next"
         ? "text-brand-teal"
         : "text-brand-ink";

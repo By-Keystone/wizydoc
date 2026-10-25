@@ -99,9 +99,9 @@ test("CA-21 y CA-22: «Citas de hoy» nombra a la médica con «Dra.» y el salu
     page.getByText(`· Dra. ${fullName}`, { exact: false }),
   ).toBeVisible();
   await expect(
-    page.getByRole("heading", { name: `Hola ${fullName} 👋` }),
+    page.getByRole("heading", { name: `Hola, ${fullName}` }),
   ).toBeVisible();
-  await expect(page.getByText(`Hola Dra.`)).toHaveCount(0);
+  await expect(page.getByText("Hola, Dra.")).toHaveCount(0);
 });
 
 test("CA-21: «Citas de hoy» muestra el nombre completo sin «Dr.» ni «Dra.» si no hay tratamiento", async ({

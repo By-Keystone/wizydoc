@@ -153,5 +153,5 @@ test("CA-10: el dueño nuevo crea su organización y una sede desde /select", as
 
   // Confirma que el dueño quedó ADMIN de la organización: /select muestra su rol.
   await page.goto(`/account/${owner.accountId}/select`);
-  await expect(page.getByText("Tu rol: ADMIN")).toBeVisible();
+  await expect(page.getByText("Tu rol: Administrador")).toBeVisible();
 });

@@ -115,7 +115,7 @@ function LinkButton({
     <button
       type="button"
       onClick={onClick}
-      className="font-semibold text-brand-teal underline underline-offset-[3px]"
+      className="font-semibold text-brand-teal-dark underline underline-offset-[3px]"
     >
       {children}
     </button>

@@ -142,7 +142,7 @@ async function membershipRole(email: string, resourceId: string) {
 async function openDoctorStep(page: Page, world: World) {
   await page.goto(`/clinic/${world.clinicId}/create-appointment`);
   await expect(
-    page.getByRole("heading", { level: 2, name: "Elige un doctor" }),
+    page.getByRole("heading", { level: 2, name: "Elige un médico" }),
   ).toBeVisible();
 }
 

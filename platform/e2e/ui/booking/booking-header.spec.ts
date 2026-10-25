@@ -44,7 +44,7 @@ test.use({ viewport: MOBILE_VIEWPORT });
 test.describe.configure({ timeout: 90_000 });
 
 const NO_DOCTORS_MESSAGE =
-  "Esta clínica todavía no tiene doctores disponibles para reservar citas.";
+  "Esta sede todavía no tiene médicos disponibles para reservar citas.";
 const LOAD_ERROR_MESSAGE = /algo salió mal|no pudimos|no se pudo/i;
 const DOCTOR_TITLE = /\bDra?\.\s/;
 

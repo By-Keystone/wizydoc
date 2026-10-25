@@ -65,7 +65,7 @@ test("CA-1: Independiente termina la reserva en «¡Cita reservada!»", async ({
   await expectStep(page, "success");
 });
 
-test("CA-2: Equipo empieza en «Elige un doctor» con un botón por médico y sigue con el horario y los datos", async ({
+test("CA-2: Equipo empieza en «Elige un médico» con un botón por médico y sigue con el horario y los datos", async ({
   page,
 }) => {
   const scenario = await createTeamScenario("steps-ca2");
@@ -74,7 +74,7 @@ test("CA-2: Equipo empieza en «Elige un doctor» con un botón por médico y si
 
   await expectStep(page, "doctor", { current: 1, total: 3 });
   await expect(
-    page.getByText(`Doctores disponibles para ${scenario.specialty.name}.`, {
+    page.getByText(`Médicos disponibles para ${scenario.specialty.name}.`, {
       exact: true,
     }),
   ).toBeVisible();
@@ -256,7 +256,7 @@ test("CA-9: en Clínica con B «Atrás» vuelve del horario a la especialidad", 
   await expect(stepTitle(page, "doctor")).toHaveCount(0);
 });
 
-test("CA-9: en Equipo «Atrás» vuelve del horario a «Elige un doctor»", async ({
+test("CA-9: en Equipo «Atrás» vuelve del horario a «Elige un médico»", async ({
   page,
 }) => {
   const scenario = await createTeamScenario("steps-ca9-team");
@@ -354,7 +354,7 @@ test("CA-12: cambiar de especialidad borra el médico elegido y la cita queda co
   expect(appointment.doctorProfileId).toBe(scenario.doctorOfB.doctorProfileId);
 });
 
-test("CA-13: pasar de B a A deja «Elige un doctor» sin ningún médico elegido y con «Siguiente» deshabilitado", async ({
+test("CA-13: pasar de B a A deja «Elige un médico» sin ningún médico elegido y con «Siguiente» deshabilitado", async ({
   page,
 }) => {
   const scenario = await createClinicScenario("steps-ca13");

@@ -75,7 +75,7 @@ test("CA-17: el paso del médico muestra «Dra. …» con tratamiento y solo el 
   await page.goto(`/clinic/${clinicId}/create-appointment`);
 
   await expect(
-    page.getByRole("heading", { name: "Elige un doctor" }),
+    page.getByRole("heading", { name: "Elige un médico" }),
   ).toBeVisible();
   await expect(
     page.getByRole("button", { name: DRA_FULL_NAME, exact: true }),

@@ -1,4 +1,4 @@
-import { roleDisplay } from "@/components/clinic/users-table";
+import { roleLabel } from "@/components/common/role-display";
 import type { Membership } from "@/lib/api/memberships";
 import { EnterLink } from "./enter-link";
 
@@ -20,7 +20,7 @@ export function MembershipsList({ memberships }: Props) {
   if (memberships.some((m) => m.accountId === null)) {
     return (
       <div className="flex items-center justify-center">
-        <p className="text-sm text-red-600">
+        <p className="text-sm text-red-700">
           Tu usuario no pertenece a ninguna cuenta
         </p>
       </div>
@@ -56,7 +56,7 @@ export function MembershipsList({ memberships }: Props) {
                 </h2>
                 <p className="text-xs text-brand-gray">
                   {m.membership
-                    ? `Tu rol: ${roleDisplay[m.membership.role]?.label ?? m.membership.role}`
+                    ? `Tu rol: ${roleLabel(m.membership.role)}`
                     : "Acceso por sedes"}
                   <span className="ml-2 text-brand-gray">
                     · {m.clinics.length}{" "}
@@ -90,7 +90,7 @@ export function MembershipsList({ memberships }: Props) {
                       {c.name}
                     </p>
                     <p className="text-xs text-brand-gray">
-                      {roleDisplay[c.role]?.label ?? c.role}
+                      {roleLabel(c.role)}
                       {c.accessVia === "INHERITED_FROM_ORG" && (
                         <span className="ml-2 rounded bg-gray-100 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-gray-600">
                           Heredado
