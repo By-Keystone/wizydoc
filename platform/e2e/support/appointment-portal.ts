@@ -74,6 +74,7 @@ export interface AddDoctorOptions {
   admin: OnboardedAdmin;
   specialtyId: string;
   availability?: DoctorAvailability;
+  weekdays?: number[];
   name?: string;
   lastName?: string;
 }
@@ -102,8 +103,9 @@ export async function addPortalDoctor(
   if (availability !== "none") {
     const [startTime, endTime] =
       availability === "full-day" ? ["00:00", "23:30"] : ["09:00", "12:00"];
+    const weekdays = options.weekdays ?? [0, 1, 2, 3, 4, 5, 6];
     await prisma.availability.createMany({
-      data: Array.from({ length: 7 }, (_, dayOfWeek) => ({
+      data: weekdays.map((dayOfWeek) => ({
         doctorProfileId: profile.id,
         dayOfWeek,
         startTime,

@@ -11,7 +11,7 @@ import { getTestPrisma } from "../../support/db";
 import { expect, test } from "../../support/test";
 import { uniqueEmail, uniqueName } from "../../support/users";
 
-// docs/features/perfil-usuario/plan.md — PR 2, CA-17 a CA-19.
+// perfil-usuario CA-17 a CA-19 y booking-cabecera-y-pasos CA-2, CA-17 y CA-18.
 
 test.use({ viewport: { width: 375, height: 812 } });
 
@@ -70,12 +70,13 @@ async function createScenario() {
 test("CA-17: el paso del médico muestra «Dra. …» con tratamiento y solo el nombre sin él", async ({
   page,
 }) => {
-  const { clinicId, specialtyName } = await createScenario();
+  const { clinicId } = await createScenario();
 
   await page.goto(`/clinic/${clinicId}/create-appointment`);
-  await page.getByRole("button", { name: specialtyName, exact: true }).click();
-  await page.getByRole("button", { name: "Siguiente", exact: true }).click();
 
+  await expect(
+    page.getByRole("heading", { name: "Elige un doctor" }),
+  ).toBeVisible();
   await expect(
     page.getByRole("button", { name: DRA_FULL_NAME, exact: true }),
   ).toBeVisible();
@@ -91,10 +92,15 @@ test("CA-18: el resumen y el éxito dicen «con Dra. …» para la médica con t
   const { clinicId, specialtyName } = await createScenario();
 
   await page.goto(`/clinic/${clinicId}/create-appointment`);
-  await page.getByRole("button", { name: specialtyName, exact: true }).click();
-  await page.getByRole("button", { name: "Siguiente", exact: true }).click();
   await page.getByRole("button", { name: DRA_FULL_NAME, exact: true }).click();
   await page.getByRole("button", { name: "Siguiente", exact: true }).click();
+
+  await expect(
+    page.getByRole("heading", {
+      level: 1,
+      name: `Reserva tu cita con ${DRA_FULL_NAME}`,
+    }),
+  ).toBeVisible();
 
   await page.getByRole("button", { name: "Semana siguiente" }).click();
   await page
@@ -110,7 +116,9 @@ test("CA-18: el resumen y el éxito dicen «con Dra. …» para la médica con t
     .click();
   await page.getByRole("button", { name: "Siguiente", exact: true }).click();
 
-  await expect(page.getByText(DRA_FULL_NAME, { exact: true })).toBeVisible();
+  await expect(
+    page.getByText(`${specialtyName} con ${DRA_FULL_NAME}`, { exact: true }),
+  ).toBeVisible();
 
   await page.getByLabel("Nombre").fill("Camila");
   await page.getByLabel("Apellido").fill("Rivas");
@@ -131,13 +139,16 @@ test("CA-19: con un médico sin tratamiento ningún paso muestra «Dr.» ni «Dr
   const noTitle = page.getByText(/\bDra?\.\s/);
 
   await page.goto(`/clinic/${clinicId}/create-appointment`);
-  await page.getByRole("button", { name: specialtyName, exact: true }).click();
-  await page.getByRole("button", { name: "Siguiente", exact: true }).click();
   await page
     .getByRole("button", { name: PLAIN_FULL_NAME, exact: true })
     .click();
   // El otro médico de la sede sí tiene «Dra.»: se comprueba solo tras elegir.
   await page.getByRole("button", { name: "Siguiente", exact: true }).click();
+
+  await expect(
+    page.getByRole("heading", { name: "Elige fecha y horario" }),
+  ).toBeVisible();
+  await expect(noTitle).toHaveCount(0);
 
   await page.getByRole("button", { name: "Semana siguiente" }).click();
   await page
@@ -153,7 +164,15 @@ test("CA-19: con un médico sin tratamiento ningún paso muestra «Dr.» ni «Dr
     .click();
   await page.getByRole("button", { name: "Siguiente", exact: true }).click();
 
-  await expect(page.getByText(PLAIN_FULL_NAME, { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("heading", {
+      level: 1,
+      name: `Reserva tu cita con ${PLAIN_FULL_NAME}`,
+    }),
+  ).toBeVisible();
+  await expect(
+    page.getByText(`${specialtyName} con ${PLAIN_FULL_NAME}`, { exact: true }),
+  ).toBeVisible();
   await expect(noTitle).toHaveCount(0);
 
   await page.getByLabel("Nombre").fill("Camila");

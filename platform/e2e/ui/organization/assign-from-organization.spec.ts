@@ -141,10 +141,9 @@ async function membershipRole(email: string, resourceId: string) {
 
 async function openDoctorStep(page: Page, world: World) {
   await page.goto(`/clinic/${world.clinicId}/create-appointment`);
-  await page
-    .getByRole("button", { name: world.specialtyName, exact: true })
-    .click();
-  await page.getByRole("button", { name: "Siguiente", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { level: 2, name: "Elige un doctor" }),
+  ).toBeVisible();
 }
 
 test("el alcance ofrece «Todas las sedes» y «Sedes específicas» con una casilla por sede, y los roles cambian según el alcance", async ({

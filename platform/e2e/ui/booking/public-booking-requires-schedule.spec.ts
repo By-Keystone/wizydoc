@@ -3,16 +3,24 @@ import {
   addPortalDoctor,
   createPortalScenario,
 } from "../../support/appointment-portal";
+import {
+  chooseSlotAndGoToPatientStep,
+  expectStep,
+  MOBILE_VIEWPORT,
+  openBooking,
+  pageHeading,
+} from "../../support/booking-ui";
 import { getTestPrisma } from "../../support/db";
 import { expect, test } from "../../support/test";
 import { uniqueName } from "../../support/users";
 
-// docs/features/doctor-profile-specialties/plan.md, PR 2: CA-6 (paso 1 a 375 px).
+// doctor-profile-specialties CA-6 y booking-cabecera-y-pasos CA-6.
 
-test("CA-6: a 375 px el paso 1 no ofrece la especialidad que solo atiende un médico sin horarios", async ({
+test.use({ viewport: MOBILE_VIEWPORT });
+
+test("CA-6: un médico sin horarios no cuenta para los pasos y ni él ni su especialidad exclusiva aparecen", async ({
   page,
 }) => {
-  await page.setViewportSize({ width: 375, height: 812 });
   const scenario = await createPortalScenario("sched-ui-ca6");
   const hiddenName = uniqueName("Solo-sin-horarios");
   const hiddenId = await createSpecialty(
@@ -20,26 +28,40 @@ test("CA-6: a 375 px el paso 1 no ofrece la especialidad que solo atiende un mé
     scenario.organizationId,
     hiddenName,
   );
+  const unscheduledLastName = uniqueName("SinHorarios");
   const unscheduled = await addPortalDoctor({
     label: "sched-ui-ca6-sin",
     clinicId: scenario.clinicId,
     admin: scenario.admin,
     specialtyId: scenario.specialtyId,
     availability: "none",
+    name: "Sofía",
+    lastName: unscheduledLastName,
   });
   const prisma = await getTestPrisma();
   await prisma.doctorProfile.update({
     where: { id: unscheduled.doctorProfileId },
     data: { specialties: { connect: [{ id: hiddenId }] } },
   });
+  const scheduledName = `${scenario.doctor.name} ${scenario.doctor.lastName}`;
+  const body = page.locator("body");
 
-  await page.goto(`/clinic/${scenario.clinicId}/create-appointment`);
+  await openBooking(page, scenario.clinicId);
 
+  await expectStep(page, "datetime", { current: 1, total: 2 });
   await expect(
-    page.getByRole("heading", { name: "¿Qué especialidad necesitas?" }),
+    pageHeading(page, `Reserva tu cita con ${scheduledName}`),
   ).toBeVisible();
-  await expect(
-    page.getByRole("button", { name: scenario.specialtyName }),
-  ).toBeVisible();
-  await expect(page.getByText(hiddenName)).toHaveCount(0);
+  await expect(page.getByText(scenario.specialtyName)).toBeVisible();
+  await expect(body).not.toContainText(hiddenName);
+  await expect(body).not.toContainText(unscheduledLastName);
+  await expect(page).toHaveTitle(
+    `Reserva tu cita con ${scheduledName} · WizyDoc`,
+  );
+
+  await chooseSlotAndGoToPatientStep(page);
+
+  await expectStep(page, "patient", { current: 2, total: 2 });
+  await expect(body).not.toContainText(hiddenName);
+  await expect(body).not.toContainText(unscheduledLastName);
 });

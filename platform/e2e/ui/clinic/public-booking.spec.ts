@@ -23,11 +23,7 @@ function nextMonday(): Date {
   );
 }
 
-/**
- * docs/features/fix-invitation-set-password/plan.md — CA-5 ([e2e]): el
- * booking público sigue funcionando tras quitar `userId` del listado de
- * médicos (`get-clinic-doctors.query.ts`).
- */
+// fix-invitation-set-password CA-5 y booking-cabecera-y-pasos CA-1: el booking arranca en el horario y funciona sin `userId` en el listado de médicos.
 test("CA-5: el paciente reserva una cita de punta a punta con un médico invitado", async ({
   page,
 }) => {
@@ -58,16 +54,9 @@ test("CA-5: el paciente reserva una cita de punta a punta con un médico invitad
 
   await page.goto(`/clinic/${clinicId}/create-appointment`);
 
-  await page.getByRole("button", { name: specialtyName, exact: true }).click();
-  await page.getByRole("button", { name: "Siguiente", exact: true }).click();
-
-  await page
-    .getByRole("button", {
-      name: `${DOCTOR_NAME} ${DOCTOR_LAST_NAME}`,
-      exact: true,
-    })
-    .click();
-  await page.getByRole("button", { name: "Siguiente", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "Elige fecha y horario" }),
+  ).toBeVisible();
 
   // Siguiente semana: con disponibilidad los 7 días, queda enteramente en el futuro.
   await page.getByRole("button", { name: "Semana siguiente" }).click();
@@ -129,15 +118,9 @@ test("el paso de éxito muestra la sede, su dirección y la fecha legible", asyn
   await seedFullDayAvailability(doctor.userId, clinicId);
 
   await page.goto(`/clinic/${clinicId}/create-appointment`);
-  await page.getByRole("button", { name: specialtyName, exact: true }).click();
-  await page.getByRole("button", { name: "Siguiente", exact: true }).click();
-  await page
-    .getByRole("button", {
-      name: `${DOCTOR_NAME} ${DOCTOR_LAST_NAME}`,
-      exact: true,
-    })
-    .click();
-  await page.getByRole("button", { name: "Siguiente", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "Elige fecha y horario" }),
+  ).toBeVisible();
 
   const monday = nextMonday();
   await page.getByRole("button", { name: "Semana siguiente" }).click();

@@ -657,15 +657,17 @@ test("el booking refleja el cambio: el médico con horarios aparece con la espec
   const fresh = uniqueName("Nueva");
   await createSpecialty(world.admin, world.organizationId, fresh);
   const bookingUrl = `/clinic/${world.clinicId}/create-appointment`;
-  const specialtyStep = (name: string) =>
+  const specialtyOption = (name: string) =>
     page.getByRole("button", { name, exact: true });
+  const specialtyShown = (name: string) =>
+    page.getByText(name, { exact: true });
 
   await page.goto(bookingUrl);
   await expect(
-    page.getByRole("heading", { name: "¿Qué especialidad necesitas?" }),
+    page.getByRole("heading", { name: "Elige fecha y horario" }),
   ).toBeVisible();
-  await expect(specialtyStep(fresh)).toHaveCount(0);
-  await expect(specialtyStep(world.specialtyName)).toBeVisible();
+  await expect(specialtyShown(world.specialtyName)).toBeVisible();
+  await expect(specialtyShown(fresh)).toHaveCount(0);
 
   await openUsers(page, adminAsProfileUser(world), world);
   await editButton(page, doctor).click();
@@ -676,7 +678,11 @@ test("el booking refleja el cambio: el médico con horarios aparece con la espec
   ).toBeVisible();
 
   await page.goto(bookingUrl);
-  await expect(specialtyStep(fresh)).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "¿Qué especialidad necesitas?" }),
+  ).toBeVisible();
+  await expect(specialtyOption(fresh)).toBeVisible();
+  await expect(specialtyOption(world.specialtyName)).toBeVisible();
 
   await page.goto(usersPath(adminAsProfileUser(world), world));
   await editButton(page, doctor).click();
@@ -691,8 +697,13 @@ test("el booking refleja el cambio: el médico con horarios aparece con la espec
   ).toBeVisible();
 
   await page.goto(bookingUrl);
-  await expect(specialtyStep(world.specialtyName)).toHaveCount(0);
-  await expect(specialtyStep(fresh)).toHaveCount(0);
+  await expect(
+    page.getByText(
+      "Esta clínica todavía no tiene doctores disponibles para reservar citas.",
+    ),
+  ).toBeVisible();
+  await expect(specialtyShown(world.specialtyName)).toHaveCount(0);
+  await expect(specialtyShown(fresh)).toHaveCount(0);
 });
 
 test("CA-78: un DOCTOR y un USER que abren la URL ven el estado de error, sin tabla ni botones", async ({

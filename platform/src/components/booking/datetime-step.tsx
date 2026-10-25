@@ -6,6 +6,11 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { DoctorSlots } from "@/lib/api/doctor-profile/types";
 import {
+  focusRingClassName,
+  optionClassName,
+  unavailableOptionClassName,
+} from "./option-styles";
+import {
   addDays,
   dayLabel,
   dayNumber,
@@ -17,6 +22,11 @@ import {
 
 // El api rechaza fechas a más de 366 días de hoy; la semana 52 puede pasarse.
 const MAX_WEEK_OFFSET = 51;
+
+const weekArrowClassName = cn(
+  "flex h-10 w-10 items-center justify-center rounded-lg text-brand-gray transition-colors hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-30",
+  focusRingClassName,
+);
 
 interface Props {
   slotsSourceId: string;
@@ -30,7 +40,7 @@ interface Props {
     time: string;
     durationMinutes: number;
   }) => void;
-  onBack: () => void;
+  onBack?: () => void;
   description?: string;
   emptyDayMessage?: string;
   intro?: ReactNode;
@@ -96,7 +106,10 @@ export function DateTimeStep({
 
   return (
     <div>
-      <h2 className="text-lg font-semibold text-brand-teal-dark">
+      <h2
+        tabIndex={-1}
+        className="text-lg font-semibold text-brand-teal-dark outline-none"
+      >
         Elige fecha y horario
       </h2>
       <p className="mt-1 text-sm text-brand-gray">{description}</p>
@@ -112,10 +125,10 @@ export function DateTimeStep({
               type="button"
               onClick={() => setWeekOffset((w) => w - 1)}
               disabled={weekOffset === 0}
-              className="rounded-lg p-1.5 text-brand-gray transition-colors hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-30"
+              className={weekArrowClassName}
               aria-label="Semana anterior"
             >
-              <ChevronLeft className="h-4 w-4" />
+              <ChevronLeft className="h-5 w-5" />
             </button>
             <span className="text-sm font-medium text-brand-gray">
               {formatWeekRange(weekDays[0], weekDays[6])}
@@ -124,10 +137,10 @@ export function DateTimeStep({
               type="button"
               onClick={() => setWeekOffset((w) => w + 1)}
               disabled={weekOffset >= MAX_WEEK_OFFSET}
-              className="rounded-lg p-1.5 text-brand-gray transition-colors hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-30"
+              className={weekArrowClassName}
               aria-label="Semana siguiente"
             >
-              <ChevronRight className="h-4 w-4" />
+              <ChevronRight className="h-5 w-5" />
             </button>
           </div>
 
@@ -135,30 +148,29 @@ export function DateTimeStep({
             {weekDays.map((date, index) => {
               const available = slots?.days[date] ?? [];
               const disabled = !slots || available.length === 0;
+              const isChosen = !disabled && selectedDate === date;
 
               return (
                 <button
                   key={date}
                   type="button"
                   disabled={disabled}
+                  aria-pressed={isChosen}
                   onClick={() => {
                     setSelectedDate(date);
                     setTime(null);
                   }}
                   className={cn(
-                    "flex flex-col items-center gap-1 rounded-lg border px-1 py-2 text-xs font-medium transition-colors",
-                    disabled &&
-                      "cursor-not-allowed border-gray-100 text-gray-300",
-                    !disabled &&
-                      selectedDate === date &&
-                      "border-brand-teal bg-brand-teal/10 text-brand-teal",
-                    !disabled &&
-                      selectedDate !== date &&
-                      "border-gray-200 text-brand-gray hover:bg-gray-50",
+                    "flex min-h-[52px] flex-col items-center justify-center gap-0.5 rounded-lg border px-0.5 py-2 text-xs font-medium transition-colors",
+                    disabled
+                      ? unavailableOptionClassName
+                      : optionClassName(isChosen),
                   )}
                 >
                   <span>{dayLabel(index)}</span>
-                  <span className="text-sm">{dayNumber(date)}</span>
+                  <span className="text-base font-semibold leading-none">
+                    {dayNumber(date)}
+                  </span>
                 </button>
               );
             })}
@@ -186,12 +198,11 @@ export function DateTimeStep({
                   <button
                     key={slot}
                     type="button"
+                    aria-pressed={time === slot}
                     onClick={() => setTime(slot)}
                     className={cn(
-                      "rounded-lg border px-2 py-2 text-sm font-medium transition-colors",
-                      time === slot
-                        ? "border-brand-teal bg-brand-teal/10 text-brand-teal"
-                        : "border-gray-200 text-brand-gray hover:bg-gray-50",
+                      "rounded-lg border px-2 py-2.5 text-sm font-medium transition-colors",
+                      optionClassName(time === slot),
                     )}
                   >
                     {slot}
@@ -206,14 +217,16 @@ export function DateTimeStep({
       {hint}
 
       <div className="mt-8 flex gap-3">
-        <Button
-          type="button"
-          variant="outline"
-          className="flex-1"
-          onClick={onBack}
-        >
-          Atrás
-        </Button>
+        {onBack && (
+          <Button
+            type="button"
+            variant="outline"
+            className="flex-1"
+            onClick={onBack}
+          >
+            Atrás
+          </Button>
+        )}
         <Button
           type="button"
           className="flex-1"

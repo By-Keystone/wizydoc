@@ -2,30 +2,36 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
-
-interface Specialty {
-  id: string;
-  name: string;
-}
+import type { Specialty } from "../booking-steps";
+import { ChoiceButton } from "./choice-button";
 
 interface Props {
   specialties: Specialty[];
+  initialSelectedId?: string | null;
   onNext: (specialty: Specialty) => void;
 }
 
-export function SpecialtyStep({ specialties, onNext }: Props) {
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+export function SpecialtyStep({
+  specialties,
+  initialSelectedId = null,
+  onNext,
+}: Props) {
+  const [selectedId, setSelectedId] = useState<string | null>(
+    initialSelectedId,
+  );
 
   const selected = specialties.find((s) => s.id === selectedId) ?? null;
 
   return (
     <div>
-      <h2 className="text-lg font-semibold text-brand-teal-dark">
+      <h2
+        tabIndex={-1}
+        className="text-lg font-semibold text-brand-teal-dark outline-none"
+      >
         ¿Qué especialidad necesitas?
       </h2>
       <p className="mt-1 text-sm text-brand-gray">
-        Elige la especialidad para ver los doctores disponibles.
+        Elige la especialidad de tu consulta.
       </p>
 
       {specialties.length === 0 ? (
@@ -35,19 +41,12 @@ export function SpecialtyStep({ specialties, onNext }: Props) {
       ) : (
         <div className="mt-6 grid grid-cols-2 gap-3">
           {specialties.map((specialty) => (
-            <button
+            <ChoiceButton
               key={specialty.id}
-              type="button"
+              label={specialty.name}
+              isChosen={selectedId === specialty.id}
               onClick={() => setSelectedId(specialty.id)}
-              className={cn(
-                "rounded-xl border px-4 py-3 text-left text-sm font-medium transition-colors",
-                selectedId === specialty.id
-                  ? "border-brand-teal bg-brand-teal/10 text-brand-teal"
-                  : "border-gray-200 text-brand-gray hover:bg-gray-50",
-              )}
-            >
-              {specialty.name}
-            </button>
+            />
           ))}
         </div>
       )}

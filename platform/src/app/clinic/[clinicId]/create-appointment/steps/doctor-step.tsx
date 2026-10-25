@@ -2,28 +2,41 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 import type { ClinicDoctor } from "@/lib/api/doctors/types";
+import { ChoiceButton } from "./choice-button";
 
 interface Props {
   doctors: ClinicDoctor[];
+  specialtyName: string;
+  initialSelectedId?: string | null;
   onNext: (doctor: ClinicDoctor) => void;
-  onBack: () => void;
+  onBack?: () => void;
 }
 
-export function DoctorStep({ doctors, onNext, onBack }: Props) {
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+export function DoctorStep({
+  doctors,
+  specialtyName,
+  initialSelectedId = null,
+  onNext,
+  onBack,
+}: Props) {
+  const [selectedId, setSelectedId] = useState<string | null>(
+    initialSelectedId,
+  );
 
   const selected =
     doctors.find((d) => d.doctorProfileId === selectedId) ?? null;
 
   return (
     <div>
-      <h2 className="text-lg font-semibold text-brand-teal-dark">
+      <h2
+        tabIndex={-1}
+        className="text-lg font-semibold text-brand-teal-dark outline-none"
+      >
         Elige un doctor
       </h2>
-      <p className="mt-1 text-sm text-brand-gray">
-        Doctores disponibles para la especialidad seleccionada.
+      <p className="mt-1 break-words text-sm text-brand-gray">
+        Doctores disponibles para {specialtyName}.
       </p>
 
       {doctors.length === 0 ? (
@@ -33,32 +46,27 @@ export function DoctorStep({ doctors, onNext, onBack }: Props) {
       ) : (
         <div className="mt-6 flex flex-col gap-3">
           {doctors.map((doctor) => (
-            <button
+            <ChoiceButton
               key={doctor.doctorProfileId}
-              type="button"
+              label={doctor.displayName}
+              isChosen={selectedId === doctor.doctorProfileId}
               onClick={() => setSelectedId(doctor.doctorProfileId)}
-              className={cn(
-                "rounded-xl border px-4 py-3 text-left text-sm font-medium transition-colors",
-                selectedId === doctor.doctorProfileId
-                  ? "border-brand-teal bg-brand-teal/10 text-brand-teal"
-                  : "border-gray-200 text-brand-gray hover:bg-gray-50",
-              )}
-            >
-              {doctor.displayName}
-            </button>
+            />
           ))}
         </div>
       )}
 
       <div className="mt-8 flex gap-3">
-        <Button
-          type="button"
-          variant="outline"
-          className="flex-1"
-          onClick={onBack}
-        >
-          Atrás
-        </Button>
+        {onBack && (
+          <Button
+            type="button"
+            variant="outline"
+            className="flex-1"
+            onClick={onBack}
+          >
+            Atrás
+          </Button>
+        )}
         <Button
           type="button"
           className="flex-1"

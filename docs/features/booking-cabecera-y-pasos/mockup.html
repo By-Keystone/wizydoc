@@ -1,0 +1,1107 @@
+<!doctype html>
+<html lang="es-PE">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototipo: cabecera y pasos del booking público</title>
+<style>
+  :root {
+    --teal: #0E8C82;
+    --teal-dark: #0B4F49;
+    --ink: #1F2A2A;
+    --gray: #5C6B6A;
+    --surface: #EFF5F4;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    color: var(--ink);
+    background: #e5e7eb;
+    -webkit-font-smoothing: antialiased;
+  }
+  button, input { font: inherit; }
+  code { font-size: 11.5px; background: #f3f4f6; border-radius: 4px; padding: 0 3px; }
+  :focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
+  .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+
+  /* ---------- Barra del prototipo (no es parte de la app) ---------- */
+  .proto { display: grid; grid-template-columns: 330px minmax(0, 1fr); min-height: 100vh; }
+  .proto-panel { background: #fff; border-right: 1px solid #d1d5db; padding: 20px; overflow-y: auto; max-height: 100vh; position: sticky; top: 0; }
+  .proto-panel h1 { font-size: 15px; margin: 0; color: var(--teal-dark); }
+  .proto-panel p.lead { font-size: 12px; color: var(--gray); margin: 6px 0 14px; line-height: 1.45; }
+  .proto-panel h2 { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--teal); margin: 18px 0 8px; }
+  .proto-panel h3 { font-size: 12px; color: var(--ink); margin: 12px 0 4px; }
+  .proto-panel fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
+  .proto-panel legend { padding: 0; }
+  .proto-panel label { display: flex; gap: 8px; align-items: flex-start; font-size: 13px; color: var(--ink); padding: 4px 0; cursor: pointer; line-height: 1.35; }
+  .proto-panel input { margin-top: 2px; accent-color: var(--teal); }
+  .seg { display: flex; border: 1px solid #d1d5db; border-radius: 8px; overflow: hidden; }
+  .seg button { flex: 1; border: 0; background: #fff; padding: 6px; font-size: 12.5px; color: var(--gray); cursor: pointer; }
+  .seg button[aria-pressed="true"] { background: var(--teal); color: #fff; }
+  .restart { display: block; width: 100%; margin-top: 16px; border: 1px solid #d1d5db; background: #fff; border-radius: 8px; padding: 7px 10px; font-size: 13px; color: var(--ink); cursor: pointer; }
+  .restart:hover { background: #f9fafb; }
+  .note { font-size: 11.5px; color: var(--gray); background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 8px 10px; margin-top: 12px; line-height: 1.45; }
+  .note ul { margin: 4px 0 0; padding-left: 16px; }
+  .note li { margin: 3px 0; }
+  .note a { color: var(--teal-dark); }
+
+  .stage { display: flex; align-items: flex-start; padding: 28px 16px 40px; overflow-x: auto; }
+  .stage > div { margin: 0 auto; }
+  .frame-caption { text-align: center; font-size: 12.5px; color: var(--gray); margin: 0 0 10px; }
+  .device { background: #fff; box-shadow: 0 10px 30px rgba(0, 0, 0, .12); overflow: hidden; box-sizing: content-box; }
+  .device.mobile { width: 375px; border: 8px solid #1f2937; border-radius: 28px; }
+  .device.desktop { width: 1024px; border: 1px solid #cbd5e1; border-radius: 10px; }
+  .device iframe { display: block; width: 100%; border: 0; }
+  #live-device.mobile { height: 740px; }
+  #live-device.desktop { height: 720px; }
+  #live-device iframe { height: 100%; }
+
+  /* ---------- Galería de estados ---------- */
+  .gallery { padding: 32px 24px 72px; border-top: 1px solid #d1d5db; background: #f3f4f6; }
+  .gallery > h2 { font-size: 18px; margin: 0; color: var(--teal-dark); }
+  .gallery > p { font-size: 13px; color: var(--gray); margin: 6px 0 24px; max-width: 760px; line-height: 1.5; }
+  .gallery-grid { display: flex; flex-wrap: wrap; gap: 36px 28px; align-items: flex-start; }
+  .shot { margin: 0; width: 391px; }
+  .shot.wide { width: 100%; }
+  .shot h3 { font-size: 14px; margin: 0; color: var(--ink); }
+  .shot p { font-size: 12.5px; color: var(--gray); margin: 4px 0 10px; line-height: 1.45; min-height: 54px; }
+  .shot .scroll { overflow-x: auto; padding-bottom: 8px; }
+  .not-applicable { width: 391px; border: 1px dashed #9ca3af; border-radius: 16px; background: #fff; padding: 18px; font-size: 13px; color: var(--gray); line-height: 1.5; }
+  .not-applicable strong { color: var(--ink); }
+
+  @media (max-width: 900px) {
+    .proto { grid-template-columns: minmax(0, 1fr); }
+    .proto-panel { position: static; max-height: none; border-right: 0; border-bottom: 1px solid #d1d5db; }
+  }
+</style>
+</head>
+<body>
+<div class="proto">
+  <aside class="proto-panel" aria-label="Controles del prototipo">
+    <h1>Booking público · cabecera y pasos</h1>
+    <p class="lead">
+      Ruta <code>/clinic/[clinicId]/create-appointment</code>. Hoy en el prototipo: <strong>martes 27 de octubre de 2026, 11:20</strong> (hora de Lima).
+      Datos ficticios. Lo que está en esta barra no es parte de la app. Plan: <code>plan.md</code> en esta carpeta.
+    </p>
+
+    <h2>Vista</h2>
+    <div class="seg" role="group" aria-label="Tamaño de la vista">
+      <button type="button" data-view="mobile" aria-pressed="true">Celular 375 px</button>
+      <button type="button" data-view="desktop" aria-pressed="false">Escritorio 1024 px</button>
+    </div>
+
+    <h2>Sede</h2>
+    <fieldset>
+      <legend class="sr-only">Escenario</legend>
+      <label><input type="radio" name="scenario" value="independent" checked> Un médico, una especialidad (médico independiente)</label>
+      <label><input type="radio" name="scenario" value="team"> Una especialidad, tres médicos</label>
+      <label><input type="radio" name="scenario" value="clinic"> Tres especialidades, cuatro médicos (una con dos médicos)</label>
+      <label><input type="radio" name="scenario" value="multiSpecialty"> Un médico con dos especialidades</label>
+      <label><input type="radio" name="scenario" value="empty"> Sin médicos con horarios</label>
+      <label><input type="radio" name="scenario" value="loading"> Cargando la página</label>
+      <label><input type="radio" name="scenario" value="error"> Error al cargar la página</label>
+    </fieldset>
+    <label><input type="checkbox" id="clinic-failed"> <span>La sede no cargó (falla <code>GET /clinic/:clinicId/location</code>)</span></label>
+
+    <h2>Horarios</h2>
+    <fieldset>
+      <legend class="sr-only">Horarios</legend>
+      <label><input type="radio" name="slots" value="ok" checked> Cargan bien</label>
+      <label><input type="radio" name="slots" value="loading"> Se quedan cargando</label>
+      <label><input type="radio" name="slots" value="error"> No cargan</label>
+    </fieldset>
+
+    <h2>Decisiones pendientes</h2>
+    <h3>d-2 · Logo de WizyDoc</h3>
+    <fieldset>
+      <legend class="sr-only">Logo de WizyDoc</legend>
+      <label><input type="radio" name="logo" value="footer" checked> Al pie, sin enlace (recomendado)</label>
+      <label><input type="radio" name="logo" value="top"> Arriba, sin enlace</label>
+    </fieldset>
+    <h3>d-3 · Color de lo elegido</h3>
+    <fieldset>
+      <legend class="sr-only">Color de lo elegido</legend>
+      <label><input type="radio" name="chosen" value="dark" checked> Teal oscuro, 9,4:1 (recomendado)</label>
+      <label><input type="radio" name="chosen" value="teal"> Teal como la landing, 4,1:1</label>
+    </fieldset>
+    <p class="lead" style="margin-top:8px">
+      <strong>d-1 · Qué nombre encabeza:</strong> el prototipo aplica la opción a. Si el médico está definido, va su nombre; si no, la sede. La opción c (nombre de la organización) necesitaría cambiar el api.
+    </p>
+
+    <button type="button" class="restart" id="restart">Reiniciar el recorrido</button>
+
+    <div class="note">
+      <strong>Reglas aplicadas</strong>
+      <ul>
+        <li>Se salta el paso que tiene una sola opción, y lo saltado queda elegido (P-1).</li>
+        <li>La barra tiene un tramo por paso visible. Con varias especialidades puede pasar de 4 a 3 tramos al elegir una que tiene un solo médico (P-3).</li>
+        <li>En el primer paso visible no hay «Atrás». Al volver, la especialidad y el médico siguen marcados (P-4).</li>
+        <li>La cabecera muestra lo ya definido y cambia al pulsar «Siguiente» (C-1). Si la sede no carga, la reserva sigue sin la línea de ubicación (C-2).</li>
+        <li>Lo elegido va relleno, lo disponible en una baldosa blanca y lo no disponible sin baldosa (E-1).</li>
+        <li>A 375 px quedan 301 px útiles para el calendario; hoy son 279 (E-2).</li>
+      </ul>
+    </div>
+    <p class="note">
+      <strong>Sin cambios:</strong> «Tus datos» y «¡Cita reservada!». En el prototipo, «Confirmar reserva» no valida los campos. Abajo, en <a href="#estados">Estados</a>, están todos los estados uno al lado del otro, incluida la versión de hoy.
+    </p>
+  </aside>
+
+  <div class="stage">
+    <div>
+      <p class="frame-caption" id="live-caption"></p>
+      <div id="live-device" class="device mobile">
+        <iframe id="live-frame" title="Booking público, prototipo navegable"></iframe>
+      </div>
+    </div>
+  </div>
+</div>
+
+<section class="gallery" id="estados" aria-labelledby="gallery-title">
+  <h2 id="gallery-title">Estados</h2>
+  <p>
+    Cada vista es un celular de 375 px real, con los breakpoints de la app, salvo la última, que es de escritorio. Los interruptores de logo y color de la barra también cambian estas vistas.
+    Cada una se puede recorrer.
+  </p>
+  <div class="gallery-grid" id="gallery"></div>
+</section>
+
+<template id="app-head">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com/3.4.16"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          border: "hsl(var(--border))",
+          ring: "hsl(var(--ring))",
+          background: "hsl(var(--background))",
+          foreground: "hsl(var(--foreground))",
+          brand: {
+            teal: "#0E8C82",
+            "teal-dark": "#0B4F49",
+            ink: "#1F2A2A",
+            gray: "#5C6B6A",
+            surface: "#EFF5F4",
+            coral: "#FF6F59",
+          },
+        },
+        borderRadius: {
+          lg: "var(--radius)",
+          md: "calc(var(--radius) - 2px)",
+          sm: "calc(var(--radius) - 4px)",
+        },
+        fontFamily: { sans: ["Inter", "ui-sans-serif", "system-ui", "sans-serif"] },
+      },
+    },
+  };
+</script>
+<style>
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222 47% 11%;
+    --border: 214 32% 91%;
+    --ring: 175 82% 30%;
+    --radius: 0.625rem;
+  }
+</style>
+</template>
+
+<template id="app-body">
+<div id="root"></div>
+<script>
+(function () {
+  "use strict";
+
+  const CONFIG = JSON.parse(document.getElementById("mock-config").textContent);
+  let options = { logo: CONFIG.logo, chosen: CONFIG.chosen };
+  const isLegacy = Boolean(CONFIG.legacy);
+
+  const LOGO = "data:image/png;base64,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";
+
+  const TODAY = "2026-10-27";
+  const NOW = "11:20";
+  const MAX_WEEK_OFFSET = 8;
+
+  const DAY_LABELS = ["Lu", "Ma", "Mi", "Ju", "Vi", "Sá", "Do"];
+  const MONTHS_SHORT = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+  const DAYS_LONG = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
+  const MONTHS_LONG = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
+
+  const ICONS = {
+    check: '<path d="M20 6 9 17l-5-5"/>',
+    chevronLeft: '<path d="m15 18-6-6 6-6"/>',
+    chevronRight: '<path d="m9 18 6-6-6-6"/>',
+    loader: '<path d="M21 12a9 9 0 1 1-6.219-8.56"/>',
+    mapPin: '<path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/>',
+    stethoscope: '<path d="M11 2v2"/><path d="M5 2v2"/><path d="M5 3H4a2 2 0 0 0-2 2v4a6 6 0 0 0 12 0V5a2 2 0 0 0-2-2h-1"/><path d="M8 15a6 6 0 0 0 12 0v-3"/><circle cx="20" cy="10" r="2"/>',
+    building: '<path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/>',
+    calendar: '<path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14h.01"/><path d="M8 18h.01"/><path d="M12 18h.01"/><path d="M16 18h.01"/>',
+    checkCircle: '<path d="M21.801 10A10 10 0 1 1 17 3.335"/><path d="m9 11 3 3L22 4"/>',
+    alert: '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
+  };
+
+  const icon = (paths, className) =>
+    `<svg class="${className}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths}</svg>`;
+  const escapeHtml = (text) =>
+    String(text).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+
+  /* ---------- Datos ficticios (lo que devolverían /doctors y /location) ---------- */
+  const DERMATOLOGIA = { id: "derma", name: "Dermatología" };
+  const PEDIATRIA = { id: "pedia", name: "Pediatría" };
+  const CARDIOLOGIA = { id: "cardio", name: "Cardiología" };
+  const MEDICINA_GENERAL = { id: "medgen", name: "Medicina general" };
+  const GINECOLOGIA = { id: "gine", name: "Ginecología" };
+  const MEDICINA_GENERAL_AQP = { id: "medgen-aqp", name: "Medicina general" };
+  const PEDIATRIA_AQP = { id: "pedia-aqp", name: "Pediatría" };
+
+  const SCENARIOS = {
+    independent: {
+      clinic: { name: "Consultorio Paredes", address: "Av. José Larco 812, of. 304, Miraflores" },
+      durationMinutes: 30,
+      doctors: [{ id: "paredes", displayName: "Dra. Lucía Paredes Quispe", specialties: [DERMATOLOGIA] }],
+    },
+    team: {
+      clinic: { name: "Centro Pediátrico Los Olivos", address: "Av. Antúnez de Mayolo 1150, Los Olivos" },
+      durationMinutes: 20,
+      doctors: [
+        { id: "salinas", displayName: "Dr. Jorge Salinas Rojas", specialties: [PEDIATRIA] },
+        { id: "villanueva", displayName: "Dra. Carmen Villanueva Torres", specialties: [PEDIATRIA] },
+        { id: "rios", displayName: "Andrea Ríos Campos", specialties: [PEDIATRIA] },
+      ],
+    },
+    clinic: {
+      clinic: { name: "Clínica San Gabriel – San Isidro", address: "Calle Las Begonias 475, San Isidro" },
+      durationMinutes: 30,
+      doctors: [
+        { id: "cespedes", displayName: "Dr. Martín Céspedes Vela", specialties: [CARDIOLOGIA] },
+        { id: "leon", displayName: "Dra. Patricia León Arana", specialties: [MEDICINA_GENERAL] },
+        { id: "mendoza", displayName: "Dr. Raúl Mendoza Ugarte", specialties: [MEDICINA_GENERAL] },
+        { id: "quispe", displayName: "Dra. Silvia Quispe Mamani", specialties: [GINECOLOGIA] },
+      ],
+    },
+    multiSpecialty: {
+      clinic: { name: "Consultorio Dr. Ramos", address: "Av. Ejército 710, Yanahuara, Arequipa" },
+      durationMinutes: 30,
+      doctors: [{ id: "ramos", displayName: "Dr. Alberto Ramos Chávez", specialties: [MEDICINA_GENERAL_AQP, PEDIATRIA_AQP] }],
+    },
+    empty: {
+      clinic: { name: "Consultorio Mendoza", address: "Jr. Junín 455, Trujillo" },
+      durationMinutes: 30,
+      doctors: [],
+    },
+  };
+
+  const MORNINGS = { 1: [["09:00", "13:00"]], 2: [["09:00", "13:00"]], 3: [["09:00", "13:00"]], 4: [["09:00", "13:00"]], 5: [["09:00", "13:00"]], 6: [["09:00", "12:00"]] };
+  const AFTERNOONS_MWF = { 1: [["15:00", "19:00"]], 3: [["15:00", "19:00"]], 5: [["15:00", "19:00"]] };
+  const AVAILABILITY = {
+    paredes: { 1: [["09:00", "13:00"]], 2: [["09:00", "13:00"], ["16:00", "19:00"]], 3: [["09:00", "13:00"]], 4: [["09:00", "13:00"], ["16:00", "19:00"]], 5: [["09:00", "13:00"]], 6: [["09:00", "12:00"]] },
+    salinas: AFTERNOONS_MWF,
+    villanueva: { 2: [["15:00", "19:00"]], 3: [["15:00", "19:00"]], 4: [["15:00", "19:00"]], 6: [["09:00", "12:00"]] },
+    rios: MORNINGS,
+    cespedes: { 2: [["08:00", "12:00"]], 4: [["08:00", "12:00"]] },
+    leon: MORNINGS,
+    mendoza: AFTERNOONS_MWF,
+    quispe: { 1: [["09:00", "13:00"]], 3: [["09:00", "13:00"]] },
+    ramos: MORNINGS,
+  };
+
+  const scenario = SCENARIOS[CONFIG.scenario] || null;
+  const clinic = scenario && !CONFIG.clinicFailed ? scenario.clinic : null;
+  const doctors = scenario ? scenario.doctors : [];
+  const durationMinutes = scenario ? scenario.durationMinutes : 30;
+
+  /* ---------- Fechas como etiquetas "YYYY-MM-DD" (igual que week.ts) ---------- */
+  const asUtc = (date) => new Date(`${date}T00:00:00Z`);
+  const addDays = (date, days) => {
+    const shifted = asUtc(date);
+    shifted.setUTCDate(shifted.getUTCDate() + days);
+    return shifted.toISOString().slice(0, 10);
+  };
+  const weekdayOf = (date) => asUtc(date).getUTCDay();
+  const startOfWeek = (date) => addDays(date, weekdayOf(date) === 0 ? -6 : 1 - weekdayOf(date));
+  const weekDaysFrom = (monday) => Array.from({ length: 7 }, (_, index) => addDays(monday, index));
+  const dayNumber = (date) => Number(date.slice(8, 10));
+  const monthShort = (date) => MONTHS_SHORT[Number(date.slice(5, 7)) - 1];
+  const formatWeekRange = (start, end) => `${dayNumber(start)} ${monthShort(start)} – ${dayNumber(end)} ${monthShort(end)}`;
+  const formatWhen = (date, time) => {
+    const day = asUtc(date);
+    const label = `${DAYS_LONG[day.getUTCDay()]} ${day.getUTCDate()} de ${MONTHS_LONG[day.getUTCMonth()]}`;
+    return `${label.charAt(0).toUpperCase()}${label.slice(1)}, ${time}`;
+  };
+  const toMinutes = (time) => Number(time.slice(0, 2)) * 60 + Number(time.slice(3, 5));
+  const toTime = (minutes) => `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
+
+  const isTaken = (doctorId, date, time) =>
+    Array.from(doctorId + date + time).reduce((sum, character) => sum + character.charCodeAt(0), 0) % 5 === 0;
+
+  function slotsFor(doctorId, date) {
+    if (!doctorId || date < TODAY) return [];
+    const ranges = (AVAILABILITY[doctorId] || MORNINGS)[weekdayOf(date)] || [];
+    const times = [];
+    ranges.forEach(([from, to]) => {
+      for (let minutes = toMinutes(from); minutes + durationMinutes <= toMinutes(to); minutes += durationMinutes) {
+        times.push(toTime(minutes));
+      }
+    });
+    return times.filter((time) => !(date === TODAY && time <= NOW) && !isTaken(doctorId, date, time));
+  }
+
+  /* ---------- Reglas del plan: P-1 a P-6 y C-1 ---------- */
+  const specialties = (() => {
+    const byId = new Map();
+    doctors.forEach((doctor) => doctor.specialties.forEach((specialty) => byId.set(specialty.id, specialty)));
+    return Array.from(byId.values());
+  })();
+  const doctorsFor = (specialtyId) => doctors.filter((doctor) => doctor.specialties.some((specialty) => specialty.id === specialtyId));
+  const findSpecialty = (id) => specialties.find((specialty) => specialty.id === id) || null;
+  const findDoctor = (id) => doctors.find((doctor) => doctor.id === id) || null;
+
+  function initialState() {
+    const specialtyId = specialties.length === 1 ? specialties[0].id : null;
+    const onlyDoctors = specialtyId ? doctorsFor(specialtyId) : [];
+    const doctorId = onlyDoctors.length === 1 ? onlyDoctors[0].id : null;
+    return {
+      step: !specialtyId ? "specialty" : !doctorId ? "doctor" : "datetime",
+      specialtyId,
+      doctorId,
+      pendingSpecialtyId: specialtyId,
+      pendingDoctorId: doctorId,
+      weekOffset: 0,
+      date: null,
+      time: null,
+      patientName: null,
+      isConfirming: false,
+    };
+  }
+
+  function visibleSteps(current) {
+    const steps = [];
+    if (specialties.length > 1) steps.push("specialty");
+    const needsDoctor = current.specialtyId
+      ? doctorsFor(current.specialtyId).length > 1
+      : specialties.some((specialty) => doctorsFor(specialty.id).length > 1);
+    if (needsDoctor) steps.push("doctor");
+    steps.push("datetime", "patient");
+    return steps;
+  }
+
+  const definedDoctor = () => findDoctor(state.doctorId) || (doctors.length === 1 ? doctors[0] : null);
+
+  let state = Object.assign(initialState(), CONFIG.initial || {});
+  if (state.step === "datetime" && state.date && CONFIG.slots === "ok") {
+    const daySlots = slotsFor(state.doctorId, state.date);
+    if (daySlots.length === 0) {
+      state.date = null;
+      state.time = null;
+    } else if (state.time && !daySlots.includes(state.time)) {
+      state.time = daySlots[Math.min(1, daySlots.length - 1)];
+    }
+  }
+  let shouldFocusStepTitle = false;
+
+  function enter(step) {
+    state.step = step;
+    if (step === "specialty") state.pendingSpecialtyId = state.specialtyId;
+    if (step === "doctor") state.pendingDoctorId = state.doctorId;
+    if (step === "datetime") {
+      state.weekOffset = 0;
+      state.date = null;
+      state.time = null;
+    }
+    shouldFocusStepTitle = true;
+    render();
+  }
+
+  function goForward() {
+    const steps = visibleSteps(state);
+    enter(steps[steps.indexOf(state.step) + 1]);
+  }
+
+  function goBack() {
+    const steps = visibleSteps(state);
+    enter(steps[steps.indexOf(state.step) - 1]);
+  }
+
+  function commitSpecialty() {
+    const chosenId = state.pendingSpecialtyId;
+    if (chosenId !== state.specialtyId) {
+      const candidates = doctorsFor(chosenId);
+      state.doctorId = candidates.length === 1 ? candidates[0].id : null;
+    }
+    state.specialtyId = chosenId;
+    goForward();
+  }
+
+  function restart() {
+    state = initialState();
+    shouldFocusStepTitle = true;
+    render();
+  }
+
+  /* ---------- Clases (E-1) ---------- */
+  const FOCUS_RING = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2";
+  const CHOSEN = {
+    dark: "border-brand-teal-dark bg-brand-teal-dark text-white",
+    teal: "border-brand-teal bg-brand-teal text-white",
+  };
+  const AVAILABLE = "border-gray-200 bg-white text-brand-ink hover:bg-gray-50";
+  const UNAVAILABLE = "cursor-not-allowed border-transparent text-gray-400";
+  const LEGACY_CHOSEN = "border-brand-teal bg-brand-teal/10 text-brand-teal";
+  const LEGACY_AVAILABLE = "border-gray-200 text-brand-gray hover:bg-gray-50";
+  const LEGACY_UNAVAILABLE = "cursor-not-allowed border-gray-100 text-gray-300";
+
+  const optionClass = (isChosen) => {
+    if (isLegacy) return isChosen ? LEGACY_CHOSEN : LEGACY_AVAILABLE;
+    return isChosen ? CHOSEN[options.chosen] : AVAILABLE;
+  };
+  const unavailableClass = () => (isLegacy ? LEGACY_UNAVAILABLE : UNAVAILABLE);
+
+  const BUTTON_BASE = "inline-flex items-center justify-center whitespace-nowrap rounded-lg text-sm font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 h-10 px-5 py-2";
+  const BUTTON_DEFAULT = `${BUTTON_BASE} bg-brand-teal text-white shadow hover:bg-brand-teal-dark active:scale-[0.98] disabled:bg-brand-teal/50`;
+  const BUTTON_OUTLINE = `${BUTTON_BASE} border border-gray-200 bg-white text-brand-gray hover:bg-gray-50 active:scale-[0.98]`;
+  const BUTTON_CORAL = `${BUTTON_BASE} bg-brand-coral text-white shadow hover:bg-brand-coral/90 active:scale-[0.98]`;
+  const FIELD = "rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none transition focus:border-brand-teal focus:ring-2 focus:ring-brand-teal/20";
+
+  /* ---------- Piezas de la UI ---------- */
+  function shell(inner) {
+    const page = "flex min-h-screen flex-col bg-gradient-to-br from-brand-surface via-white to-brand-surface";
+    if (isLegacy) {
+      return `<div class="${page}">
+        <header class="px-6 py-5"><a href="#" data-action="noop" class="inline-flex items-center"><img src="${LOGO}" alt="WizyDoc" class="h-8 w-auto"></a></header>
+        <main class="flex flex-1 items-center justify-center px-4 py-12">${inner}</main>
+        <footer class="py-6 text-center text-xs text-brand-gray">© 2026 WizyDoc. Todos los derechos reservados.</footer>
+      </div>`;
+    }
+    const isLogoOnTop = options.logo === "top";
+    return `<div class="${page}">
+      ${isLogoOnTop ? `<header class="px-6 py-5"><img src="${LOGO}" alt="WizyDoc" class="h-8 w-auto"></header>` : ""}
+      <main class="flex flex-1 items-start justify-center px-4 pb-8 pt-4 sm:items-center sm:py-12">${inner}</main>
+      <footer class="flex flex-col items-center gap-2 px-4 py-6 text-center text-xs text-brand-gray">
+        ${isLogoOnTop ? "" : `<img src="${LOGO}" alt="WizyDoc" class="h-5 w-auto">`}
+        <p>© 2026 WizyDoc. Todos los derechos reservados.</p>
+      </footer>
+    </div>`;
+  }
+
+  function card(inner) {
+    const padding = isLegacy ? "p-8" : "p-5 sm:p-8";
+    return `<div class="w-full max-w-md"><div class="rounded-2xl border border-gray-200 bg-brand-surface shadow-sm"><div class="${padding}">${inner}</div></div></div>`;
+  }
+
+  function bookingHeader(doctor, specialty) {
+    let eyebrow = null;
+    let title = "Reserva tu cita";
+    let headerIcon = ICONS.calendar;
+    let location = null;
+    if (doctor) {
+      eyebrow = "Reserva tu cita con";
+      title = doctor.displayName;
+      headerIcon = ICONS.stethoscope;
+      location = clinic ? [clinic.name, clinic.address].filter(Boolean).join(" · ") : null;
+    } else if (clinic) {
+      eyebrow = "Reserva tu cita en";
+      title = clinic.name;
+      headerIcon = ICONS.building;
+      location = clinic.address || null;
+    }
+    return `<header class="mb-5 flex gap-3 border-b border-gray-200 pb-4">
+      <span aria-hidden="true" class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-teal/10 text-brand-teal">${icon(headerIcon, "h-5 w-5")}</span>
+      <div class="min-w-0 flex-1">
+        <h1 class="text-brand-ink">
+          ${eyebrow ? `<span class="block text-xs font-medium text-brand-gray">${eyebrow}</span>` : ""}
+          <span class="block break-words text-base font-semibold leading-snug">${escapeHtml(title)}</span>
+        </h1>
+        ${specialty ? `<p class="text-sm font-medium text-brand-teal-dark">${escapeHtml(specialty.name)}</p>` : ""}
+        ${location ? `<p class="mt-1.5 flex items-start gap-1 text-[13px] leading-snug text-brand-gray">${icon(ICONS.mapPin, "mt-0.5 h-3.5 w-3.5 shrink-0")}<span class="min-w-0 break-words">${escapeHtml(location)}</span></p>` : ""}
+      </div>
+    </header>`;
+  }
+
+  function stepper(currentStep, totalSteps) {
+    const bars = Array.from({ length: totalSteps }, (_, index) =>
+      `<div class="h-1.5 flex-1 rounded-full transition-colors ${index < currentStep ? "bg-brand-teal" : "bg-gray-200"}"></div>`).join("");
+    if (isLegacy) return `<div class="mb-6 flex items-center gap-2">${bars}</div>`;
+    return `<div class="mb-6"><p class="sr-only">Paso ${currentStep} de ${totalSteps}</p><div aria-hidden="true" class="flex items-center gap-2">${bars}</div></div>`;
+  }
+
+  const stepTitle = (text) =>
+    `<h2 tabindex="-1" data-step-title class="text-lg font-semibold text-brand-teal-dark outline-none">${text}</h2>`;
+
+  function actions(hasBack, nextAction, isNextEnabled) {
+    const next = `<button type="button" data-action="${nextAction}" class="${BUTTON_DEFAULT} ${hasBack ? "flex-1" : "w-full"}" ${isNextEnabled ? "" : "disabled"}>Siguiente</button>`;
+    if (!hasBack) return `<div class="mt-8">${next}</div>`;
+    return `<div class="mt-8 flex gap-3"><button type="button" data-action="${isLegacy ? "noop" : "back"}" class="${BUTTON_OUTLINE} flex-1">Atrás</button>${next}</div>`;
+  }
+
+  function choiceButton(action, id, label, isChosen) {
+    return `<button type="button" data-action="${action}" data-id="${id}" aria-pressed="${isChosen}" class="flex min-h-12 items-center justify-between gap-2 rounded-xl border px-4 py-3 text-left text-sm font-medium transition-colors ${FOCUS_RING} ${optionClass(isChosen)}">
+      <span>${escapeHtml(label)}</span>${isChosen ? icon(ICONS.check, "h-4 w-4 shrink-0") : ""}
+    </button>`;
+  }
+
+  function specialtyStep(hasBack) {
+    const choices = specialties.map((specialty) =>
+      choiceButton("pick-specialty", specialty.id, specialty.name, state.pendingSpecialtyId === specialty.id)).join("");
+    return `<div>
+      ${stepTitle("¿Qué especialidad necesitas?")}
+      <p class="mt-1 text-sm text-brand-gray">Elige la especialidad de tu consulta.</p>
+      <div class="mt-6 grid grid-cols-2 gap-3">${choices}</div>
+      ${actions(hasBack, "commit-specialty", Boolean(state.pendingSpecialtyId))}
+    </div>`;
+  }
+
+  function doctorStep(hasBack) {
+    const specialty = findSpecialty(state.specialtyId);
+    const choices = doctorsFor(state.specialtyId).map((doctor) =>
+      choiceButton("pick-doctor", doctor.id, doctor.displayName, state.pendingDoctorId === doctor.id)).join("");
+    return `<div>
+      ${stepTitle("Elige un doctor")}
+      <p class="mt-1 text-sm text-brand-gray">Doctores disponibles para ${escapeHtml(specialty.name)}.</p>
+      <div class="mt-6 flex flex-col gap-3">${choices}</div>
+      ${actions(hasBack, "commit-doctor", Boolean(state.pendingDoctorId))}
+    </div>`;
+  }
+
+  function dateTimeStep(hasBack) {
+    const isLoadingSlots = CONFIG.slots === "loading";
+    const hasSlotsError = CONFIG.slots === "error";
+    const days = weekDaysFrom(addDays(startOfWeek(TODAY), state.weekOffset * 7));
+    const arrowClass = isLegacy
+      ? "rounded-lg p-1.5 text-brand-gray transition-colors hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-30"
+      : `flex h-10 w-10 items-center justify-center rounded-lg text-brand-gray transition-colors hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-30 ${FOCUS_RING}`;
+    const arrowIconClass = isLegacy ? "h-4 w-4" : "h-5 w-5";
+
+    const dayButtons = days.map((date, index) => {
+      const available = isLoadingSlots ? [] : slotsFor(state.doctorId, date);
+      const isDisabled = available.length === 0;
+      const isChosen = !isDisabled && state.date === date;
+      const layout = isLegacy
+        ? "flex flex-col items-center gap-1 rounded-lg border px-1 py-2 text-xs font-medium transition-colors"
+        : `flex min-h-[52px] flex-col items-center justify-center gap-0.5 rounded-lg border px-0.5 py-2 text-xs font-medium transition-colors ${FOCUS_RING}`;
+      const numberClass = isLegacy ? "text-sm" : "text-base font-semibold leading-none";
+      return `<button type="button" data-action="pick-day" data-date="${date}" ${isDisabled ? "disabled" : ""} aria-pressed="${isChosen}" class="${layout} ${isDisabled ? unavailableClass() : optionClass(isChosen)}">
+        <span>${DAY_LABELS[index]}</span><span class="${numberClass}">${dayNumber(date)}</span>
+      </button>`;
+    }).join("");
+
+    let slotsArea;
+    if (isLoadingSlots) {
+      slotsArea = `<div class="mt-2 flex items-center gap-2 text-sm text-brand-gray">${icon(ICONS.loader, "h-4 w-4 animate-spin")}Cargando horarios...</div>`;
+    } else if (!state.date) {
+      slotsArea = `<p class="mt-2 text-sm text-brand-gray">Elige un día para ver los horarios disponibles.</p>`;
+    } else {
+      const slotClass = isLegacy
+        ? "rounded-lg border px-2 py-2 text-sm font-medium transition-colors"
+        : `rounded-lg border px-2 py-2.5 text-sm font-medium transition-colors ${FOCUS_RING}`;
+      slotsArea = `<div class="mt-2 grid grid-cols-4 gap-2">${slotsFor(state.doctorId, state.date).map((time) =>
+        `<button type="button" data-action="pick-time" data-time="${time}" aria-pressed="${state.time === time}" class="${slotClass} ${optionClass(state.time === time)}">${time}</button>`).join("")}</div>`;
+    }
+
+    const calendar = hasSlotsError
+      ? `<p class="mt-6 text-sm text-red-600">No se pudieron cargar los horarios.</p>`
+      : `<div class="mt-6 flex items-center justify-between">
+          <button type="button" data-action="prev-week" aria-label="Semana anterior" class="${arrowClass}" ${state.weekOffset === 0 ? "disabled" : ""}>${icon(ICONS.chevronLeft, arrowIconClass)}</button>
+          <span class="text-sm font-medium text-brand-gray">${formatWeekRange(days[0], days[6])}</span>
+          <button type="button" data-action="next-week" aria-label="Semana siguiente" class="${arrowClass}" ${state.weekOffset >= MAX_WEEK_OFFSET ? "disabled" : ""}>${icon(ICONS.chevronRight, arrowIconClass)}</button>
+        </div>
+        <div class="mt-3 grid grid-cols-7 gap-1.5">${dayButtons}</div>
+        <div class="mt-6"><span class="text-sm font-medium text-brand-gray">Horarios</span>${slotsArea}</div>`;
+
+    return `<div>
+      ${stepTitle("Elige fecha y horario")}
+      <p class="mt-1 text-sm text-brand-gray">Selecciona el día y un horario disponible.</p>
+      ${calendar}
+      ${actions(hasBack, "commit-datetime", Boolean(state.date && state.time && !isLoadingSlots && !hasSlotsError))}
+    </div>`;
+  }
+
+  const labeledInput = (name, label, type, autoComplete, inputMode) =>
+    `<div class="flex flex-col gap-y-1.5"><label for="${name}" class="text-sm font-medium text-brand-gray">${label}</label><input id="${name}" name="${name}" type="${type}" autocomplete="${autoComplete}" ${inputMode ? `inputmode="${inputMode}"` : ""} class="${FIELD} min-w-0"></div>`;
+
+  function patientStep() {
+    const specialty = findSpecialty(state.specialtyId);
+    const doctor = findDoctor(state.doctorId);
+    return `<div>
+      ${stepTitle("Tus datos")}
+      <p class="mt-1 text-sm text-brand-gray">Completa tus datos para confirmar la cita.</p>
+      <div class="mt-4 rounded-xl border border-gray-200 bg-brand-surface px-4 py-3 text-sm text-brand-gray">
+        <p><span class="font-medium text-brand-ink">${escapeHtml(specialty.name)}</span> con <span class="font-medium text-brand-ink">${escapeHtml(doctor.displayName)}</span></p>
+        <p class="mt-0.5">${formatWhen(state.date, state.time)}</p>
+      </div>
+      <form class="mt-6 flex flex-col gap-4" novalidate>
+        <div class="grid grid-cols-2 gap-3">${labeledInput("name", "Nombre", "text", "given-name")}${labeledInput("lastName", "Apellido", "text", "family-name")}</div>
+        <div class="grid grid-cols-2 gap-3">
+          <div class="flex flex-col gap-y-1.5"><label for="documentType" class="text-sm font-medium text-brand-gray">Tipo de documento</label>
+            <select id="documentType" class="${FIELD} min-w-0"><option>DNI</option><option>Carné de extranjería</option><option>Pasaporte</option></select></div>
+          ${labeledInput("documentNumber", "N° de documento", "text", "off", "numeric")}
+        </div>
+        ${labeledInput("birthDate", "Fecha de nacimiento", "date", "bday")}
+        <div class="flex flex-col gap-y-1.5"><label for="phone" class="text-sm font-medium text-brand-gray">Teléfono</label>
+          <div class="flex">
+            <select aria-label="Código de país" class="rounded-l-lg border border-r-0 border-gray-300 bg-gray-50 px-2 py-2 text-sm outline-none transition focus:border-brand-teal focus:ring-2 focus:ring-brand-teal/20"><option>🇵🇪 +51</option><option>🇲🇽 +52</option><option>🇨🇴 +57</option></select>
+            <input id="phone" type="tel" autocomplete="tel-national" placeholder="999 888 777" class="min-w-0 flex-1 rounded-r-lg border border-gray-300 px-3 py-2 text-sm outline-none transition focus:border-brand-teal focus:ring-2 focus:ring-brand-teal/20">
+          </div>
+        </div>
+        ${labeledInput("email", "Email", "email", "email")}
+        <div class="mt-2 flex gap-3">
+          <button type="button" data-action="back" class="${BUTTON_OUTLINE} flex-1">Atrás</button>
+          <button type="submit" class="${BUTTON_DEFAULT} flex-1" ${state.isConfirming ? "disabled" : ""}>${state.isConfirming ? `${icon(ICONS.loader, "mr-2 h-4 w-4 animate-spin")}Confirmando...` : "Confirmar reserva"}</button>
+        </div>
+      </form>
+    </div>`;
+  }
+
+  function appointmentSummary() {
+    const specialty = findSpecialty(state.specialtyId);
+    const doctor = findDoctor(state.doctorId);
+    const row = (term, value) => `<dt class="text-[13px]">${term}</dt><dd class="font-medium text-brand-ink">${escapeHtml(value)}</dd>`;
+    return `<div class="mt-5 rounded-xl border border-gray-200 bg-white px-4 py-3.5 text-sm text-brand-gray">
+      <p class="border-b border-slate-100 pb-3 text-base font-bold text-brand-teal-dark">${formatWhen(state.date, state.time)}<span class="mt-0.5 block text-xs font-medium text-brand-gray">${durationMinutes} minutos</span></p>
+      <dl class="mt-3 grid grid-cols-[92px_1fr] gap-x-3 gap-y-2">
+        ${row("Especialidad", specialty.name)}${row("Profesional", doctor.displayName)}
+        ${clinic ? row("Sede", clinic.name) + row("Dirección", clinic.address) : ""}
+      </dl>
+    </div>`;
+  }
+
+  function successStep() {
+    return `<div class="text-center">
+      <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-green-100">${icon(ICONS.checkCircle, "h-7 w-7 text-green-600")}</div>
+      <h2 tabindex="-1" data-step-title class="text-2xl font-bold text-brand-teal-dark outline-none">¡Cita reservada!</h2>
+      <p class="mt-2 text-sm text-brand-gray">Te esperamos, ${escapeHtml(state.patientName || "Rosa")}. Guarda los detalles de tu cita.</p>
+      <div class="text-left">${appointmentSummary()}</div>
+      <p class="mt-4 text-[13px] text-brand-gray">Te enviamos la confirmación a tu correo.</p>
+      <button type="button" data-action="restart" class="${BUTTON_CORAL} mt-6">Reserva de nuevo</button>
+    </div>`;
+  }
+
+  const loadingState = () =>
+    `<div class="flex min-h-[50vh] flex-col items-center justify-center gap-3 text-brand-gray">${icon(ICONS.loader, "h-6 w-6 animate-spin")}<p class="text-sm">Cargando reserva...</p></div>`;
+
+  const errorState = () =>
+    `<div class="flex min-h-[50vh] flex-col items-center justify-center gap-4 p-8 text-center">
+      <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-red-50">${icon(ICONS.alert, "h-7 w-7 text-red-500")}</div>
+      <div><h2 class="text-lg font-semibold text-brand-teal-dark">Algo salió mal</h2><p class="mt-1 max-w-sm text-sm text-brand-gray">No pudimos cargar la reserva. Vuelve a intentarlo.</p></div>
+      <button type="button" data-action="noop" class="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-brand-gray transition hover:bg-gray-50">Reintentar</button>
+    </div>`;
+
+  function wizard() {
+    if (state.step === "success") return card(successStep());
+    if (isLegacy) return card(stepper(3, 4) + dateTimeStep(true));
+    const steps = visibleSteps(state);
+    const currentStep = steps.indexOf(state.step) + 1;
+    const hasBack = currentStep > 1;
+    const body = {
+      specialty: () => specialtyStep(hasBack),
+      doctor: () => doctorStep(hasBack),
+      datetime: () => dateTimeStep(hasBack),
+      patient: () => patientStep(),
+    }[state.step]();
+    return card(bookingHeader(definedDoctor(), findSpecialty(state.specialtyId)) + stepper(currentStep, steps.length) + body);
+  }
+
+  function page() {
+    if (CONFIG.scenario === "loading") return shell(loadingState());
+    if (CONFIG.scenario === "error") return shell(errorState());
+    if (doctors.length === 0) {
+      return shell(card(bookingHeader(null, null) + `<p class="text-sm text-brand-gray">Esta clínica todavía no tiene doctores disponibles para reservar citas.</p>`));
+    }
+    return shell(wizard());
+  }
+
+  /* ---------- Render e interacción ---------- */
+  const root = document.getElementById("root");
+
+  function focusKeyOf(element) {
+    if (!element || !element.dataset || !element.dataset.action) return null;
+    return [element.dataset.action, element.dataset.id, element.dataset.date, element.dataset.time].join("|");
+  }
+
+  function render() {
+    const previousFocusKey = root.contains(document.activeElement) ? focusKeyOf(document.activeElement) : null;
+    root.innerHTML = page();
+    if (shouldFocusStepTitle) {
+      shouldFocusStepTitle = false;
+      const titleElement = root.querySelector("[data-step-title]");
+      if (titleElement) titleElement.focus();
+      return;
+    }
+    if (previousFocusKey) {
+      const sameControl = Array.from(root.querySelectorAll("[data-action]")).find((element) => focusKeyOf(element) === previousFocusKey);
+      if (sameControl && !sameControl.disabled) sameControl.focus();
+    }
+  }
+
+  root.addEventListener("click", (event) => {
+    const target = event.target.closest("[data-action]");
+    if (!target || target.disabled) return;
+    if (target.tagName === "A") event.preventDefault();
+    switch (target.dataset.action) {
+      case "pick-specialty":
+        state.pendingSpecialtyId = target.dataset.id;
+        render();
+        break;
+      case "commit-specialty":
+        commitSpecialty();
+        break;
+      case "pick-doctor":
+        state.pendingDoctorId = target.dataset.id;
+        render();
+        break;
+      case "commit-doctor":
+        state.doctorId = state.pendingDoctorId;
+        goForward();
+        break;
+      case "prev-week":
+        state.weekOffset = Math.max(0, state.weekOffset - 1);
+        state.date = null;
+        state.time = null;
+        render();
+        break;
+      case "next-week":
+        state.weekOffset = Math.min(MAX_WEEK_OFFSET, state.weekOffset + 1);
+        state.date = null;
+        state.time = null;
+        render();
+        break;
+      case "pick-day":
+        state.date = target.dataset.date;
+        state.time = null;
+        render();
+        break;
+      case "pick-time":
+        state.time = target.dataset.time;
+        render();
+        break;
+      case "commit-datetime":
+        if (!isLegacy) goForward();
+        break;
+      case "back":
+        goBack();
+        break;
+      case "restart":
+        restart();
+        break;
+      default:
+        break;
+    }
+  });
+
+  root.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const typedName = (event.target.querySelector("#name").value || "").trim();
+    state.patientName = typedName || "Rosa";
+    state.isConfirming = true;
+    render();
+    setTimeout(() => {
+      state.isConfirming = false;
+      state.step = "success";
+      shouldFocusStepTitle = true;
+      render();
+    }, 600);
+  });
+
+  // Lavish aísla el prototipo en un sandbox sin origen: la página y cada vista solo pueden hablarse por mensajes.
+  window.addEventListener("message", (event) => {
+    const message = event.data;
+    if (!message || message.type !== "mock-options") return;
+    options = { logo: message.logo, chosen: message.chosen };
+    render();
+  });
+
+  if (CONFIG.autoHeight) {
+    const reportHeight = () => parent.postMessage({ type: "mock-height", frameId: CONFIG.frameId, height: document.body.offsetHeight }, "*");
+    new ResizeObserver(reportHeight).observe(document.body);
+  }
+
+  render();
+})();
+</script>
+</template>
+
+<script>
+(function () {
+  "use strict";
+
+  const headTemplate = document.getElementById("app-head").innerHTML;
+  const bodyTemplate = document.getElementById("app-body").innerHTML;
+  const CLOSE_SCRIPT = "<\/script>";
+  const GALLERY_FRAME_START_HEIGHT = 640;
+
+  const controls = {
+    scenario: "independent",
+    clinicFailed: false,
+    slots: "ok",
+    logo: "footer",
+    chosen: "dark",
+    view: "mobile",
+  };
+
+  const SCENARIO_CAPTIONS = {
+    independent: "Un médico, una especialidad: Horario → Tus datos",
+    team: "Una especialidad, tres médicos: Médico → Horario → Tus datos",
+    clinic: "Tres especialidades: Especialidad → (Médico, si la elegida tiene dos) → Horario → Tus datos",
+    multiSpecialty: "Un médico con dos especialidades: Especialidad → Horario → Tus datos",
+    empty: "Sede sin médicos con horarios",
+    loading: "Cargando la página (loading.tsx)",
+    error: "Error al cargar la página (error.tsx)",
+  };
+
+  const GALLERY = [
+    {
+      title: "1. Médico independiente: horario elegido",
+      caption: "Una especialidad y un médico: entra directo al horario. Barra de 2 tramos y sin «Atrás». La cabecera dice con quién y dónde.",
+      config: { scenario: "independent", initial: { step: "datetime", date: "2026-10-29", time: "10:00" } },
+    },
+    {
+      title: "2. Médico independiente: tus datos",
+      caption: "La cabecera sigue arriba en «Tus datos», que no cambia. «Atrás» vuelve al horario.",
+      config: { scenario: "independent", initial: { step: "patient", date: "2026-10-29", time: "10:00" } },
+    },
+    {
+      title: "3. Una especialidad, varios médicos: médico",
+      caption: "Se salta la especialidad. Mientras no hay médico, la cabecera muestra la sede y la especialidad. Andrea Ríos no tiene tratamiento registrado.",
+      config: { scenario: "team", initial: { step: "doctor", pendingDoctorId: "villanueva" } },
+    },
+    {
+      title: "4. Una especialidad, varios médicos: horario",
+      caption: "Tras «Siguiente», la cabecera pasa a la médica. «Atrás» vuelve con ella marcada.",
+      config: { scenario: "team", initial: { step: "datetime", doctorId: "villanueva", pendingDoctorId: "villanueva", date: "2026-10-28", time: "16:00" } },
+    },
+    {
+      title: "5. Varias especialidades: especialidad",
+      caption: "Barra de 4 tramos: Medicina general tiene dos médicos (P-3). El ícono de check refuerza la selección.",
+      config: { scenario: "clinic", initial: { step: "specialty", pendingSpecialtyId: "medgen" } },
+    },
+    {
+      title: "6. Varias especialidades: médico",
+      caption: "Medicina general tiene dos médicos: paso 2 de 4.",
+      config: { scenario: "clinic", initial: { step: "doctor", specialtyId: "medgen", pendingSpecialtyId: "medgen", pendingDoctorId: "leon" } },
+    },
+    {
+      title: "7. Varias especialidades: una con un solo médico",
+      caption: "Cardiología tiene un solo médico, así que se salta su paso: 2 de 3. La barra bajó de 4 a 3 tramos.",
+      config: { scenario: "clinic", initial: { step: "datetime", specialtyId: "cardio", doctorId: "cespedes", date: "2026-10-29", time: "08:30" } },
+    },
+    {
+      title: "8. Un médico con varias especialidades",
+      caption: "Se pide la especialidad y la cabecera ya muestra al médico. Después de elegirla, se salta el paso del médico.",
+      config: { scenario: "multiSpecialty", initial: { step: "specialty", pendingSpecialtyId: "pedia-aqp" } },
+    },
+    {
+      title: "9. Sede que no cargó: un médico",
+      caption: "La cabecera muestra al médico y su especialidad, sin ubicación. La reserva sigue completa.",
+      config: { scenario: "independent", clinicFailed: true, initial: { step: "datetime", date: "2026-10-29", time: "10:00" } },
+    },
+    {
+      title: "10. Sede que no cargó: varias especialidades",
+      caption: "Sin médico ni sede definidos, el título es «Reserva tu cita». Al elegir, aparecen el médico y la especialidad.",
+      config: { scenario: "clinic", clinicFailed: true, initial: { step: "specialty" } },
+    },
+    {
+      title: "11. Cargando horarios",
+      caption: "Mientras llegan los horarios de la semana, los días están deshabilitados.",
+      config: { scenario: "independent", slots: "loading" },
+    },
+    {
+      title: "12. Los horarios no cargan",
+      caption: "El mismo mensaje de hoy. La cabecera y la barra se mantienen.",
+      config: { scenario: "independent", slots: "error" },
+    },
+    {
+      title: "13. Sin médicos con horarios",
+      caption: "La cabecera reemplaza al «Reservar cita» de hoy y dice de qué sede se trata. El texto no cambia.",
+      config: { scenario: "empty" },
+    },
+    {
+      title: "14. Cargando la página",
+      caption: "loading.tsx, sin cambios. Solo cambian el logo y la alineación del shell.",
+      config: { scenario: "loading" },
+    },
+    {
+      title: "15. Error al cargar la página",
+      caption: "error.tsx, sin cambios. Solo cambia el shell.",
+      config: { scenario: "error" },
+    },
+    {
+      title: "16. ¡Cita reservada!",
+      caption: "Sin cambios: no lleva cabecera ni barra, porque el resumen ya dice médico, sede y dirección.",
+      config: { scenario: "independent", initial: { step: "success", date: "2026-10-29", time: "10:00", patientName: "Rosa" } },
+    },
+    {
+      title: "Hoy (referencia)",
+      caption: "El mismo médico independiente en la app actual: paso 3 de 4, después de elegir la única especialidad y el único médico. El logo lleva a /login, no hay cabecera, quedan 279 px útiles y lo elegido va en teal al 10 %.",
+      config: { scenario: "independent", legacy: true, initial: { step: "datetime", date: "2026-10-29", time: "10:00" } },
+    },
+    {
+      notApplicable: true,
+      title: "403 y 402",
+      body: "<strong>403 no aplica:</strong> la página es pública y no tiene sesión.<br><br><strong>402 no aplica:</strong> la reserva va en todos los planes. Cuando exista el tope de citas, su mensaje («Este consultorio no está recibiendo reservas en línea por ahora») irá debajo de esta misma cabecera, en otro ticket.",
+    },
+    {
+      wide: true,
+      title: "17. Escritorio: varias especialidades, horario",
+      caption: "A 1024 px la tarjeta mantiene max-w-md, se centra y vuelve a 32 px de relleno (sm:p-8).",
+      config: { scenario: "clinic", initial: { step: "datetime", specialtyId: "medgen", doctorId: "leon", date: "2026-10-28", time: "09:30" } },
+    },
+  ];
+
+  const frames = new Map();
+
+  function buildSrcdoc(config) {
+    return [
+      '<!doctype html><html lang="es-PE"><head><meta charset="utf-8">',
+      '<meta name="viewport" content="width=device-width, initial-scale=1">',
+      headTemplate,
+      '<script type="application/json" id="mock-config">',
+      JSON.stringify(config).replace(/</g, "\\u003c"),
+      CLOSE_SCRIPT,
+      '</head><body class="bg-background font-sans text-foreground antialiased">',
+      bodyTemplate,
+    ].join("");
+  }
+
+  function sendOptions(frame) {
+    if (frame.contentWindow) {
+      frame.contentWindow.postMessage({ type: "mock-options", logo: controls.logo, chosen: controls.chosen }, "*");
+    }
+  }
+
+  function loadFrame(frame, config) {
+    frame.dataset.loaded = "false";
+    frame.srcdoc = buildSrcdoc(Object.assign({ slots: "ok" }, config, { logo: controls.logo, chosen: controls.chosen }));
+  }
+
+  function registerFrame(frameId, frame) {
+    frames.set(frameId, frame);
+    frame.addEventListener("load", () => {
+      frame.dataset.loaded = "true";
+      sendOptions(frame);
+    });
+  }
+
+  /* ---------- Vista navegable ---------- */
+  const liveFrame = document.getElementById("live-frame");
+  const liveDevice = document.getElementById("live-device");
+  const liveCaption = document.getElementById("live-caption");
+  registerFrame("live", liveFrame);
+
+  function renderLive() {
+    loadFrame(liveFrame, {
+      frameId: "live",
+      autoHeight: false,
+      scenario: controls.scenario,
+      clinicFailed: controls.clinicFailed,
+      slots: controls.slots,
+    });
+    const size = controls.view === "mobile" ? "Celular 375 px" : "Escritorio 1024 px";
+    const clinicNote = controls.clinicFailed ? " · sede sin cargar" : "";
+    liveCaption.textContent = `${size} · ${SCENARIO_CAPTIONS[controls.scenario]}${clinicNote}`;
+  }
+
+  document.querySelectorAll('input[name="scenario"]').forEach((input) => {
+    input.addEventListener("change", () => {
+      controls.scenario = input.value;
+      renderLive();
+    });
+  });
+  document.querySelectorAll('input[name="slots"]').forEach((input) => {
+    input.addEventListener("change", () => {
+      controls.slots = input.value;
+      renderLive();
+    });
+  });
+  document.getElementById("clinic-failed").addEventListener("change", (event) => {
+    controls.clinicFailed = event.target.checked;
+    renderLive();
+  });
+  ["logo", "chosen"].forEach((name) => {
+    document.querySelectorAll(`input[name="${name}"]`).forEach((input) => {
+      input.addEventListener("change", () => {
+        controls[name] = input.value;
+        frames.forEach((frame) => {
+          if (frame.dataset.loaded === "true") sendOptions(frame);
+        });
+      });
+    });
+  });
+  document.querySelectorAll("[data-view]").forEach((button) => {
+    button.addEventListener("click", () => {
+      controls.view = button.dataset.view;
+      document.querySelectorAll("[data-view]").forEach((other) => other.setAttribute("aria-pressed", String(other === button)));
+      liveDevice.classList.toggle("mobile", controls.view === "mobile");
+      liveDevice.classList.toggle("desktop", controls.view === "desktop");
+      const size = controls.view === "mobile" ? "Celular 375 px" : "Escritorio 1024 px";
+      liveCaption.textContent = liveCaption.textContent.replace(/^[^·]+·/, `${size} ·`);
+    });
+  });
+  document.getElementById("restart").addEventListener("click", renderLive);
+
+  /* ---------- Galería ---------- */
+  const gallery = document.getElementById("gallery");
+  const pendingConfigs = new Map();
+  const lazyLoader = new IntersectionObserver((entries) => {
+    entries.forEach((entry) => {
+      if (!entry.isIntersecting) return;
+      lazyLoader.unobserve(entry.target);
+      loadFrame(entry.target, pendingConfigs.get(entry.target));
+    });
+  }, { rootMargin: "800px 0px" });
+
+  GALLERY.forEach((shot, index) => {
+    const figure = document.createElement("figure");
+    figure.className = shot.wide ? "shot wide" : "shot";
+    const heading = document.createElement("h3");
+    heading.textContent = shot.title;
+    figure.appendChild(heading);
+
+    if (shot.notApplicable) {
+      const box = document.createElement("div");
+      box.className = "not-applicable";
+      box.innerHTML = shot.body;
+      figure.appendChild(box);
+      gallery.appendChild(figure);
+      return;
+    }
+
+    const caption = document.createElement("p");
+    caption.textContent = shot.caption;
+    figure.appendChild(caption);
+
+    const scroller = document.createElement("div");
+    scroller.className = "scroll";
+    const device = document.createElement("div");
+    device.className = shot.wide ? "device desktop" : "device mobile";
+    const frame = document.createElement("iframe");
+    const frameId = `shot-${index}`;
+    frame.title = shot.title;
+    frame.dataset.autoHeight = "true";
+    frame.style.height = `${GALLERY_FRAME_START_HEIGHT}px`;
+    device.appendChild(frame);
+    scroller.appendChild(device);
+    figure.appendChild(scroller);
+    gallery.appendChild(figure);
+
+    registerFrame(frameId, frame);
+    pendingConfigs.set(frame, Object.assign({ frameId, autoHeight: true }, shot.config));
+    lazyLoader.observe(frame);
+  });
+
+  window.addEventListener("message", (event) => {
+    const message = event.data;
+    if (!message || message.type !== "mock-height") return;
+    const frame = frames.get(message.frameId);
+    if (frame && frame.dataset.autoHeight === "true") {
+      frame.style.height = `${Math.max(message.height, GALLERY_FRAME_START_HEIGHT)}px`;
+    }
+  });
+
+  renderLive();
+})();
+</script>
+</body>
+</html>

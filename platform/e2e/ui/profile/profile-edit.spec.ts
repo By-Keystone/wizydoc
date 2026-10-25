@@ -122,19 +122,16 @@ test("CA-52: elegir «Dra.» y guardar cambia la vista previa y el booking; «Si
     const guest = await browser.newPage();
     try {
       await guest.goto(`/clinic/${world.clinicId}/create-appointment`);
-      await guest
-        .getByRole("button", { name: world.specialtyName, exact: true })
-        .click();
-      await guest
-        .getByRole("button", { name: "Siguiente", exact: true })
-        .click();
+      const headingNamed = (name: string) =>
+        guest.getByRole("heading", {
+          level: 1,
+          name: `Reserva tu cita con ${name}`,
+          exact: true,
+        });
+      await expect(guest.getByRole("heading", { level: 1 })).toBeVisible();
       return {
-        withTitle: await guest
-          .getByRole("button", { name: draName, exact: true })
-          .count(),
-        plain: await guest
-          .getByRole("button", { name: plainName, exact: true })
-          .count(),
+        withTitle: await headingNamed(draName).count(),
+        plain: await headingNamed(plainName).count(),
       };
     } finally {
       await guest.close();
