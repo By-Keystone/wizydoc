@@ -381,7 +381,7 @@ export function AppointmentPortalView({ token, initialAppointment }: Props) {
           </Button>
           <Button
             type="button"
-            variant="coral"
+            variant="destructive"
             className="h-11 flex-1"
             disabled={isPending || !cancellationReason}
             aria-describedby={

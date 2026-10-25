@@ -77,6 +77,8 @@
   .btn-outline:hover:not(:disabled) { background: #f9fafb; }
   .btn-coral { background: var(--coral); color: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.12); }
   .btn-coral:hover:not(:disabled) { background: rgba(255,111,89,.9); }
+  .btn-destructive { background: #dc2626; color: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+  .btn-destructive:hover:not(:disabled) { background: #b91c1c; }
   .btn-block { width: 100%; }
   .stack { display: flex; flex-direction: column; gap: 12px; margin-top: 24px; }
   .row { display: flex; gap: 12px; margin-top: 24px; }
@@ -603,7 +605,7 @@
         '<p class="hint" id="reason-hint"' + (hasReason ? " hidden" : "") + '>Elige un motivo para continuar.</p>' +
         '<div class="row">' +
         '<button type="button" class="btn btn-outline" data-action="back-summary"' + (state.pending ? " disabled" : "") + '>Volver</button>' +
-        '<button type="button" class="btn btn-coral" data-action="do-cancel"' + (state.pending || !hasReason ? " disabled" : "") + (hasReason ? "" : ' aria-describedby="reason-hint"') + '>' + pendingLabel("Sí, cancelar") + '</button>' +
+        '<button type="button" class="btn btn-destructive" data-action="do-cancel"' + (state.pending || !hasReason ? " disabled" : "") + (hasReason ? "" : ' aria-describedby="reason-hint"') + '>' + pendingLabel("Sí, cancelar") + '</button>' +
         '</div></div>';
     },
 

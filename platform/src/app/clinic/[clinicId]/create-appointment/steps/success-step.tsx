@@ -34,7 +34,7 @@ export function SuccessStep({ appointment, patientName, onClick }: Props) {
         Te enviamos la confirmación a tu correo.
       </p>
 
-      <Button onClick={onClick} variant="coral" className="mt-6">
+      <Button onClick={onClick} variant="outline" className="mt-6">
         Reserva de nuevo
       </Button>
     </div>

@@ -22,9 +22,11 @@ export async function ClinicStats({ resourceId }: Props) {
   const metrics = await loadMetrics(resourceId);
 
   if (!metrics) {
+    // Un solo botón coral por pantalla: en el dashboard es «Copiar link de reservas».
     return (
       <PlanFeatureNotice
         plan="CLINICA"
+        isPrimaryAction={false}
         className="sm:col-span-2 lg:col-span-4"
       />
     );
