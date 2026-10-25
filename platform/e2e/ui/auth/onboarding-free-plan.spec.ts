@@ -17,14 +17,24 @@ async function loginAsAccountlessUser(
 }
 
 test.describe("Onboarding de platform: sólo Gratis, sin tarjeta", () => {
-  test("CA-11: el select de Plan sólo ofrece Gratis", async ({ page }) => {
+  test("CA-11: no hay campo de plan: se ve la frase de la beta y el formulario envía plan=FREE", async ({
+    page,
+  }) => {
     await loginAsAccountlessUser(page, "ca11");
 
-    const planOptions = page.getByLabel("Plan").locator("option");
-    await expect(planOptions).toHaveCount(1);
-    await expect(planOptions.first()).toHaveAttribute("value", "FREE");
-    await expect(planOptions.first()).toHaveText(
-      "Gratis · 10 citas al mes, 1 sede",
+    await expect(
+      page.getByRole("heading", { name: "Ponle nombre a tu consultorio" }),
+    ).toBeVisible();
+    await expect(page.getByRole("combobox")).toHaveCount(0);
+    await expect(page.getByLabel("Plan")).toHaveCount(0);
+    await expect(
+      page.getByText(
+        "Durante la beta, todas las cuentas empiezan en Gratis y los planes de pago se activan a pedido.",
+        { exact: true },
+      ),
+    ).toBeVisible();
+    await expect(page.locator('input[type="hidden"][name="plan"]')).toHaveValue(
+      "FREE",
     );
   });
 
@@ -43,12 +53,11 @@ test.describe("Onboarding de platform: sólo Gratis, sin tarjeta", () => {
     ).toHaveCount(0);
   });
 
-  test("CA-13: el alta se completa sin Culqi aunque todas sus peticiones estén bloqueadas", async ({
+  test("CA-13: el alta se completa sin ninguna petición a Culqi", async ({
     page,
   }) => {
-    // El bloqueo va antes del login: el script de Culqi se inyecta al montar /onboarding (hallazgo 5).
     const culqiRequestUrls: string[] = [];
-    await page.route("**/*culqi.com/**", (route) => {
+    await page.route(/culqi\.com/, (route) => {
       culqiRequestUrls.push(route.request().url());
       return route.abort();
     });
@@ -56,7 +65,7 @@ test.describe("Onboarding de platform: sólo Gratis, sin tarjeta", () => {
     await loginAsAccountlessUser(page, "ca13");
 
     const accountName = uniqueName("Consultorio CA-13");
-    await page.getByLabel("Nombre de la cuenta").fill(accountName);
+    await page.getByLabel("Nombre del consultorio").fill(accountName);
 
     const continueButton = page.getByRole("button", {
       name: "Continuar",
@@ -66,10 +75,7 @@ test.describe("Onboarding de platform: sólo Gratis, sin tarjeta", () => {
     await continueButton.click();
 
     await expect(page).toHaveURL(/\/account\/[^/]+\/select$/);
-    // El script del checkout (js.culqi.com) se sigue cargando al montar la página; lo que no puede haber es cobro.
-    expect(
-      culqiRequestUrls.filter((url) => url.includes("api.culqi.com")),
-    ).toHaveLength(0);
+    expect(culqiRequestUrls).toEqual([]);
 
     const prisma = await getTestPrisma();
     const account = await prisma.account.findFirst({
@@ -87,19 +93,24 @@ test.describe("Onboarding de platform: sólo Gratis, sin tarjeta", () => {
     expect(subscription?.paymentProviderSubscriptionId).toBeNull();
   });
 
-  test("CA-14: la validación del nombre sigue igual sin nombre de cuenta", async ({
+  test("CA-14: sin nombre de consultorio, el error sale debajo del campo y el foco va al nombre", async ({
     page,
   }) => {
     await loginAsAccountlessUser(page, "ca14");
 
     await page.getByRole("button", { name: "Continuar", exact: true }).click();
 
-    // El campo es `required` nativo (sin cambios de este ticket): el navegador bloquea el envío él mismo.
     await expect(page).toHaveURL(/\/onboarding$/);
-    const nameInput = page.getByLabel("Nombre de la cuenta");
-    const validationMessage = await nameInput.evaluate(
-      (input: HTMLInputElement) => input.validationMessage,
+    const nameInput = page.getByLabel("Nombre del consultorio");
+    const nameError = page
+      .getByRole("alert")
+      .filter({ hasText: "Escribe el nombre de tu consultorio." });
+    await expect(nameError).toBeVisible();
+    await expect(nameInput).toBeFocused();
+    await expect(nameInput).toHaveAttribute("aria-invalid", "true");
+    await expect(nameInput).toHaveAttribute(
+      "aria-describedby",
+      (await nameError.getAttribute("id")) ?? "",
     );
-    expect(validationMessage.length).toBeGreaterThan(0);
   });
 });

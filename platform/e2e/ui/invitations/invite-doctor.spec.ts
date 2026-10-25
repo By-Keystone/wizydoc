@@ -60,13 +60,13 @@ test("CA-1, CA-2 y CA-3 (y CA-13/CA-14 de fix-auth-user-fields-input): la médic
   // CA-1: directamente el formulario de contraseña, sin paso previo de "Aceptar invitación".
   await expect(page.getByText("te invitaron a")).toBeVisible();
   await expect(
-    page.getByText("Configura una contraseña para activar tu cuenta."),
+    page.getByText("Crea una contraseña para activar tu cuenta."),
   ).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Aceptar invitación" }),
   ).toHaveCount(0);
 
-  const passwordInput = page.getByLabel("Contraseña");
+  const passwordInput = page.getByLabel("Contraseña", { exact: true });
   await expect(passwordInput).toBeVisible();
   await passwordInput.fill(INVITED_DOCTOR_PASSWORD);
   await page.getByRole("button", { name: "Activar cuenta" }).click();
@@ -87,7 +87,7 @@ test("CA-1, CA-2 y CA-3 (y CA-13/CA-14 de fix-auth-user-fields-input): la médic
   // CA-11: reabrir el mismo link tras fijar la contraseña muestra "Invitación inválida".
   await page.goto(invitationLink);
   await expect(page.getByText("Invitación inválida")).toBeVisible();
-  await expect(page.getByLabel("Contraseña")).toHaveCount(0);
+  await expect(page.getByLabel("Contraseña", { exact: true })).toHaveCount(0);
 
   await page.context().clearCookies();
 

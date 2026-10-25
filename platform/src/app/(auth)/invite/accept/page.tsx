@@ -1,7 +1,15 @@
 import { XCircle } from "lucide-react";
+import type { Metadata } from "next";
 import Link from "next/link";
+import { AuthCard, TEXT_LINK_CLASS } from "@/components/common/auth-card";
 import { getInvitation } from "@/lib/api/invitations";
 import { AcceptInviteForm } from "./accept-form";
+
+// El token de la invitación es la credencial: ni se indexa ni viaja en el Referer.
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+  referrer: "no-referrer",
+};
 
 interface Props {
   searchParams: Promise<{ token?: string }>;
@@ -16,27 +24,21 @@ export default async function AcceptInvitePage({ searchParams }: Props) {
     const isExpired = lookup?.status === "expired";
 
     return (
-      <div className="w-full max-w-md">
-        <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-xl">
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-red-50">
-            <XCircle className="h-7 w-7 text-red-500" />
-          </div>
-          <h1 className="text-2xl font-bold text-brand-teal-dark">
-            {isExpired ? "Invitación expirada" : "Invitación inválida"}
-          </h1>
-          <p className="mt-2 text-sm text-brand-gray">
-            {isExpired
-              ? "Este link expiró. Pide al administrador que te envíe una invitación nueva."
-              : "Este enlace de invitación no es válido o ya expiró."}
-          </p>
-          <Link
-            href="/login"
-            className="mt-6 inline-block text-sm font-medium text-brand-teal hover:text-brand-teal-dark"
-          >
+      <AuthCard
+        icon={XCircle}
+        tone="danger"
+        title={isExpired ? "Invitación expirada" : "Invitación inválida"}
+        description={
+          isExpired
+            ? "Este enlace expiró. Pide a quien te invitó que te envíe una invitación nueva."
+            : "Este enlace ya se usó o no es válido. Si ya creaste tu contraseña, inicia sesión con ella."
+        }
+        footer={
+          <Link href="/login" className={TEXT_LINK_CLASS}>
             Ir a iniciar sesión
           </Link>
-        </div>
-      </div>
+        }
+      />
     );
   }
 

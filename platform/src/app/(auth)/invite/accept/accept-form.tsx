@@ -1,10 +1,21 @@
 "use client";
 
-import { useState } from "react";
+import { type FormEvent, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, MailCheck } from "lucide-react";
+import { Loader2 } from "lucide-react";
+import { AuthCard } from "@/components/common/auth-card";
+import { PasswordInput } from "@/components/common/form";
 import { Button } from "@/components/ui/button";
+import { useFocusFirstInvalid } from "@/hooks/useFocusFirstInvalid";
+import { validatePassword } from "@/lib/auth/form-validation";
 import type { InvitationStep } from "@/lib/api/invitations";
+
+const SERVER_ERROR_STATUS = 500;
+
+const ACTIVATE_CONNECTION_ERROR =
+  "No pudimos activar tu cuenta. Revisa tu conexión y vuelve a intentarlo.";
+const ACCEPT_CONNECTION_ERROR =
+  "No pudimos aceptar la invitación. Revisa tu conexión y vuelve a intentarlo.";
 
 interface Props {
   token: string;
@@ -13,15 +24,30 @@ interface Props {
   step: InvitationStep;
 }
 
+interface FieldErrors {
+  password?: string;
+}
+
+// Un 5xx puede traer detalles internos del servidor: nunca se muestran.
+async function messageToShow(res: Response, fallback: string) {
+  if (res.status >= SERVER_ERROR_STATUS) return fallback;
+  const body = await res.json().catch(() => null);
+  return typeof body?.message === "string" ? body.message : fallback;
+}
+
 export function AcceptInviteForm({ token, name, resourceName, step }: Props) {
   const router = useRouter();
-  const [error, setError] = useState<string | null>(null);
+  const formRef = useRef<HTMLFormElement>(null);
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>();
+  const [submitError, setSubmitError] = useState<string>();
   const [pending, setPending] = useState(false);
   const needsPassword = step === "set_password";
 
+  useFocusFirstInvalid(formRef, fieldErrors);
+
   // Usuario que ya tenía contraseña (invitado a otra sede): sólo acepta.
   async function handleAccept() {
-    setError(null);
+    setSubmitError(undefined);
     setPending(true);
 
     try {
@@ -31,30 +57,33 @@ export function AcceptInviteForm({ token, name, resourceName, step }: Props) {
         credentials: "include",
       });
 
-      if (!res.ok) {
-        const data = await res.json().catch(() => null);
-        setError(data?.message ?? "No se pudo aceptar la invitación");
+      if (res.ok) {
+        router.push("/login");
+        // El botón sigue deshabilitado hasta que la navegación desmonte el formulario.
         return;
       }
-
-      router.push("/login");
+      setSubmitError(
+        await messageToShow(res, "No se pudo aceptar la invitación"),
+      );
     } catch {
-      setError("No se pudo conectar con el servidor. Intenta de nuevo.");
-    } finally {
-      setPending(false);
+      setSubmitError(ACCEPT_CONNECTION_ERROR);
     }
+    setPending(false);
   }
 
-  async function handleSetPassword(event: React.FormEvent<HTMLFormElement>) {
+  async function handleSetPassword(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setSubmitError(undefined);
 
-    setError(null);
+    const password = String(
+      new FormData(event.currentTarget).get("password") ?? "",
+    );
+
+    const passwordError = validatePassword(password);
+    setFieldErrors({ password: passwordError });
+    if (passwordError) return;
+
     setPending(true);
-
-    const password = new FormData(event.currentTarget).get(
-      "password",
-    ) as string;
-
     try {
       const res = await fetch(`/api/invitations/set-password`, {
         method: "POST",
@@ -63,78 +92,69 @@ export function AcceptInviteForm({ token, name, resourceName, step }: Props) {
         body: JSON.stringify({ token, password }),
       });
 
-      if (!res.ok) {
-        const data = await res.json().catch(() => null);
-        setError(data?.message ?? "No se pudo configurar la contraseña");
+      if (res.ok) {
+        const { accountId, isSignedIn } = (await res.json()).data;
+        router.push(isSignedIn ? `/account/${accountId}/select` : "/login");
+        // El botón sigue deshabilitado hasta que la navegación desmonte el formulario.
         return;
       }
-
-      const { accountId, isSignedIn } = (await res.json()).data;
-
-      router.push(isSignedIn ? `/account/${accountId}/select` : "/login");
+      setSubmitError(
+        await messageToShow(res, "No se pudo configurar la contraseña"),
+      );
     } catch {
-      setError("No se pudo conectar con el servidor. Intenta de nuevo.");
-    } finally {
-      setPending(false);
+      setSubmitError(ACTIVATE_CONNECTION_ERROR);
     }
+    setPending(false);
   }
 
+  const errorAlert = submitError && (
+    <p
+      role="alert"
+      className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700"
+    >
+      {submitError}
+    </p>
+  );
+
   return (
-    <div className="w-full max-w-md">
-      <div className="rounded-2xl border border-gray-200 bg-white p-8 shadow-xl">
-        <div className="mb-6 text-center">
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-teal/10">
-            <MailCheck className="h-7 w-7 text-brand-teal" />
-          </div>
-          <h1 className="text-2xl font-bold text-brand-teal-dark">
-            Hola, {name}. Te invitaron a {resourceName}
-          </h1>
-          <p className="mt-2 text-sm text-brand-gray">
-            {needsPassword
-              ? "Configura una contraseña para activar tu cuenta."
-              : "Acepta la invitación para unirte al equipo."}
-          </p>
-        </div>
-
-        {error && (
-          <p className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
-            {error}
-          </p>
-        )}
-
-        {needsPassword ? (
-          <form onSubmit={handleSetPassword} className="flex flex-col gap-4">
-            <div className="flex flex-col gap-1.5">
-              <label
-                htmlFor="password"
-                className="text-sm font-medium text-brand-gray"
-              >
-                Contraseña
-              </label>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                required
-                minLength={8}
-                maxLength={128}
-                autoComplete="new-password"
-                placeholder="Mínimo 8 caracteres"
-                className="rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none transition focus:border-brand-teal focus:ring-2 focus:ring-brand-teal/20"
-              />
-            </div>
-            <Button type="submit" className="mt-2 w-full" disabled={pending}>
-              {pending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Activando...
-                </>
-              ) : (
-                "Activar cuenta"
-              )}
-            </Button>
-          </form>
-        ) : (
+    <AuthCard
+      title={`Hola, ${name}. Te invitaron a ${resourceName}`}
+      description={
+        needsPassword
+          ? "Crea una contraseña para activar tu cuenta."
+          : "Acepta la invitación para unirte al equipo."
+      }
+    >
+      {needsPassword ? (
+        <form
+          ref={formRef}
+          onSubmit={handleSetPassword}
+          noValidate
+          className="flex flex-col gap-4"
+        >
+          <PasswordInput
+            id="password"
+            name="password"
+            label="Contraseña"
+            autoComplete="new-password"
+            placeholder="Mínimo 8 caracteres"
+            error={fieldErrors?.password}
+          />
+          {errorAlert}
+          <Button type="submit" className="mt-2 w-full" disabled={pending}>
+            {pending ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Activando…
+              </>
+            ) : (
+              "Activar cuenta"
+            )}
+          </Button>
+        </form>
+      ) : (
+        <div className="flex flex-col gap-4">
+          {errorAlert}
           <Button
             type="button"
             className="w-full"
@@ -144,14 +164,14 @@ export function AcceptInviteForm({ token, name, resourceName, step }: Props) {
             {pending ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Procesando...
+                Aceptando…
               </>
             ) : (
               "Aceptar invitación"
             )}
           </Button>
-        )}
-      </div>
-    </div>
+        </div>
+      )}
+    </AuthCard>
   );
 }

@@ -42,14 +42,14 @@ test.describe("CA-13: invitación inválida antes de llegar al formulario de con
 
     await expect(
       page.getByText(
-        "Este link expiró. Pide al administrador que te envíe una invitación nueva.",
+        "Este enlace expiró. Pide a quien te invitó que te envíe una invitación nueva.",
       ),
     ).toBeVisible();
     await expect(
       page.getByRole("heading", { name: "Invitación expirada" }),
     ).toBeVisible();
     await expect(page.getByText("Invitación inválida")).toHaveCount(0);
-    await expect(page.getByLabel("Contraseña")).toHaveCount(0);
+    await expect(page.getByLabel("Contraseña", { exact: true })).toHaveCount(0);
     await expect(
       page.getByRole("button", { name: "Aceptar invitación" }),
     ).toHaveCount(0);
@@ -83,7 +83,7 @@ test.describe("CA-13: invitación inválida antes de llegar al formulario de con
     await page.goto(`/invite/accept?token=${invited.token}`);
 
     await expect(page.getByText("Invitación inválida")).toBeVisible();
-    await expect(page.getByLabel("Contraseña")).toHaveCount(0);
+    await expect(page.getByLabel("Contraseña", { exact: true })).toHaveCount(0);
   });
 });
 
@@ -108,7 +108,7 @@ test("un link vencido por fecha muestra que expiró; tras reinvitar, el viejo es
   await page.goto(`/invite/accept?token=${invited.token}`);
   await expect(
     page.getByText(
-      "Este link expiró. Pide al administrador que te envíe una invitación nueva.",
+      "Este enlace expiró. Pide a quien te invitó que te envíe una invitación nueva.",
     ),
   ).toBeVisible();
   await expect(
@@ -129,5 +129,5 @@ test("un link vencido por fecha muestra que expiró; tras reinvitar, el viejo es
   await expect(page.getByText("Invitación inválida")).toBeVisible();
 
   await page.goto(`/invite/accept?token=${renewedToken}`);
-  await expect(page.getByLabel("Contraseña")).toBeVisible();
+  await expect(page.getByLabel("Contraseña", { exact: true })).toBeVisible();
 });

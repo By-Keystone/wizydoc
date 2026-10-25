@@ -1,5 +1,6 @@
 import type { Page } from "@playwright/test";
 import { createApiContext } from "../../support/accounts";
+import { expectFocusReturnsOnRepeatedError } from "../../support/entry-forms";
 import { PLATFORM_BASE_URL } from "../../support/env";
 import { expect, test } from "../../support/test";
 import {
@@ -130,6 +131,30 @@ test("CA-19 y CA-41: 7 y 129 caracteres muestran su límite sin petición, con e
   expect(calls).toEqual([]);
 });
 
+test("el mismo error de correo dos veces devuelve el foco al campo", async ({
+  page,
+}) => {
+  await page.goto("/forgot-password");
+  await sendButton(page).click();
+  await expect(alertWith(page, "Escribe tu correo.")).toBeVisible();
+
+  await expectFocusReturnsOnRepeatedError(sendButton(page), emailField(page));
+});
+
+test("el mismo error de contraseña nueva dos veces devuelve el foco al campo", async ({
+  page,
+}) => {
+  await page.goto(FAKE_LINK_PATH);
+  await passwordField(page).fill("1234567");
+  await saveButton(page).click();
+  await expect(alertWith(page, SHORT_ERROR)).toBeVisible();
+
+  await expectFocusReturnsOnRepeatedError(
+    saveButton(page),
+    passwordField(page),
+  );
+});
+
 test("CA-19: con exactamente 8 caracteres se guarda", async ({ page }) => {
   const user = await createConfirmedUser(await createApiContext(), {
     emailPrefix: "ocho",
@@ -198,7 +223,7 @@ test("CA-25 y CA-26: el login sólo muestra el aviso con ?reset=ok y su enlace l
   await expect(emailField(page)).toHaveValue("");
 });
 
-test("CA-44: en el login el orden es correo, contraseña, «¿Olvidaste tu contraseña?», «Iniciar sesión», «Regístrate gratis» y Enter inicia sesión", async ({
+test("CA-44: en el login el orden es correo, contraseña, «Mostrar contraseña», «¿Olvidaste tu contraseña?», «Iniciar sesión», «Regístrate gratis» y Enter inicia sesión", async ({
   page,
 }) => {
   const user = await createConfirmedUser(await createApiContext(), {
@@ -209,6 +234,10 @@ test("CA-44: en el login el orden es correo, contraseña, «¿Olvidaste tu contr
   await page.getByLabel("Correo electrónico").focus();
   await page.keyboard.press("Tab");
   await expect(page.getByLabel("Contraseña", { exact: true })).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(
+    page.getByRole("button", { name: "Mostrar contraseña", exact: true }),
+  ).toBeFocused();
   await page.keyboard.press("Tab");
   await expect(
     page.getByRole("link", { name: "¿Olvidaste tu contraseña?", exact: true }),

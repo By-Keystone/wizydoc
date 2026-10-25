@@ -1,13 +1,15 @@
 "use server";
 
 import { doFetchJson } from "@/lib/api/fetch";
-import { AuthExpiredError } from "@/lib/api/errors";
+import { ApiError, AuthExpiredError } from "@/lib/api/errors";
 import { PLAN_VALUES } from "@/lib/plans";
 import { redirect } from "next/navigation";
 import z, { treeifyError } from "zod";
 
+const SERVER_ERROR_STATUS = 500;
+
 const completeAccountSchema = z.object({
-  name: z.string().min(1, "El nombre es requerido"),
+  name: z.string().trim().min(1, "Escribe el nombre de tu consultorio."),
   plan: z.enum(PLAN_VALUES, { error: "Elige un plan" }),
   cardToken: z.string().min(1).optional(),
   billingAddress: z.string().min(1, "La dirección es requerida").optional(),
@@ -65,7 +67,9 @@ export async function createAccountAction(
     return {
       status: "error",
       message:
-        error instanceof Error ? error.message : "No se pudo crear la cuenta",
+        error instanceof ApiError && error.status < SERVER_ERROR_STATUS
+          ? error.message
+          : "No pudimos crear tu cuenta. Vuelve a intentarlo.",
     };
   }
 

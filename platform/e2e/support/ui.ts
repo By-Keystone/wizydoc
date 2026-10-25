@@ -21,7 +21,9 @@ export async function registerViaUi(
   await page.getByLabel("Apellido").fill(params.lastName);
   await page.getByLabel("Correo electrónico").fill(params.email);
   await page.getByLabel("Celular").fill(params.phone);
-  await page.getByLabel("Contraseña").fill(params.password ?? E2E_PASSWORD);
+  await page
+    .getByLabel("Contraseña", { exact: true })
+    .fill(params.password ?? E2E_PASSWORD);
 
   await page.getByRole("button", { name: "Crear cuenta" }).click();
 
@@ -55,7 +57,7 @@ export async function loginViaUi(
   await page.goto("/login");
 
   await page.getByLabel("Correo electrónico").fill(email);
-  await page.getByLabel("Contraseña").fill(password);
+  await page.getByLabel("Contraseña", { exact: true }).fill(password);
 
   await page.getByRole("button", { name: "Iniciar sesión" }).click();
 
@@ -70,7 +72,7 @@ export async function completeOnboardingViaUi(
 ): Promise<void> {
   await expect(page).toHaveURL(/\/onboarding$/);
 
-  await page.getByLabel("Nombre de la cuenta").fill(accountName);
+  await page.getByLabel("Nombre del consultorio").fill(accountName);
   await page.getByRole("button", { name: "Continuar" }).click();
 
   await expect(page).toHaveURL(/\/account\/[^/]+\/select$/);
