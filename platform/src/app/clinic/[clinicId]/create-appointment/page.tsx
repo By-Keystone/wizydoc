@@ -47,7 +47,7 @@ export default async function CreateAppointmentPage({ params }: Props) {
           <CardContent className="p-5 sm:p-8">
             <BookingHeader clinic={clinic} doctor={null} specialty={null} />
             <p className="text-sm text-brand-gray">
-              Esta clínica todavía no tiene doctores disponibles para reservar
+              Esta sede todavía no tiene médicos disponibles para reservar
               citas.
             </p>
           </CardContent>

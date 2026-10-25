@@ -131,7 +131,7 @@ export function ResetPasswordForm() {
     return (
       <div className="w-full max-w-md">
         <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-xl">
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-red-100">
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-red-50">
             <XCircle className="h-7 w-7 text-red-500" />
           </div>
           <h1
@@ -189,7 +189,7 @@ export function ResetPasswordForm() {
           {submitError && (
             <p
               role="alert"
-              className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600"
+              className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700"
             >
               {submitError}
             </p>

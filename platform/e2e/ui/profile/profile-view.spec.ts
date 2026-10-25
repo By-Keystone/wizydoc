@@ -52,13 +52,13 @@ test("CA-43: bajo los workspaces muestra la barra superior, el regreso, el avata
     page.getByText(user.email, { exact: true }).first(),
   ).toBeVisible();
 
-  await page.getByRole("link", { name: "Volver a tus workspaces" }).click();
+  await page.getByRole("link", { name: "Volver a tus sedes" }).click();
   await expect(page).toHaveURL(
     new RegExp(`/account/${user.accountId}/select$`),
   );
 });
 
-test("CA-44: dentro de una sede muestra el mismo contenido con el menú lateral y sin el regreso a workspaces", async ({
+test("CA-44: dentro de una sede muestra el mismo contenido con el menú lateral y sin el regreso a tus sedes", async ({
   page,
 }) => {
   const world = await createProfileWorld("view-clinic");
@@ -81,11 +81,11 @@ test("CA-44: dentro de una sede muestra el mismo contenido con el menú lateral 
   await expect(region(page, "Datos personales")).toBeVisible();
   await expect(region(page, "Contraseña")).toBeVisible();
   await expect(
-    page.getByRole("link", { name: "Volver a tus workspaces" }),
+    page.getByRole("link", { name: "Volver a tus sedes" }),
   ).toHaveCount(0);
 });
 
-test("CA-44: dentro de la organización muestra el mismo contenido con el menú lateral y sin el regreso a workspaces", async ({
+test("CA-44: dentro de la organización muestra el mismo contenido con el menú lateral y sin el regreso a tus sedes", async ({
   page,
 }) => {
   const world = await createProfileWorld("view-org");
@@ -107,7 +107,7 @@ test("CA-44: dentro de la organización muestra el mismo contenido con el menú 
   await expect(region(page, "Datos personales")).toBeVisible();
   await expect(region(page, "Contraseña")).toBeVisible();
   await expect(
-    page.getByRole("link", { name: "Volver a tus workspaces" }),
+    page.getByRole("link", { name: "Volver a tus sedes" }),
   ).toHaveCount(0);
 });
 

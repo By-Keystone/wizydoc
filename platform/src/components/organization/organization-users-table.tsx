@@ -1,11 +1,8 @@
 import { Badge } from "@/components/ui/badge";
 import type { OrganizationUser } from "@/lib/api/organizations/types";
+import { roleDisplay, roleLabel } from "../common/role-display";
 import { type Column, Table } from "../common/table";
-import {
-  invitationTag,
-  roleDisplay,
-  statusTagClass,
-} from "../clinic/users-table";
+import { invitationTag, statusTagClass } from "../clinic/users-table";
 
 interface Props {
   users: OrganizationUser[];
@@ -14,8 +11,7 @@ interface Props {
 }
 
 const accessLabel = (access: OrganizationUser["accesses"][number]) => {
-  const role = roleDisplay[access.role]?.label ?? access.role;
-  return `${access.clinicName ?? "Todas las sedes"} · ${role}`;
+  return `${access.clinicName ?? "Todas las sedes"} · ${roleLabel(access.role)}`;
 };
 
 const buildColumns = (
@@ -34,7 +30,7 @@ const buildColumns = (
           <span className="mt-1 flex flex-wrap items-center justify-center gap-1">
             {row.email === currentUserEmail && (
               <span
-                className={`${statusTagClass} bg-brand-teal/10 text-brand-teal`}
+                className={`${statusTagClass} bg-brand-teal/10 text-brand-teal-dark`}
               >
                 Tú
               </span>

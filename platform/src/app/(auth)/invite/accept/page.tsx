@@ -18,7 +18,7 @@ export default async function AcceptInvitePage({ searchParams }: Props) {
     return (
       <div className="w-full max-w-md">
         <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-xl">
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-red-100">
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-red-50">
             <XCircle className="h-7 w-7 text-red-500" />
           </div>
           <h1 className="text-2xl font-bold text-brand-teal-dark">

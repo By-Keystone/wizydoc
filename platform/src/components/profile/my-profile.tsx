@@ -21,7 +21,7 @@ export function MyProfile({ profile, accountId, backHref }: Props) {
           className="inline-flex w-fit items-center gap-1 text-sm text-brand-gray transition-colors hover:text-brand-ink"
         >
           <ChevronLeft className="h-4 w-4" />
-          Volver a tus workspaces
+          Volver a tus sedes
         </Link>
       )}
 

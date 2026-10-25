@@ -5,7 +5,7 @@ import { expect, test } from "../../support/test";
 import { loginViaUi } from "../../support/ui";
 
 const COPY_LINK_BUTTON = "Copiar link de reservas";
-const WELCOME_TEXT = /Bienvenido a tu panel de /;
+const WELCOME_TEXT = /Este es el panel de /;
 
 type ResourceType = "CLINIC" | "ORGANIZATION";
 

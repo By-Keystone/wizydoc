@@ -1,6 +1,7 @@
-import { Badge, type BadgeProps } from "@/components/ui/badge";
+import { Badge } from "@/components/ui/badge";
 import type { ClinicUser } from "@/lib/api/clinic/types";
 import type { Specialty } from "@/lib/api/specialty/types";
+import { roleDisplay } from "../common/role-display";
 import { type Column, Table } from "../common/table";
 import { DoctorSpecialtiesDialog } from "./doctor-specialties-dialog";
 
@@ -25,22 +26,13 @@ interface Props {
   specialtyEditing?: SpecialtyEditing;
 }
 
-export const roleDisplay: Record<
-  string,
-  { label: string; variant: BadgeProps["variant"] }
-> = {
-  ADMIN: { label: "Administrador", variant: "teal" },
-  DOCTOR: { label: "Médico", variant: "blue" },
-  USER: { label: "Usuario", variant: "gray" },
-};
-
 export const statusTagClass =
   "inline-flex items-center whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-semibold";
 
 export const invitationTag = {
   pending: {
     label: "Invitación pendiente",
-    className: "bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-200",
+    className: "bg-amber-50 text-amber-800 ring-1 ring-inset ring-amber-200",
   },
   expired: {
     label: "Invitación expirada",
@@ -78,7 +70,7 @@ const SpecialtiesCell = ({
           {specialties.map((specialty) => (
             <li
               key={specialty.id}
-              className="rounded-full bg-brand-teal/10 px-2.5 py-0.5 text-xs font-medium text-brand-teal"
+              className="rounded-full bg-brand-teal/10 px-2.5 py-0.5 text-xs font-medium text-brand-teal-dark"
             >
               {specialty.name}
             </li>
@@ -86,7 +78,7 @@ const SpecialtiesCell = ({
         </ul>
       ) : (
         <span
-          className={`${statusTagClass} bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-200`}
+          className={`${statusTagClass} bg-amber-50 text-amber-800 ring-1 ring-inset ring-amber-200`}
         >
           Sin especialidades
         </span>
@@ -133,7 +125,7 @@ const buildColumns = (
             >
               {row.email === currentUserEmail && (
                 <span
-                  className={`${statusTagClass} bg-brand-teal/10 text-brand-teal`}
+                  className={`${statusTagClass} bg-brand-teal/10 text-brand-teal-dark`}
                 >
                   Tú
                 </span>

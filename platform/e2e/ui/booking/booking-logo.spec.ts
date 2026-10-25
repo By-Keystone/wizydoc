@@ -86,7 +86,7 @@ test("CA-29: en el estado sin médicos el logo está solo en el pie, sin enlace"
   await openBooking(page, clinic.clinicId);
 
   await expect(
-    page.getByText(/todavía no tiene doctores disponibles/),
+    page.getByText(/todavía no tiene médicos disponibles/),
   ).toBeVisible();
   await expectLogoOnlyInFooter(page);
 });

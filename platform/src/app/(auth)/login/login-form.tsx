@@ -70,7 +70,7 @@ export function LoginForm({ callbackUrl, passwordReset }: Props) {
       <div className="rounded-2xl border border-gray-200 bg-white p-8 shadow-xl">
         <div role="status">
           {showResetNotice && (
-            <p className="mb-5 flex items-start gap-2 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+            <p className="mb-5 flex items-start gap-2 rounded-lg bg-brand-teal/10 px-3 py-2 text-sm text-brand-teal-dark">
               <CheckCircle2 className="mt-0.5 h-[18px] w-[18px] shrink-0" />
               <span>
                 Listo, ya puedes iniciar sesión con tu contraseña nueva.
@@ -80,7 +80,7 @@ export function LoginForm({ callbackUrl, passwordReset }: Props) {
         </div>
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-brand-teal-dark">
-            Bienvenido de vuelta
+            Hola de nuevo
           </h1>
           <p className="mt-1 text-sm text-brand-gray">
             Ingresa a tu cuenta para continuar
@@ -134,7 +134,7 @@ export function LoginForm({ callbackUrl, passwordReset }: Props) {
           </div>
 
           {error && (
-            <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
+            <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
               {error}
             </p>
           )}

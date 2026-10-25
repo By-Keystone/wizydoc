@@ -53,7 +53,7 @@ export function DateTimeStep({
   onNext,
   onBack,
   description = "Selecciona el día y un horario disponible.",
-  emptyDayMessage = "El doctor no tiene horarios disponibles ese día.",
+  emptyDayMessage = "El médico no tiene horarios disponibles ese día.",
   intro,
   hint,
 }: Props) {
@@ -116,7 +116,7 @@ export function DateTimeStep({
 
       {intro}
 
-      {error && <p className="mt-6 text-sm text-red-600">{error}</p>}
+      {error && <p className="mt-6 text-sm text-red-700">{error}</p>}
 
       {!error && (
         <>

@@ -279,7 +279,7 @@ test("CA-35: a 375 px no hay desplazamiento horizontal en el estado sin médicos
   await openBooking(page, clinic.clinicId);
 
   await expect(
-    page.getByText(/todavía no tiene doctores disponibles/),
+    page.getByText(/todavía no tiene médicos disponibles/),
   ).toBeVisible();
   await expectNoHorizontalScroll(page);
 });

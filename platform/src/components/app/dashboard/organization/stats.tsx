@@ -13,19 +13,9 @@ export const OrganizationStats = async ({
   const { doctorCount } = await organizationsApi.getDoctorCount(resourceId);
   return (
     <>
-      <StatCard
-        icon={UserRound}
-        label="Doctores"
-        value={doctorCount}
-        color="teal"
-      />
+      <StatCard icon={UserRound} label="Médicos" value={doctorCount} />
 
-      <StatCard
-        icon={Building2}
-        label="Sedes"
-        value={clinicCount}
-        color="purple"
-      />
+      <StatCard icon={Building2} label="Sedes" value={clinicCount} />
     </>
   );
 };

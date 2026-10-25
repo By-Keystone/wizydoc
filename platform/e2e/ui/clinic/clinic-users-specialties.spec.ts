@@ -699,7 +699,7 @@ test("el booking refleja el cambio: el médico con horarios aparece con la espec
   await page.goto(bookingUrl);
   await expect(
     page.getByText(
-      "Esta clínica todavía no tiene doctores disponibles para reservar citas.",
+      "Esta sede todavía no tiene médicos disponibles para reservar citas.",
     ),
   ).toBeVisible();
   await expect(specialtyShown(world.specialtyName)).toHaveCount(0);

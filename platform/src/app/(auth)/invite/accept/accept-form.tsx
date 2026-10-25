@@ -87,7 +87,7 @@ export function AcceptInviteForm({ token, name, resourceName, step }: Props) {
             <MailCheck className="h-7 w-7 text-brand-teal" />
           </div>
           <h1 className="text-2xl font-bold text-brand-teal-dark">
-            Hola {name}, te invitaron a {resourceName}
+            Hola, {name}. Te invitaron a {resourceName}
           </h1>
           <p className="mt-2 text-sm text-brand-gray">
             {needsPassword
@@ -97,7 +97,7 @@ export function AcceptInviteForm({ token, name, resourceName, step }: Props) {
         </div>
 
         {error && (
-          <p className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
+          <p className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
             {error}
           </p>
         )}

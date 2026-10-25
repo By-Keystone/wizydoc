@@ -115,7 +115,7 @@ function LinkButton({
     <button
       type="button"
       onClick={onClick}
-      className="font-semibold text-brand-teal underline underline-offset-[3px]"
+      className="font-semibold text-brand-teal-dark underline underline-offset-[3px]"
     >
       {children}
     </button>
@@ -128,7 +128,7 @@ function CurrentAppointmentNote({
   appointment: AppointmentPortal;
 }) {
   return (
-    <div className="mt-4 rounded-[10px] border border-dashed border-slate-300 bg-white px-3 py-2.5 text-[13px] leading-relaxed text-brand-gray">
+    <div className="mt-4 rounded-[10px] border border-dashed border-gray-300 bg-white px-3 py-2.5 text-[13px] leading-relaxed text-brand-gray">
       Tu cita actual:{" "}
       <strong className="text-brand-ink">
         {formatWhen(appointment.date, appointment.time)}
@@ -547,8 +547,8 @@ export function AppointmentPortalView({ token, initialAppointment }: Props) {
   if (view === "rescheduled" && change) {
     return (
       <Card className="w-full max-w-md p-6">
-        <IconTile className="bg-green-100">
-          <CheckCircle className="h-7 w-7 text-green-600" />
+        <IconTile className="bg-brand-teal/10">
+          <CheckCircle className="h-7 w-7 text-brand-teal" />
         </IconTile>
         <div className="text-center">
           <h1 className="text-xl font-bold text-brand-teal-dark">

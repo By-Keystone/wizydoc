@@ -101,7 +101,7 @@ export function EditableClinicSpecialties({
         {clinic.specialties.map((specialty) => (
           <li
             key={specialty.id}
-            className="rounded-full border border-[#cfe5e2] bg-brand-surface px-3 py-1 text-[13px] text-brand-teal-dark"
+            className="rounded-full border border-brand-teal/20 bg-brand-surface px-3 py-1 text-[13px] text-brand-teal-dark"
           >
             {specialty.name}
           </li>
@@ -174,7 +174,7 @@ function SpecialtiesEditor({
   return (
     <form
       ref={formRef}
-      className="min-w-0 rounded-[10px] border border-[#cfe5e2] p-3.5 shadow-[0_0_0_3px_rgba(14,140,130,0.08)]"
+      className="min-w-0 rounded-[10px] border border-brand-teal/20 p-3.5 ring-[3px] ring-brand-teal/[0.08]"
       onSubmit={(event) => {
         event.preventDefault();
         submit(new FormData(event.currentTarget));

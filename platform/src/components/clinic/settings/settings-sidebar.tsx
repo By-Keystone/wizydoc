@@ -57,7 +57,7 @@ export function SettingsSidebar() {
                   className={cn(
                     "flex shrink-0 items-center gap-3 whitespace-nowrap rounded-lg px-3 py-2 text-sm transition-colors",
                     isActive
-                      ? "bg-brand-teal/10 font-medium text-brand-teal"
+                      ? "bg-brand-teal/10 font-medium text-brand-teal-dark"
                       : "text-brand-gray hover:bg-gray-100 hover:text-brand-ink",
                   )}
                 >
