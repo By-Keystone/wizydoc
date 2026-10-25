@@ -219,6 +219,16 @@ Cambios mínimos, en un ticket propio:
    El `refine` vuelve a exigir tarjeta, dirección y ciudad.
 2. platform: borrar `PLANS_OPEN_DURING_BETA` y usar las opciones de
    `PLAN_OPTIONS` sin `RED`.
+   **Actualizado el 24 de octubre de 2026** (estandarización de los formularios
+   de entrada, rama `fix/auth-forms`): el onboarding vive en
+   `platform/src/app/(auth)/onboarding/page.tsx`, ya no tiene el select y el
+   congelamiento es la constante `BETA_PLAN: Plan = "FREE"`, un
+   `<input type="hidden" name="plan">` y la frase de la beta. Reactivar es
+   volver al `useState` del plan y al `Select` con esas opciones, y quitar la
+   constante, el campo oculto y la frase. El formulario es `noValidate`:
+   validar dirección y ciudad de facturación en `handleSubmit` antes de
+   `checkout.open`, o el checkout tokeniza la tarjeta con esos campos vacíos y
+   el api la rechaza.
 3. Antes de eso, lo que motivó el congelamiento: renovación, pagos fallidos y
    cancelación (rama `subscription-lifecycle`).
 
@@ -476,7 +486,9 @@ uno con un comentario de una línea que remite a `docs/PRODUCT.md`; el
 `refine` de tarjeta/dirección/ciudad, `startBilling`, `CulqiBillingService`,
 su cableado y la rama de pago del onboarding (campos de facturación,
 `useCulqiCheckout`, "Continuar al pago") siguen en el código y compilan; y no
-hay variable de entorno ni bandera que active el cobro.
+hay variable de entorno ni bandera que active el cobro. Desde el 24 de octubre
+de 2026 la constante del onboarding se llama `BETA_PLAN` y va con un campo
+oculto `plan` (ver el paso 2 de "Reactivación").
 
 **CA-18 `[manual]` Tipos y lint limpios.**
 Dado el diff,

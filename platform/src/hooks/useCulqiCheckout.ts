@@ -24,10 +24,12 @@ interface OpenCheckoutInput {
   onError: (message: string) => void;
 }
 
-export function useCulqiCheckout() {
+export function useCulqiCheckout({ enabled }: { enabled: boolean }) {
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
+    if (!enabled) return;
+
     if (window.CulqiCheckout) {
       setIsReady(true);
       return;
@@ -48,7 +50,7 @@ export function useCulqiCheckout() {
     }
 
     return () => script.removeEventListener("load", markReady);
-  }, []);
+  }, [enabled]);
 
   const open = ({ amountCents, onToken, onError }: OpenCheckoutInput) => {
     if (!window.CulqiCheckout) {
@@ -75,8 +77,6 @@ export function useCulqiCheckout() {
     );
 
     culqi.culqi = () => {
-      console.error({ culqi });
-
       if (culqi.token) {
         onToken(culqi.token.id);
         culqi.close();

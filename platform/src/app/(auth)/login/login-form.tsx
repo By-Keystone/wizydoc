@@ -1,14 +1,26 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { type FormEvent, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { CheckCircle2, Loader2 } from "lucide-react";
+import { AuthCard, TEXT_LINK_CLASS } from "@/components/common/auth-card";
+import { Input, PasswordInput } from "@/components/common/form";
 import { Button } from "@/components/ui/button";
+import { useFocusFirstInvalid } from "@/hooks/useFocusFirstInvalid";
 import { authClient } from "@/lib/auth/client";
+import { hasErrors, validateEmail } from "@/lib/auth/form-validation";
 import { safeInternalPath } from "@/lib/auth/safe-internal-path";
 
 const TOO_MANY_REQUESTS = 429;
+
+const WRONG_CREDENTIALS_ERROR = "El correo o la contraseña no son correctos.";
+const UNVERIFIED_EMAIL_ERROR =
+  "Primero confirma tu correo con el enlace que te enviamos al registrarte.";
+const TOO_MANY_ATTEMPTS_ERROR =
+  "Hiciste varios intentos seguidos. Espera un minuto y vuelve a intentarlo.";
+const GENERIC_ERROR =
+  "No pudimos iniciar sesión. Revisa tu conexión y vuelve a intentarlo.";
 
 interface Props {
   /** Ruta a la que volver tras iniciar sesión (la que el usuario intentaba abrir). */
@@ -17,11 +29,35 @@ interface Props {
   passwordReset?: boolean;
 }
 
+interface FieldErrors {
+  email?: string;
+  password?: string;
+}
+
+function validateCredentials(email: string, password: string): FieldErrors {
+  return {
+    email: validateEmail(email),
+    password: password ? undefined : "Escribe tu contraseña.",
+  };
+}
+
+function signInErrorMessage(error: { code?: string; status: number }) {
+  if (error.code === "INVALID_EMAIL_OR_PASSWORD")
+    return WRONG_CREDENTIALS_ERROR;
+  if (error.code === "EMAIL_NOT_VERIFIED") return UNVERIFIED_EMAIL_ERROR;
+  if (error.status === TOO_MANY_REQUESTS) return TOO_MANY_ATTEMPTS_ERROR;
+  return GENERIC_ERROR;
+}
+
 export function LoginForm({ callbackUrl, passwordReset }: Props) {
   const router = useRouter();
-  const [error, setError] = useState<string | null>(null);
+  const formRef = useRef<HTMLFormElement>(null);
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+  const [submitError, setSubmitError] = useState<string>();
   const [pending, setPending] = useState(false);
   const [showResetNotice, setShowResetNotice] = useState(false);
+
+  useFocusFirstInvalid(formRef, fieldErrors);
 
   // Un aviso que ya está en el HTML al cargar no se anuncia: la región
   // `role="status"` va vacía en el servidor y el texto entra tras montar.
@@ -31,136 +67,118 @@ export function LoginForm({ callbackUrl, passwordReset }: Props) {
 
   const callback = safeInternalPath(callbackUrl);
 
-  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setError(null);
-    setPending(true);
+    setSubmitError(undefined);
 
     const form = new FormData(event.currentTarget);
+    const email = String(form.get("email") ?? "").trim();
+    const password = String(form.get("password") ?? "");
 
-    const { data, error } = await authClient.signIn.email({
-      email: form.get("email") as string,
-      password: form.get("password") as string,
-    });
+    const errors = validateCredentials(email, password);
+    setFieldErrors(errors);
+    if (hasErrors(errors)) return;
 
-    setPending(false);
+    setPending(true);
+    try {
+      const { data, error } = await authClient.signIn.email({
+        email,
+        password,
+      });
 
-    if (error) {
-      if (error.status === TOO_MANY_REQUESTS) {
-        setError(
-          "Hiciste varios intentos seguidos. Espera un minuto y vuelve a intentarlo.",
+      if (!error) {
+        // Sin cuenta todavía → onboarding; si ya tiene, a donde intentaba ir
+        // (callbackUrl) o a su selector de recursos.
+        const accountId = data?.user?.accountId;
+        router.push(
+          accountId
+            ? (callback ?? `/account/${accountId}/select`)
+            : "/onboarding",
         );
+        // El botón sigue deshabilitado hasta que la navegación desmonte el formulario.
         return;
       }
-      setError(error.message ?? "Credenciales inválidas");
-      return;
+      setSubmitError(signInErrorMessage(error));
+    } catch {
+      setSubmitError(GENERIC_ERROR);
     }
-
-    // Sin cuenta todavía → onboarding; si ya tiene, a donde intentaba ir
-    // (callbackUrl) o a su selector de recursos.
-    if (!data?.user?.accountId) {
-      router.push("/onboarding");
-      return;
-    }
-    router.push(callback ?? `/account/${data.user.accountId}/select`);
+    setPending(false);
   }
 
   return (
-    <div className="w-full max-w-md">
-      <div className="rounded-2xl border border-gray-200 bg-white p-8 shadow-xl">
-        <div role="status">
-          {showResetNotice && (
-            <p className="mb-5 flex items-start gap-2 rounded-lg bg-brand-teal/10 px-3 py-2 text-sm text-brand-teal-dark">
-              <CheckCircle2 className="mt-0.5 h-[18px] w-[18px] shrink-0" />
-              <span>
-                Listo, ya puedes iniciar sesión con tu contraseña nueva.
-              </span>
-            </p>
-          )}
-        </div>
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-brand-teal-dark">
-            Hola de nuevo
-          </h1>
-          <p className="mt-1 text-sm text-brand-gray">
-            Ingresa a tu cuenta para continuar
-          </p>
-        </div>
-
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <div className="flex flex-col gap-1.5">
-            <label
-              htmlFor="email"
-              className="text-sm font-medium text-brand-gray"
-            >
-              Correo electrónico
-            </label>
-            <input
-              id="email"
-              name="email"
-              type="email"
-              required
-              autoComplete="email"
-              placeholder="ana@consultorio.com"
-              className="rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none transition focus:border-brand-teal focus:ring-2 focus:ring-brand-teal/20"
-            />
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <label
-              htmlFor="password"
-              className="text-sm font-medium text-brand-gray"
-            >
-              Contraseña
-            </label>
-            <input
-              id="password"
-              name="password"
-              type="password"
-              required
-              autoComplete="current-password"
-              placeholder="Tu contraseña"
-              className="rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none transition focus:border-brand-teal focus:ring-2 focus:ring-brand-teal/20"
-            />
-          </div>
-
-          <div className="-mt-2 flex justify-end">
-            <Link
-              href="/forgot-password"
-              className="inline-flex min-h-10 items-center text-sm font-medium text-brand-teal hover:text-brand-teal-dark"
-            >
-              ¿Olvidaste tu contraseña?
-            </Link>
-          </div>
-
-          {error && (
-            <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
-              {error}
-            </p>
-          )}
-
-          <Button type="submit" className="mt-2 w-full" disabled={pending}>
-            {pending ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Iniciando sesión...
-              </>
-            ) : (
-              "Iniciar sesión"
-            )}
-          </Button>
-        </form>
-
-        <p className="mt-6 text-center text-sm text-brand-gray">
+    <AuthCard
+      title="Hola de nuevo"
+      description="Ingresa a tu cuenta para continuar"
+      footer={
+        <>
           ¿No tienes cuenta?{" "}
-          <Link
-            href="/register"
-            className="font-medium text-brand-teal hover:text-brand-teal-dark"
-          >
+          <Link href="/register" className={TEXT_LINK_CLASS}>
             Regístrate gratis
           </Link>
-        </p>
+        </>
+      }
+    >
+      <div role="status">
+        {showResetNotice && (
+          <p className="mb-5 flex items-start gap-2 rounded-lg bg-brand-teal/10 px-3 py-2 text-sm text-brand-teal-dark">
+            <CheckCircle2 className="mt-0.5 h-[18px] w-[18px] shrink-0" />
+            <span>
+              Listo, ya puedes iniciar sesión con tu contraseña nueva.
+            </span>
+          </p>
+        )}
       </div>
-    </div>
+
+      <form
+        ref={formRef}
+        onSubmit={handleSubmit}
+        noValidate
+        className="flex flex-col gap-4"
+      >
+        <Input
+          name="email"
+          type="email"
+          label="Correo electrónico"
+          autoComplete="email"
+          placeholder="ana@consultorio.com"
+          error={fieldErrors.email}
+        />
+
+        <PasswordInput
+          id="password"
+          name="password"
+          label="Contraseña"
+          autoComplete="current-password"
+          placeholder="Tu contraseña"
+          error={fieldErrors.password}
+        />
+
+        <div className="-mt-2 flex justify-end">
+          <Link href="/forgot-password" className={TEXT_LINK_CLASS}>
+            ¿Olvidaste tu contraseña?
+          </Link>
+        </div>
+
+        {submitError && (
+          <p
+            role="alert"
+            className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700"
+          >
+            {submitError}
+          </p>
+        )}
+
+        <Button type="submit" className="mt-2 w-full" disabled={pending}>
+          {pending ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Iniciando sesión…
+            </>
+          ) : (
+            "Iniciar sesión"
+          )}
+        </Button>
+      </form>
+    </AuthCard>
   );
 }

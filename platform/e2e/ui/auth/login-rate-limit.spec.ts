@@ -24,7 +24,7 @@ test("CA-14: un 429 al iniciar sesión muestra el aviso en español y permite re
 
   await page.goto("/login");
   await page.getByLabel("Correo electrónico").fill(uniqueEmail("limite"));
-  await page.getByLabel("Contraseña").fill(E2E_PASSWORD);
+  await page.getByLabel("Contraseña", { exact: true }).fill(E2E_PASSWORD);
   const submit = page.getByRole("button", { name: "Iniciar sesión" });
   await submit.click();
 

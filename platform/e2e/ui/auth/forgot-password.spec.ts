@@ -358,7 +358,7 @@ test("CA-27 y CA-28: el invitado vigente recibe «Tu invitación a WizyDoc sigue
   expect((await getInvitationByToken(invited.token)).status).toBe("INVITED");
 
   await page.goto(`${PLATFORM_BASE_URL}/invite/accept?token=${invited.token}`);
-  await page.getByLabel("Contraseña").fill(NEW_PASSWORD);
+  await page.getByLabel("Contraseña", { exact: true }).fill(NEW_PASSWORD);
   await page.getByRole("button", { name: "Activar cuenta" }).click();
   await expect(page).toHaveURL(
     new RegExp(`/account/${host.admin.accountId}/select$`),

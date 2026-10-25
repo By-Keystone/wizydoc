@@ -83,7 +83,7 @@ test("CA-4: médico con dos invitaciones pendientes fija la contraseña con la p
   await expect(
     page.getByText("Acepta la invitación para unirte al equipo."),
   ).toBeVisible();
-  await expect(page.getByLabel("Contraseña")).toHaveCount(0);
+  await expect(page.getByLabel("Contraseña", { exact: true })).toHaveCount(0);
 
   await page.getByRole("button", { name: "Aceptar invitación" }).click();
   await expect(page).toHaveURL(/\/login$/);

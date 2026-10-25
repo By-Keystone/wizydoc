@@ -17,7 +17,8 @@ por el servidor de Next, que reenvía la cookie de sesión de Better Auth.
 
 ## Rutas
 
-- `(auth)`, `(onboarding)`: login, registro, invitaciones.
+- `(auth)`: login, registro, recuperar contraseña, invitaciones y onboarding, con
+  el marco de `(auth)/layout.tsx` y la tarjeta `AuthCard`.
 - `account/[accountId]/organization/[resourceId]/...` y
   `account/[accountId]/clinic/[clinicId]/...`: app privada (guards en
   `src/lib/auth/guards.ts` y `src/middleware.ts`).
