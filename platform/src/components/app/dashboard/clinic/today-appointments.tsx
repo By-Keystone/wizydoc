@@ -1,17 +1,6 @@
 import { CalendarDays } from "lucide-react";
+import { AppointmentStatusBadge } from "@/components/common/appointment-status-badge";
 import { clinicApi } from "@/lib/api/clinic";
-import type { AppointmentStatus } from "@/lib/api/clinic/types";
-
-const statusStyles: Record<
-  AppointmentStatus,
-  { label: string; className: string }
-> = {
-  PENDING: { label: "Pendiente", className: "bg-yellow-50 text-yellow-700" },
-  CONFIRMED: { label: "Confirmada", className: "bg-teal-50 text-teal-700" },
-  COMPLETED: { label: "Completada", className: "bg-gray-100 text-gray-600" },
-  CANCELLED: { label: "Cancelada", className: "bg-red-50 text-red-700" },
-  NO_SHOW: { label: "No asistió", className: "bg-red-50 text-red-700" },
-};
 
 interface Props {
   resourceId: string;
@@ -36,46 +25,38 @@ export async function TodayAppointments({ resourceId }: Props) {
         </p>
       ) : (
         <ul className="divide-y divide-gray-100">
-          {appointments.map((appointment) => {
-            const status = statusStyles[appointment.status];
-
-            return (
-              <li
-                key={appointment.id}
-                className="flex flex-wrap items-center gap-x-4 gap-y-2 px-5 py-4"
+          {appointments.map((appointment) => (
+            <li
+              key={appointment.id}
+              className="flex flex-wrap items-center gap-x-4 gap-y-2 px-5 py-4"
+            >
+              <time
+                dateTime={appointment.scheduledAt}
+                className="w-14 shrink-0 font-semibold tabular-nums text-brand-ink"
               >
-                <time
-                  dateTime={appointment.scheduledAt}
-                  className="w-14 shrink-0 font-semibold tabular-nums text-brand-ink"
-                >
-                  {appointment.time}
-                </time>
+                {appointment.time}
+              </time>
 
-                <div className="min-w-0 flex-1">
-                  <p className="truncate font-medium text-brand-ink">
-                    {appointment.patient.name} {appointment.patient.lastName}
-                  </p>
-                  <p className="truncate text-sm text-brand-gray">
-                    {appointment.specialty} · {appointment.durationMinutes} min
-                    · {appointment.doctor.displayName}
-                  </p>
-                </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate font-medium text-brand-ink">
+                  {appointment.patient.name} {appointment.patient.lastName}
+                </p>
+                <p className="truncate text-sm text-brand-gray">
+                  {appointment.specialty} · {appointment.durationMinutes} min ·{" "}
+                  {appointment.doctor.displayName}
+                </p>
+              </div>
 
-                <a
-                  href={`tel:${appointment.patient.phone}`}
-                  className="text-sm text-brand-gray hover:text-brand-ink"
-                >
-                  {appointment.patient.phone}
-                </a>
+              <a
+                href={`tel:${appointment.patient.phone}`}
+                className="text-sm text-brand-gray hover:text-brand-ink"
+              >
+                {appointment.patient.phone}
+              </a>
 
-                <span
-                  className={`rounded-full px-2.5 py-1 text-xs font-medium ${status.className}`}
-                >
-                  {status.label}
-                </span>
-              </li>
-            );
-          })}
+              <AppointmentStatusBadge status={appointment.status} />
+            </li>
+          ))}
         </ul>
       )}
     </section>

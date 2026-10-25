@@ -1,3 +1,5 @@
+import type { AppointmentStatus } from "@/lib/api/appointments/types";
+
 export type Clinic = {
   id: string; // The resource id
   name: string;
@@ -33,13 +35,6 @@ export type ClinicMetrics = {
   doctors?: number;
   memberships?: number;
 };
-
-export type AppointmentStatus =
-  | "PENDING"
-  | "CONFIRMED"
-  | "CANCELLED"
-  | "COMPLETED"
-  | "NO_SHOW";
 
 /**
  * Cita de la agenda del día. Un DOCTOR sólo recibe las suyas; el resto de

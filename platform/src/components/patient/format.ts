@@ -1,5 +1,3 @@
-import type { AppointmentStatus } from "@/lib/api/patients/types";
-
 /**
  * Las citas se guardan como instantes, así que hay que pintarlas en el huso de
  * la clínica: con el del navegador, una cita de las 8:00 en Lima se vería a otra
@@ -77,19 +75,3 @@ const DOCUMENT_TYPE_LABELS: Record<string, string> = {
 
 export const formatDocument = (type: string, number: string) =>
   `${DOCUMENT_TYPE_LABELS[type] ?? type} ${number}`;
-
-export const STATUS_LABELS: Record<AppointmentStatus, string> = {
-  PENDING: "Pendiente",
-  CONFIRMED: "Confirmada",
-  CANCELLED: "Cancelada",
-  COMPLETED: "Completada",
-  NO_SHOW: "No asistió",
-};
-
-export const STATUS_STYLES: Record<AppointmentStatus, string> = {
-  PENDING: "bg-amber-50 text-amber-700",
-  CONFIRMED: "bg-teal-50 text-teal-700",
-  CANCELLED: "bg-gray-100 text-brand-gray",
-  COMPLETED: "bg-emerald-50 text-emerald-700",
-  NO_SHOW: "bg-red-50 text-red-700",
-};
