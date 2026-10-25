@@ -6,6 +6,12 @@ type Props = {
   memberships: Membership[];
 };
 
+const PRIMARY_ENTER_CLASS =
+  "rounded-lg bg-brand-teal px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-teal-dark";
+
+const SECONDARY_ENTER_CLASS =
+  "rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-brand-gray hover:bg-gray-50";
+
 export function MembershipsList({ memberships }: Props) {
   if (memberships.length === 0) {
     return (
@@ -35,6 +41,7 @@ export function MembershipsList({ memberships }: Props) {
       {memberships.map((m) => (
         <details
           key={m.organization.resourceId}
+          open={memberships.length === 1}
           className="group rounded-2xl border border-gray-200 bg-white shadow-sm open:shadow-md"
         >
           <summary className="flex cursor-pointer list-none items-center justify-between p-5 [&::-webkit-details-marker]:hidden">
@@ -43,6 +50,7 @@ export function MembershipsList({ memberships }: Props) {
                 className="h-4 w-4 text-brand-gray transition-transform group-open:rotate-90"
                 viewBox="0 0 20 20"
                 fill="currentColor"
+                aria-hidden="true"
               >
                 <path
                   fillRule="evenodd"
@@ -69,7 +77,11 @@ export function MembershipsList({ memberships }: Props) {
             {m.membership && m.membership.role === "ADMIN" && (
               <EnterLink
                 href={`/account/${m.accountId}/organization/${m.organization.resourceId}`}
-                className="rounded-lg bg-brand-teal px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-teal-dark"
+                className={
+                  m.clinics.length === 0
+                    ? PRIMARY_ENTER_CLASS
+                    : SECONDARY_ENTER_CLASS
+                }
                 resourceId={m.organization.resourceId}
                 resourceType={"ORGANIZATION"}
               >
@@ -101,7 +113,7 @@ export function MembershipsList({ memberships }: Props) {
 
                   <EnterLink
                     href={`/account/${m.accountId}/clinic/${c.resourceId}`}
-                    className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-brand-gray hover:bg-gray-50"
+                    className={PRIMARY_ENTER_CLASS}
                     resourceId={c.resourceId}
                     resourceType={"CLINIC"}
                   >

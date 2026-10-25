@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { Users } from "lucide-react";
 import { OrganizationUsersTable } from "@/components/organization/organization-users-table";
 import { OrganizationUsersTopHeader } from "@/components/organization/users-top-header";
@@ -6,6 +7,8 @@ import { clinicApi } from "@/lib/api/clinic";
 import { organizationsApi } from "@/lib/api/organizations";
 import { specialtyApi } from "@/lib/api/specialty";
 import { getMe } from "@/lib/auth/me";
+
+export const metadata: Metadata = { title: "Usuarios" };
 
 interface Props {
   params: Promise<{ accountId: string; resourceId: string }>;

@@ -36,7 +36,7 @@ import {
   uniqueEmail,
 } from "../../support/users";
 import { getTestPrisma } from "../../support/db";
-import { loginViaUi } from "../../support/ui";
+import { clinicDashboardUrl, loginViaUi } from "../../support/ui";
 import { createOnboardedAdmin } from "../../support/accounts";
 
 // docs/features/forgot-password/plan.md — CA-2, CA-7, CA-8, CA-14 a CA-16, CA-18, CA-22 a CA-24, CA-27 a CA-33 y CA-42.
@@ -360,9 +360,7 @@ test("CA-27 y CA-28: el invitado vigente recibe «Tu invitación a WizyDoc sigue
   await page.goto(`${PLATFORM_BASE_URL}/invite/accept?token=${invited.token}`);
   await page.getByLabel("Contraseña", { exact: true }).fill(NEW_PASSWORD);
   await page.getByRole("button", { name: "Activar cuenta" }).click();
-  await expect(page).toHaveURL(
-    new RegExp(`/account/${host.admin.accountId}/select$`),
-  );
+  await expect(page).toHaveURL(clinicDashboardUrl(host.admin.accountId));
 });
 
 test("CA-29: el invitado con invitación vencida recibe el mismo asunto sin enlace a /invite/accept", async ({

@@ -1,6 +1,6 @@
 import type { Page } from "@playwright/test";
 import { createApiContext } from "../../support/accounts";
-import { loginViaUi } from "../../support/ui";
+import { loginAndGoTo } from "../../support/ui";
 import { expect, test } from "../../support/test";
 import {
   addMember,
@@ -174,12 +174,7 @@ test("CA-69: las demás sesiones se cierran, se entra con la nueva y la anterior
   const otherContext = await browser.newContext();
   const otherPage = await otherContext.newPage();
   try {
-    await loginViaUi(
-      otherPage,
-      user.email,
-      new RegExp(`/account/${user.accountId}/select$`),
-    );
-    await otherPage.goto(`/account/${user.accountId}/me`);
+    await loginAndGoTo(otherPage, user.email, `/account/${user.accountId}/me`);
     await expect(otherPage.getByRole("heading", { level: 1 })).toBeVisible();
 
     await loginAndOpenProfile(page, user);

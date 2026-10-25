@@ -53,9 +53,10 @@ test("CA-43: bajo los workspaces muestra la barra superior, el regreso, el avata
   ).toBeVisible();
 
   await page.getByRole("link", { name: "Volver a tus sedes" }).click();
-  await expect(page).toHaveURL(
-    new RegExp(`/account/${user.accountId}/select$`),
-  );
+  await expect(page).toHaveURL(`/account/${user.accountId}/select?switch=1`);
+  await expect(
+    page.getByRole("heading", { name: "Elige dónde entrar" }),
+  ).toBeVisible();
 });
 
 test("CA-44: dentro de una sede muestra el mismo contenido con el menú lateral y sin el regreso a tus sedes", async ({

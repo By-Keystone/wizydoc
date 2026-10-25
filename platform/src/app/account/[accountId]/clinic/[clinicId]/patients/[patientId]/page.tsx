@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 import { AppointmentHistory } from "@/components/patient/appointment-history";
@@ -8,6 +9,8 @@ import { PlanFeatureNotice } from "@/components/common/plan-feature-notice";
 import { isPlanFeatureError } from "@/lib/api/errors";
 import { patientsApi } from "@/lib/api/patients";
 import type { PatientDetail } from "@/lib/api/patients/types";
+
+export const metadata: Metadata = { title: "Ficha del paciente" };
 
 interface Props {
   params: Promise<{ accountId: string; clinicId: string; patientId: string }>;

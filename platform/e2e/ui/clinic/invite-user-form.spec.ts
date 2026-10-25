@@ -11,7 +11,7 @@ import {
 } from "../../support/accounts";
 import { PLATFORM_BASE_URL } from "../../support/env";
 import { uniqueEmail, uniqueName } from "../../support/users";
-import { loginViaUi } from "../../support/ui";
+import { clinicDashboardUrl, loginViaUi } from "../../support/ui";
 
 /**
  * docs/features/fix-user-by-email-scope/plan.md — CA-13, CA-15, CA-16, CA-18 y CA-19.
@@ -89,11 +89,7 @@ async function goToUsersPage(
   fixture: Fixture,
   actor: UsersPageActor = fixture.admin,
 ): Promise<void> {
-  await loginViaUi(
-    page,
-    actor.email,
-    new RegExp(`/account/${actor.accountId}/select$`),
-  );
+  await loginViaUi(page, actor.email, clinicDashboardUrl(actor.accountId));
 
   // Las cookies resource_id/resource_type imitan "Entrar" en /select; elegir sede no es parte de este flujo.
   await page.context().addCookies([
@@ -305,10 +301,12 @@ test("CA-7: la recepción no puede abrir a mano la página de Usuarios de su pro
     accountId: fixture.admin.accountId,
   });
 
-  // La recepción no tiene membership en la organización: el layout de ese
-  // segmento (no el error.tsx del segmento hijo) atrapa el NoMembershipError.
+  // Sin membership en la organización, su layout la devuelve a la lista de sedes en vez de mostrar un error.
+  await expect(page).toHaveURL(
+    `/account/${fixture.admin.accountId}/select?switch=1`,
+  );
   await expect(
-    page.getByText("No se pudo cargar la organización"),
+    page.getByRole("heading", { name: "Elige dónde entrar" }),
   ).toBeVisible();
   await expect(page.getByRole("heading", { name: "Usuarios" })).toHaveCount(0);
   await expect(

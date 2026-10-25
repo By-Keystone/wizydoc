@@ -7,13 +7,6 @@ const CLINIC_TIME_ZONE = "America/Lima";
 
 export const EMPTY = "—";
 
-const dateFormatter = new Intl.DateTimeFormat("es-PE", {
-  day: "2-digit",
-  month: "short",
-  year: "numeric",
-  timeZone: CLINIC_TIME_ZONE,
-});
-
 const dateTimeFormatter = new Intl.DateTimeFormat("es-PE", {
   day: "2-digit",
   month: "short",
@@ -30,26 +23,11 @@ const shortDateFormatter = new Intl.DateTimeFormat("es-PE", {
   timeZone: CLINIC_TIME_ZONE,
 });
 
-export const formatDate = (iso: string | null) =>
-  iso ? dateFormatter.format(new Date(iso)) : EMPTY;
-
 export const formatDateTime = (iso: string) =>
   dateTimeFormatter.format(new Date(iso));
 
 export const formatShortDate = (iso: string | null) =>
   iso ? shortDateFormatter.format(new Date(iso)) : EMPTY;
-
-/**
- * `birthDate` es `"YYYY-MM-DD"`, una fecha de calendario y no un instante:
- * pasarla por `new Date()` la desplazaría un día según el huso.
- */
-export function formatBirthDate(birthDate: string | null) {
-  if (!birthDate) return EMPTY;
-
-  const [year, month, day] = birthDate.split("-");
-
-  return `${day}/${month}/${year}`;
-}
 
 export function calculateAge(birthDate: string | null): number | null {
   if (!birthDate) return null;

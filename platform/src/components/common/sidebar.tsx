@@ -9,6 +9,7 @@ import { useMemo, useState } from "react";
 import { getNavLinks } from "./utils";
 import { UserMenu } from "./user-menu";
 import { useApp } from "@/context/app/app.context";
+import { switchWorkspacePath } from "@/lib/auth/workspace-paths";
 import { cn } from "@/lib/utils";
 import { useParams, usePathname, useRouter } from "next/navigation";
 
@@ -36,7 +37,7 @@ export function Sidebar() {
   );
 
   const handleChangeResource = () => {
-    router.push(`/account/${params.accountId}/select`);
+    router.push(switchWorkspacePath(params.accountId));
     document.cookie = "resource_id=; path=/; max-age=0";
     document.cookie = "resource_type=; path=/; max-age=0";
   };

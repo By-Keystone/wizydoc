@@ -3,7 +3,7 @@ import { createClinicDoctor } from "../../support/availability";
 import { getTestPrisma } from "../../support/db";
 import { PLATFORM_BASE_URL } from "../../support/env";
 import { expect, test } from "../../support/test";
-import { loginViaUi } from "../../support/ui";
+import { clinicDashboardUrl, loginViaUi } from "../../support/ui";
 
 const PATIENT_NAME = "Camila";
 const PATIENT_LAST_NAME = "Rivas";
@@ -40,11 +40,7 @@ test("la agenda del día muestra nombre, apellido y teléfono del paciente", asy
     },
   });
 
-  await loginViaUi(
-    page,
-    doctor.email,
-    new RegExp(`/account/${doctor.accountId}/select$`),
-  );
+  await loginViaUi(page, doctor.email, clinicDashboardUrl(doctor.accountId));
   await page.context().addCookies([
     {
       name: "resource_id",

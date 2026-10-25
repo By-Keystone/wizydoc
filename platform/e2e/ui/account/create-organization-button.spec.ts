@@ -8,7 +8,7 @@ import {
 } from "../../support/accounts";
 import { getTestPrisma } from "../../support/db";
 import { createConfirmedUser, uniqueName } from "../../support/users";
-import { loginViaUi } from "../../support/ui";
+import { clinicDashboardUrl, loginViaUi } from "../../support/ui";
 
 /**
  * docs/features/fix-org-clinic-creation-role/plan.md — CA-9, CA-10, CA-20 y
@@ -66,8 +66,9 @@ test("CA-20: un ADMIN sólo de una sede no ve el botón Crear organización", as
   await loginViaUi(
     page,
     adminOfClinic.email,
-    new RegExp(`/account/${admin.accountId}/select$`),
+    clinicDashboardUrl(admin.accountId),
   );
+  await page.goto(`/account/${admin.accountId}/select?switch=1`);
 
   await expect(
     page.getByRole("button", { name: "Crear organización" }),
@@ -152,6 +153,6 @@ test("CA-10: el dueño nuevo crea su organización y una sede desde /select", as
   await expect(page.getByText(clinicName)).toBeVisible();
 
   // Confirma que el dueño quedó ADMIN de la organización: /select muestra su rol.
-  await page.goto(`/account/${owner.accountId}/select`);
+  await page.goto(`/account/${owner.accountId}/select?switch=1`);
   await expect(page.getByText("Tu rol: Administrador")).toBeVisible();
 });

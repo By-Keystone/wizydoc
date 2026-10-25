@@ -48,6 +48,21 @@ export async function confirmEmailViaLink(
   await page.goto(verificationLink);
 }
 
+// Con una sola sede en total, `/select` redirige a su dashboard; con ninguna o con varias, se queda.
+export const clinicDashboardUrl = (accountId: string) =>
+  new RegExp(`/account/${accountId}/clinic/[^/]+/dashboard$`);
+
+async function submitLoginForm(
+  page: Page,
+  email: string,
+  password: string,
+): Promise<void> {
+  await page.getByLabel("Correo electrónico").fill(email);
+  await page.getByLabel("Contraseña", { exact: true }).fill(password);
+
+  await page.getByRole("button", { name: "Iniciar sesión" }).click();
+}
+
 export async function loginViaUi(
   page: Page,
   email: string,
@@ -55,15 +70,24 @@ export async function loginViaUi(
   password: string = E2E_PASSWORD,
 ): Promise<void> {
   await page.goto("/login");
-
-  await page.getByLabel("Correo electrónico").fill(email);
-  await page.getByLabel("Contraseña", { exact: true }).fill(password);
-
-  await page.getByRole("button", { name: "Iniciar sesión" }).click();
+  await submitLoginForm(page, email, password);
 
   // `toHaveURL` reintenta solo: evita la carrera con el `router.push` de `login-form.tsx`.
   // El primer login tras arrancar `next dev` compila las rutas en caliente: con los 5 s por defecto falla bajo carga.
   await expect(page).toHaveURL(expectedUrl, { timeout: 20_000 });
+}
+
+// `/select` pasa por URLs intermedias según cuántas sedes tenga el usuario: con `callbackUrl` el destino no depende de eso.
+export async function loginAndGoTo(
+  page: Page,
+  email: string,
+  path: string,
+  password: string = E2E_PASSWORD,
+): Promise<void> {
+  await page.goto(`/login?callbackUrl=${encodeURIComponent(path)}`);
+  await submitLoginForm(page, email, password);
+
+  await expect(page).toHaveURL(path, { timeout: 20_000 });
 }
 
 export async function completeOnboardingViaUi(

@@ -17,7 +17,7 @@ import { getTestPrisma } from "../../support/db";
 import { readUserEmail } from "../../support/doctor-treatment";
 import { API_BASE_URL, PLATFORM_BASE_URL } from "../../support/env";
 import { expect, test } from "../../support/test";
-import { loginViaUi } from "../../support/ui";
+import { loginAndGoTo } from "../../support/ui";
 import { uniqueEmail, uniqueName } from "../../support/users";
 
 // docs/features/doctor-profile-membership/plan.md: formulario único de asignar, desde Usuarios de la organización.
@@ -95,13 +95,10 @@ async function openOrganizationUsers(
   world: World,
   email: string = world.admin.email,
 ) {
-  await loginViaUi(
+  await setSpace(page, "ORGANIZATION", world.organizationId);
+  await loginAndGoTo(
     page,
     email,
-    new RegExp(`/account/${world.admin.accountId}/select$`),
-  );
-  await setSpace(page, "ORGANIZATION", world.organizationId);
-  await page.goto(
     `/account/${world.admin.accountId}/organization/${world.organizationId}/users`,
   );
   await expect(page.getByRole("heading", { name: "Usuarios" })).toBeVisible();

@@ -1,5 +1,8 @@
+import type { Metadata } from "next";
 import { MyProfile } from "@/components/profile/my-profile";
 import { usersApi } from "@/lib/api/user";
+
+export const metadata: Metadata = { title: "Mi perfil" };
 
 interface Props {
   params: Promise<{ accountId: string }>;
