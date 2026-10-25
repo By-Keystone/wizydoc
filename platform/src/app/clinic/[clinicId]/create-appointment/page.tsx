@@ -32,7 +32,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { doctors, clinic } = await loadBookingData(clinicId);
 
   return {
-    title: `${getHeadingText(clinic, findSoleDoctor(doctors))} · WizyDoc`,
+    title: getHeadingText(clinic, findSoleDoctor(doctors)),
   };
 }
 

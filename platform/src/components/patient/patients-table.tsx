@@ -66,7 +66,11 @@ export const PatientsTable = ({ patients, buildHref }: Props) => {
       key: "phone",
       header: "Teléfono",
       align: "left",
-      cell: (row) => row.phone,
+      cell: (row) => (
+        <a href={`tel:${row.phone}`} className="hover:text-brand-ink">
+          {row.phone}
+        </a>
+      ),
     },
     {
       key: "lastVisit",

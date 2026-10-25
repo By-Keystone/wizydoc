@@ -9,8 +9,10 @@ interface OrganizationStatsProps {
 export const OrganizationStats = async ({
   resourceId,
 }: OrganizationStatsProps) => {
-  const { clinicCount } = await organizationsApi.getClinicCount(resourceId);
-  const { doctorCount } = await organizationsApi.getDoctorCount(resourceId);
+  const [{ clinicCount }, { doctorCount }] = await Promise.all([
+    organizationsApi.getClinicCount(resourceId),
+    organizationsApi.getDoctorCount(resourceId),
+  ]);
   return (
     <>
       <StatCard icon={UserRound} label="Médicos" value={doctorCount} />

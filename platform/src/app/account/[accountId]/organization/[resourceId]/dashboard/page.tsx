@@ -1,7 +1,10 @@
+import type { Metadata } from "next";
 import { MembershipRole } from "@/lib/utils";
 import { StatisticsWrapper } from "@/components/app/dashboard/stats-wrapper";
 import { OrganizationStats } from "@/components/app/dashboard/organization/stats";
 import { userMembershipsApi } from "@/lib/api/memberships";
+
+export const metadata: Metadata = { title: "Inicio" };
 
 interface PageProps {
   params: Promise<{ resourceId: string }>;
@@ -19,7 +22,6 @@ export default async function DashboardPage({ params }: PageProps) {
           <OrganizationStats resourceId={membership.resourceId} />
         )}
       </StatisticsWrapper>
-      {/* <UpcomingAppointments appointments={upcoming} isAdmin={isAdmin} /> */}
     </div>
   );
 }

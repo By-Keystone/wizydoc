@@ -7,7 +7,7 @@ import {
   type ProfileWorld,
 } from "../../support/profile";
 import { expect, test } from "../../support/test";
-import { loginViaUi } from "../../support/ui";
+import { clinicDashboardUrl, loginViaUi } from "../../support/ui";
 
 // docs/features/doctor-profile-specialties/plan.md — PR 1, CA-1 a CA-3.
 
@@ -30,11 +30,7 @@ async function signInAt(
   world: ProfileWorld,
   place: Place,
 ) {
-  await loginViaUi(
-    page,
-    user.email,
-    new RegExp(`/account/${user.accountId}/select$`),
-  );
+  await loginViaUi(page, user.email, clinicDashboardUrl(user.accountId));
   const isClinic = place === "clinic";
   const resourceId = isClinic ? world.clinicId : world.organizationId;
   await page.context().addCookies([

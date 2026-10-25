@@ -12,7 +12,7 @@ import {
 import { getTestPrisma } from "./db";
 import { setDoctorTreatment, type Treatment } from "./doctor-treatment";
 import { PLATFORM_BASE_URL } from "./env";
-import { loginViaUi } from "./ui";
+import { loginAndGoTo } from "./ui";
 import { uniqueName } from "./users";
 
 export interface ProfileWorld {
@@ -217,14 +217,8 @@ export async function loginAndOpenProfile(
   user: ProfileUser,
   workspace: ProfileWorkspace = { kind: "workspaces" },
 ): Promise<void> {
-  await loginViaUi(
-    page,
-    user.email,
-    new RegExp(`/account/${user.accountId}/select$`),
-  );
-
   if (workspace.kind === "workspaces") {
-    await page.goto(`/account/${user.accountId}/me`);
+    await loginAndGoTo(page, user.email, `/account/${user.accountId}/me`);
     return;
   }
 
@@ -244,7 +238,9 @@ export async function loginAndOpenProfile(
       sameSite: "Lax",
     },
   ]);
-  await page.goto(
+  await loginAndGoTo(
+    page,
+    user.email,
     `/account/${user.accountId}/${isClinic ? "clinic" : "organization"}/${resourceId}/me`,
   );
 }

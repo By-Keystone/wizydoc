@@ -20,7 +20,7 @@ import {
   type ProfileWorld,
 } from "../../support/profile";
 import { expect, test } from "../../support/test";
-import { loginViaUi } from "../../support/ui";
+import { clinicDashboardUrl, loginViaUi } from "../../support/ui";
 import { uniqueName } from "../../support/users";
 
 // docs/features/doctor-profile-specialties/plan.md, PR 6: CA-68 a CA-79.
@@ -34,11 +34,7 @@ const usersPath = (user: ProfileUser, world: ProfileWorld, clinicId?: string) =>
   `/account/${user.accountId}/organization/${world.organizationId}/clinic/${clinicId ?? world.clinicId}/users`;
 
 async function signIn(page: Page, user: ProfileUser, resourceId: string) {
-  await loginViaUi(
-    page,
-    user.email,
-    new RegExp(`/account/${user.accountId}/select$`),
-  );
+  await loginViaUi(page, user.email, clinicDashboardUrl(user.accountId));
   await page.context().addCookies([
     { name: "resource_id", value: resourceId, url: PLATFORM_BASE_URL },
     { name: "resource_type", value: "ORGANIZATION", url: PLATFORM_BASE_URL },

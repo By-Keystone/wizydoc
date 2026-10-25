@@ -13,7 +13,7 @@ import {
 import { PLATFORM_BASE_URL } from "../../support/env";
 import { expect, test } from "../../support/test";
 import { uniqueName } from "../../support/users";
-import { loginViaUi } from "../../support/ui";
+import { clinicDashboardUrl, loginViaUi } from "../../support/ui";
 
 // docs/features/perfil-usuario/plan.md — PR 2, CA-21 y CA-22.
 
@@ -66,11 +66,7 @@ async function openDashboardOfDoctorWithAppointment(
     },
   });
 
-  await loginViaUi(
-    page,
-    doctor.email,
-    new RegExp(`/account/${admin.accountId}/select$`),
-  );
+  await loginViaUi(page, doctor.email, clinicDashboardUrl(admin.accountId));
   await page.context().addCookies([
     {
       name: "resource_id",

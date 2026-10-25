@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { ErrorState } from "@/components/common/error-state";
+import { useRetry } from "@/hooks/useRetry";
 
 /** Boundary del wizard público de reserva. */
 export default function CreateAppointmentError({
@@ -15,10 +16,12 @@ export default function CreateAppointmentError({
     console.error(error);
   }, [error]);
 
+  const retry = useRetry(reset);
+
   return (
     <ErrorState
       message="No pudimos cargar la reserva. Vuelve a intentarlo."
-      onRetry={reset}
+      onRetry={retry}
     />
   );
 }

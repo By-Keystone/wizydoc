@@ -8,7 +8,7 @@ import {
   type ProfileWorld,
 } from "../../support/profile";
 import { expect, test } from "../../support/test";
-import { loginViaUi } from "../../support/ui";
+import { clinicDashboardUrl, loginViaUi } from "../../support/ui";
 
 // docs/features/perfil-usuario/plan.md — PR 5, CA-78 a CA-93.
 
@@ -49,12 +49,11 @@ async function signInAt(
   world: ProfileWorld,
   place: Place,
 ) {
-  await loginViaUi(
-    page,
-    user.email,
-    new RegExp(`/account/${user.accountId}/select$`),
-  );
-  if (place === "select") return;
+  await loginViaUi(page, user.email, clinicDashboardUrl(user.accountId));
+  if (place === "select") {
+    await page.goto(`/account/${user.accountId}/select?switch=1`);
+    return;
+  }
 
   const isClinic = place === "clinic";
   const resourceId = isClinic ? world.clinicId : world.organizationId;
@@ -254,7 +253,7 @@ test("CA-83 y CA-84: en la sede, el pie del menú lateral tiene el avatar con el
   await expect(button).not.toHaveCSS("background-color", idleBackground);
 });
 
-test("CA-85: en la organización, el pie muestra su nombre y «Cambiar de sede» borra las cookies y lleva a /select", async ({
+test("CA-85: en la organización, el pie muestra su nombre y «Cambiar de sede» borra las cookies y lleva a la lista de sedes", async ({
   page,
 }) => {
   const world = await createProfileWorld("nav-org");
@@ -276,9 +275,7 @@ test("CA-85: en la organización, el pie muestra su nombre y «Cambiar de sede»
   await expect(menuItem(page, "Mi perfil")).toBeVisible();
   await menuItem(page, "Cambiar de sede").click();
 
-  await expect(page).toHaveURL(
-    new RegExp(`/account/${admin.accountId}/select$`),
-  );
+  await expect(page).toHaveURL(`/account/${admin.accountId}/select?switch=1`);
   expect(await resourceCookies(page)).toHaveLength(0);
 });
 

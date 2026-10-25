@@ -6,7 +6,7 @@ import {
 import { getTestPrisma } from "../../support/db";
 import { PLATFORM_BASE_URL } from "../../support/env";
 import { expect, test } from "../../support/test";
-import { loginViaUi } from "../../support/ui";
+import { clinicDashboardUrl, loginViaUi } from "../../support/ui";
 
 const PLAN_NOTICE = "Tu plan no permite hacer uso de esta función";
 const GENERIC_ERROR = "Algo salió mal";
@@ -41,11 +41,7 @@ function expectedRequestMessage(doctor: ClinicDoctor, planName: string) {
 }
 
 async function signIn(page: Page, doctor: ClinicDoctor) {
-  await loginViaUi(
-    page,
-    doctor.email,
-    new RegExp(`/account/${doctor.accountId}/select$`),
-  );
+  await loginViaUi(page, doctor.email, clinicDashboardUrl(doctor.accountId));
   await page.context().addCookies([
     {
       name: "resource_id",

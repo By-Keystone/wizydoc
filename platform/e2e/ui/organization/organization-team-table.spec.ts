@@ -9,7 +9,7 @@ import {
 import { PLATFORM_BASE_URL } from "../../support/env";
 import { invitePendingUser } from "../../support/invitations";
 import { expect, test } from "../../support/test";
-import { loginViaUi } from "../../support/ui";
+import { clinicDashboardUrl, loginViaUi } from "../../support/ui";
 import { authPost, E2E_PASSWORD, uniqueName } from "../../support/users";
 
 // docs/features/doctor-profile-membership/plan.md, iteración 2: la tabla de la organización muestra a todo el equipo con sus accesos.
@@ -42,7 +42,7 @@ async function openUsers(page: Page, world: Awaited<ReturnType<typeof setup>>) {
   await loginViaUi(
     page,
     world.admin.email,
-    new RegExp(`/account/${world.admin.accountId}/select$`),
+    clinicDashboardUrl(world.admin.accountId),
   );
   await page.context().addCookies([
     {

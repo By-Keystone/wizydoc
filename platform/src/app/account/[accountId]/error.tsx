@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { ErrorState } from "@/components/common/error-state";
+import { useRetry } from "@/hooks/useRetry";
 
 /** Boundary del área autenticada (dashboard, clínicas, especialidades, etc.). */
 export default function AccountError({
@@ -15,5 +16,7 @@ export default function AccountError({
     console.error(error);
   }, [error]);
 
-  return <ErrorState onRetry={reset} />;
+  const retry = useRetry(reset);
+
+  return <ErrorState onRetry={retry} />;
 }

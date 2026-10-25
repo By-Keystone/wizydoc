@@ -9,7 +9,7 @@ import {
 } from "../../support/availability";
 import { getTestPrisma } from "../../support/db";
 import { PLATFORM_BASE_URL } from "../../support/env";
-import { loginViaUi } from "../../support/ui";
+import { clinicDashboardUrl, loginViaUi } from "../../support/ui";
 
 const SAVED_TOAST = "Disponibilidad guardada correctamente";
 const START_AFTER_END_ERROR =
@@ -32,11 +32,7 @@ async function seedAvailability(doctor: Doctor, blocks: Block[]) {
 }
 
 async function openAvailability(page: Page, doctor: Doctor) {
-  await loginViaUi(
-    page,
-    doctor.email,
-    new RegExp(`/account/${doctor.accountId}/select$`),
-  );
+  await loginViaUi(page, doctor.email, clinicDashboardUrl(doctor.accountId));
   // Las cookies resource_id/resource_type imitan "Entrar" en /select.
   await page.context().addCookies([
     {

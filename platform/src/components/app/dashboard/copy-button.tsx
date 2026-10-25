@@ -10,10 +10,14 @@ interface Props {
 
 export const CopyButton = ({ clinicId }: Props) => {
   const handleCopy = async () => {
-    await navigator.clipboard.writeText(
-      buildPublicBookingUrl(location.origin, clinicId),
-    );
-    toast.success("¡Link copiado!");
+    try {
+      await navigator.clipboard.writeText(
+        buildPublicBookingUrl(location.origin, clinicId),
+      );
+      toast.success("¡Link copiado!");
+    } catch {
+      toast.error("No pudimos copiar el link desde este navegador.");
+    }
   };
 
   return (

@@ -2,7 +2,7 @@ import type { Page } from "@playwright/test";
 import { createPortalScenario } from "../../support/appointment-portal";
 import { PLATFORM_BASE_URL } from "../../support/env";
 import { expect, test } from "../../support/test";
-import { loginViaUi } from "../../support/ui";
+import { clinicDashboardUrl, loginViaUi } from "../../support/ui";
 
 const COPY_LINK_BUTTON = "Copiar link de reservas";
 const WELCOME_TEXT = /Este es el panel de /;
@@ -10,7 +10,7 @@ const WELCOME_TEXT = /Este es el panel de /;
 type ResourceType = "CLINIC" | "ORGANIZATION";
 
 async function signIn(page: Page, email: string, accountId: string) {
-  await loginViaUi(page, email, new RegExp(`/account/${accountId}/select$`));
+  await loginViaUi(page, email, clinicDashboardUrl(accountId));
 }
 
 async function visitDashboard(

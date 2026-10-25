@@ -9,7 +9,7 @@ import {
 } from "../../support/accounts";
 import { uniqueEmail, uniqueName } from "../../support/users";
 import { extractLink, readLatestEmailTo } from "../../support/email";
-import { loginViaUi } from "../../support/ui";
+import { clinicDashboardUrl, loginViaUi } from "../../support/ui";
 
 const INVITED_DOCTOR_PASSWORD = "Clave-Doctora-2026";
 
@@ -71,10 +71,8 @@ test("CA-1, CA-2 y CA-3 (y CA-13/CA-14 de fix-auth-user-fields-input): la médic
   await passwordInput.fill(INVITED_DOCTOR_PASSWORD);
   await page.getByRole("button", { name: "Activar cuenta" }).click();
 
-  // CA-2: sesión iniciada directo a /select, sin pasar por /login.
-  await expect(page).toHaveURL(
-    new RegExp(`/account/${victim.accountId}/select$`),
-  );
+  // CA-2: sesión iniciada directo en su única sede, sin pasar por /login.
+  await expect(page).toHaveURL(clinicDashboardUrl(victim.accountId));
 
   const doctorMeResponse = await page.request.get(`${API_BASE_URL}/user/me`, {
     headers: { Origin: PLATFORM_BASE_URL },
@@ -95,14 +93,10 @@ test("CA-1, CA-2 y CA-3 (y CA-13/CA-14 de fix-auth-user-fields-input): la médic
   await loginViaUi(
     page,
     doctorEmail,
-    new RegExp(`/account/${victim.accountId}/select$`),
+    clinicDashboardUrl(victim.accountId),
     INVITED_DOCTOR_PASSWORD,
   );
 
   await page.context().clearCookies();
-  await loginViaUi(
-    page,
-    victim.email,
-    new RegExp(`/account/${victim.accountId}/select$`),
-  );
+  await loginViaUi(page, victim.email, clinicDashboardUrl(victim.accountId));
 });

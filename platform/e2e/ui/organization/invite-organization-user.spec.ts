@@ -21,7 +21,7 @@ import {
   uniqueEmail,
   uniqueName,
 } from "../../support/users";
-import { loginViaUi } from "../../support/ui";
+import { clinicDashboardUrl, loginViaUi } from "../../support/ui";
 
 const USER_NOTICE_TITLE = "Acceso a todas las sedes";
 const USER_NOTICE_TEXT =
@@ -81,11 +81,7 @@ async function signInIntoOrganization(
   fixture: Fixture,
   email: string = fixture.admin.email,
 ): Promise<void> {
-  await loginViaUi(
-    page,
-    email,
-    new RegExp(`/account/${fixture.admin.accountId}/select$`),
-  );
+  await loginViaUi(page, email, clinicDashboardUrl(fixture.admin.accountId));
 
   // Las cookies resource_id/resource_type imitan "Entrar" en /select; entrar no es lo que se prueba.
   await page.context().addCookies([

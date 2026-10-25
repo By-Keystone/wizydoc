@@ -9,21 +9,22 @@ import { ErrorState } from "@/components/common/error-state";
  */
 export default function GlobalError({
   error,
-  reset,
 }: {
   error: Error & { digest?: string };
-  reset: () => void;
 }) {
   useEffect(() => {
     console.error(error);
   }, [error]);
+
+  // Next no le pasa `reset` a este boundary en desarrollo: se recarga la página.
+  const reload = () => window.location.reload();
 
   return (
     <html lang="es">
       <body>
         <ErrorState
           message="Ocurrió un error inesperado. Vuelve a intentarlo."
-          onRetry={reset}
+          onRetry={reload}
         />
       </body>
     </html>

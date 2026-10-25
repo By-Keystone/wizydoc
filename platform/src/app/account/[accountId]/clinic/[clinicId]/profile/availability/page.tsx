@@ -1,5 +1,8 @@
+import type { Metadata } from "next";
 import { availabilityApi } from "@/lib/api/availability";
 import { AvailabilityEditor } from "@/components/clinic/availability/availability-editor";
+
+export const metadata: Metadata = { title: "Mi disponibilidad" };
 
 interface Props {
   params: Promise<{ clinicId: string }>;

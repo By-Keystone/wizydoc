@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { ErrorState } from "@/components/common/error-state";
+import { useRetry } from "@/hooks/useRetry";
 
 /** Se renderiza dentro del layout de organización → conserva el sidebar. */
 export default function OrganizationError({
@@ -15,5 +16,7 @@ export default function OrganizationError({
     console.error(error);
   }, [error]);
 
-  return <ErrorState onRetry={reset} />;
+  const retry = useRetry(reset);
+
+  return <ErrorState onRetry={retry} />;
 }

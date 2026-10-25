@@ -61,7 +61,7 @@ export function Table<T>({
   return (
     <div
       className={cn(
-        "overflow-hidden rounded-xl border border-gray-200 bg-white",
+        "overflow-x-auto rounded-xl border border-gray-200 bg-white",
         className,
       )}
     >

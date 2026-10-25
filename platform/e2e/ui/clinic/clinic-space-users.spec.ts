@@ -4,7 +4,7 @@ import { createPortalScenario } from "../../support/appointment-portal";
 import { readUserEmail } from "../../support/doctor-treatment";
 import { PLATFORM_BASE_URL } from "../../support/env";
 import { expect, test } from "../../support/test";
-import { loginViaUi } from "../../support/ui";
+import { clinicDashboardUrl, loginViaUi } from "../../support/ui";
 
 // docs/features/doctor-profile-membership/plan.md, decisión 8: «Usuarios» en el menú de la sede.
 
@@ -15,7 +15,7 @@ async function enterClinic(
   clinicId: string,
   section: string,
 ) {
-  await loginViaUi(page, email, new RegExp(`/account/${accountId}/select$`));
+  await loginViaUi(page, email, clinicDashboardUrl(accountId));
   await page.context().addCookies([
     { name: "resource_id", value: clinicId, url: PLATFORM_BASE_URL },
     { name: "resource_type", value: "CLINIC", url: PLATFORM_BASE_URL },

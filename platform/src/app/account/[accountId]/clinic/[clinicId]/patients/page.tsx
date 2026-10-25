@@ -1,8 +1,11 @@
+import type { Metadata } from "next";
 import { PlanFeatureNotice } from "@/components/common/plan-feature-notice";
 import { PatientsTable } from "@/components/patient/patients-table";
 import { isPlanFeatureError } from "@/lib/api/errors";
 import { patientsApi } from "@/lib/api/patients";
 import type { PatientListEntry } from "@/lib/api/patients/types";
+
+export const metadata: Metadata = { title: "Pacientes" };
 
 interface Props {
   params: Promise<{ accountId: string; clinicId: string }>;

@@ -6,7 +6,7 @@ import { Toaster } from "@/components/ui/toaster";
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
 export const metadata: Metadata = {
-  title: "WizyDoc — Panel",
+  title: { default: "WizyDoc — Panel", template: "%s · WizyDoc" },
   description: "Panel de gestión de citas médicas de WizyDoc.",
   robots: {
     index: false,
