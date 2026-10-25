@@ -12,7 +12,7 @@ interface Props {
 function StatusBadge({ patient }: { patient: PatientListEntry }) {
   if (patient.nextAppointmentAt) {
     return (
-      <span className="inline-block rounded-full bg-teal-50 px-2.5 py-0.5 text-xs font-semibold text-teal-700">
+      <span className="inline-block rounded-full bg-brand-teal/10 px-2.5 py-0.5 text-xs font-semibold text-brand-teal-dark">
         Con cita próxima
       </span>
     );

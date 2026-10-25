@@ -279,7 +279,7 @@ export const InviteUserForm = ({
             <button
               type="button"
               onClick={() => setStep("email")}
-              className="ml-2 shrink-0 text-xs font-medium text-brand-teal hover:text-brand-teal-dark"
+              className="ml-2 shrink-0 text-xs font-medium text-brand-teal-dark hover:underline"
             >
               Cambiar
             </button>
@@ -288,7 +288,7 @@ export const InviteUserForm = ({
           <div
             className={`rounded-lg px-3 py-2 text-xs ${
               existingUser
-                ? "bg-brand-teal/10 text-brand-teal"
+                ? "bg-brand-teal/10 text-brand-teal-dark"
                 : "bg-brand-surface text-brand-gray"
             }`}
           >

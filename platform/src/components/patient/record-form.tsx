@@ -99,7 +99,7 @@ export function RecordForm({ patient }: Props) {
     >
       <div className="flex flex-wrap items-center gap-3">
         {editing && (
-          <span className="rounded-full bg-teal-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-brand-teal">
+          <span className="rounded-full bg-brand-teal/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-brand-teal-dark">
             Editando
           </span>
         )}

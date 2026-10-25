@@ -13,9 +13,6 @@ const buttonVariants = cva(
         outline:
           "border border-gray-200 bg-white text-brand-gray hover:bg-gray-50 active:scale-[0.98]",
         ghost: "text-brand-gray hover:bg-gray-100 hover:text-brand-ink",
-        teal: "bg-brand-teal text-white shadow hover:bg-brand-teal-dark active:scale-[0.98]",
-        white:
-          "bg-white text-brand-teal shadow hover:bg-brand-surface active:scale-[0.98]",
         coral:
           "bg-brand-coral text-brand-ink shadow hover:bg-brand-coral/90 active:scale-[0.98] disabled:bg-brand-coral/50",
         destructive:

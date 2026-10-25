@@ -18,7 +18,7 @@ export function UserAvatar({ name, lastName, size = "sm" }: Props) {
     <span
       aria-hidden="true"
       className={cn(
-        "flex shrink-0 items-center justify-center rounded-full bg-teal-100 font-bold uppercase text-brand-teal-dark",
+        "flex shrink-0 items-center justify-center rounded-full bg-brand-teal/10 font-bold uppercase text-brand-teal-dark",
         SIZES[size],
       )}
     >

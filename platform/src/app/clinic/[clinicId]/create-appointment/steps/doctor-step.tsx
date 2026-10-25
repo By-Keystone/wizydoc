@@ -33,15 +33,15 @@ export function DoctorStep({
         tabIndex={-1}
         className="text-lg font-semibold text-brand-teal-dark outline-none"
       >
-        Elige un doctor
+        Elige un médico
       </h2>
       <p className="mt-1 break-words text-sm text-brand-gray">
-        Doctores disponibles para {specialtyName}.
+        Médicos disponibles para {specialtyName}.
       </p>
 
       {doctors.length === 0 ? (
         <p className="mt-6 text-sm text-brand-gray">
-          No hay doctores disponibles para esta especialidad.
+          No hay médicos disponibles para esta especialidad.
         </p>
       ) : (
         <div className="mt-6 flex flex-col gap-3">

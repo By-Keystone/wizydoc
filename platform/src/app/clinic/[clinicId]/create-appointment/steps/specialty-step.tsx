@@ -36,7 +36,7 @@ export function SpecialtyStep({
 
       {specialties.length === 0 ? (
         <p className="mt-6 text-sm text-brand-gray">
-          Esta clínica todavía no tiene especialidades disponibles.
+          Esta sede todavía no tiene especialidades disponibles.
         </p>
       ) : (
         <div className="mt-6 grid grid-cols-2 gap-3">

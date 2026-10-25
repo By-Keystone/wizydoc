@@ -135,7 +135,7 @@ export const SpecialtyMultiSelect = ({
           {selected.map((s) => (
             <span
               key={s.id}
-              className="inline-flex items-center gap-1 rounded-full bg-brand-teal/10 px-2.5 py-1 text-xs font-medium text-brand-teal"
+              className="inline-flex items-center gap-1 rounded-full bg-brand-teal/10 px-2.5 py-1 text-xs font-medium text-brand-teal-dark"
             >
               {s.name}
               <button
@@ -203,7 +203,7 @@ export const SpecialtyMultiSelect = ({
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={createAndSelect}
                   disabled={isPending}
-                  className="flex w-full items-center gap-1.5 border-t border-gray-100 px-3 py-2 text-left text-sm font-medium text-brand-teal hover:bg-brand-teal/10 disabled:opacity-50"
+                  className="flex w-full items-center gap-1.5 border-t border-gray-100 px-3 py-2 text-left text-sm font-medium text-brand-teal hover:bg-brand-teal/10 hover:text-brand-teal-dark disabled:opacity-50"
                 >
                   <Plus className="h-3.5 w-3.5" />
                   {isPending ? "Creando..." : `Crear "${query.trim()}"`}

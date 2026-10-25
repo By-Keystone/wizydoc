@@ -36,29 +36,14 @@ export async function ClinicStats({ resourceId }: Props) {
 
   return (
     <>
-      <StatCard
-        icon={CalendarDays}
-        label="Citas de hoy"
-        value={appointments}
-        color="blue"
-      />
+      <StatCard icon={CalendarDays} label="Citas de hoy" value={appointments} />
 
       {doctors !== undefined && (
-        <StatCard
-          icon={UserRound}
-          label="Doctores"
-          value={doctors}
-          color="teal"
-        />
+        <StatCard icon={UserRound} label="Médicos" value={doctors} />
       )}
 
       {memberships !== undefined && (
-        <StatCard
-          icon={Users}
-          label="Usuarios"
-          value={memberships}
-          color="purple"
-        />
+        <StatCard icon={Users} label="Usuarios" value={memberships} />
       )}
     </>
   );

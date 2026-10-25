@@ -40,7 +40,7 @@ export const statusTagClass =
 export const invitationTag = {
   pending: {
     label: "Invitación pendiente",
-    className: "bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-200",
+    className: "bg-amber-50 text-amber-800 ring-1 ring-inset ring-amber-200",
   },
   expired: {
     label: "Invitación expirada",
@@ -78,7 +78,7 @@ const SpecialtiesCell = ({
           {specialties.map((specialty) => (
             <li
               key={specialty.id}
-              className="rounded-full bg-brand-teal/10 px-2.5 py-0.5 text-xs font-medium text-brand-teal"
+              className="rounded-full bg-brand-teal/10 px-2.5 py-0.5 text-xs font-medium text-brand-teal-dark"
             >
               {specialty.name}
             </li>
@@ -86,7 +86,7 @@ const SpecialtiesCell = ({
         </ul>
       ) : (
         <span
-          className={`${statusTagClass} bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-200`}
+          className={`${statusTagClass} bg-amber-50 text-amber-800 ring-1 ring-inset ring-amber-200`}
         >
           Sin especialidades
         </span>
@@ -133,7 +133,7 @@ const buildColumns = (
             >
               {row.email === currentUserEmail && (
                 <span
-                  className={`${statusTagClass} bg-brand-teal/10 text-brand-teal`}
+                  className={`${statusTagClass} bg-brand-teal/10 text-brand-teal-dark`}
                 >
                   Tú
                 </span>

@@ -89,7 +89,7 @@ export function WhereYouWorkCard({
                   {clinic.specialties.map((specialty) => (
                     <li
                       key={specialty.id}
-                      className="rounded-full border border-[#cfe5e2] bg-brand-surface px-3 py-1 text-[13px] text-brand-teal-dark"
+                      className="rounded-full border border-brand-teal/20 bg-brand-surface px-3 py-1 text-[13px] text-brand-teal-dark"
                     >
                       {specialty.name}
                     </li>

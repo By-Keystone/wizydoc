@@ -39,7 +39,7 @@ export function PatientHeader({ patient }: { patient: PatientRecord }) {
 
   return (
     <div className="flex flex-wrap items-center gap-4 rounded-xl border border-gray-200 bg-white p-4">
-      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-teal-50 text-sm font-bold text-brand-teal-dark">
+      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-brand-teal/10 text-sm font-bold text-brand-teal-dark">
         {initials(patient.name, patient.lastName)}
       </div>
 

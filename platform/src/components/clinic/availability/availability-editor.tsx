@@ -194,7 +194,7 @@ export function AvailabilityEditor({ initial }: Props) {
                       {rowError && (
                         <p
                           id={errorId}
-                          className="text-xs text-red-500"
+                          className="text-xs text-red-600"
                           role="alert"
                         >
                           {rowError}
@@ -210,7 +210,7 @@ export function AvailabilityEditor({ initial }: Props) {
       </div>
 
       {errors.total && (
-        <p className="mt-4 text-sm text-red-500" role="alert">
+        <p className="mt-4 text-sm text-red-600" role="alert">
           {errors.total}
         </p>
       )}

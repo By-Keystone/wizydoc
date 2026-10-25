@@ -53,7 +53,7 @@ export function DateTimeStep({
   onNext,
   onBack,
   description = "Selecciona el día y un horario disponible.",
-  emptyDayMessage = "El doctor no tiene horarios disponibles ese día.",
+  emptyDayMessage = "El médico no tiene horarios disponibles ese día.",
   intro,
   hint,
 }: Props) {

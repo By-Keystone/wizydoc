@@ -43,7 +43,7 @@ export default async function OrganizationLayout({
       <div className="flex h-dvh items-center justify-center">
         <div className="text-center">
           <h2 className="text-lg font-semibold">
-            No se pudo cargar el workspace
+            No se pudo cargar la organización
           </h2>
           {error instanceof Error && <p>{error.message}</p>}
         </div>

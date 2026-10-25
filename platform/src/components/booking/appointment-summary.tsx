@@ -24,7 +24,7 @@ export function AppointmentSummary({
         muted && "opacity-65",
       )}
     >
-      <p className="border-b border-slate-100 pb-3 text-base font-bold text-brand-teal-dark">
+      <p className="border-b border-gray-100 pb-3 text-base font-bold text-brand-teal-dark">
         {formatWhen(appointment.date, appointment.time)}
         <span className="mt-0.5 block text-xs font-medium text-brand-gray">
           {appointment.durationMinutes} minutos

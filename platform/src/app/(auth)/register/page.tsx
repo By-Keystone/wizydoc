@@ -140,7 +140,7 @@ export default function RegisterPage() {
           </div>
 
           {error && (
-            <p className="text-sm text-red-500" role="alert">
+            <p className="text-sm text-red-600" role="alert">
               {error}
             </p>
           )}

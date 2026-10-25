@@ -34,7 +34,7 @@ const buildColumns = (
           <span className="mt-1 flex flex-wrap items-center justify-center gap-1">
             {row.email === currentUserEmail && (
               <span
-                className={`${statusTagClass} bg-brand-teal/10 text-brand-teal`}
+                className={`${statusTagClass} bg-brand-teal/10 text-brand-teal-dark`}
               >
                 Tú
               </span>
