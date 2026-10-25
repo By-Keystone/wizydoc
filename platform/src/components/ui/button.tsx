@@ -17,7 +17,9 @@ const buttonVariants = cva(
         white:
           "bg-white text-brand-teal shadow hover:bg-brand-surface active:scale-[0.98]",
         coral:
-          "bg-brand-coral text-white shadow hover:bg-brand-coral/90 active:scale-[0.98] disabled:bg-brand-coral/50",
+          "bg-brand-coral text-brand-ink shadow hover:bg-brand-coral/90 active:scale-[0.98] disabled:bg-brand-coral/50",
+        destructive:
+          "bg-red-600 text-white shadow hover:bg-red-700 active:scale-[0.98] disabled:bg-red-600/50",
       },
       size: {
         default: "h-10 px-5 py-2",

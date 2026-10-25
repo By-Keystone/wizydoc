@@ -18,6 +18,7 @@ const REQUESTABLE_PLAN_NAMES: Record<RequestablePlan, string> = {
 
 interface Props {
   plan: RequestablePlan;
+  isPrimaryAction?: boolean;
   className?: string;
 }
 
@@ -27,7 +28,11 @@ function whatsAppUrl(message: string): string {
 
 // Se renderiza desde la página y no desde error.tsx: en producción Next oculta
 // al error boundary el mensaje y el status de los errores de servidor.
-export function PlanFeatureNotice({ plan, className }: Props) {
+export function PlanFeatureNotice({
+  plan,
+  isPrimaryAction = true,
+  className,
+}: Props) {
   const { user, membership } = useApp();
   const planName = REQUESTABLE_PLAN_NAMES[plan];
   const requestMessage = `Hola, soy ${user.name} ${user.lastName} (${user.email}), de ${membership.resourceName}. Quiero activar el plan ${planName} en WizyDoc.`;
@@ -52,7 +57,7 @@ export function PlanFeatureNotice({ plan, className }: Props) {
           pago se activan a pedido por WhatsApp.
         </p>
       </div>
-      <Button asChild>
+      <Button asChild variant={isPrimaryAction ? "coral" : "default"}>
         <a
           href={whatsAppUrl(requestMessage)}
           target="_blank"
