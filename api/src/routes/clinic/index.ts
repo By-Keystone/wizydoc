@@ -1,6 +1,7 @@
 import { ApplicationError } from "@/application/errors/application.errors";
 import { NotFound } from "@/application/errors/not-found.error";
 import type { IEmailService } from "@/application/ports/email-service.port";
+import { getBookingUsageParamsSchema } from "@/application/queries/clinic/get-booking-usage.query";
 import { getClinicAppointmentsParamsSchema } from "@/application/queries/clinic/get-clinic-appointments.query";
 import { getClinicMetricsParamsSchema } from "@/application/queries/clinic/get-clinic-metrics.query";
 import { getClinicUsersSchema } from "@/application/queries/clinic/get-clinic-users.query";
@@ -23,19 +24,34 @@ import {
 } from "@/application/use-cases/clinic/create-clinic.usecase";
 import { GetClinicsUseCase } from "@/application/use-cases/clinic/get-clinics.usecase";
 import {
+  updatePatientContactParamsSchema,
+  updatePatientContactSchema,
+  UpdatePatientContactUseCase,
+} from "@/application/use-cases/clinic/update-patient-contact.usecase";
+import {
   inviteUserBodySchema,
   inviteUserParamsSchema,
   InviteUserUseCase,
 } from "@/application/use-cases/user/invite-user.usecase";
 import type { IClinicRepository } from "@/domain/repositories/clinic.repository";
 import type { ITransactionManager } from "@/domain/services/transaction-manager";
+import { GetBookingUsageQuery } from "@/infrastructure/postgres/queries/clinic/get-booking-usage.query";
 import { GetClinicAppointmentsQuery } from "@/infrastructure/postgres/queries/clinic/get-clinic-appointments.query";
 import { GetClinicMetricsQuery } from "@/infrastructure/postgres/queries/clinic/get-clinic-metrics.query";
 import { GetClinicUsersQuery } from "@/infrastructure/postgres/queries/clinic/get-clinic-users.query";
 import { policy, requireMembership } from "@/plugins/policy";
 import { requireLiveMembership } from "@/routes/hooks/require-live-membership";
 import type { ZodTypeProvider } from "@fastify/type-provider-zod";
-import type { FastifyInstance } from "fastify";
+import type { FastifyInstance, FastifyRequest } from "fastify";
+
+function requireAccountId(request: FastifyRequest): string {
+  const { accountId } = request.user;
+  if (!accountId)
+    throw request.server.httpErrors.forbidden(
+      "No account associated with user",
+    );
+  return accountId;
+}
 
 export interface ClinicRoutesOptions {
   clinicRepository: IClinicRepository;
@@ -354,6 +370,80 @@ export default async function clinicRoutes(
         return reply.internalServerError(
           "An error occurred when getting appointments",
         );
+      }
+    },
+  );
+
+  app.get(
+    "/clinic/:resourceId/booking-usage",
+    {
+      schema: { params: getBookingUsageParamsSchema },
+      ...policy({
+        account: true,
+        confirmed: true,
+        onboarded: true,
+        roles: ["ADMIN"],
+      }),
+    },
+    async (request, reply) => {
+      try {
+        const usage = await new GetBookingUsageQuery().execute({
+          clinicId: request.params.resourceId,
+          accountId: requireAccountId(request),
+        });
+
+        if (!usage)
+          return reply.status(404).send({ message: "Sede no encontrada" });
+
+        return reply.status(200).send(usage);
+      } catch (error) {
+        const errName = error instanceof Error ? error.name : "UnknownError";
+        request.log.error({ errName }, "[get-booking-usage]");
+
+        return reply
+          .status(500)
+          .send({ message: "Error obteniendo el uso de citas del mes" });
+      }
+    },
+  );
+
+  app.put(
+    "/clinic/:resourceId/patient-contact",
+    {
+      schema: {
+        params: updatePatientContactParamsSchema,
+        body: updatePatientContactSchema,
+      },
+      // El ADMIN ve este texto bajo el campo: sin el prefijo "body/campo" de Fastify.
+      schemaErrorFormatter: (errors) => new Error(errors[0].message),
+      ...policy({
+        account: true,
+        confirmed: true,
+        onboarded: true,
+        roles: ["ADMIN"],
+      }),
+    },
+    async (request, reply) => {
+      try {
+        const result = await new UpdatePatientContactUseCase().execute({
+          ...request.body,
+          clinicId: request.params.resourceId,
+          accountId: requireAccountId(request),
+        });
+
+        return reply.status(200).send(result);
+      } catch (error) {
+        if (error instanceof ApplicationError)
+          return reply
+            .status(error.statusCode)
+            .send({ message: error.message });
+
+        const errName = error instanceof Error ? error.name : "UnknownError";
+        request.log.error({ errName }, "[update-patient-contact]");
+
+        return reply
+          .status(500)
+          .send({ message: "Ha ocurrido un error al guardar el número" });
       }
     },
   );

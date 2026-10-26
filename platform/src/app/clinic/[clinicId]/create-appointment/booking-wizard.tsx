@@ -1,10 +1,13 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import type { ClinicLocation } from "@/lib/api/clinic/types";
 import type { ClinicDoctor } from "@/lib/api/doctors/types";
 import { createAppointmentAction } from "@/lib/actions/appointment/create-appointment.action";
+import { setMissedBookingMark } from "@/lib/missed-booking-mark";
+import { BookingClosed } from "./booking-closed";
 import { BookingHeader } from "./booking-header";
 import {
   type BookingStep,
@@ -29,7 +32,12 @@ interface Props {
   clinicId: string;
 }
 
+const BOOKING_CLOSED_CODE = "BOOKING_CLOSED";
+
 export function BookingWizard({ doctors, clinic, clinicId }: Props) {
+  const router = useRouter();
+  const [isRefreshing, startRefresh] = useTransition();
+  const [isBookingClosed, setIsBookingClosed] = useState(false);
   const initialSelection = pickInitialSelection(doctors);
   const firstStep = listSteps(doctors, initialSelection.specialty)[0];
 
@@ -73,6 +81,19 @@ export function BookingWizard({ doctors, clinic, clinicId }: Props) {
     setDateTime(null);
     setPatient(null);
   };
+
+  // Si el refresco no cambió la página (falló la lectura del estado o el plan subió en el medio), el servidor igual rechazó esta reserva.
+  if (isBookingClosed && !isRefreshing) {
+    return (
+      <BookingClosed
+        clinicId={clinicId}
+        clinic={clinic}
+        doctor={doctor ?? findSoleDoctor(doctors)}
+        specialty={specialty}
+        patientContact={null}
+      />
+    );
+  }
 
   return (
     <div className="w-full max-w-md">
@@ -146,6 +167,17 @@ export function BookingWizard({ doctors, clinic, clinicId }: Props) {
                   patientBirthDate: p.birthDate,
                   clinicId,
                 });
+
+                if (
+                  result.status === "error" &&
+                  result.code === BOOKING_CLOSED_CODE
+                ) {
+                  // El servidor ya contó esta reserva perdida; la página cerrada no debe contarla otra vez.
+                  setMissedBookingMark(clinicId);
+                  setIsBookingClosed(true);
+                  startRefresh(() => router.refresh());
+                  return;
+                }
 
                 if (result.status !== "success") {
                   throw new Error(

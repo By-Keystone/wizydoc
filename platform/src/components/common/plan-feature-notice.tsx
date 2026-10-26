@@ -4,26 +4,16 @@ import { Lock, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useApp } from "@/context/app/app.context";
 import { PLAN_FEATURE_MESSAGE } from "@/lib/api/errors";
+import { buildPlanRequestUrl, PLAN_NAMES } from "@/lib/plan-request";
 import type { Plan } from "@/lib/plans";
 import { cn } from "@/lib/utils";
 
-const WHATSAPP_NUMBER = "51993953674";
-
 type RequestablePlan = Extract<Plan, "CONSULTORIO" | "CLINICA">;
-
-const REQUESTABLE_PLAN_NAMES: Record<RequestablePlan, string> = {
-  CONSULTORIO: "Consultorio",
-  CLINICA: "Clínica",
-};
 
 interface Props {
   plan: RequestablePlan;
   isPrimaryAction?: boolean;
   className?: string;
-}
-
-function whatsAppUrl(message: string): string {
-  return `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
 }
 
 // Se renderiza desde la página y no desde error.tsx: en producción Next oculta
@@ -34,8 +24,13 @@ export function PlanFeatureNotice({
   className,
 }: Props) {
   const { user, membership } = useApp();
-  const planName = REQUESTABLE_PLAN_NAMES[plan];
-  const requestMessage = `Hola, soy ${user.name} ${user.lastName} (${user.email}), de ${membership.resourceName}. Quiero activar el plan ${planName} en WizyDoc.`;
+  const planName = PLAN_NAMES[plan];
+  const requestUrl = buildPlanRequestUrl(plan, {
+    name: user.name,
+    lastName: user.lastName,
+    email: user.email,
+    clinicName: membership.resourceName,
+  });
 
   return (
     <div
@@ -58,11 +53,7 @@ export function PlanFeatureNotice({
         </p>
       </div>
       <Button asChild variant={isPrimaryAction ? "coral" : "default"}>
-        <a
-          href={whatsAppUrl(requestMessage)}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
+        <a href={requestUrl} target="_blank" rel="noopener noreferrer">
           <MessageCircle className="mr-2 h-4 w-4" />
           Pedir el plan {planName}
         </a>

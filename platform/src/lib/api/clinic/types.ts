@@ -1,4 +1,5 @@
 import type { AppointmentStatus } from "@/lib/api/appointments/types";
+import type { Plan } from "@/lib/plans";
 
 export type Clinic = {
   id: string; // The resource id
@@ -8,6 +9,26 @@ export type Clinic = {
 };
 
 export type ClinicLocation = Pick<Clinic, "name" | "address">;
+
+export type BookingStatus = {
+  isAcceptingBookings: boolean;
+  /** E.164. El api solo lo devuelve con el link cerrado. */
+  patientContact: string | null;
+};
+
+export type BookingUsage = {
+  plan: Plan;
+  /** `null` en el plan sin tope. */
+  monthlyCap: number | null;
+  /** `YYYY-MM`, mes de Lima. */
+  month: string;
+  /** `YYYY-MM-DD`, primer día del mes siguiente. */
+  renewsOn: string;
+  bookedThisMonth: number;
+  missedThisMonth: number;
+  nextPlan: { plan: Plan; monthlyCap: number | null } | null;
+  patientContact: string | null;
+};
 
 export type ClinicWithUser = Clinic & {
   createdBy: {

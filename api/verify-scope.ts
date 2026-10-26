@@ -12,7 +12,6 @@ const stubQuery = {
     return entitlementsFor({
       plan: accountId as Plan,
       status: "ACTIVE",
-      extraDoctors: 0,
       extraClinics: 0,
     });
   },

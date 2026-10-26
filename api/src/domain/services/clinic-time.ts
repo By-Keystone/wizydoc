@@ -129,6 +129,23 @@ export function formatClinicDateTime(instant: Date): string {
   }).format(instant);
 }
 
+/** Ejemplo: `"2026-11"` → `"noviembre"`. */
+export function formatMonthName(month: string): string {
+  return new Intl.DateTimeFormat("es", {
+    month: "long",
+    timeZone: "UTC",
+  }).format(new Date(`${month}-01T00:00:00Z`));
+}
+
+/** Ejemplo: `"2026-12-01"` → `"1 de diciembre"`. */
+export function formatDayAndMonth(date: string): string {
+  return new Intl.DateTimeFormat("es", {
+    day: "numeric",
+    month: "long",
+    timeZone: "UTC",
+  }).format(new Date(`${date}T00:00:00Z`));
+}
+
 /** Separa una hora de pared `YYYY-MM-DDTHH:mm` en su fecha y su hora. */
 export function parseWallTime(wallTime: string): WallTime {
   const [date, time] = wallTime.split("T");
@@ -159,6 +176,20 @@ export function startOfDay(
 /** `YYYY-MM-DD` de hoy según el reloj de la clínica. */
 export function today(timeZone: string = CLINIC_TIME_ZONE): string {
   return toWallTime(new Date(), timeZone).date;
+}
+
+/** `YYYY-MM` del mes en curso según el reloj de la clínica. */
+export function currentMonth(timeZone: string = CLINIC_TIME_ZONE): string {
+  return today(timeZone).slice(0, 7);
+}
+
+/** Primer día del mes siguiente a `month` (`YYYY-MM`), como `YYYY-MM-DD`. */
+export function firstDayOfNextMonth(month: string): string {
+  const [year, monthNumber] = month.split("-").map(Number);
+  const monthIndexOfNextMonth = monthNumber;
+  return new Date(Date.UTC(year, monthIndexOfNextMonth, 1))
+    .toISOString()
+    .slice(0, 10);
 }
 
 /** Suma días a una fecha `YYYY-MM-DD` sin salir del calendario. */

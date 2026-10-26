@@ -23,8 +23,8 @@ import { cn } from "@/lib/utils";
 const REGISTER_URL = `${PLATFORM_URL}/register`;
 
 // Los planes limitan citas al mes y sedes, nunca médicos (docs/PRODUCT.md,
-// «Planes»). Sólo se anuncia lo que ya existe: los topes de citas de los planes
-// de pago, la exportación y la importación aún no.
+// «Planes»). Sólo se anuncia lo que ya existe: la exportación y la importación
+// aún no.
 const plans = [
   {
     name: "Gratis",
@@ -54,6 +54,7 @@ const plans = [
     badge: "El más popular",
     highlight: true,
     features: [
+      "150 citas al mes",
       "1 sede",
       "Médicos sin límite",
       "El paciente cancela y reprograma desde el link",
@@ -71,6 +72,7 @@ const plans = [
     badge: null,
     highlight: false,
     features: [
+      "600 citas al mes",
       "3 sedes incluidas",
       "Sede adicional por S/ 40",
       "Médicos sin límite",
@@ -88,6 +90,7 @@ const plans = [
     badge: null,
     highlight: false,
     features: [
+      "Citas sin tope",
       "Sedes a medida",
       "Médicos sin límite",
       "Soporte prioritario",
@@ -104,6 +107,7 @@ const comparison: { label: string; values: [Cell, Cell, Cell, Cell] }[] = [
     values: ["S/ 0", "S/ 79 al mes", "S/ 199 al mes", "A medida"],
   },
   { label: "Precio anual", values: ["—", "S/ 790", "S/ 1,990", "A medida"] },
+  { label: "Citas al mes", values: ["10", "150", "600", "Sin tope"] },
   {
     label: "Médicos",
     values: ["Sin límite", "Sin límite", "Sin límite", "Sin límite"],

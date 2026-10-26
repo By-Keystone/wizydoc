@@ -5,9 +5,10 @@ import { clinicApi } from "@/lib/api/clinic";
 import type { ClinicLocation } from "@/lib/api/clinic/types";
 import { doctorsApi } from "@/lib/api/doctors";
 import type { ClinicDoctor } from "@/lib/api/doctors/types";
+import { BookingClosed } from "./booking-closed";
 import { BookingHeader, getHeadingText } from "./booking-header";
 import { BookingWizard } from "./booking-wizard";
-import { findSoleDoctor } from "./booking-steps";
+import { findSoleDoctor, pickInitialSelection } from "./booking-steps";
 
 interface Props {
   params: Promise<{ clinicId: string }>;
@@ -27,6 +28,16 @@ const loadBookingData = cache(async (clinicId: string) => {
   return { doctors, clinic };
 });
 
+// Si la lectura falla se ve el wizard: el servidor frena la reserva al confirmar, y un fallo de lectura no debe cerrar el link de quien tiene cupo.
+async function loadBookingStatus(clinicId: string) {
+  try {
+    return await clinicApi.getBookingStatus(clinicId);
+  } catch (error) {
+    console.error("[create-appointment] error fetching booking status:", error);
+    return null;
+  }
+}
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { clinicId } = await params;
   const { doctors, clinic } = await loadBookingData(clinicId);
@@ -38,7 +49,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function CreateAppointmentPage({ params }: Props) {
   const { clinicId } = await params;
-  const { doctors, clinic } = await loadBookingData(clinicId);
+  const [{ doctors, clinic }, bookingStatus] = await Promise.all([
+    loadBookingData(clinicId),
+    loadBookingStatus(clinicId),
+  ]);
 
   if (doctors.length === 0) {
     return (
@@ -53,6 +67,19 @@ export default async function CreateAppointmentPage({ params }: Props) {
           </CardContent>
         </Card>
       </div>
+    );
+  }
+
+  if (bookingStatus && !bookingStatus.isAcceptingBookings) {
+    const { specialty, doctor } = pickInitialSelection(doctors);
+    return (
+      <BookingClosed
+        clinicId={clinicId}
+        clinic={clinic}
+        doctor={doctor ?? findSoleDoctor(doctors)}
+        specialty={specialty}
+        patientContact={bookingStatus.patientContact}
+      />
     );
   }
 

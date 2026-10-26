@@ -72,6 +72,13 @@ export interface TestPrismaVerificationRow {
   expiresAt: Date;
 }
 
+export interface TestPrismaMissedBookingRow {
+  id: string;
+  accountId: string;
+  clinicId: string;
+  createdAt: Date;
+}
+
 export interface TestPrismaProfileRow {
   id: string;
   membershipId: string;
@@ -111,6 +118,29 @@ export interface TestPrisma {
       where: Record<string, unknown>;
       data: Record<string, unknown>;
     }): Promise<TestPrismaSubscriptionRow>;
+    delete(args: {
+      where: Record<string, unknown>;
+    }): Promise<TestPrismaSubscriptionRow>;
+  };
+  accountMonthlyBookings: {
+    upsert(args: {
+      where: Record<string, unknown>;
+      create: Record<string, unknown>;
+      update: Record<string, unknown>;
+    }): Promise<{ booked: number }>;
+    findUnique(args: {
+      where: Record<string, unknown>;
+    }): Promise<{ booked: number } | null>;
+  };
+  missedBooking: {
+    count(args: { where: Record<string, unknown> }): Promise<number>;
+    findMany(args: {
+      where: Record<string, unknown>;
+    }): Promise<TestPrismaMissedBookingRow[]>;
+    createMany(args: { data: Record<string, unknown>[] }): Promise<unknown>;
+    deleteMany(args: {
+      where: Record<string, unknown>;
+    }): Promise<{ count: number }>;
   };
   organization: {
     findFirst(args: {
@@ -124,6 +154,7 @@ export interface TestPrisma {
       name: string;
       address: string;
       phone: string;
+      patientContact: string | null;
     } | null>;
     count(args: { where: Record<string, unknown> }): Promise<number>;
     create(args: {

@@ -8,6 +8,7 @@ import type { ZodTypeProvider } from "@fastify/type-provider-zod";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { policy } from "@/plugins/policy";
 import { ApplicationError } from "@/application/errors/application.errors";
+import { BookingClosed } from "@/application/errors/booking-closed.error";
 import { AppointmentLinkUnavailable } from "@/application/errors/appointment-link-unavailable.error";
 import type { IEmailService } from "@/application/ports/email-service.port";
 import { appointmentPortalParamsSchema } from "@/application/queries/appointment/get-appointment-portal.query";
@@ -15,10 +16,7 @@ import { CancelAppointmentUseCase } from "@/application/use-cases/appointment/ca
 import { RescheduleAppointmentUseCase } from "@/application/use-cases/appointment/reschedule-appointment.usecase";
 import { GetAppointmentPortalQuery } from "@/infrastructure/postgres/queries/appointment/get-appointment-portal.query";
 import { GetRescheduleSlotsQuery } from "@/infrastructure/postgres/queries/appointment/get-reschedule-slots.query";
-
-async function preventCaching(_request: FastifyRequest, reply: FastifyReply) {
-  reply.header("Cache-Control", "private, no-store");
-}
+import { preventCaching } from "@/routes/hooks/prevent-caching";
 
 function replyPortalError(
   request: FastifyRequest,
@@ -78,7 +76,11 @@ export default async function appointmentRoutes(
           error.code === "P2002"
         ) {
           return reply.status(409).send({ message: SLOT_UNAVAILABLE });
-        } else if (error instanceof ApplicationError)
+        } else if (error instanceof BookingClosed)
+          return reply
+            .status(error.statusCode)
+            .send({ message: error.message, code: error.code });
+        else if (error instanceof ApplicationError)
           return reply
             .status(error.statusCode)
             .send({ message: error.message });
