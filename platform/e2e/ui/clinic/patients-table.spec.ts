@@ -8,7 +8,6 @@ import {
 } from "../../support/profile";
 import {
   PATIENT_PHONE,
-  createPatient,
   enablePatientRecords,
   seedPatientWithAppointment,
 } from "../../support/patients";
@@ -22,17 +21,17 @@ async function createClinicWithPatient() {
   const world = await createProfileWorld("patients-table");
   const doctor = await addDoctor(world, { label: "patients-table-doc" });
   await enablePatientRecords(world.admin.accountId);
-  const doctorProfileId = await findDoctorProfileId(
+  const doctorProfileId = (await findDoctorProfileId(
     doctor.userId,
     world.clinicId,
-  );
+  )) as string;
   const patient = await seedPatientWithAppointment({
     accountId: world.admin.accountId,
     clinicId: world.clinicId,
-    doctorProfileId: doctorProfileId as string,
+    doctorProfileId,
   });
 
-  return { world, patient };
+  return { world, doctorProfileId, patient };
 }
 
 async function signInAndOpenPatients(page: Page, world: ProfileWorld) {
@@ -87,7 +86,7 @@ test("el teléfono de la tabla de pacientes es un enlace tel:", async ({
 test("«Reintentar» de una ficha que falló vuelve a pedir los datos al servidor", async ({
   page,
 }) => {
-  const { world } = await createClinicWithPatient();
+  const { world, doctorProfileId } = await createClinicWithPatient();
   const { accountId } = world.admin;
   const patientId = randomUUID();
   await loginViaUi(page, world.admin.email, clinicDashboardUrl(accountId));
@@ -99,7 +98,12 @@ test("«Reintentar» de una ficha que falló vuelve a pedir los datos al servido
     page.getByRole("heading", { name: "Algo salió mal" }),
   ).toBeVisible();
 
-  const patient = await createPatient(accountId, patientId);
+  const patient = await seedPatientWithAppointment({
+    accountId,
+    clinicId: world.clinicId,
+    doctorProfileId,
+    patientId,
+  });
   await page.getByRole("button", { name: "Reintentar" }).click();
 
   await expect(

@@ -39,6 +39,7 @@ const orNull = (value: FormDataEntryValue | null) => {
 };
 
 export async function updatePatientRecordAction(
+  resourceId: string,
   patientId: string,
   _prevState: ActionState<UpdatePatientRecordFields>,
   data: FormData,
@@ -78,10 +79,13 @@ export async function updatePatientRecordAction(
   }
 
   try {
-    await doFetchJson(`/patients/${patientId}`, {
-      method: "PATCH",
-      body: JSON.stringify(parsed.data),
-    });
+    await doFetchJson(
+      `/patients/in/${encodeURIComponent(resourceId)}/${encodeURIComponent(patientId)}`,
+      {
+        method: "PATCH",
+        body: JSON.stringify(parsed.data),
+      },
+    );
 
     revalidateTag(tags.patient(patientId));
 

@@ -1,0 +1,1173 @@
+<!doctype html>
+<html lang="es-PE">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototipo: pacientes, ver más y búsqueda</title>
+<style>
+  :root {
+    --teal: #0C7E75;
+    --teal-dark: #0B4F49;
+    --ink: #1F2A2A;
+    --gray: #5C6B6A;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    color: var(--ink);
+    background: #e5e7eb;
+    -webkit-font-smoothing: antialiased;
+  }
+  button, input { font: inherit; }
+  code { font-size: 11.5px; background: #f3f4f6; border-radius: 4px; padding: 0 3px; overflow-wrap: anywhere; }
+  :focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
+  .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+
+  /* ---------- Barra del prototipo (no es parte de la app) ---------- */
+  .proto { display: grid; grid-template-columns: 340px minmax(0, 1fr); min-height: 100vh; }
+  .proto-panel { background: #fff; border-right: 1px solid #d1d5db; padding: 20px; overflow-y: auto; max-height: 100vh; position: sticky; top: 0; min-width: 0; }
+  .proto-panel h1 { font-size: 15px; margin: 0; color: var(--teal-dark); }
+  .proto-panel p.lead { font-size: 12px; color: var(--gray); margin: 6px 0 14px; line-height: 1.45; }
+  .proto-panel h2 { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--teal); margin: 18px 0 8px; }
+  .proto-panel h3 { font-size: 12px; color: var(--ink); margin: 12px 0 4px; }
+  .proto-panel fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
+  .proto-panel legend { padding: 0; }
+  .proto-panel label { display: flex; gap: 8px; align-items: flex-start; font-size: 13px; color: var(--ink); padding: 4px 0; cursor: pointer; line-height: 1.35; }
+  .proto-panel input { margin-top: 2px; accent-color: var(--teal); }
+  .seg { display: flex; border: 1px solid #d1d5db; border-radius: 8px; overflow: hidden; }
+  .seg button { flex: 1; border: 0; background: #fff; padding: 6px; font-size: 12.5px; color: var(--gray); cursor: pointer; }
+  .seg button[aria-pressed="true"] { background: var(--teal); color: #fff; }
+  .restart { display: block; width: 100%; margin-top: 16px; border: 1px solid #d1d5db; background: #fff; border-radius: 8px; padding: 7px 10px; font-size: 13px; color: var(--ink); cursor: pointer; }
+  .restart:hover { background: #f9fafb; }
+  .note { font-size: 11.5px; color: var(--gray); background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 8px 10px; margin-top: 12px; line-height: 1.45; }
+  .note ul, .note ol { margin: 4px 0 0; padding-left: 16px; }
+  .note li { margin: 3px 0; }
+
+  .stage { display: flex; align-items: flex-start; padding: 28px 16px 40px; overflow-x: auto; min-width: 0; }
+  .stage > div { margin: 0 auto; }
+  .frame-caption { text-align: center; font-size: 12.5px; color: var(--gray); margin: 0 0 10px; }
+  .device { background: #fff; box-shadow: 0 10px 30px rgba(0, 0, 0, .12); overflow: hidden; box-sizing: content-box; }
+  .device.mobile { width: 375px; border: 8px solid #1f2937; border-radius: 28px; }
+  .device.desktop { width: 1024px; border: 1px solid #cbd5e1; border-radius: 10px; }
+  .device iframe { display: block; width: 100%; border: 0; }
+  #live-device { height: 760px; }
+  #live-device iframe { height: 100%; }
+
+  /* ---------- Galería de estados ---------- */
+  .gallery { padding: 32px 24px 72px; border-top: 1px solid #d1d5db; background: #f3f4f6; }
+  .gallery > h2 { font-size: 18px; margin: 0; color: var(--teal-dark); }
+  .gallery > p { font-size: 13px; color: var(--gray); margin: 6px 0 24px; max-width: 780px; line-height: 1.5; }
+  .gallery-grid { display: flex; flex-wrap: wrap; gap: 36px 28px; align-items: flex-start; }
+  .shot { margin: 0; width: 391px; min-width: 0; }
+  .shot.wide { width: 100%; }
+  .shot h3 { font-size: 14px; margin: 0; color: var(--ink); }
+  .shot p { font-size: 12.5px; color: var(--gray); margin: 4px 0 10px; line-height: 1.45; min-height: 54px; }
+  .shot .scroll { overflow-x: auto; padding-bottom: 8px; }
+  .not-applicable { width: 391px; max-width: 100%; border: 1px dashed #9ca3af; border-radius: 16px; background: #fff; padding: 18px; font-size: 13px; color: var(--gray); line-height: 1.5; }
+  .not-applicable strong { color: var(--ink); }
+
+  @media (max-width: 900px) {
+    .proto { grid-template-columns: minmax(0, 1fr); }
+    .proto-panel { position: static; max-height: none; border-right: 0; border-bottom: 1px solid #d1d5db; }
+  }
+</style>
+</head>
+<body>
+<div class="proto">
+  <aside class="proto-panel" aria-label="Controles del prototipo">
+    <h1>Pacientes: ver más y búsqueda</h1>
+    <p class="lead">
+      <code>…/clinic/[clinicId]/patients</code> y <code>…/organization/[resourceId]/patients</code>.
+      Datos ficticios de «Dermatología Paredes» (Sede Miraflores, con 48 pacientes, y Sede San Borja).
+      Lo que está en esta barra no es parte de la app. Plan: <code>plan.md</code> en esta carpeta.
+    </p>
+
+    <h2>Vista</h2>
+    <div class="seg" role="group" aria-label="Tamaño de la vista">
+      <button type="button" data-view="mobile" aria-pressed="true">Celular 375 px</button>
+      <button type="button" data-view="desktop" aria-pressed="false">Escritorio 1024 px</button>
+    </div>
+
+    <h2>Pantalla</h2>
+    <fieldset>
+      <legend class="sr-only">Pantalla</legend>
+      <label><input type="radio" name="screen" value="clinic" checked> Sede Miraflores (48 pacientes)</label>
+      <label><input type="radio" name="screen" value="org"> Organización (55 pacientes, las dos sedes)</label>
+      <label><input type="radio" name="screen" value="free"> Sede en plan Gratis (402)</label>
+      <label><input type="radio" name="screen" value="empty"> Sede sin pacientes</label>
+    </fieldset>
+
+    <h2>Simular</h2>
+    <label><input type="checkbox" id="fail-next"> La próxima petición falla (búsqueda o «Ver más»)</label>
+
+    <h2>Decisiones pendientes</h2>
+    <h3>D-1 · Campos de búsqueda</h3>
+    <fieldset>
+      <legend class="sr-only">D-1</legend>
+      <label><input type="radio" name="d1" value="a" checked> a) Nombre, apellido, documento y teléfono (recomendado)</label>
+      <label><input type="radio" name="d1" value="b"> b) Solo nombre y apellido</label>
+    </fieldset>
+    <h3>D-3 · Orden de la lista</h3>
+    <fieldset>
+      <legend class="sr-only">D-3</legend>
+      <label><input type="radio" name="d3" value="a" checked> a) Los nuevos primero, como hoy (recomendado)</label>
+      <label><input type="radio" name="d3" value="b"> b) Por apellido</label>
+    </fieldset>
+    <h3>D-4 · Desde cuántos caracteres</h3>
+    <fieldset>
+      <legend class="sr-only">D-4</legend>
+      <label><input type="radio" name="d4" value="a" checked> a) Mientras escribe, desde 2 (recomendado)</label>
+      <label><input type="radio" name="d4" value="b"> b) Mientras escribe, desde 3</label>
+    </fieldset>
+    <h3>D-5 · Vista de organización</h3>
+    <fieldset>
+      <legend class="sr-only">D-5</legend>
+      <label><input type="radio" name="d5" value="a" checked> a) Como la sede, y el nombre abre la ficha (recomendado)</label>
+      <label><input type="radio" name="d5" value="b"> b) Búsqueda y «Ver más», sin ficha</label>
+    </fieldset>
+    <h3>D-6 · Al volver de la ficha</h3>
+    <fieldset>
+      <legend class="sr-only">D-6</legend>
+      <label><input type="radio" name="d6" value="a" checked> a) La búsqueda empieza vacía (recomendado)</label>
+      <label><input type="radio" name="d6" value="b"> b) Se conserva mientras la pestaña siga abierta</label>
+    </fieldset>
+    <p class="lead" style="margin-top:6px">D-2 no tiene interruptor: el prototipo muestra la recomendación («Ver más»). Las páginas numeradas necesitarían contar el total.</p>
+
+    <button type="button" class="restart" id="restart">Reiniciar la pantalla</button>
+
+    <div class="note">
+      <strong>Recorrido sugerido</strong>
+      <ol>
+        <li>Escribe «q»: pide un carácter más. Sigue con «quis»: spinner, «Buscando…» y 4 resultados.</li>
+        <li>Prueba «jose nunez» (sin tildes) y «987 654 321» (teléfono con espacios).</li>
+        <li>«ar» da más de 20: aparece «Ver más resultados».</li>
+        <li>Borra con la «x»: vuelve la lista, sin esperar.</li>
+        <li>Baja y pulsa «Ver más pacientes» dos veces: 20, 40 y 48.</li>
+        <li>En «Organización», «quispe» encuentra 5 (Julio Quispe solo tiene citas en San Borja). Abre un nombre: la ficha, con «Pacientes» de vuelta.</li>
+        <li>Marca «La próxima petición falla» y busca o pulsa «Ver más».</li>
+      </ol>
+    </div>
+    <div class="note">
+      <strong>Simplificaciones del prototipo</strong>
+      <ul>
+        <li>Las respuestas tardan 0,7 s para que se vea la carga.</li>
+        <li>La ficha es la de hoy, resumida. La pestaña «Ficha» no está.</li>
+        <li>Las demás secciones del menú no están en el prototipo.</li>
+      </ul>
+    </div>
+  </aside>
+
+  <div class="stage">
+    <div>
+      <p class="frame-caption" id="live-caption"></p>
+      <div id="live-device" class="device mobile">
+        <iframe id="live-frame" title="Pacientes, prototipo navegable"></iframe>
+      </div>
+    </div>
+  </div>
+</div>
+
+<section class="gallery" id="estados" aria-labelledby="gallery-title">
+  <h2 id="gallery-title">Estados</h2>
+  <p>
+    Cada vista es un celular de 375 px real, con los breakpoints de la app, salvo las del final, que son de escritorio (1024 px).
+    Las vistas largas se desplazan por dentro. Los interruptores de las decisiones también cambian estas vistas, y cada una se puede usar.
+  </p>
+  <div class="gallery-grid" id="gallery"></div>
+</section>
+
+<template id="app-head">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com/3.4.16"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          border: "hsl(var(--border))",
+          ring: "hsl(var(--ring))",
+          background: "hsl(var(--background))",
+          foreground: "hsl(var(--foreground))",
+          brand: {
+            teal: "#0C7E75",
+            "teal-dark": "#0B4F49",
+            ink: "#1F2A2A",
+            gray: "#5C6B6A",
+            surface: "#EFF5F4",
+            coral: "#FF6F59",
+          },
+        },
+        borderRadius: {
+          lg: "var(--radius)",
+          md: "calc(var(--radius) - 2px)",
+          sm: "calc(var(--radius) - 4px)",
+        },
+        fontFamily: { sans: ["Inter", "ui-sans-serif", "system-ui", "sans-serif"] },
+      },
+    },
+  };
+</script>
+<style>
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222 47% 11%;
+    --border: 214 32% 91%;
+    --ring: 175 83% 27%;
+    --radius: 0.625rem;
+  }
+  * { border-color: hsl(var(--border)); }
+</style>
+</template>
+
+<template id="app-body">
+<div id="root"></div>
+<div id="toasts" class="pointer-events-none fixed bottom-4 right-4 z-[60] flex max-w-[calc(100%-2rem)] flex-col gap-2"></div>
+<script>
+(function () {
+  "use strict";
+
+  const CONFIG = JSON.parse(document.getElementById("mock-config").textContent);
+  const D = { d1: CONFIG.d1 || "a", d3: CONFIG.d3 || "a", d4: CONFIG.d4 || "a", d5: CONFIG.d5 || "a", d6: CONFIG.d6 || "a" };
+
+  const PAGE_SIZE = 20;
+  const SEARCH_DELAY_MS = 300;
+  const RESPONSE_DELAY_MS = 700;
+  const TOAST_DURATION_MS = 4000;
+  const MIN_SEARCH_CHARS = D.d4 === "a" ? 2 : 3;
+  const MAX_SEARCH_CHARS = 80;
+  const DAY_MS = 24 * 60 * 60 * 1000;
+  const TODAY_AT_NOON_IN_LIMA = Date.UTC(2026, 9, 25, 17, 0);
+
+  const ICONS = {
+    search: '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
+    x: '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
+    loader: '<path d="M21 12a9 9 0 1 1-6.219-8.56"/>',
+    chevronLeft: '<path d="m15 18-6-6 6-6"/>',
+    chevronDown: '<path d="m6 9 6 6 6-6"/>',
+    lock: '<rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
+    messageCircle: '<path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/>',
+    alertTriangle: '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
+    layoutDashboard: '<rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/>',
+    settings: '<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>',
+    personStanding: '<circle cx="12" cy="5" r="1"/><path d="m9 20 3-6 3 6"/><path d="m6 8 6 2 6-2"/><path d="M12 10v4"/>',
+    userRound: '<circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/>',
+    building: '<path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/>',
+    tags: '<path d="m15 5 6.3 6.3a2.4 2.4 0 0 1 0 3.4L17 19"/><path d="M9.586 5.586A2 2 0 0 0 8.172 5H3a1 1 0 0 0-1 1v5.172a2 2 0 0 0 .586 1.414L8.29 18.29a2.426 2.426 0 0 0 3.42 0l3.58-3.58a2.426 2.426 0 0 0 0-3.42z"/><circle cx="6.5" cy="9.5" r=".5" fill="currentColor"/>',
+    menu: '<line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/>',
+  };
+
+  const icon = (name, className) =>
+    `<svg class="${className}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name]}</svg>`;
+  const escapeHtml = (text) =>
+    String(text).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+
+  /* ---------- Clases de ui/button.tsx ---------- */
+  const BUTTON_BASE = "inline-flex items-center justify-center whitespace-nowrap rounded-lg text-sm font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50";
+  const BUTTON_VARIANTS = {
+    default: "bg-brand-teal text-white shadow hover:bg-brand-teal-dark active:scale-[0.98] disabled:bg-brand-teal/50",
+    outline: "border border-gray-200 bg-white text-brand-gray hover:bg-gray-50 active:scale-[0.98]",
+    coral: "bg-brand-coral text-brand-ink shadow hover:bg-brand-coral/90 active:scale-[0.98] disabled:bg-brand-coral/50",
+  };
+  const BUTTON_SIZES = { default: "h-10 px-5 py-2", sm: "h-8 px-3 text-xs" };
+  const buttonClass = (variant, size, extra) => `${BUTTON_BASE} ${BUTTON_VARIANTS[variant]} ${BUTTON_SIZES[size]} ${extra || ""}`;
+
+  function logo(height) {
+    const fontSize = Math.round(height * 0.82);
+    return `<span class="inline-flex shrink-0 items-center gap-1.5" role="img" aria-label="WizyDoc">
+      <svg viewBox="0 0 40 44" style="height:${height}px;width:auto" aria-hidden="true">
+        <path d="M7 0h21l12 12v25a7 7 0 0 1-7 7H7a7 7 0 0 1-7-7V7a7 7 0 0 1 7-7z" fill="#0C7E75"/>
+        <path d="M28 0v7a5 5 0 0 0 5 5h7z" fill="#0B4F49" fill-opacity=".45"/>
+        <text x="19" y="33" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-weight="800" font-size="24" fill="#fff">w</text>
+      </svg>
+      <span class="font-extrabold leading-none tracking-tight" style="font-size:${fontSize}px"><span class="text-brand-ink">wizy</span><span class="text-brand-teal">doc</span></span>
+    </span>`;
+  }
+
+  /* ---------- Datos ficticios ---------- */
+  const ORGANIZATION_NAME = "Dermatología Paredes";
+  const CLINIC_NAMES = { M: "Sede Miraflores", S: "Sede San Borja" };
+  const ME = { name: "Lucía", lastName: "Paredes Quispe" };
+  const DOCTOR_DISPLAY_NAME = "Dra. Lucía Paredes Quispe";
+
+  // Del más nuevo al más antiguo, como el orden por `id` (uuid7) del api.
+  // Nombre | Apellidos | Tipo | Documento | Teléfono | Última visita (días) | Citas | Próxima cita (días) | Inasistencias | Sedes
+  const PATIENT_ROWS = [
+    "Valeria|Quispe Mamani|DNI|72845163|+51945112233|-|1|3|0|M",
+    "Diego|Salazar Paz|DNI|70112458|+51987654321|-|1|2|0|M",
+    "Camila|Fernández Ruiz|DNI|71559023|+51912345678|-|1|5|0|M",
+    "Julio|Quispe Apaza|DNI|46677120|+51956781234|-|1|4|0|S",
+    "Lucas|Moreau|PASSPORT|AB123456|+33612345678|-|1|6|0|M",
+    "Sofía|Ramírez Vargas|DNI|73300981|+51934556677|12|2|9|0|M",
+    "José|Núñez Ccori|DNI|44120987|+51998877665|20|3|-|0|M",
+    "Gabriela|Torres León|DNI|45123456|+51976543210|7|2|-|0|M",
+    "Andrés|Rivas Mendoza|CE|001234567|+51955443322|30|2|-|1|M",
+    "Rosa|Quispe Huamán|DNI|09876543|+51944332211|15|4|14|0|M",
+    "Miguel|Ángeles Soto|DNI|41239876|+51933221100|45|2|-|0|MS",
+    "Lucía|Gutiérrez Chávez|DNI|47788123|+51922110099|5|3|-|0|M",
+    "Fernando|Castillo Ríos|DNI|42345671|+51911009988|60|2|-|1|S",
+    "Daniela|Mendoza Paredes|DNI|72233445|+51990011223|9|2|21|0|M",
+    "Ricardo|Flores Huanca|DNI|40987612|+51980099112|33|5|-|2|M",
+    "Ana María|Quispe Rojas|DNI|43219870|+51970088001|18|6|30|0|M",
+    "Pedro|Sánchez Lozano|DNI|08812345|+51960077990|75|1|-|0|M",
+    "Carmen|Díaz Villanueva|DNI|10293847|+51950066889|11|3|-|0|MS",
+    "Jorge|Huertas Benavides|DNI|41827364|+51940055778|90|2|-|1|M",
+    "Patricia|Zevallos Aguilar|DNI|45566778|+51930044667|26|4|7|0|M",
+    "Martín|Chávez Rojas|DNI|46655443|+51920033556|40|1|-|0|M",
+    "Elena|Ccahuana Puma|DNI|70011223|+51910022445|52|2|-|0|S",
+    "Raúl|Paredes Gamarra|DNI|42211334|+51999011334|14|3|-|0|M",
+    "Milagros|Huamán Condori|DNI|47766554|+51989000223|8|2|12|0|M",
+    "Alberto|León Prado|DNI|09988776|+51979999112|120|1|-|0|M",
+    "Silvia|Vásquez Ortiz|DNI|43322110|+51969888001|35|5|-|1|M",
+    "Carlos|Quispe Torres|DNI|41100229|+51959777990|22|2|-|0|M",
+    "Natalia|Romero Salas|DNI|72288990|+51949666889|17|3|19|0|M",
+    "Arturo|Barrios Salazar|DNI|41322110|+51945001122|27|2|-|0|M",
+    "Hugo|Cárdenas Mejía|DNI|40055667|+51939555778|65|1|-|0|M",
+    "Beatriz|Ortega Ñahui|DNI|44433221|+51929444667|28|2|-|0|M",
+    "Óscar|Palomino Reyes|DNI|42200998|+51919333556|80|2|-|1|S",
+    "Verónica|Aguirre Campos|DNI|46699887|+51909222445|19|4|-|0|M",
+    "Iván|Delgado Cruz|DNI|45511009|+51998111334|100|1|-|0|M",
+    "Karina|Espinoza Salcedo|DNI|73344556|+51988000223|13|2|26|0|M",
+    "Luis|Ramos Tello|DNI|07766554|+51978999112|140|3|-|0|M",
+    "Mónica|Vera Galindo|DNI|41188776|+51968888001|38|2|-|0|M",
+    "Mariana|Carrasco Ugarte|DNI|46611220|+51936002233|44|3|-|0|M",
+    "Renato|Bustamante Lara|DNI|47722113|+51958777990|55|1|-|0|M",
+    "Teresa|Alarcón Medina|DNI|10011223|+51948666889|24|6|-|1|M",
+    "Gustavo|Pinto Arce|DNI|40099887|+51938555778|160|1|-|0|M",
+    "Lorena|Mamani Ticona|DNI|72299001|+51928444667|31|2|-|0|S",
+    "Eduardo|Saavedra Núñez|DNI|43355667|+51918333556|42|3|-|0|M",
+    "Rocío|Calderón Peña|DNI|46644332|+51908222445|70|2|-|0|M",
+    "Manuel|Ibáñez Quiroz|DNI|09911223|+51997111334|200|1|-|0|M",
+    "Pilar|Montoya Rivera|DNI|45599887|+51987000223|48|4|-|0|M",
+    "Marco|Arévalo Tarazona|DNI|42288110|+51927003344|130|1|-|0|M",
+    "Javier|Lozano Chumpitaz|DNI|41166554|+51977999112|180|2|-|1|M",
+    "Gloria|Tapia Espinoza|DNI|08877665|+51967888001|95|3|-|0|M",
+    "Héctor|Vílchez Rosas|DNI|42277889|+51957777990|210|1|-|0|M",
+    "Susana|Ferrer Olivares|DNI|47700112|+51947666889|62|2|-|0|S",
+    "Wilmer|Huaranga Poma|DNI|40033445|+51937555778|240|1|-|0|M",
+    "Inés|Cornejo Valdivia|DNI|10055667|+51927444667|85|2|-|0|M",
+    "Felipe|Arana Gómez|DNI|43388990|+51917333556|260|1|-|0|M",
+    "Juana|Ccopa Larico|DNI|72211009|+51907222445|300|1|-|0|S",
+  ];
+
+  const PATIENTS = PATIENT_ROWS.map((row, index) => {
+    const [name, lastName, documentType, documentNumber, phone, lastVisitDays, total, nextDays, noShow, clinics] = row.split("|");
+    return {
+      id: `paciente-${index + 1}`,
+      name,
+      lastName,
+      documentType,
+      documentNumber,
+      phone,
+      lastVisitAt: lastVisitDays === "-" ? null : TODAY_AT_NOON_IN_LIMA - Number(lastVisitDays) * DAY_MS,
+      totalAppointments: Number(total),
+      nextAppointmentAt: nextDays === "-" ? null : TODAY_AT_NOON_IN_LIMA + Number(nextDays) * DAY_MS,
+      noShowCount: Number(noShow),
+      clinics,
+    };
+  });
+
+  /* ---------- Formatos de components/patient/format.ts ---------- */
+  const shortDateFormatter = new Intl.DateTimeFormat("es-PE", { day: "2-digit", month: "short", timeZone: "America/Lima" });
+  const dateTimeFormatter = new Intl.DateTimeFormat("es-PE", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "America/Lima" });
+  const DOCUMENT_TYPE_LABELS = { DNI: "DNI", CE: "CE", PASSPORT: "Pasaporte" };
+  const formatShortDate = (instant) => (instant === null ? "—" : shortDateFormatter.format(new Date(instant)));
+  const formatDocument = (patient) => `${DOCUMENT_TYPE_LABELS[patient.documentType]} ${patient.documentNumber}`;
+  const fullName = (person) => `${person.name} ${person.lastName}`;
+
+  /* ---------- Búsqueda (reglas S-1 y S-2 del plan) ---------- */
+  const fold = (text) => text.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+  const digitsOf = (text) => text.replace(/\D/g, "");
+  const collapseSpaces = (text) => text.trim().replace(/\s+/g, " ");
+  const significantLength = (text) => text.replace(/\s/g, "").length;
+
+  function isMatch(patient, term) {
+    const compact = term.replace(/[\s.\-()+]/g, "");
+    if (/^\d+$/.test(compact)) {
+      if (D.d1 === "b") return false;
+      return digitsOf(patient.phone).includes(compact) || fold(patient.documentNumber).includes(compact);
+    }
+    const fields = D.d1 === "a"
+      ? [patient.name, patient.lastName, patient.documentNumber, digitsOf(patient.phone)]
+      : [patient.name, patient.lastName];
+    const foldedFields = fields.map(fold);
+    return fold(term).split(" ").every((word) => foldedFields.some((field) => field.includes(word)));
+  }
+
+  /* ---------- Estado ---------- */
+  const state = {
+    screen: CONFIG.screen || "list",
+    scope: CONFIG.scope || "clinic",
+    term: "",
+    activeTerm: null,
+    rows: [],
+    loaded: PAGE_SIZE,
+    status: "idle",
+    loadingMore: false,
+    announcement: "",
+    failNext: false,
+    menuOpen: false,
+    patientId: CONFIG.patientId || null,
+    savedSearch: null,
+  };
+  let searchTimer = null;
+  let requestNumber = 0;
+
+  const isOrganization = () => state.scope === "org";
+  const resourceName = () => (isOrganization() ? ORGANIZATION_NAME : CLINIC_NAMES.M);
+  const namesOpenRecord = () => !isOrganization() || D.d5 === "a";
+
+  function patientsInScope() {
+    if (state.screen === "empty") return [];
+    const inScope = isOrganization() ? PATIENTS : PATIENTS.filter((patient) => patient.clinics.includes("M"));
+    if (D.d3 === "a") return inScope;
+    return [...inScope].sort((first, second) =>
+      first.lastName.localeCompare(second.lastName, "es") || first.name.localeCompare(second.name, "es"));
+  }
+
+  function showFullList() {
+    state.activeTerm = null;
+    state.rows = patientsInScope();
+    state.loaded = PAGE_SIZE;
+    state.status = "idle";
+  }
+
+  function applySearch(term) {
+    state.activeTerm = term;
+    state.rows = patientsInScope().filter((patient) => isMatch(patient, term));
+    state.loaded = PAGE_SIZE;
+    state.status = "results";
+  }
+
+  function takeSimulatedFailure() {
+    const shouldFail = state.failNext;
+    if (shouldFail) {
+      state.failNext = false;
+      parent.postMessage({ type: "mock-failure-used" }, "*");
+    }
+    return shouldFail;
+  }
+
+  /* ---------- Piezas compartidas ---------- */
+  function avatar(person) {
+    return `<span aria-hidden="true" class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-teal/20 text-xs font-bold uppercase text-brand-teal-dark">${person.name[0]}${person.lastName[0]}</span>`;
+  }
+
+  function navLinks() {
+    if (isOrganization()) {
+      return [
+        { key: "users", label: "Usuarios", icon: "userRound" },
+        { key: "clinics", label: "Sedes", icon: "building" },
+        { key: "specialties", label: "Especialidades", icon: "tags" },
+        { key: "patients", label: "Pacientes", icon: "personStanding" },
+      ];
+    }
+    return [
+      { key: "dashboard", label: "Inicio", icon: "layoutDashboard" },
+      { key: "availability", label: "Configuración", icon: "settings" },
+      { key: "patients", label: "Pacientes", icon: "personStanding" },
+      { key: "users", label: "Usuarios", icon: "userRound" },
+    ];
+  }
+
+  function navHtml() {
+    return navLinks().map((link) => {
+      const isActive = link.key === "patients";
+      return `<a href="#" data-action="nav" data-target="${link.key}" ${isActive ? 'aria-current="page"' : ""} class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors ${isActive ? "bg-brand-surface font-semibold text-brand-teal-dark" : "text-brand-gray hover:bg-gray-100 hover:text-brand-ink"}">${icon(link.icon, "h-4 w-4 shrink-0")}${link.label}</a>`;
+    }).join("");
+  }
+
+  function sidebarUserMenu() {
+    return `<button type="button" data-action="proto-note" data-note="El menú de la cuenta no cambia." aria-label="Tu cuenta: ${escapeHtml(fullName(ME))}" class="flex w-full min-w-0 items-center gap-2 rounded-[10px] border border-transparent p-2 text-sm font-medium text-brand-ink transition-colors hover:bg-gray-100">
+      ${avatar(ME)}
+      <span class="min-w-0 flex-1 text-left"><span class="block truncate text-[13px] font-semibold">${escapeHtml(fullName(ME))}</span><span class="block truncate text-xs font-normal text-brand-gray">${escapeHtml(resourceName())}</span></span>
+      ${icon("chevronDown", "h-4 w-4 shrink-0 text-brand-gray")}
+    </button>`;
+  }
+
+  function drawer() {
+    return `<div class="fixed inset-0 z-40 bg-black/40 md:hidden" data-action="close-menu"></div>
+    <div role="dialog" aria-modal="true" aria-label="Menú de navegación" class="fixed left-0 top-0 z-50 flex h-dvh w-72 max-w-[80%] flex-col gap-6 overflow-y-auto bg-white px-4 py-6 shadow-xl md:hidden">
+      <div class="flex items-center justify-between">
+        <span class="flex items-center gap-2">${logo(28)}</span>
+        <button type="button" data-action="close-menu" class="rounded-lg p-1.5 text-brand-gray hover:bg-gray-100" aria-label="Cerrar menú">${icon("x", "h-5 w-5")}</button>
+      </div>
+      <nav class="flex flex-col gap-1">${navHtml()}</nav>
+      <div class="mt-auto border-t border-gray-100 pt-4">${sidebarUserMenu()}</div>
+    </div>`;
+  }
+
+  function appShell(inner) {
+    return `<div class="flex min-h-dvh flex-col bg-gray-50 md:flex-row">
+      <header class="flex items-center justify-between border-b border-gray-200 bg-white px-4 py-3 md:hidden">
+        <span class="flex items-center gap-2">${logo(24)}</span>
+        <button type="button" data-action="open-menu" class="rounded-lg p-2 text-brand-gray hover:bg-gray-100" aria-label="Abrir menú">${icon("menu", "h-5 w-5")}</button>
+      </header>
+      ${state.menuOpen ? drawer() : ""}
+      <aside class="hidden w-60 shrink-0 flex-col border-r border-gray-200 bg-white px-4 py-6 md:flex">
+        <span class="mb-8 flex items-center gap-2 px-2">${logo(28)}</span>
+        <nav class="flex flex-1 flex-col gap-1">${navHtml()}</nav>
+        <div class="border-t border-gray-100 pt-4">${sidebarUserMenu()}</div>
+      </aside>
+      <main class="relative min-w-0 flex-1 p-4 sm:p-6 md:p-8">${inner}</main>
+    </div>`;
+  }
+
+  /* ---------- common/plan-feature-notice.tsx y common/error-state.tsx ---------- */
+  function planFeatureNotice() {
+    return `<div role="status" class="flex flex-col items-center justify-center gap-3 rounded-xl border border-gray-200 bg-white p-8 text-center">
+      <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-gray-100">${icon("lock", "h-6 w-6 text-brand-gray")}</div>
+      <div>
+        <h2 class="text-lg font-semibold text-brand-teal-dark">Tu plan no permite hacer uso de esta función</h2>
+        <p class="mt-1 max-w-sm text-sm text-brand-gray">Está incluida desde el plan Consultorio. Durante la beta, los planes de pago se activan a pedido por WhatsApp.</p>
+      </div>
+      <a href="#" data-action="proto-note" data-note="Abre WhatsApp para pedir el plan. Sin cambios." class="${buttonClass("coral", "default")}">${icon("messageCircle", "mr-2 h-4 w-4")}Pedir el plan Consultorio</a>
+    </div>`;
+  }
+
+  function errorState({ title, message }) {
+    return `<div class="flex min-h-[50vh] flex-col items-center justify-center gap-4 p-8 text-center">
+      <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-red-50">${icon("alertTriangle", "h-7 w-7 text-red-500")}</div>
+      <div>
+        <h2 class="text-lg font-semibold text-brand-teal-dark">${title}</h2>
+        <p class="mt-1 max-w-sm text-sm text-brand-gray">${message}</p>
+      </div>
+      <button type="button" data-action="retry-search" class="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-brand-gray transition hover:bg-gray-50">Reintentar</button>
+    </div>`;
+  }
+
+  /* ---------- patient/patients-table.tsx sobre common/table.tsx ---------- */
+  function statusBadge(patient) {
+    if (patient.nextAppointmentAt !== null) {
+      return '<span class="inline-block rounded-full bg-brand-teal/10 px-2.5 py-0.5 text-xs font-semibold text-brand-teal-dark">Con cita próxima</span>';
+    }
+    if (patient.noShowCount > 0) {
+      const label = patient.noShowCount === 1 ? "inasistencia" : "inasistencias";
+      return `<span class="inline-block rounded-full bg-red-50 px-2.5 py-0.5 text-xs font-semibold text-red-700">${patient.noShowCount} ${label}</span>`;
+    }
+    return '<span class="inline-block rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-semibold text-brand-gray">Sin cita próxima</span>';
+  }
+
+  function nameCell(patient) {
+    const name = escapeHtml(fullName(patient));
+    const nameElement = namesOpenRecord()
+      ? `<a href="#" data-action="open-record" data-patient-id="${patient.id}" data-row-focus class="font-medium text-brand-ink hover:text-brand-teal hover:underline">${name}</a>`
+      : `<span class="font-medium text-brand-ink">${name}</span>`;
+    return `<div class="flex flex-col">${nameElement}<span class="text-xs text-brand-gray">${escapeHtml(formatDocument(patient))}</span></div>`;
+  }
+
+  function phoneCell(patient) {
+    const focusMark = namesOpenRecord() ? "" : "data-row-focus";
+    return `<a href="tel:${patient.phone}" data-action="proto-note" data-note="En el celular, abre la llamada. Sin cambios (#125)." ${focusMark} class="hover:text-brand-ink">${patient.phone}</a>`;
+  }
+
+  const TABLE_COLUMNS = [
+    { header: "Paciente", align: "text-left", cell: nameCell },
+    { header: "Teléfono", align: "text-left", cell: phoneCell },
+    { header: "Última visita", align: "text-left", cell: (patient) => formatShortDate(patient.lastVisitAt) },
+    { header: "Citas", align: "text-center", cell: (patient) => patient.totalAppointments },
+    { header: "Estado", align: "text-left", cell: statusBadge },
+  ];
+
+  function patientsTable(patients) {
+    const header = TABLE_COLUMNS.map((column) => `<th scope="col" class="px-4 py-3 font-medium ${column.align}">${column.header}</th>`).join("");
+    const body = patients.map((patient) => `<tr class="hover:bg-gray-50">${TABLE_COLUMNS.map((column) => `<td class="px-4 py-3 text-brand-gray ${column.align}">${column.cell(patient)}</td>`).join("")}</tr>`).join("");
+    return `<div class="overflow-x-auto rounded-xl border border-gray-200 bg-white">
+      <table class="w-full text-sm">
+        <thead class="border-b border-gray-200 bg-gray-50 text-xs uppercase tracking-wide text-brand-gray"><tr>${header}</tr></thead>
+        <tbody class="divide-y divide-gray-100">${body}</tbody>
+      </table>
+    </div>`;
+  }
+
+  function emptyBox(inner) {
+    return `<div class="rounded-xl border border-gray-200 bg-white p-8 text-center text-sm text-brand-gray">${inner}</div>`;
+  }
+
+  function noPatientsBox() {
+    const where = isOrganization() ? "en cualquiera de tus sedes" : `en ${CLINIC_NAMES.M}`;
+    return emptyBox(`<p class="font-medium text-brand-ink">Todavía no hay pacientes.</p>
+      <p class="mt-1">Aparecen aquí cuando reservan su primera cita ${where}.</p>`);
+  }
+
+  function noResultsBox() {
+    const hint = D.d1 === "a" ? "Revisa cómo está escrito o busca por DNI o teléfono." : "Revisa cómo está escrito.";
+    const clinicScope = isOrganization() ? "" : `<p class="mt-1">Aquí solo aparecen quienes tienen alguna cita en ${CLINIC_NAMES.M}.</p>`;
+    return emptyBox(`<p class="font-medium text-brand-ink">No encontramos pacientes que coincidan.</p>
+      <p class="mt-1">${hint}</p>
+      ${clinicScope}
+      <button type="button" data-action="clear-search" class="${buttonClass("outline", "sm", "mt-4 min-h-10 sm:min-h-0")}">Limpiar búsqueda</button>`);
+  }
+
+  function seeMoreButton() {
+    const label = state.activeTerm === null ? "Ver más pacientes" : "Ver más resultados";
+    const content = state.loadingMore ? `${icon("loader", "mr-2 h-4 w-4 animate-spin")}Cargando…` : label;
+    return `<div class="mt-4">
+      <button type="button" data-action="see-more" ${state.loadingMore ? "disabled" : ""} class="${buttonClass("outline", "default", "w-full sm:w-auto")}">${content}</button>
+    </div>`;
+  }
+
+  /* ---------- Buscador ---------- */
+  const SEARCH_PLACEHOLDER = D.d1 === "a" ? "Busca por nombre, DNI o teléfono" : "Busca por nombre o apellido";
+
+  function searchForm() {
+    return `<form role="search" data-search-form class="mb-4" novalidate>
+      <label for="patient-search" class="sr-only text-sm font-medium text-brand-gray">Buscar paciente</label>
+      <div class="relative w-full sm:max-w-md">
+        <span id="search-icon" class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-brand-gray"></span>
+        <input id="patient-search" name="search" type="search" autocomplete="off" enterkeyhint="search" maxlength="${MAX_SEARCH_CHARS}"
+          placeholder="${SEARCH_PLACEHOLDER}" aria-describedby="search-status"
+          class="h-10 w-full rounded-lg border border-gray-300 bg-white pl-9 pr-10 text-base text-brand-ink outline-none transition placeholder:text-gray-400 focus:border-brand-teal focus:ring-2 focus:ring-brand-teal/20 sm:text-sm [&::-webkit-search-cancel-button]:appearance-none">
+        <span id="clear-slot" class="absolute right-1 top-1/2 -translate-y-1/2"></span>
+      </div>
+      <p id="search-status" role="status" class="mt-2 min-h-5 text-sm text-brand-gray"></p>
+    </form>`;
+  }
+
+  function foundLabel() {
+    const visibleCount = Math.min(state.loaded, state.rows.length);
+    if (state.rows.length > state.loaded) return `Más de ${visibleCount} pacientes encontrados`;
+    return state.rows.length === 1 ? "1 paciente encontrado" : `${state.rows.length} pacientes encontrados`;
+  }
+
+  function statusLine() {
+    if (state.status === "short") return `Escribe al menos ${MIN_SEARCH_CHARS} letras o números.`;
+    if (state.status === "searching") return "Buscando…";
+    if (state.status === "results") {
+      return state.rows.length === 0 ? '<span class="sr-only">Ningún paciente encontrado</span>' : foundLabel();
+    }
+    return state.announcement ? `<span class="sr-only">${state.announcement}</span>` : "";
+  }
+
+  function resultsHtml() {
+    if (state.status === "search-error") {
+      return errorState({ title: "No pudimos buscar", message: "Revisa tu conexión y vuelve a intentarlo." });
+    }
+    const visible = state.rows.slice(0, state.loaded);
+    let content;
+    if (visible.length > 0) {
+      content = patientsTable(visible) + (state.rows.length > state.loaded ? seeMoreButton() : "");
+    } else {
+      content = state.activeTerm === null ? noPatientsBox() : noResultsBox();
+    }
+    const isSearching = state.status === "searching";
+    return `<div ${isSearching ? 'aria-busy="true"' : ""} class="transition-opacity ${isSearching ? "opacity-60" : ""}">${content}</div>`;
+  }
+
+  function updateResults() {
+    const area = document.getElementById("results-area");
+    if (!area) return;
+    const iconSlot = document.getElementById("search-icon");
+    if (iconSlot) {
+      iconSlot.innerHTML = state.status === "searching" ? icon("loader", "h-4 w-4 animate-spin") : icon("search", "h-4 w-4");
+    }
+    const clearSlot = document.getElementById("clear-slot");
+    if (clearSlot) {
+      clearSlot.innerHTML = state.term.length > 0
+        ? `<button type="button" data-action="clear-search" aria-label="Limpiar búsqueda" class="flex h-8 w-8 items-center justify-center rounded-md text-brand-gray hover:bg-gray-100 hover:text-brand-ink">${icon("x", "h-4 w-4")}</button>`
+        : "";
+    }
+    const statusElement = document.getElementById("search-status");
+    if (statusElement) statusElement.innerHTML = statusLine();
+    area.innerHTML = resultsHtml();
+  }
+
+  /* ---------- Pantallas ---------- */
+  function pageHeader() {
+    const scopeText = isOrganization() ? "Pacientes de todas las sedes." : "Pacientes con alguna cita en esta sede.";
+    const orderText = D.d3 === "a" ? "Los nuevos aparecen primero." : "Ordenados por apellido.";
+    return `<div class="mb-6">
+      <h1 tabindex="-1" class="text-2xl font-bold text-brand-teal-dark focus:outline-none">Pacientes</h1>
+      <p class="mt-1 text-sm text-brand-gray">${scopeText} ${orderText}</p>
+    </div>`;
+  }
+
+  function renderList() {
+    const hasPatients = patientsInScope().length > 0;
+    return appShell(`${pageHeader()}${hasPatients ? searchForm() : ""}<div id="results-area"></div>`);
+  }
+
+  function renderFree() {
+    return appShell(`<h1 tabindex="-1" class="mb-6 text-2xl font-bold text-brand-teal-dark focus:outline-none">Pacientes</h1>${planFeatureNotice()}`);
+  }
+
+  function appointmentHistory(patient) {
+    const clinicKey = patient.clinics.includes("M") ? "M" : "S";
+    const entries = [];
+    if (patient.nextAppointmentAt !== null) entries.push({ at: patient.nextAppointmentAt, status: "PENDING" });
+    const pastCount = patient.totalAppointments - entries.length;
+    for (let index = 0; index < pastCount; index += 1) {
+      const anchor = patient.lastVisitAt === null ? TODAY_AT_NOON_IN_LIMA - 30 * DAY_MS : patient.lastVisitAt;
+      const isNoShow = index >= pastCount - patient.noShowCount;
+      entries.push({ at: anchor - index * 63 * DAY_MS - 2 * 60 * 60 * 1000, status: isNoShow ? "NO_SHOW" : "COMPLETED" });
+    }
+    const STATUS = {
+      PENDING: ["Pendiente", "bg-gray-100 text-brand-gray"],
+      COMPLETED: ["Atendida", "bg-brand-teal/10 text-brand-teal-dark"],
+      NO_SHOW: ["No asistió", "bg-red-50 text-red-700"],
+    };
+    const rows = entries.map((entry) => `<tr class="hover:bg-gray-50">
+      <td class="px-4 py-3 text-left text-brand-gray">${dateTimeFormatter.format(new Date(entry.at))}</td>
+      <td class="px-4 py-3 text-left text-brand-gray">${CLINIC_NAMES[clinicKey]}</td>
+      <td class="px-4 py-3 text-left text-brand-gray">${DOCTOR_DISPLAY_NAME}</td>
+      <td class="px-4 py-3 text-left text-brand-gray">Dermatología</td>
+      <td class="px-4 py-3 text-left text-brand-gray"><div class="inline-flex items-center whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-semibold ${STATUS[entry.status][1]}">${STATUS[entry.status][0]}</div></td>
+    </tr>`).join("");
+    const completed = entries.filter((entry) => entry.status === "COMPLETED");
+    const stat = (value, label, tone) => `<div class="bg-white px-3 py-2.5"><p class="text-lg font-bold tabular-nums ${tone || "text-brand-ink"}">${value}</p><p class="text-xs text-brand-gray">${label}</p></div>`;
+    return `<div class="flex flex-col gap-4">
+      <div class="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-gray-200 bg-gray-200 sm:grid-cols-3 lg:grid-cols-6">
+        ${stat(patient.totalAppointments, "Citas totales")}
+        ${stat(completed.length, "Atendidas")}
+        ${stat(patient.noShowCount, patient.noShowCount === 1 ? "Inasistencia" : "Inasistencias", patient.noShowCount > 0 ? "text-red-700" : "")}
+        ${stat(formatShortDate(completed.length ? completed[completed.length - 1].at : null), "Primera visita")}
+        ${stat(formatShortDate(patient.lastVisitAt), "Última visita")}
+        ${stat(formatShortDate(patient.nextAppointmentAt), "Próxima cita", patient.nextAppointmentAt !== null ? "text-brand-teal" : "")}
+      </div>
+      <div class="overflow-x-auto rounded-xl border border-gray-200 bg-white">
+        <table class="w-full text-sm">
+          <thead class="border-b border-gray-200 bg-gray-50 text-xs uppercase tracking-wide text-brand-gray"><tr>
+            <th scope="col" class="px-4 py-3 text-left font-medium">Fecha</th><th scope="col" class="px-4 py-3 text-left font-medium">Sede</th><th scope="col" class="px-4 py-3 text-left font-medium">Profesional</th><th scope="col" class="px-4 py-3 text-left font-medium">Especialidad</th><th scope="col" class="px-4 py-3 text-left font-medium">Estado</th>
+          </tr></thead>
+          <tbody class="divide-y divide-gray-100">${rows}</tbody>
+        </table>
+      </div>
+      <p class="text-xs text-brand-gray">Primera y última visita cuentan solo las citas atendidas: una cita cancelada o a la que no se asistió no es una visita.</p>
+    </div>`;
+  }
+
+  function renderRecord() {
+    const patient = PATIENTS.find((candidate) => candidate.id === state.patientId) || PATIENTS[0];
+    const email = `${fold(patient.name.split(" ")[0])}.${fold(patient.lastName.split(" ")[0])}@gmail.com`;
+    const age = 22 + (Number(digitsOf(patient.documentNumber).slice(-2) || "17") % 45);
+    return appShell(`<div class="flex flex-col gap-4">
+      <a href="#" data-action="back-to-list" class="inline-flex w-fit items-center gap-1 text-sm text-brand-gray hover:text-brand-ink">${icon("chevronLeft", "h-4 w-4")}Pacientes</a>
+      <div class="flex flex-wrap items-center gap-4 rounded-xl border border-gray-200 bg-white p-4">
+        <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-brand-teal/10 text-sm font-bold text-brand-teal-dark">${patient.name[0]}${patient.lastName[0]}</div>
+        <div>
+          <h1 tabindex="-1" class="text-lg font-bold text-brand-ink focus:outline-none">${escapeHtml(fullName(patient))}</h1>
+          <p class="text-xs text-brand-gray">${escapeHtml(formatDocument(patient))} · ${patient.phone} · ${email}</p>
+        </div>
+        <div class="ml-auto flex flex-wrap items-center gap-2">
+          <span class="rounded-full border border-dashed border-gray-300 px-3 py-1 text-xs text-brand-gray">Alergias sin registrar</span>
+          <span class="rounded-full border border-gray-200 bg-brand-surface px-3 py-1 text-xs text-brand-gray">Edad ${age}</span>
+        </div>
+      </div>
+      <div class="flex flex-col gap-4">
+        <div role="tablist" class="flex gap-1 border-b border-gray-200">
+          <button role="tab" type="button" aria-selected="true" class="-mb-px rounded-t-md border-b-2 border-brand-teal px-3 py-2 text-sm font-semibold text-brand-teal transition">Historial de citas</button>
+          <button role="tab" type="button" aria-selected="false" data-action="proto-note" data-note="La pestaña «Ficha» no cambia y no está en este prototipo." class="-mb-px rounded-t-md border-b-2 border-transparent px-3 py-2 text-sm text-brand-gray transition hover:text-brand-ink">Ficha</button>
+        </div>
+        <div role="tabpanel">${appointmentHistory(patient)}</div>
+      </div>
+    </div>`);
+  }
+
+  const RENDERERS = { list: renderList, empty: renderList, free: renderFree, record: renderRecord };
+
+  function render() {
+    document.getElementById("root").innerHTML = RENDERERS[state.screen]();
+    const input = document.getElementById("patient-search");
+    if (input) input.value = state.term;
+    updateResults();
+  }
+
+  function focusHeading() {
+    const heading = document.querySelector("main h1");
+    if (heading) heading.focus({ preventScroll: true });
+    window.scrollTo(0, 0);
+  }
+
+  function toast(kind, message, persistent) {
+    const box = document.getElementById("toasts");
+    const item = document.createElement("div");
+    item.setAttribute("role", "status");
+    item.className = kind === "error"
+      ? "pointer-events-auto rounded-lg border border-red-100 bg-red-50 px-4 py-3 text-sm font-medium text-red-700 shadow-lg"
+      : "pointer-events-auto rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm text-brand-ink shadow-lg";
+    item.textContent = kind === "note" ? `Prototipo: ${message}` : message;
+    box.appendChild(item);
+    if (!persistent) setTimeout(() => item.remove(), TOAST_DURATION_MS);
+  }
+
+  /* ---------- Comportamiento ---------- */
+  function onTermChange(immediately) {
+    clearTimeout(searchTimer);
+    state.announcement = "";
+    const term = collapseSpaces(state.term);
+    const length = significantLength(term);
+    if (length === 0 || length < MIN_SEARCH_CHARS) {
+      requestNumber += 1;
+      showFullList();
+      if (length > 0) state.status = "short";
+      updateResults();
+      return;
+    }
+    if (immediately) runSearch(term);
+    else searchTimer = setTimeout(() => runSearch(term), SEARCH_DELAY_MS);
+  }
+
+  function runSearch(term) {
+    requestNumber += 1;
+    const thisRequest = requestNumber;
+    state.status = "searching";
+    state.loadingMore = false;
+    updateResults();
+    const shouldFail = takeSimulatedFailure();
+    setTimeout(() => {
+      if (thisRequest !== requestNumber) return;
+      if (shouldFail) {
+        state.activeTerm = term;
+        state.status = "search-error";
+      } else {
+        applySearch(term);
+      }
+      updateResults();
+    }, RESPONSE_DELAY_MS);
+  }
+
+  function seeMore() {
+    if (state.loadingMore) return;
+    state.loadingMore = true;
+    updateResults();
+    const thisRequest = requestNumber;
+    const shouldFail = takeSimulatedFailure();
+    setTimeout(() => {
+      if (thisRequest !== requestNumber) return;
+      state.loadingMore = false;
+      if (shouldFail) {
+        updateResults();
+        toast("error", "No pudimos cargar más pacientes. Vuelve a intentarlo.");
+        return;
+      }
+      const firstNewRow = state.loaded;
+      state.loaded += PAGE_SIZE;
+      if (state.activeTerm === null) state.announcement = `Se muestran ${Math.min(state.loaded, state.rows.length)} pacientes`;
+      updateResults();
+      const rowTargets = document.querySelectorAll("[data-row-focus]");
+      if (rowTargets[firstNewRow]) rowTargets[firstNewRow].focus();
+    }, RESPONSE_DELAY_MS);
+  }
+
+  function clearSearch() {
+    state.term = "";
+    onTermChange(true);
+    const input = document.getElementById("patient-search");
+    if (input) {
+      input.value = "";
+      input.focus();
+    }
+  }
+
+  function openRecord(patientId) {
+    state.savedSearch = D.d6 === "b"
+      ? { term: state.term, activeTerm: state.activeTerm, rows: state.rows, loaded: state.loaded, status: state.status }
+      : null;
+    state.screen = "record";
+    state.patientId = patientId;
+    state.menuOpen = false;
+    render();
+    focusHeading();
+  }
+
+  function backToList() {
+    state.screen = "list";
+    state.term = "";
+    showFullList();
+    if (state.savedSearch) Object.assign(state, state.savedSearch);
+    state.savedSearch = null;
+    render();
+    focusHeading();
+  }
+
+  document.addEventListener("input", (event) => {
+    if (event.target.id !== "patient-search") return;
+    state.term = event.target.value;
+    onTermChange(false);
+  });
+
+  document.addEventListener("submit", (event) => {
+    event.preventDefault();
+    if (event.target.matches("[data-search-form]")) onTermChange(true);
+  });
+
+  document.addEventListener("click", (event) => {
+    const target = event.target.closest("[data-action]");
+    if (!target) return;
+    const action = target.dataset.action;
+    if (action !== "see-more" && action !== "retry-search" && action !== "clear-search") event.preventDefault();
+
+    if (action === "clear-search") return clearSearch();
+    if (action === "see-more") return seeMore();
+    if (action === "retry-search") return runSearch(state.activeTerm);
+    if (action === "open-record") return openRecord(target.dataset.patientId);
+    if (action === "back-to-list") return backToList();
+    if (action === "open-menu" || action === "close-menu") {
+      state.menuOpen = action === "open-menu";
+      render();
+      return;
+    }
+    if (action === "nav") {
+      state.menuOpen = false;
+      if (target.dataset.target === "patients") {
+        backToList();
+        return;
+      }
+      render();
+      toast("note", "Esta sección no cambia y no está en el prototipo.");
+      return;
+    }
+    if (action === "proto-note") toast("note", target.dataset.note);
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && state.menuOpen) {
+      state.menuOpen = false;
+      render();
+    }
+  });
+
+  // La barra del prototipo vive en otro documento (sandbox sin origen): solo puede hablar por mensajes.
+  window.addEventListener("message", (event) => {
+    const message = event.data;
+    if (message && message.type === "mock-fail-next") state.failNext = Boolean(message.value);
+  });
+
+  /* ---------- Estado inicial (las vistas de la galería llegan congeladas) ---------- */
+  showFullList();
+  if (CONFIG.term) {
+    state.term = CONFIG.term;
+    const term = collapseSpaces(CONFIG.term);
+    if (significantLength(term) < MIN_SEARCH_CHARS) state.status = "short";
+    else applySearch(term);
+  }
+  if (CONFIG.freeze === "searching") {
+    showFullList();
+    state.status = "searching";
+  }
+  if (CONFIG.freeze === "search-error") {
+    state.activeTerm = collapseSpaces(CONFIG.term);
+    state.status = "search-error";
+  }
+  if (CONFIG.freeze === "loading-more") state.loadingMore = true;
+  if (CONFIG.loaded) state.loaded = CONFIG.loaded;
+  render();
+  if (CONFIG.freeze === "more-error") toast("error", "No pudimos cargar más pacientes. Vuelve a intentarlo.", true);
+
+  let userScrolled = false;
+  ["wheel", "touchstart", "keydown"].forEach((name) => window.addEventListener(name, () => { userScrolled = true; }, { passive: true }));
+  const scrollToRequestedPlace = () => {
+    if (userScrolled) return;
+    if (CONFIG.scroll === "bottom") window.scrollTo(0, document.documentElement.scrollHeight);
+  };
+  window.addEventListener("resize", scrollToRequestedPlace);
+  setTimeout(scrollToRequestedPlace, 300);
+
+  if (CONFIG.autoHeight) {
+    const reportHeight = () => parent.postMessage({ type: "mock-height", frameId: CONFIG.frameId, height: document.body.scrollHeight }, "*");
+    new ResizeObserver(reportHeight).observe(document.body);
+  }
+})();
+</script>
+</template>
+
+<script>
+(function () {
+  "use strict";
+
+  const headTemplate = document.getElementById("app-head").innerHTML;
+  const bodyTemplate = document.getElementById("app-body").innerHTML;
+  const CLOSE_SCRIPT = "<\/script>";
+  const FRAME_MIN_HEIGHT = 560;
+  const FRAME_MAX_HEIGHT = { mobile: 780, desktop: 700 };
+  const JULIO_QUISPE_ID = "paciente-4";
+  const ANA_MARIA_QUISPE_ID = "paciente-16";
+
+  const controls = { screen: "clinic", view: "mobile", d1: "a", d3: "a", d4: "a", d5: "a", d6: "a" };
+  const DECISIONS = ["d1", "d3", "d4", "d5", "d6"];
+
+  const SCREENS = {
+    clinic: { caption: "Pacientes de Sede Miraflores", config: { screen: "list", scope: "clinic" } },
+    org: { caption: "Pacientes de la organización", config: { screen: "list", scope: "org" } },
+    free: { caption: "Sede en plan Gratis (402)", config: { screen: "free", scope: "clinic" } },
+    empty: { caption: "Sede sin pacientes", config: { screen: "empty", scope: "clinic" } },
+  };
+
+  const GALLERY = [
+    { title: "1. Lista con «Ver más pacientes»", caption: "Los primeros 20, del más nuevo al más antiguo. Al final de la tabla, «Ver más pacientes» (outline, a lo ancho en el celular). Antes no había ni aviso.", config: { screen: "list", scope: "clinic", scroll: "bottom" } },
+    { title: "2. Cargando más", caption: "El botón se deshabilita con el spinner y «Cargando…». Las filas cargadas no se mueven.", config: { screen: "list", scope: "clinic", freeze: "loading-more", scroll: "bottom" } },
+    { title: "3. «Ver más» falló", caption: "Toast de error. Las filas se quedan y el botón sigue disponible para reintentar.", config: { screen: "list", scope: "clinic", freeze: "more-error", scroll: "bottom" } },
+    { title: "4. Búsqueda: un solo carácter", caption: "La lista no cambia y el campo dice cuánto falta (D-4).", config: { screen: "list", scope: "clinic", term: "q" } },
+    { title: "5. Buscando", caption: "La lupa pasa a spinner, «Buscando…» y la tabla anterior queda atenuada: nada salta mientras llega la respuesta.", config: { screen: "list", scope: "clinic", term: "quis", freeze: "searching" } },
+    { title: "6. Búsqueda con resultados", caption: "«quispe» en la sede: 4 pacientes. El número se anuncia al lector de pantalla.", config: { screen: "list", scope: "clinic", term: "quispe" } },
+    { title: "7. Sin tildes", caption: "«jose nunez» encuentra a «José Núñez Ccori» (S-1).", config: { screen: "list", scope: "clinic", term: "jose nunez" } },
+    { title: "8. Por teléfono", caption: "«987 654 321», con espacios, encuentra el +51987654321 (S-2). Con D-1 en b, no encuentra nada.", config: { screen: "list", scope: "clinic", term: "987 654 321" } },
+    { title: "9. Más de 20 resultados", caption: "«ar» encuentra 22: dice «Más de 20» y ofrece «Ver más resultados» con el mismo término.", config: { screen: "list", scope: "clinic", term: "ar", scroll: "bottom" } },
+    { title: "10. Búsqueda sin resultados", caption: "Qué revisar, por qué podría no estar (solo quienes tienen cita en esta sede) y «Limpiar búsqueda».", config: { screen: "list", scope: "clinic", term: "paola rios" } },
+    { title: "11. Búsqueda fallida", caption: "ErrorState con «Reintentar», que repite la búsqueda. El campo conserva el texto.", config: { screen: "list", scope: "clinic", term: "quispe", freeze: "search-error" } },
+    { title: "12. Sede sin pacientes", caption: "Sin buscador: no hay nada que buscar. Dice de dónde salen los pacientes.", config: SCREENS.empty.config },
+    { title: "13. Plan Gratis (402)", caption: "Sin cambios: el título y la mejora de plan, sin subtítulo ni buscador.", config: SCREENS.free.config },
+    { title: "14. Organización: lista", caption: "Los pacientes de todas las sedes (55). El nombre abre la ficha (D-5).", config: SCREENS.org.config },
+    { title: "15. Organización: búsqueda", caption: "«quispe» encuentra 5: también a Julio Quispe, que solo tiene citas en San Borja.", config: { screen: "list", scope: "org", term: "quispe" } },
+    { title: "16. Organización: ficha", caption: "Ruta nueva con la ficha de hoy. «Pacientes» vuelve a la lista de la organización.", config: { screen: "record", scope: "org", patientId: JULIO_QUISPE_ID } },
+    { notApplicable: true, title: "403, carga y error de la página", body: "<strong>403:</strong> sin membership en la sede o la organización, el layout (<code>loadWorkspace</code>) lleva a «Elige dónde entrar» con <code>?switch=1</code>, como hoy. Si la quitan con la página abierta, la siguiente búsqueda recibe 404 y se ve «No pudimos buscar» (vista 11).<br><br><strong>Carga y error de la página:</strong> sin cambios, <code>loading.tsx</code> («Cargando...») y <code>error.tsx</code> del segmento, con la barra lateral." },
+    { wide: true, title: "17. Escritorio: lista con «Ver más pacientes»", caption: "El buscador mide hasta 448 px (max-w-md). El botón va a la izquierda, con su ancho.", config: { screen: "list", scope: "clinic", scroll: "bottom" } },
+    { wide: true, title: "18. Escritorio: buscando", caption: "Igual que en el celular.", config: { screen: "list", scope: "clinic", term: "quis", freeze: "searching" } },
+    { wide: true, title: "19. Escritorio: búsqueda con resultados", caption: "«quispe»: 4 pacientes.", config: { screen: "list", scope: "clinic", term: "quispe" } },
+    { wide: true, title: "20. Escritorio: búsqueda sin resultados", caption: "La caja vacía de Table con «Limpiar búsqueda».", config: { screen: "list", scope: "clinic", term: "paola rios" } },
+    { wide: true, title: "21. Escritorio: organización", caption: "Búsqueda en todas las sedes.", config: { screen: "list", scope: "org", term: "quispe" } },
+    { wide: true, title: "22. Escritorio: ficha desde la organización", caption: "La ficha de hoy, sin cambios, con «Pacientes» de vuelta a la organización.", config: { screen: "record", scope: "org", patientId: ANA_MARIA_QUISPE_ID } },
+  ];
+
+  const frames = new Map();
+
+  function buildSrcdoc(config) {
+    return [
+      '<!doctype html><html lang="es-PE"><head><meta charset="utf-8">',
+      '<meta name="viewport" content="width=device-width, initial-scale=1">',
+      headTemplate,
+      '<script type="application/json" id="mock-config">',
+      JSON.stringify(config).replace(/</g, "\\u003c"),
+      CLOSE_SCRIPT,
+      '</head><body class="bg-background font-sans text-foreground antialiased">',
+      bodyTemplate,
+    ].join("");
+  }
+
+  function decisionConfig() {
+    return DECISIONS.reduce((config, name) => Object.assign(config, { [name]: controls[name] }), {});
+  }
+
+  function loadFrame(frameId) {
+    const entry = frames.get(frameId);
+    entry.loaded = true;
+    entry.frame.srcdoc = buildSrcdoc(Object.assign({ frameId }, entry.config, decisionConfig()));
+  }
+
+  /* ---------- Vista navegable ---------- */
+  const liveFrame = document.getElementById("live-frame");
+  const liveDevice = document.getElementById("live-device");
+  const liveCaption = document.getElementById("live-caption");
+  const failNextBox = document.getElementById("fail-next");
+
+  function viewLabel() {
+    return controls.view === "mobile" ? "Celular 375 px" : "Escritorio 1024 px";
+  }
+
+  function renderLive() {
+    frames.set("live", { frame: liveFrame, config: Object.assign({ autoHeight: false }, SCREENS[controls.screen].config), loaded: false });
+    loadFrame("live");
+    liveCaption.textContent = `${viewLabel()} · ${SCREENS[controls.screen].caption}`;
+  }
+
+  liveFrame.addEventListener("load", () => {
+    if (failNextBox.checked) liveFrame.contentWindow.postMessage({ type: "mock-fail-next", value: true }, "*");
+  });
+
+  failNextBox.addEventListener("change", () => {
+    liveFrame.contentWindow.postMessage({ type: "mock-fail-next", value: failNextBox.checked }, "*");
+  });
+
+  document.querySelectorAll('input[name="screen"]').forEach((input) => {
+    input.addEventListener("change", () => {
+      controls.screen = input.value;
+      renderLive();
+    });
+  });
+
+  DECISIONS.forEach((name) => {
+    document.querySelectorAll(`input[name="${name}"]`).forEach((input) => {
+      input.addEventListener("change", () => {
+        controls[name] = input.value;
+        frames.forEach((entry, frameId) => {
+          if (entry.loaded) loadFrame(frameId);
+        });
+      });
+    });
+  });
+
+  document.querySelectorAll("[data-view]").forEach((button) => {
+    button.addEventListener("click", () => {
+      controls.view = button.dataset.view;
+      document.querySelectorAll("[data-view]").forEach((other) => other.setAttribute("aria-pressed", String(other === button)));
+      liveDevice.classList.toggle("mobile", controls.view === "mobile");
+      liveDevice.classList.toggle("desktop", controls.view === "desktop");
+      liveCaption.textContent = `${viewLabel()} · ${SCREENS[controls.screen].caption}`;
+    });
+  });
+
+  document.getElementById("restart").addEventListener("click", renderLive);
+
+  /* ---------- Galería ---------- */
+  const gallery = document.getElementById("gallery");
+  const frameIdByElement = new Map();
+  const lazyLoader = new IntersectionObserver((entries) => {
+    entries.forEach((entry) => {
+      if (!entry.isIntersecting) return;
+      lazyLoader.unobserve(entry.target);
+      loadFrame(frameIdByElement.get(entry.target));
+    });
+  }, { rootMargin: "800px 0px" });
+
+  GALLERY.forEach((shot, index) => {
+    const figure = document.createElement("figure");
+    figure.className = shot.wide ? "shot wide" : "shot";
+    const heading = document.createElement("h3");
+    heading.textContent = shot.title;
+    figure.appendChild(heading);
+
+    if (shot.notApplicable) {
+      const box = document.createElement("div");
+      box.className = "not-applicable";
+      box.innerHTML = shot.body;
+      figure.appendChild(box);
+      gallery.appendChild(figure);
+      return;
+    }
+
+    const caption = document.createElement("p");
+    caption.textContent = shot.caption;
+    figure.appendChild(caption);
+
+    const scroller = document.createElement("div");
+    scroller.className = "scroll";
+    const device = document.createElement("div");
+    device.className = shot.wide ? "device desktop" : "device mobile";
+    const frame = document.createElement("iframe");
+    const frameId = `shot-${index}`;
+    frame.title = shot.title;
+    frame.style.height = `${FRAME_MIN_HEIGHT}px`;
+    device.appendChild(frame);
+    scroller.appendChild(device);
+    figure.appendChild(scroller);
+    gallery.appendChild(figure);
+
+    const maxHeight = shot.wide ? FRAME_MAX_HEIGHT.desktop : FRAME_MAX_HEIGHT.mobile;
+    frames.set(frameId, { frame, maxHeight, config: Object.assign({ autoHeight: true }, shot.config), loaded: false });
+    frameIdByElement.set(frame, frameId);
+    lazyLoader.observe(frame);
+  });
+
+  // Lavish aísla el prototipo en un sandbox sin origen: la página y cada vista solo se hablan por mensajes.
+  window.addEventListener("message", (event) => {
+    const message = event.data;
+    if (!message) return;
+    if (message.type === "mock-failure-used") {
+      failNextBox.checked = false;
+      return;
+    }
+    if (message.type !== "mock-height") return;
+    const entry = frames.get(message.frameId);
+    if (entry && entry.config.autoHeight) {
+      const height = Math.min(Math.max(message.height, FRAME_MIN_HEIGHT), entry.maxHeight);
+      entry.frame.style.height = `${height}px`;
+    }
+  });
+
+  renderLive();
+})();
+</script>
+</body>
+</html>

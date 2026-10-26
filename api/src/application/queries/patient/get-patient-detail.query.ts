@@ -1,57 +1,34 @@
 import { NotFound } from "@/application/errors/not-found.error";
+import type { PatientScope } from "@/domain/entities/patient/scope";
+import type { IPatientRepository } from "@/domain/repositories/patient.repository";
 import { buildPatientMetrics } from "@/domain/services/patient-metrics";
 import { formatDoctorName } from "@/domain/services/doctor-name";
-import { getClient } from "@/infrastructure/postgres/transaction-context";
 import z from "zod";
 
 export const getPatientDetailParamsSchema = z.object({
+  resourceId: z.uuid(),
   patientId: z.uuid(),
 });
 
-export type GetPatientDetailDto = z.infer<
-  typeof getPatientDetailParamsSchema
-> & {
+export interface GetPatientDetailDto {
   accountId: string;
-};
+  patientId: string;
+  scope: PatientScope;
+}
 
 export class GetPatientDetailQuery {
-  async execute(input: GetPatientDetailDto) {
-    const client = getClient();
+  constructor(private readonly patients: IPatientRepository) {}
 
-    // `findFirst` acotando por `accountId`, nunca `findUnique` por id: esta ruta
-    // no lleva `:resourceId`, así que la política no resuelve recurso y el
-    // aislamiento entre cuentas depende por completo de esta cláusula.
-    const patient = await client.patient.findFirst({
-      where: { id: input.patientId, accountId: input.accountId },
-    });
+  async execute(input: GetPatientDetailDto) {
+    const patient = await this.patients.findInScope(input);
 
     if (!patient) throw new NotFound("Patient not found");
 
-    // Todas las citas de la cuenta, no solo las de una sede: entre sedes de la
-    // misma organización no hay nada que ocultar, y el historial partido no
-    // serviría para atender.
-    const appointments = await client.appointment.findMany({
-      where: { patientId: patient.id },
-      orderBy: { scheduledAt: "desc" },
-      select: {
-        id: true,
-        scheduledAt: true,
-        status: true,
-        specialty: true,
-        durationMinutes: true,
-        clinic: { select: { name: true } },
-        doctorProfile: {
-          select: {
-            membership: {
-              select: {
-                user: {
-                  select: { name: true, lastName: true, treatment: true },
-                },
-              },
-            },
-          },
-        },
-      },
+    // Las de todas las sedes de la organización, no solo las del usuario; las de otra organización no entran.
+    const appointments = await this.patients.findAppointmentHistory({
+      accountId: input.accountId,
+      organizationId: input.scope.organizationId,
+      patientId: patient.id,
     });
 
     return {
@@ -81,8 +58,8 @@ export class GetPatientDetailQuery {
         status: appointment.status,
         specialty: appointment.specialty,
         durationMinutes: appointment.durationMinutes,
-        clinicName: appointment.clinic.name,
-        doctorName: formatDoctorName(appointment.doctorProfile.membership.user),
+        clinicName: appointment.clinicName,
+        doctorName: formatDoctorName(appointment.doctor),
       })),
       metrics: buildPatientMetrics(appointments),
     };

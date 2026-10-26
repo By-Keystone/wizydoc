@@ -24,6 +24,10 @@ export const PLATFORM_BASE_URL = apiEnv.CLIENT_ORIGIN;
 
 export const EMAIL_CAPTURE_PATH = resolve(API_DIR, apiEnv.EMAIL_CAPTURE_FILE);
 
+const ARTIFACTS_DIR = join(PLATFORM_DIR, "e2e/.artifacts");
+export const API_LOG_PATH = join(ARTIFACTS_DIR, "api.log");
+export const PLATFORM_LOG_PATH = join(ARTIFACTS_DIR, "platform.log");
+
 const TEST_DB_PORT = "5433";
 const TEST_DB_PATH = "/wizydoc_test";
 

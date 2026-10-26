@@ -109,7 +109,7 @@ test("mientras activa la cuenta, el botón queda deshabilitado con «Activando�
   await expect(waitingButton).toBeDisabled();
 
   releaseSetPassword();
-  await expect(page).toHaveURL(/\/account\/[^/]+\/select$/);
+  await expect(page).toHaveURL(/\/account\/[^/]+\/clinic\/[^/]+\/dashboard$/);
 });
 
 test("un enlace que no existe explica que ya se usó o no es válido y ofrece «Ir a iniciar sesión»", async ({

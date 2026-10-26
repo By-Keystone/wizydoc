@@ -1,15 +1,22 @@
 import { defineConfig, devices } from "@playwright/test";
+import { dirname } from "node:path";
 import {
   API_BASE_URL,
   API_DIR,
+  API_LOG_PATH,
   PLATFORM_BASE_URL,
   PLATFORM_DIR,
+  PLATFORM_LOG_PATH,
   apiEnv,
   platformEnv,
   assertE2eEnvironment,
 } from "./e2e/support/env";
 
 assertE2eEnvironment();
+
+// Playwright ignora el stdout del servidor y sólo muestra su stderr: stdout va al archivo y stderr a los dos.
+const withLogFile = (command: string, logPath: string) =>
+  `mkdir -p "${dirname(logPath)}" && ( ${command} 2>&1 1>&3 | tee -a "${logPath}" >&2 ) 3>"${logPath}"`;
 
 export default defineConfig({
   testDir: "./e2e",
@@ -40,7 +47,10 @@ export default defineConfig({
   webServer: [
     {
       name: "api",
-      command: "node node_modules/tsx/dist/cli.mjs src/server.ts",
+      command: withLogFile(
+        "node node_modules/tsx/dist/cli.mjs src/server.ts",
+        API_LOG_PATH,
+      ),
       cwd: API_DIR,
       url: `${API_BASE_URL}/health`,
       env: { ...apiEnv, DOTENV_CONFIG_PATH: ".env.e2e" },
@@ -49,7 +59,10 @@ export default defineConfig({
     },
     {
       name: "platform",
-      command: "node node_modules/next/dist/bin/next dev --port 3100",
+      command: withLogFile(
+        "node node_modules/next/dist/bin/next dev --port 3100",
+        PLATFORM_LOG_PATH,
+      ),
       cwd: PLATFORM_DIR,
       url: PLATFORM_BASE_URL,
       env: platformEnv,
