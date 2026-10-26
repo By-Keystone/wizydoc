@@ -23,6 +23,11 @@ export async function loadWorkspace({
       userMembershipsApi.getMembershipForResource(resourceId),
     ]);
 
+    const membershipResourceType = membership.resourceType.toLowerCase();
+    if (membershipResourceType !== resourceType) {
+      redirect(`/account/${accountId}/${membershipResourceType}/${resourceId}`);
+    }
+
     return { user, membership };
   } catch (error) {
     if (error instanceof AuthExpiredError) {

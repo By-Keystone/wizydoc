@@ -27,7 +27,6 @@ test("CA-18: crear un nombre repetido desde el panel muestra 'Ya existe esa espe
     new RegExp(`/account/${admin.accountId}/select$`),
   );
 
-  // Las páginas de organización exigen resource_id/resource_type; elegir sede no es parte de este flujo.
   await page.context().addCookies([
     {
       name: "resource_id",
