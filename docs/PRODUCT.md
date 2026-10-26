@@ -1,6 +1,6 @@
 # WizyDoc — Producto
 
-Última revisión: 18 de octubre de 2026. Describe el producto objetivo; la sección
+Última revisión: 25 de octubre de 2026. Describe el producto objetivo; la sección
 "Estado" dice qué existe hoy. Detalle de capacidades: `docs/capacidades.md`.
 
 ## Qué es
@@ -30,10 +30,6 @@ del paciente quedan dispersos.
 - **Límites por citas:** quitar el límite de médicos y aplicar el tope de citas
   al mes de cada plan (ver Planes). Va primero: cambia cómo funciona el
   administrador que atiende.
-- **El administrador también atiende:** el dueño de la cuenta configura su
-  especialidad y su disponibilidad, y aparece en el booking como cualquier
-  médico. Va antes que "Mi día": sin esto, el médico independiente no recibe
-  citas.
 - **"Mi día":** la agenda del día del médico, centrada en su siguiente cita, con
   un resumen de la ficha del paciente en los planes de pago (mockup en
   `docs/features/agenda-dia-medico/mockup.html`).
@@ -202,15 +198,31 @@ Beta. Mercado inicial: Perú.
   paciente y al médico. "Mi perfil": una página por persona, desde el avatar de
   la barra superior o del menú lateral, con datos personales, tratamiento del
   médico (Dr./Dra.; sin él se muestra solo el nombre completo), "Dónde atiendes"
-  en solo lectura y cambio de contraseña.
+  y cambio de contraseña.
+- **Existe desde octubre de 2026:**
+  - **El administrador también atiende** (PR #110, 24 de octubre; especialidades
+    desde "Mi perfil", PR #108, 22 de octubre). Todo administrador de la organización
+    queda como médico, sin especialidad ni horario, de cada sede que se crea, y
+    aparece en el booking en cuanto tiene las dos. El administrador de la
+    organización y el dueño eligen sus especialidades en "Mi perfil" › "Dónde
+    atiendes"; el médico invitado las ve en solo lectura.
+  - **Primer uso** (25 de octubre, `docs/features/primer-uso/plan.md`). El
+    onboarding es un solo formulario, "Tu consultorio"
+    (nombre, dirección y especialidad). Crea la organización y la sede, con el
+    dueño como administrador y como médico con esa especialidad, y lo deja en el
+    panel de su sede. El dueño de una cuenta de la beta sin consultorio ve el
+    mismo formulario ("Termina de crear tu consultorio").
+  - **El panel dice qué falta.** Quien atiende y todavía no aparece en el link de
+    reservas ve una guía de primeros pasos (especialidad y horario) que
+    desaparece sola. "Copiar link de reservas" sólo aparece cuando el link
+    funciona, junto a "Ver como paciente".
 - **Cobro con Culqi congelado durante la beta.** Sólo crea la suscripción al
   registrarse; no hay renovación, pagos fallidos ni cancelación. El onboarding
   sólo ofrece Gratis y los planes de pago se asignan a mano.
-- **No existe todavía:** que el administrador atienda (hoy sólo tiene perfil de
-  médico quien fue invitado como médico), datos básicos del paciente en Gratis
-  (hoy toda la ficha es de pago), "Mi día", estados de cita (toda cita
-  queda pendiente), etiquetas de autogestión en el panel ("Cancelada por el
-  paciente", "Reprogramada por el paciente"), cancelar o mover citas desde el
+- **No existe todavía:** datos básicos del paciente en Gratis (hoy toda la ficha
+  es de pago), "Mi día", estados de cita (toda cita queda pendiente), etiquetas
+  de autogestión en el panel ("Cancelada por el paciente", "Reprogramada por el
+  paciente"), cancelar o mover citas desde el
   panel, agenda semanal, recordatorios (hoy sólo los correos de reserva,
   cancelación y reprogramación), WhatsApp, tope de citas al mes (hoy el código
   todavía limita médicos y no citas), importación desde Excel y exportación CSV.

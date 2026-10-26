@@ -167,6 +167,8 @@ async function start() {
     userRepository,
     accountRepository,
     subscriptionRepository,
+    organizationRepository,
+    clinicRepository,
     billingService,
     transactionManager,
   });

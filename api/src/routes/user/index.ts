@@ -93,7 +93,7 @@ export default async function userRoutes(
         ? await fastify.accountEntitlements(request)
         : null;
 
-      // El frontend lo usa para decidir si mostrar "Crear organización": sólo el dueño puede crear la primera de la cuenta.
+      // El frontend lo usa para llevar al dueño sin organización a crear su consultorio: sólo él puede crear la primera de la cuenta.
       const account = request.user.accountId
         ? await accountRepository.findById(request.user.accountId)
         : undefined;

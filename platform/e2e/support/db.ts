@@ -115,13 +115,17 @@ export interface TestPrisma {
   organization: {
     findFirst(args: {
       where: Record<string, unknown>;
-    }): Promise<{ resourceId: string } | null>;
+    }): Promise<{ resourceId: string; name: string } | null>;
     count(args: { where: Record<string, unknown> }): Promise<number>;
   };
   clinic: {
-    findFirst(args: {
-      where: Record<string, unknown>;
-    }): Promise<{ resourceId: string } | null>;
+    findFirst(args: { where: Record<string, unknown> }): Promise<{
+      resourceId: string;
+      name: string;
+      address: string;
+      phone: string;
+    } | null>;
+    count(args: { where: Record<string, unknown> }): Promise<number>;
     create(args: {
       data: Record<string, unknown>;
     }): Promise<{ resourceId: string }>;
@@ -232,13 +236,14 @@ export interface TestPrisma {
     }): Promise<TestPrismaInvitationRow>;
   };
   specialty: {
+    count(args: { where: Record<string, unknown> }): Promise<number>;
     findUnique(args: {
       where: Record<string, unknown>;
     }): Promise<{ id: string; name: string; organizationId: string } | null>;
     findMany(args: {
       where: Record<string, unknown>;
       select?: Record<string, unknown>;
-    }): Promise<{ id: string }[]>;
+    }): Promise<{ id: string; name: string; organizationId: string }[]>;
     findFirst(args: {
       where: Record<string, unknown>;
     }): Promise<{ id: string } | null>;

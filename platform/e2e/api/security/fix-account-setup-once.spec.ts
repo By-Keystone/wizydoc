@@ -10,7 +10,7 @@ import {
 import { createConfirmedUser, uniqueName } from "../../support/users";
 import { getTestPrisma } from "../../support/db";
 
-/** docs/features/fix-account-setup-once/plan.md — CA-1 a CA-6 ([e2e]); CA-7 es [manual]. */
+// docs/features/fix-account-setup-once/plan.md CA-1 a CA-6; docs/features/primer-uso/plan.md CA-20.
 
 function postAccount(
   context: APIRequestContext,
@@ -123,8 +123,9 @@ test.describe("Lo que sigue funcionando", () => {
     expect(await prisma.subscription.count({ where: { accountId } })).toBe(1);
   });
 
-  test("CA-5: un usuario con cuenta que abre /onboarding es redirigido fuera del formulario", async () => {
+  test("CA-5: un usuario con cuenta y organización que abre /onboarding es redirigido fuera del formulario", async () => {
     const admin = await createOnboardedAdmin({ emailPrefix: "owner-ca5" });
+    await createOrganizationResource(admin);
 
     const response = await admin.context.get(
       `${PLATFORM_BASE_URL}/onboarding`,
