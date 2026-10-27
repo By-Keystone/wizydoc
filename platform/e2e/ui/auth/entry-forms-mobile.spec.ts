@@ -78,11 +78,17 @@ test("el onboarding, con su error a la vista, no se desplaza hacia los lados y s
     emailPrefix: "onboarding-movil",
   });
   await loginViaUi(page, email, /\/onboarding$/);
-  await page.getByRole("button", { name: "Continuar", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Crear mi consultorio", exact: true })
+    .click();
   await expect(
     alertWith(page, "Escribe el nombre de tu consultorio."),
   ).toBeVisible();
+  await expect(
+    alertWith(page, "Escribe la dirección de tu consultorio."),
+  ).toBeVisible();
+  await expect(alertWith(page, "Escribe tu especialidad.")).toBeVisible();
 
   expect(await horizontalExtent(page)).toBeLessThanOrEqual(MOBILE_WIDTH);
-  await expectFormWidth(page, "Continuar");
+  await expectFormWidth(page, "Crear mi consultorio");
 });

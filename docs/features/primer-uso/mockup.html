@@ -1,0 +1,1055 @@
+<!doctype html>
+<html lang="es-PE">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototipo: primer uso del médico independiente</title>
+<style>
+  :root {
+    --teal: #0C7E75;
+    --teal-dark: #0B4F49;
+    --ink: #1F2A2A;
+    --gray: #5C6B6A;
+    --surface: #EFF5F4;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    color: var(--ink);
+    background: #e5e7eb;
+    -webkit-font-smoothing: antialiased;
+  }
+  button, input { font: inherit; }
+  code { font-size: 11.5px; background: #f3f4f6; border-radius: 4px; padding: 0 3px; overflow-wrap: anywhere; }
+  :focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
+  .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+
+  /* ---------- Barra del prototipo (no es parte de la app) ---------- */
+  .proto { display: grid; grid-template-columns: 340px minmax(0, 1fr); min-height: 100vh; }
+  .proto-panel { background: #fff; border-right: 1px solid #d1d5db; padding: 20px; overflow-y: auto; max-height: 100vh; position: sticky; top: 0; min-width: 0; }
+  .proto-panel h1 { font-size: 15px; margin: 0; color: var(--teal-dark); }
+  .proto-panel p.lead { font-size: 12px; color: var(--gray); margin: 6px 0 14px; line-height: 1.45; }
+  .proto-panel h2 { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--teal); margin: 18px 0 8px; }
+  .proto-panel h3 { font-size: 12px; color: var(--ink); margin: 12px 0 4px; }
+  .proto-panel fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
+  .proto-panel legend { padding: 0; }
+  .proto-panel label { display: flex; gap: 8px; align-items: flex-start; font-size: 13px; color: var(--ink); padding: 4px 0; cursor: pointer; line-height: 1.35; }
+  .proto-panel input { margin-top: 2px; accent-color: var(--teal); }
+  .seg { display: flex; border: 1px solid #d1d5db; border-radius: 8px; overflow: hidden; }
+  .seg button { flex: 1; border: 0; background: #fff; padding: 6px; font-size: 12.5px; color: var(--gray); cursor: pointer; }
+  .seg button[aria-pressed="true"] { background: var(--teal); color: #fff; }
+  .restart { display: block; width: 100%; margin-top: 16px; border: 1px solid #d1d5db; background: #fff; border-radius: 8px; padding: 7px 10px; font-size: 13px; color: var(--ink); cursor: pointer; }
+  .restart:hover { background: #f9fafb; }
+  .note { font-size: 11.5px; color: var(--gray); background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 8px 10px; margin-top: 12px; line-height: 1.45; }
+  .note ul, .note ol { margin: 4px 0 0; padding-left: 16px; }
+  .note li { margin: 3px 0; }
+  .note a { color: var(--teal-dark); }
+
+  .stage { display: flex; align-items: flex-start; padding: 28px 16px 40px; overflow-x: auto; min-width: 0; }
+  .stage > div { margin: 0 auto; }
+  .frame-caption { text-align: center; font-size: 12.5px; color: var(--gray); margin: 0 0 10px; }
+  .device { background: #fff; box-shadow: 0 10px 30px rgba(0, 0, 0, .12); overflow: hidden; box-sizing: content-box; }
+  .device.mobile { width: 375px; border: 8px solid #1f2937; border-radius: 28px; }
+  .device.desktop { width: 1024px; border: 1px solid #cbd5e1; border-radius: 10px; }
+  .device iframe { display: block; width: 100%; border: 0; }
+  #live-device.mobile { height: 760px; }
+  #live-device.desktop { height: 760px; }
+  #live-device iframe { height: 100%; }
+
+  /* ---------- Galería de estados ---------- */
+  .gallery { padding: 32px 24px 72px; border-top: 1px solid #d1d5db; background: #f3f4f6; }
+  .gallery > h2 { font-size: 18px; margin: 0; color: var(--teal-dark); }
+  .gallery > p { font-size: 13px; color: var(--gray); margin: 6px 0 24px; max-width: 780px; line-height: 1.5; }
+  .gallery-grid { display: flex; flex-wrap: wrap; gap: 36px 28px; align-items: flex-start; }
+  .shot { margin: 0; width: 391px; min-width: 0; }
+  .shot.wide { width: 100%; }
+  .shot h3 { font-size: 14px; margin: 0; color: var(--ink); }
+  .shot p { font-size: 12.5px; color: var(--gray); margin: 4px 0 10px; line-height: 1.45; min-height: 54px; }
+  .shot .scroll { overflow-x: auto; padding-bottom: 8px; }
+  .not-applicable { width: 391px; max-width: 100%; border: 1px dashed #9ca3af; border-radius: 16px; background: #fff; padding: 18px; font-size: 13px; color: var(--gray); line-height: 1.5; }
+  .not-applicable strong { color: var(--ink); }
+
+  @media (max-width: 900px) {
+    .proto { grid-template-columns: minmax(0, 1fr); }
+    .proto-panel { position: static; max-height: none; border-right: 0; border-bottom: 1px solid #d1d5db; }
+  }
+</style>
+</head>
+<body>
+<div class="proto">
+  <aside class="proto-panel" aria-label="Controles del prototipo">
+    <h1>Primer uso del médico independiente</h1>
+    <p class="lead">
+      Onboarding <code>/onboarding</code> y dashboard de la sede <code>…/clinic/[clinicId]/dashboard</code>.
+      Datos ficticios. Lo que está en esta barra no es parte de la app. Plan: <code>plan.md</code> en esta carpeta.
+    </p>
+
+    <h2>Vista</h2>
+    <div class="seg" role="group" aria-label="Tamaño de la vista">
+      <button type="button" data-view="mobile" aria-pressed="true">Celular 375 px</button>
+      <button type="button" data-view="desktop" aria-pressed="false">Escritorio 1024 px</button>
+    </div>
+
+    <h2>Pantalla</h2>
+    <fieldset>
+      <legend class="sr-only">Pantalla</legend>
+      <label><input type="radio" name="screen" value="onb-new" checked> Onboarding: cuenta nueva</label>
+      <label><input type="radio" name="screen" value="onb-finish"> Cuenta de la beta sin organización</label>
+      <label><input type="radio" name="screen" value="dash-first"> Panel: primera llegada (falta el horario)</label>
+      <label><input type="radio" name="screen" value="dash-ready"> Panel: el link ya funciona</label>
+      <label><input type="radio" name="screen" value="dash-invited"> Panel: médico invitado, la sede ya recibe citas</label>
+      <label><input type="radio" name="screen" value="dash-admin"> Panel: ADMIN que no atiende, sede sin médicos</label>
+      <label><input type="radio" name="screen" value="dash-user"> Panel: recepción (USER), sede sin médicos</label>
+      <label><input type="radio" name="screen" value="dash-loading"> Panel: cargando</label>
+      <label><input type="radio" name="screen" value="dash-error"> Panel: error</label>
+      <label><input type="radio" name="screen" value="today-select"> Hoy: cuenta sin organización</label>
+      <label><input type="radio" name="screen" value="today-dash"> Hoy: sede recién creada</label>
+    </fieldset>
+
+    <h2>Decisiones pendientes</h2>
+    <h3>D-1 · Qué pide el onboarding</h3>
+    <fieldset>
+      <legend class="sr-only">D-1</legend>
+      <label><input type="radio" name="d1" value="a" checked> a) Nombre, dirección y especialidad (recomendado)</label>
+      <label><input type="radio" name="d1" value="b"> b) Nombre y dirección; la especialidad, en la guía</label>
+    </fieldset>
+    <h3>D-2 · Teléfono de la sede</h3>
+    <fieldset>
+      <legend class="sr-only">D-2</legend>
+      <label><input type="radio" name="d2" value="a" checked> a) No se pide (recomendado)</label>
+      <label><input type="radio" name="d2" value="c"> c) Se pide, precargado con el celular del registro</label>
+    </fieldset>
+    <p class="lead" style="margin-top:4px">La opción b (copiar el celular sin mostrarlo) se ve igual que a.</p>
+    <h3>D-3 · Cuenta de la beta sin organización</h3>
+    <fieldset>
+      <legend class="sr-only">D-3</legend>
+      <label><input type="radio" name="d3" value="a" checked> a) El mismo formulario: «Termina de crear tu consultorio» (recomendado)</label>
+      <label><input type="radio" name="d3" value="b"> b) El recorrido de hoy, con un texto que lo explica</label>
+    </fieldset>
+
+    <button type="button" class="restart" id="restart">Reiniciar la pantalla</button>
+
+    <div class="note">
+      <strong>Recorrido sugerido</strong>
+      <ol>
+        <li>En «Onboarding: cuenta nueva», pulsa «Crear mi consultorio» vacío: salen los errores. Llénalo y vuelve a pulsar.</li>
+        <li>Llegas al panel con la guía. En la app pasa antes por <code>/select</code>, que con una sola sede entra directo (<code>fix/platform-small-fixes</code>).</li>
+        <li>«Definir horario» → «Agregar rango» → «Guardar disponibilidad» → «Inicio»: la guía se va y aparece «Copiar link de reservas».</li>
+      </ol>
+    </div>
+    <div class="note">
+      <strong>Simplificaciones del prototipo</strong>
+      <ul>
+        <li>Con D-1 en b, «Elegir especialidad» la marca como elegida. En la app abre «Mi perfil», tarjeta «Dónde atiendes».</li>
+        <li>«Mi Disponibilidad» es la de hoy, sin cambios.</li>
+        <li>Pacientes y Usuarios no están en el prototipo.</li>
+      </ul>
+    </div>
+  </aside>
+
+  <div class="stage">
+    <div>
+      <p class="frame-caption" id="live-caption"></p>
+      <div id="live-device" class="device mobile">
+        <iframe id="live-frame" title="Primer uso, prototipo navegable"></iframe>
+      </div>
+    </div>
+  </div>
+</div>
+
+<section class="gallery" id="estados" aria-labelledby="gallery-title">
+  <h2 id="gallery-title">Estados</h2>
+  <p>
+    Cada vista es un celular de 375 px real, con los breakpoints de la app, salvo las últimas cuatro, que son de escritorio.
+    Los interruptores de D-1 a D-3 también cambian estas vistas, y cada una se puede recorrer.
+  </p>
+  <div class="gallery-grid" id="gallery"></div>
+</section>
+
+<template id="app-head">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com/3.4.16"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          border: "hsl(var(--border))",
+          ring: "hsl(var(--ring))",
+          background: "hsl(var(--background))",
+          foreground: "hsl(var(--foreground))",
+          brand: {
+            teal: "#0C7E75",
+            "teal-dark": "#0B4F49",
+            ink: "#1F2A2A",
+            gray: "#5C6B6A",
+            surface: "#EFF5F4",
+            coral: "#FF6F59",
+          },
+        },
+        borderRadius: {
+          lg: "var(--radius)",
+          md: "calc(var(--radius) - 2px)",
+          sm: "calc(var(--radius) - 4px)",
+        },
+        fontFamily: { sans: ["Inter", "ui-sans-serif", "system-ui", "sans-serif"] },
+      },
+    },
+  };
+</script>
+<style>
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222 47% 11%;
+    --border: 214 32% 91%;
+    --ring: 175 83% 27%;
+    --radius: 0.625rem;
+  }
+  * { border-color: hsl(var(--border)); }
+</style>
+</template>
+
+<template id="app-body">
+<div id="root"></div>
+<div id="toasts" aria-live="polite" class="pointer-events-none fixed bottom-4 right-4 z-[60] flex max-w-[calc(100%-2rem)] flex-col gap-2"></div>
+<script>
+(function () {
+  "use strict";
+
+  const CONFIG = JSON.parse(document.getElementById("mock-config").textContent);
+  const D = { d1: CONFIG.d1 || "a", d2: CONFIG.d2 || "a", d3: CONFIG.d3 || "a" };
+
+  const ICONS = {
+    check: '<path d="M20 6 9 17l-5-5"/>',
+    lock: '<rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
+    circleCheck: '<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>',
+    link: '<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>',
+    externalLink: '<path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>',
+    loader: '<path d="M21 12a9 9 0 1 1-6.219-8.56"/>',
+    calendarDays: '<path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14h.01"/><path d="M8 18h.01"/><path d="M12 18h.01"/><path d="M16 18h.01"/>',
+    calendarClock: '<path d="M21 7.5V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h3.5"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h5"/><path d="M17.5 17.5 16 16.3V14"/><circle cx="16" cy="16" r="6"/>',
+    layoutDashboard: '<rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/>',
+    settings: '<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>',
+    personStanding: '<circle cx="12" cy="5" r="1"/><path d="m9 20 3-6 3 6"/><path d="m6 8 6 2 6-2"/><path d="M12 10v4"/>',
+    userRound: '<circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/>',
+    menu: '<line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/>',
+    x: '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
+    chevronDown: '<path d="m6 9 6 6 6-6"/>',
+    messageCircle: '<path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/>',
+    alertTriangle: '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
+    plus: '<path d="M5 12h14"/><path d="M12 5v14"/>',
+    trash: '<path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/>',
+  };
+
+  const icon = (name, className) =>
+    `<svg class="${className}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name]}</svg>`;
+  const escapeHtml = (text) =>
+    String(text).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+
+  /* ---------- Clases de ui/button.tsx y common/auth-card.tsx ---------- */
+  const BUTTON_BASE = "inline-flex items-center justify-center whitespace-nowrap rounded-lg text-sm font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50";
+  const BUTTON_VARIANTS = {
+    default: "bg-brand-teal text-white shadow hover:bg-brand-teal-dark active:scale-[0.98] disabled:bg-brand-teal/50",
+    outline: "border border-gray-200 bg-white text-brand-gray hover:bg-gray-50 active:scale-[0.98]",
+    coral: "bg-brand-coral text-brand-ink shadow hover:bg-brand-coral/90 active:scale-[0.98] disabled:bg-brand-coral/50",
+  };
+  const BUTTON_SIZES = { default: "h-10 px-5 py-2", sm: "h-8 px-3 text-xs" };
+  const buttonClass = (variant, size, extra) => `${BUTTON_BASE} ${BUTTON_VARIANTS[variant]} ${BUTTON_SIZES[size]} ${extra || ""}`;
+  const TEXT_LINK_CLASS = "inline-flex min-h-10 items-center text-sm font-medium text-brand-teal hover:text-brand-teal-dark";
+  const FIELD_OK = "border-gray-300 focus:border-brand-teal focus:ring-brand-teal/20";
+  const FIELD_ERROR = "border-red-400 focus:border-red-500 focus:ring-red-100";
+
+  function logo(height) {
+    const fontSize = Math.round(height * 0.82);
+    return `<span class="inline-flex shrink-0 items-center gap-1.5" role="img" aria-label="WizyDoc">
+      <svg viewBox="0 0 40 44" style="height:${height}px;width:auto" aria-hidden="true">
+        <path d="M7 0h21l12 12v25a7 7 0 0 1-7 7H7a7 7 0 0 1-7-7V7a7 7 0 0 1 7-7z" fill="#0C7E75"/>
+        <path d="M28 0v7a5 5 0 0 0 5 5h7z" fill="#0B4F49" fill-opacity=".45"/>
+        <text x="19" y="33" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-weight="800" font-size="24" fill="#fff">w</text>
+      </svg>
+      <span class="font-extrabold leading-none tracking-tight" style="font-size:${fontSize}px"><span class="text-brand-ink">wizy</span><span class="text-brand-teal">doc</span></span>
+    </span>`;
+  }
+
+  /* ---------- Datos ficticios ---------- */
+  const PEOPLE = {
+    lucia: { name: "Lucía", lastName: "Paredes Quispe" },
+    martin: { name: "Martín", lastName: "Céspedes Vela" },
+    andrea: { name: "Andrea", lastName: "Ríos Campos" },
+    jorge: { name: "Jorge", lastName: "Salinas Rojas" },
+    rosa: { name: "Rosa", lastName: "Huamán Torres" },
+  };
+
+  const SCENARIOS = {
+    independent: { person: "lucia", clinicName: "Consultorio Paredes", role: "ADMIN", attends: true, canEditSpecialties: true, plan: "FREE", othersBookable: false, specialty: "Dermatología" },
+    beta: { person: "martin", clinicName: "Consultorio Céspedes", role: "ADMIN", attends: true, canEditSpecialties: true, plan: "FREE", othersBookable: false, specialty: "Cardiología" },
+    invited: { person: "andrea", clinicName: "Centro Pediátrico Los Olivos", role: "DOCTOR", attends: true, canEditSpecialties: false, plan: "CLINICA", othersBookable: true, specialty: null },
+    admin: { person: "jorge", clinicName: "Clínica Santa Rosa – Surco", role: "ADMIN", attends: false, plan: "FREE", othersBookable: false },
+    user: { person: "rosa", clinicName: "Consultorio Paredes", role: "USER", attends: false, plan: "FREE", othersBookable: false },
+  };
+
+  const FILLED_VALUES = { name: "Consultorio Paredes", address: "Av. José Larco 812, of. 304, Miraflores", specialty: "Dermatología", phone: "987 654 321" };
+  const EMPTY_VALUES = { name: "", address: "", specialty: "", phone: "987 654 321" };
+  const PRESETS_WITH_DATA = ["pending", "generalError", "partial"];
+
+  const WEEK = [
+    { label: "Lunes", value: 1 }, { label: "Martes", value: 2 }, { label: "Miércoles", value: 3 },
+    { label: "Jueves", value: 4 }, { label: "Viernes", value: 5 }, { label: "Sábado", value: 6 }, { label: "Domingo", value: 0 },
+  ];
+  const WEEKDAY_MORNINGS = { 1: [{ start: "09:00", end: "13:00" }], 2: [{ start: "09:00", end: "13:00" }], 3: [{ start: "09:00", end: "13:00" }], 4: [{ start: "09:00", end: "13:00" }], 5: [{ start: "09:00", end: "13:00" }] };
+
+  const state = {
+    screen: CONFIG.screen,
+    onbMode: CONFIG.onbMode || "new",
+    onbStatus: CONFIG.onbStatus || "idle",
+    values: Object.assign({}, PRESETS_WITH_DATA.includes(CONFIG.onbStatus) ? FILLED_VALUES : EMPTY_VALUES),
+    errors: {},
+    scenarioKey: CONFIG.scenario || "independent",
+    clinicName: "",
+    specialties: [],
+    hasSchedule: false,
+    schedule: {},
+    menuOpen: false,
+  };
+
+  function startDashboard(scenarioKey, overrides) {
+    const scenario = SCENARIOS[scenarioKey];
+    const specialty = (overrides && overrides.specialty) || scenario.specialty;
+    const startsWithSpecialty = scenario.attends && Boolean(specialty) && scenarioKey !== "invited" && (D.d1 === "a" || CONFIG.forceSpecialty);
+    state.scenarioKey = scenarioKey;
+    state.clinicName = (overrides && overrides.clinicName) || scenario.clinicName;
+    state.specialties = startsWithSpecialty ? [specialty] : [];
+    state.hasSchedule = Boolean(CONFIG.hasSchedule);
+    state.schedule = state.hasSchedule ? JSON.parse(JSON.stringify(WEEKDAY_MORNINGS)) : {};
+  }
+
+  function validate() {
+    const errors = {};
+    if (!state.values.name.trim()) errors.name = "Escribe el nombre de tu consultorio.";
+    if (!state.values.address.trim()) errors.address = "Escribe la dirección de tu consultorio.";
+    if (D.d1 === "a" && !state.values.specialty.trim()) errors.specialty = "Escribe tu especialidad.";
+    if (D.d2 === "c" && !state.values.phone.trim()) errors.phone = "Escribe el teléfono de tu consultorio.";
+    return errors;
+  }
+
+  startDashboard(state.scenarioKey);
+  if (state.onbStatus === "errors") state.errors = validate();
+
+  function model() {
+    const scenario = SCENARIOS[state.scenarioKey];
+    const isMeBookable = scenario.attends && state.specialties.length > 0 && state.hasSchedule;
+    return {
+      scenario,
+      person: PEOPLE[scenario.person],
+      clinicName: state.clinicName,
+      isMeBookable,
+      isClinicBookable: isMeBookable || scenario.othersBookable,
+    };
+  }
+
+  /* ---------- Piezas compartidas ---------- */
+  function avatar(person) {
+    return `<span aria-hidden="true" class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-teal/20 text-xs font-bold uppercase text-brand-teal-dark">${person.name[0]}${person.lastName[0]}</span>`;
+  }
+
+  function navLinks(scenario) {
+    const links = [{ key: "dashboard", label: "Inicio", icon: "layoutDashboard" }];
+    if (scenario.attends) links.push({ key: "availability", label: "Configuración", icon: "settings" });
+    links.push({ key: "patients", label: "Pacientes", icon: "personStanding" });
+    if (scenario.role === "ADMIN") links.push({ key: "users", label: "Usuarios", icon: "userRound" });
+    return links;
+  }
+
+  function navHtml(scenario, active) {
+    return navLinks(scenario).map((link) => {
+      const isActive = link.key === active;
+      return `<a href="#" data-action="nav" data-target="${link.key}" ${isActive ? 'aria-current="page"' : ""} class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors ${isActive ? "bg-brand-surface font-semibold text-brand-teal-dark" : "text-brand-gray hover:bg-gray-100 hover:text-brand-ink"}">${icon(link.icon, "h-4 w-4 shrink-0")}${link.label}</a>`;
+    }).join("");
+  }
+
+  function sidebarUserMenu(person, subtitle) {
+    const fullName = `${person.name} ${person.lastName}`;
+    return `<button type="button" data-action="proto-note" data-note="El menú de la cuenta no cambia." aria-label="Tu cuenta: ${escapeHtml(fullName)}" class="flex w-full min-w-0 items-center gap-2 rounded-[10px] border border-transparent p-2 text-sm font-medium text-brand-ink transition-colors hover:bg-gray-100">
+      ${avatar(person)}
+      <span class="min-w-0 flex-1 text-left"><span class="block truncate text-[13px] font-semibold">${escapeHtml(fullName)}</span><span class="block truncate text-xs font-normal text-brand-gray">${escapeHtml(subtitle)}</span></span>
+      ${icon("chevronDown", "h-4 w-4 shrink-0 text-brand-gray")}
+    </button>`;
+  }
+
+  function drawer(m, active) {
+    return `<div class="fixed inset-0 z-40 bg-black/40 md:hidden" data-action="close-menu"></div>
+    <div data-drawer role="dialog" aria-modal="true" aria-label="Menú de navegación" class="fixed left-0 top-0 z-50 flex h-dvh w-72 max-w-[80%] flex-col gap-6 overflow-y-auto bg-white px-4 py-6 shadow-xl md:hidden">
+      <div class="flex items-center justify-between">
+        <a href="#" data-action="nav" data-target="dashboard" class="flex items-center gap-2">${logo(28)}</a>
+        <button type="button" data-action="close-menu" class="rounded-lg p-1.5 text-brand-gray hover:bg-gray-100" aria-label="Cerrar menú">${icon("x", "h-5 w-5")}</button>
+      </div>
+      <nav class="flex flex-col gap-1">${navHtml(m.scenario, active)}</nav>
+      <div class="mt-auto border-t border-gray-100 pt-4">${sidebarUserMenu(m.person, m.clinicName)}</div>
+    </div>`;
+  }
+
+  function clinicShell(m, active, inner) {
+    return `<div class="flex min-h-dvh flex-col bg-gray-50 md:flex-row">
+      <header class="flex items-center justify-between border-b border-gray-200 bg-white px-4 py-3 md:hidden">
+        <a href="#" data-action="nav" data-target="dashboard" class="flex items-center gap-2">${logo(24)}</a>
+        <button type="button" data-action="open-menu" class="rounded-lg p-2 text-brand-gray hover:bg-gray-100" aria-label="Abrir menú">${icon("menu", "h-5 w-5")}</button>
+      </header>
+      ${state.menuOpen ? drawer(m, active) : ""}
+      <aside class="hidden w-60 shrink-0 flex-col border-r border-gray-200 bg-white px-4 py-6 md:flex">
+        <a href="#" data-action="nav" data-target="dashboard" class="mb-8 flex items-center gap-2 px-2">${logo(28)}</a>
+        <nav class="flex flex-1 flex-col gap-1">${navHtml(m.scenario, active)}</nav>
+        <div class="border-t border-gray-100 pt-4">${sidebarUserMenu(m.person, m.clinicName)}</div>
+      </aside>
+      <main class="relative min-w-0 flex-1 p-4 sm:p-6 md:p-8">${inner}</main>
+    </div>`;
+  }
+
+  function topNav(person) {
+    const fullName = `${person.name} ${person.lastName}`;
+    return `<div class="flex w-full items-center justify-between gap-x-2 rounded-b-md bg-gray-100 px-4 py-4 shadow-lg">
+      <span class="sm:hidden">${logo(32)}</span><span class="hidden sm:inline-flex">${logo(40)}</span>
+      <button type="button" data-action="proto-note" data-note="El menú de la cuenta no cambia." aria-label="Tu cuenta: ${escapeHtml(fullName)}" class="flex min-w-0 items-center gap-2 rounded-full border border-transparent py-1 pl-1 pr-2.5 text-sm font-medium text-brand-ink transition-colors hover:bg-gray-200">
+        ${avatar(person)}<span class="max-w-32 truncate sm:hidden">${escapeHtml(person.name)}</span><span class="hidden max-w-56 truncate sm:inline">${escapeHtml(fullName)}</span>${icon("chevronDown", "h-4 w-4 shrink-0 text-brand-gray")}
+      </button>
+    </div>`;
+  }
+
+  /* ---------- Onboarding ---------- */
+  function textField({ id, label, placeholder, autoComplete }) {
+    const error = state.errors[id];
+    return `<div class="flex flex-col gap-y-1.5">
+      <label for="${id}" class="text-sm font-medium text-brand-gray">${label}</label>
+      <input type="text" id="${id}" name="${id}" value="${escapeHtml(state.values[id])}" placeholder="${escapeHtml(placeholder)}" autocomplete="${autoComplete}" ${error ? `aria-invalid="true" aria-describedby="${id}-error"` : ""} class="rounded-lg border px-3 py-2 text-sm outline-none transition focus:ring-2 ${error ? FIELD_ERROR : FIELD_OK}">
+      ${error ? `<p id="${id}-error" class="text-xs text-red-700" role="alert">${error}</p>` : ""}
+    </div>`;
+  }
+
+  function phoneField() {
+    const error = state.errors.phone;
+    const border = error ? FIELD_ERROR : FIELD_OK;
+    return `<div class="flex flex-col gap-y-1.5">
+      <label for="phone" class="text-sm font-medium text-brand-gray">Teléfono del consultorio</label>
+      <div class="flex">
+        <select aria-label="Código de país" class="rounded-l-lg border border-r-0 bg-gray-50 px-2 py-2 text-sm outline-none transition focus:ring-2 ${border}"><option>🇵🇪 +51</option></select>
+        <input id="phone" name="phone" type="tel" value="${escapeHtml(state.values.phone)}" autocomplete="tel" aria-describedby="phone-hint${error ? " phone-error" : ""}" ${error ? 'aria-invalid="true"' : ""} class="min-w-0 flex-1 rounded-r-lg border px-3 py-2 text-sm outline-none transition focus:ring-2 ${border}">
+      </div>
+      <p id="phone-hint" class="text-xs text-brand-gray">Lo tomamos del celular con que te registraste.</p>
+      ${error ? `<p id="phone-error" class="text-xs text-red-700" role="alert">${error}</p>` : ""}
+    </div>`;
+  }
+
+  function authShell(inner) {
+    return `<div class="flex min-h-screen flex-col bg-gradient-to-br from-brand-surface via-white to-brand-surface">
+      <header class="px-6 py-5">${logo(32)}</header>
+      <main class="flex flex-1 items-center justify-center px-4 py-12">${inner}</main>
+      <footer class="py-6 text-center text-xs text-brand-gray">© 2026 WizyDoc. Todos los derechos reservados.</footer>
+    </div>`;
+  }
+
+  function renderOnboarding() {
+    const isFinish = state.onbMode === "finish";
+    if (isFinish && D.d3 === "b") return renderSelectExplained();
+
+    const isPending = state.onbStatus === "pending";
+    const generalErrors = {
+      generalError: "No pudimos crear tu consultorio. Vuelve a intentarlo.",
+      partial: "Tu cuenta quedó creada, pero no pudimos crear tu consultorio. Vuelve a intentarlo.",
+    };
+    const generalError = generalErrors[state.onbStatus];
+    const title = isFinish ? "Termina de crear tu consultorio" : "Tu consultorio";
+    const description = isFinish
+      ? "Te falta este paso para tener tu link de reservas."
+      : "Es el último paso. Tus pacientes verán estos datos al reservar.";
+
+    return authShell(`<div class="w-full max-w-md rounded-2xl border border-gray-200 bg-white p-5 shadow-xl sm:p-8">
+      <div class="mb-8">
+        <h1 tabindex="-1" class="text-2xl font-bold text-brand-teal-dark focus:outline-none">${title}</h1>
+        <p class="mt-1 text-sm text-brand-gray">${description}</p>
+      </div>
+      <form id="onboarding-form" novalidate class="flex flex-col gap-4">
+        ${textField({ id: "name", label: "Nombre del consultorio", placeholder: "Consultorio Dra. Quispe", autoComplete: "organization" })}
+        ${textField({ id: "address", label: "Dirección", placeholder: "Av. José Larco 812, of. 304, Miraflores", autoComplete: "street-address" })}
+        ${D.d1 === "a" ? textField({ id: "specialty", label: "Tu especialidad", placeholder: "Dermatología", autoComplete: "off" }) : ""}
+        ${D.d2 === "c" ? phoneField() : ""}
+        ${isFinish ? "" : '<p class="rounded-lg bg-brand-surface px-3 py-2.5 text-sm text-brand-gray">Durante la beta, todas las cuentas empiezan en Gratis y los planes de pago se activan a pedido.</p>'}
+        ${generalError ? `<p role="alert" class="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">${generalError}</p>` : ""}
+        <button type="submit" class="${buttonClass("default", "default", "mt-2 w-full")}" ${isPending ? "disabled" : ""}>
+          ${isPending ? `${icon("loader", "mr-2 h-4 w-4 animate-spin")}Creando tu consultorio…` : "Crear mi consultorio"}
+        </button>
+      </form>
+    </div>`);
+  }
+
+  function readValues() {
+    const form = document.getElementById("onboarding-form");
+    if (!form) return;
+    ["name", "address", "specialty", "phone"].forEach((key) => {
+      const field = form.elements.namedItem(key);
+      if (field) state.values[key] = field.value;
+    });
+  }
+
+  /* ---------- «Elige dónde entrar» ---------- */
+  function renderSelectToday() {
+    return `<div class="h-svh">${topNav(PEOPLE.martin)}
+      <div class="flex flex-col px-8 py-4">
+        <div class="text-right"><button type="button" data-action="proto-note" data-note="Abre el modal «Nueva organización»." class="${buttonClass("default", "default")}">Crear organización</button></div>
+        <div class="flex items-center justify-center"><p class="text-sm text-brand-gray">No perteneces a ninguna organización todavía.</p></div>
+      </div>
+    </div>`;
+  }
+
+  function renderSelectExplained() {
+    return `<div class="h-svh">${topNav(PEOPLE.martin)}
+      <div class="mx-auto flex w-full max-w-2xl flex-col gap-4 p-6">
+        <h1 tabindex="-1" class="text-xl font-semibold text-brand-teal-dark focus:outline-none">Elige dónde entrar</h1>
+        <div class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+          <h2 class="text-base font-semibold text-brand-teal-dark">Todavía no tienes un consultorio</h2>
+          <p class="mt-1 text-sm text-brand-gray">Crea tu organización y, dentro de ella, tu sede con su dirección. Al crear la sede quedas como su médico; después eliges tu especialidad y tu horario.</p>
+          <button type="button" data-action="proto-note" data-note="Con D-3 en b sigue el recorrido de hoy: organización, Sedes y «Crear sede»." class="${buttonClass("default", "default", "mt-4")}">Crear organización</button>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  /* ---------- Dashboard de la sede ---------- */
+  function welcome(m) {
+    return `<div class="mb-4">
+      <h1 tabindex="-1" class="text-2xl font-bold text-brand-teal-dark focus:outline-none">Hola, ${escapeHtml(`${m.person.name} ${m.person.lastName}`)}</h1>
+      <p class="mt-1 text-sm text-brand-gray">Este es el panel de ${escapeHtml(m.clinicName)}.</p>
+    </div>`;
+  }
+
+  function step({ status, number, title, detail, action }) {
+    const circles = {
+      done: `<span class="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-teal text-white">${icon("check", "h-4 w-4")}</span>`,
+      locked: `<span class="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-400">${icon("lock", "h-3.5 w-3.5")}</span>`,
+      pending: `<span aria-hidden="true" class="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 border-gray-300 text-xs font-semibold text-brand-gray">${number}</span>`,
+    };
+    const statusText = { done: "Listo", pending: "Pendiente", locked: "Disponible al completar los pasos anteriores" };
+    return `<li class="flex gap-3 px-4 py-4 sm:px-5">
+      ${circles[status]}
+      <div class="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div class="min-w-0">
+          <p class="text-sm font-medium ${status === "locked" ? "text-brand-gray" : "text-brand-ink"}">${title}<span class="sr-only">. ${statusText[status]}.</span></p>
+          <p class="mt-0.5 break-words text-sm text-brand-gray">${detail}</p>
+        </div>
+        ${action || ""}
+      </div>
+    </li>`;
+  }
+
+  function firstSteps(m) {
+    const hasSpecialty = state.specialties.length > 0;
+    const pendingCount = (hasSpecialty ? 0 : 1) + (state.hasSchedule ? 0 : 1);
+    const isLinkWorking = m.isClinicBookable;
+    const missing = pendingCount === 1 ? "Te falta 1 paso" : `Te faltan ${pendingCount} pasos`;
+    const title = isLinkWorking ? `${missing} para aparecer en el link de reservas` : `${missing} para recibir citas`;
+    const text = isLinkWorking
+      ? `El link de ${escapeHtml(m.clinicName)} ya recibe citas con otros médicos.`
+      : "Mientras tanto, tu link de reservas no funciona: quien lo abra no podrá reservar.";
+
+    // Un solo coral por pantalla: si el link ya funciona, el coral es «Copiar link de reservas».
+    let isFirstAction = true;
+    const actionLink = (action, label) => {
+      const variant = isFirstAction ? (isLinkWorking ? "default" : "coral") : "outline";
+      isFirstAction = false;
+      return `<a href="#" data-action="${action}" class="${buttonClass(variant, "sm", "min-h-10 w-full shrink-0 sm:min-h-0 sm:w-auto")}">${label}</a>`;
+    };
+
+    const steps = [];
+    if (hasSpecialty) {
+      steps.push(step({ status: "done", number: 1, title: "Elige tu especialidad", detail: escapeHtml(state.specialties.join(", ")) }));
+    } else if (m.scenario.canEditSpecialties) {
+      steps.push(step({ status: "pending", number: 1, title: "Elige tu especialidad", detail: "Tus pacientes la ven al reservar.", action: actionLink("choose-specialty", "Elegir especialidad") }));
+    } else {
+      steps.push(step({ status: "pending", number: 1, title: "Elige tu especialidad", detail: `Te la asigna un administrador de ${escapeHtml(m.clinicName)}.` }));
+    }
+    if (state.hasSchedule) {
+      steps.push(step({ status: "done", number: 2, title: "Define tu horario de atención", detail: "Horario guardado." }));
+    } else {
+      steps.push(step({ status: "pending", number: 2, title: "Define tu horario de atención", detail: "Elige los días y las horas en que atiendes. Tus pacientes solo podrán reservar en esos horarios.", action: actionLink("go-availability", "Definir horario") }));
+    }
+    if (!isLinkWorking) {
+      steps.push(step({ status: "locked", number: 3, title: "Comparte tu link de reservas", detail: "Cuando completes los pasos, aquí copias tu link para enviarlo por WhatsApp o ponerlo en tus redes." }));
+    }
+
+    return `<section aria-labelledby="first-steps-title" class="rounded-xl border border-gray-200 bg-white">
+      <header class="border-b border-gray-200 px-4 py-4 sm:px-5">
+        <h2 id="first-steps-title" class="font-semibold text-brand-teal-dark">${title}</h2>
+        <p class="mt-1 text-sm text-brand-gray">${text}</p>
+      </header>
+      <ol class="divide-y divide-gray-100">${steps.join("")}</ol>
+    </section>`;
+  }
+
+  function bookingLinkReady() {
+    return `<div class="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+      <p class="flex items-center gap-2 text-sm font-medium text-brand-teal-dark">${icon("circleCheck", "h-5 w-5 shrink-0 text-brand-teal")}Tus pacientes ya pueden reservar desde el link.</p>
+      <div class="flex flex-wrap gap-2">
+        <button type="button" data-action="copy" class="${buttonClass("coral", "sm", "min-h-10 sm:min-h-0")}">Copiar link de reservas</button>
+        <a href="#" data-action="view-as-patient" class="${buttonClass("outline", "sm", "min-h-10 gap-1.5 sm:min-h-0")}">Ver como paciente${icon("externalLink", "h-3.5 w-3.5")}<span class="sr-only"> (se abre en una pestaña nueva)</span></a>
+      </div>
+    </div>`;
+  }
+
+  function bookingLinkPending(m) {
+    const usersLink = m.scenario.role === "ADMIN"
+      ? `<a href="#" data-action="go-users" class="${TEXT_LINK_CLASS} mt-1">Asignar médicos en Usuarios</a>`
+      : "";
+    return `<div role="status" class="flex items-start gap-3 rounded-xl border border-gray-200 bg-white p-4 sm:p-5">
+      <span class="inline-flex shrink-0 rounded-lg bg-gray-100 p-2 text-brand-gray">${icon("link", "h-5 w-5")}</span>
+      <div class="min-w-0">
+        <h2 class="font-semibold text-brand-teal-dark">El link de reservas todavía no funciona</h2>
+        <p class="mt-1 text-sm text-brand-gray">Funciona cuando un médico de ${escapeHtml(m.clinicName)} tenga especialidad y horario.</p>
+        ${usersLink}
+      </div>
+    </div>`;
+  }
+
+  function planNotice() {
+    return `<div role="status" class="flex flex-col items-center justify-center gap-3 rounded-xl border border-gray-200 bg-white p-8 text-center sm:col-span-2 lg:col-span-4">
+      <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-gray-100">${icon("lock", "h-6 w-6 text-brand-gray")}</div>
+      <div>
+        <h2 class="text-lg font-semibold text-brand-teal-dark">Tu plan no permite hacer uso de esta función</h2>
+        <p class="mx-auto mt-1 max-w-sm text-sm text-brand-gray">Está incluida desde el plan Clínica. Durante la beta, los planes de pago se activan a pedido por WhatsApp.</p>
+      </div>
+      <a href="#" data-action="proto-note" data-note="Abre WhatsApp para pedir el plan. Sin cambios." class="${buttonClass("default", "default")}">${icon("messageCircle", "mr-2 h-4 w-4")}Pedir el plan Clínica</a>
+    </div>`;
+  }
+
+  function statCard(iconName, label, value) {
+    return `<div class="rounded-xl border border-gray-200 bg-white p-5">
+      <div class="inline-flex rounded-lg bg-brand-teal/10 p-2 text-brand-teal">${icon(iconName, "h-5 w-5")}</div>
+      <p class="mt-3 text-2xl font-bold text-brand-ink">${value}</p>
+      <p class="text-sm text-brand-gray">${label}</p>
+    </div>`;
+  }
+
+  function todayAppointments() {
+    return `<section class="mt-8 rounded-xl border border-gray-200 bg-white">
+      <header class="flex items-center gap-2 border-b border-gray-200 px-5 py-4">
+        ${icon("calendarDays", "h-5 w-5 text-brand-teal")}
+        <h2 class="font-semibold text-brand-teal-dark">Citas de hoy</h2>
+        <span class="ml-auto text-sm text-brand-gray">0</span>
+      </header>
+      <p class="px-5 py-10 text-center text-sm text-brand-gray">No hay citas programadas para hoy.</p>
+    </section>`;
+  }
+
+  function renderDashboard() {
+    const m = model();
+    const top = [];
+    if (m.isClinicBookable) top.push(bookingLinkReady());
+    if (m.scenario.attends && !m.isMeBookable) top.push(firstSteps(m));
+    if (!m.scenario.attends && !m.isClinicBookable) top.push(bookingLinkPending(m));
+    const stats = m.scenario.plan === "FREE" ? planNotice() : statCard("calendarDays", "Citas de hoy", 0);
+    return clinicShell(m, "dashboard", `
+      ${welcome(m)}
+      <div class="mb-8 flex flex-col gap-4">${top.join("")}</div>
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">${stats}</div>
+      ${todayAppointments()}
+    `);
+  }
+
+  function renderDashboardToday() {
+    const m = model();
+    return clinicShell(m, "dashboard", `
+      ${welcome(m)}
+      <button type="button" data-action="copy" class="${buttonClass("coral", "sm", "mb-8")}">Copiar link de reservas</button>
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">${planNotice()}</div>
+      ${todayAppointments()}
+    `);
+  }
+
+  function renderLoading() {
+    return clinicShell(model(), "dashboard", `<div class="flex min-h-[50vh] flex-col items-center justify-center gap-3 text-brand-gray">
+      ${icon("loader", "h-6 w-6 animate-spin")}<p class="text-sm">Cargando...</p>
+    </div>`);
+  }
+
+  function renderError() {
+    return clinicShell(model(), "dashboard", `<div class="flex min-h-[50vh] flex-col items-center justify-center gap-4 p-8 text-center">
+      <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-red-50">${icon("alertTriangle", "h-7 w-7 text-red-500")}</div>
+      <div>
+        <h2 class="text-lg font-semibold text-brand-teal-dark">Algo salió mal</h2>
+        <p class="mt-1 max-w-sm text-sm text-brand-gray">No pudimos cargar esta sección. Vuelve a intentarlo.</p>
+      </div>
+      <button type="button" data-action="retry" class="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-brand-gray transition hover:bg-gray-50">Reintentar</button>
+    </div>`);
+  }
+
+  /* ---------- «Mi Disponibilidad» (sin cambios) ---------- */
+  function renderAvailability() {
+    const m = model();
+    const days = WEEK.map(({ label, value }) => {
+      const slots = state.schedule[value] || [];
+      const dayName = label.toLowerCase();
+      const rows = slots.length
+        ? `<div class="flex flex-col gap-2">${slots.map((slot, index) => `<div class="flex items-center gap-2">
+            <input type="time" data-day="${value}" data-index="${index}" data-field="start" value="${slot.start}" aria-label="Hora de inicio del ${dayName}" class="rounded-lg border px-3 py-1.5 text-sm outline-none focus:ring-2 ${FIELD_OK}">
+            <span class="text-sm text-brand-gray">—</span>
+            <input type="time" data-day="${value}" data-index="${index}" data-field="end" value="${slot.end}" aria-label="Hora de fin del ${dayName}" class="rounded-lg border px-3 py-1.5 text-sm outline-none focus:ring-2 ${FIELD_OK}">
+            <button type="button" data-action="remove-range" data-day="${value}" data-index="${index}" aria-label="Eliminar rango del ${dayName}" class="text-brand-gray transition-colors hover:text-red-500">${icon("trash", "h-4 w-4")}</button>
+          </div>`).join("")}</div>`
+        : '<p class="text-xs text-brand-gray">Sin disponibilidad</p>';
+      return `<div class="border-b border-gray-100 pb-4 last:border-0 last:pb-0">
+        <div class="mb-2 flex items-center justify-between">
+          <span class="text-sm font-medium text-brand-gray">${label}</span>
+          <button type="button" data-action="add-range" data-day="${value}" class="flex items-center gap-1 text-xs font-medium text-brand-teal hover:text-brand-teal-dark">${icon("plus", "h-3 w-3")}Agregar rango</button>
+        </div>
+        ${rows}
+      </div>`;
+    }).join("");
+
+    return clinicShell(m, "availability", `<div class="-m-4 flex min-h-full flex-col sm:-m-6 md:-m-8 md:flex-row">
+      <aside class="w-full shrink-0 border-b border-gray-200 bg-white px-3 py-4 md:w-56 md:border-b-0 md:border-r md:py-6">
+        <p class="mb-3 hidden px-3 text-xs font-semibold uppercase tracking-wide text-brand-gray md:block">Configuración</p>
+        <nav class="flex gap-1 overflow-x-auto md:flex-col">
+          <a href="#" class="flex shrink-0 items-center gap-3 whitespace-nowrap rounded-lg bg-brand-teal/10 px-3 py-2 text-sm font-medium text-brand-teal-dark transition-colors">${icon("calendarClock", "h-4 w-4 shrink-0")}Mi Disponibilidad</a>
+        </nav>
+      </aside>
+      <div class="flex-1 p-4 sm:p-6 md:p-8">
+        <div class="max-w-2xl">
+          <div class="mb-6">
+            <h1 tabindex="-1" class="text-2xl font-bold text-brand-teal-dark focus:outline-none">Mi Disponibilidad</h1>
+            <p class="mt-1 text-sm text-brand-gray">Define tus horarios de atención en esta sede. Puedes agregar varios rangos por día (por ejemplo, mañana y tarde).</p>
+          </div>
+          <div class="flex flex-col gap-4 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">${days}</div>
+          <button type="button" data-action="save-availability" class="${buttonClass("default", "default", "mt-6")}">Guardar disponibilidad</button>
+        </div>
+      </div>
+    </div>`);
+  }
+
+  function readSchedule() {
+    document.querySelectorAll("input[data-field]").forEach((input) => {
+      const slots = state.schedule[input.dataset.day];
+      const slot = slots && slots[Number(input.dataset.index)];
+      if (slot) slot[input.dataset.field] = input.value;
+    });
+  }
+
+  /* ---------- Render y eventos ---------- */
+  const SCREENS = {
+    onboarding: renderOnboarding,
+    dashboard: renderDashboard,
+    availability: renderAvailability,
+    loading: renderLoading,
+    error: renderError,
+    "select-today": renderSelectToday,
+    "dashboard-today": renderDashboardToday,
+  };
+
+  function render() {
+    document.getElementById("root").innerHTML = SCREENS[state.screen]();
+  }
+
+  function focusHeading() {
+    const heading = document.querySelector("main h1, h1");
+    if (heading) heading.focus({ preventScroll: true });
+    window.scrollTo(0, 0);
+  }
+
+  function toast(kind, message) {
+    const box = document.getElementById("toasts");
+    const item = document.createElement("div");
+    item.setAttribute("role", "status");
+    item.className = kind === "success"
+      ? "pointer-events-auto rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm font-medium text-green-800 shadow-lg"
+      : "pointer-events-auto rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm text-brand-ink shadow-lg";
+    item.textContent = kind === "note" ? `Prototipo: ${message}` : message;
+    box.appendChild(item);
+    setTimeout(() => item.remove(), 3000);
+  }
+
+  function navigate(target) {
+    state.menuOpen = false;
+    if (target === "patients" || target === "users") {
+      render();
+      toast("note", "Pacientes y Usuarios no cambian y no están en este prototipo.");
+      return;
+    }
+    state.screen = target;
+    render();
+    focusHeading();
+  }
+
+  document.addEventListener("submit", (event) => {
+    event.preventDefault();
+    if (state.screen !== "onboarding" || state.onbStatus === "pending") return;
+    readValues();
+    state.errors = validate();
+    if (Object.keys(state.errors).length > 0) {
+      state.onbStatus = "errors";
+      render();
+      const firstInvalid = document.querySelector('[aria-invalid="true"]');
+      if (firstInvalid) firstInvalid.focus();
+      return;
+    }
+    state.onbStatus = "pending";
+    render();
+    setTimeout(() => {
+      const isFinish = state.onbMode === "finish";
+      startDashboard(isFinish ? "beta" : "independent", {
+        clinicName: state.values.name.trim(),
+        specialty: D.d1 === "a" ? state.values.specialty.trim() : null,
+      });
+      state.screen = "dashboard";
+      render();
+      focusHeading();
+    }, 900);
+  });
+
+  document.addEventListener("click", (event) => {
+    const target = event.target.closest("[data-action]");
+    if (!target) return;
+    event.preventDefault();
+    const action = target.dataset.action;
+
+    if (action === "nav") return navigate(target.dataset.target);
+    if (action === "go-availability") return navigate("availability");
+    if (action === "open-menu") {
+      state.menuOpen = true;
+      render();
+      const closeButton = document.querySelector("[data-drawer] button");
+      if (closeButton) closeButton.focus();
+      return;
+    }
+    if (action === "close-menu") {
+      state.menuOpen = false;
+      render();
+      return;
+    }
+    if (action === "choose-specialty") {
+      state.specialties = [SCENARIOS[state.scenarioKey].specialty || "Dermatología"];
+      render();
+      toast("success", "Guardamos tus especialidades.");
+      return;
+    }
+    if (action === "copy") return toast("success", "¡Link copiado!");
+    if (action === "view-as-patient") return toast("note", "abre tu página de reservas en una pestaña nueva.");
+    if (action === "go-users") return toast("note", "lleva a Usuarios de la sede, donde también puedes asignarte como médico.");
+    if (action === "proto-note") return toast("note", target.dataset.note || "fuera de este prototipo.");
+    if (action === "retry") {
+      state.screen = "dashboard";
+      render();
+      return;
+    }
+    if (action === "add-range") {
+      readSchedule();
+      const day = target.dataset.day;
+      state.schedule[day] = (state.schedule[day] || []).concat([{ start: "09:00", end: "13:00" }]);
+      render();
+      return;
+    }
+    if (action === "remove-range") {
+      readSchedule();
+      state.schedule[target.dataset.day].splice(Number(target.dataset.index), 1);
+      render();
+      return;
+    }
+    if (action === "save-availability") {
+      readSchedule();
+      state.hasSchedule = Object.values(state.schedule).some((slots) => slots.length > 0);
+      toast("success", "Disponibilidad guardada correctamente");
+    }
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && state.menuOpen) {
+      state.menuOpen = false;
+      render();
+    }
+  });
+
+  if (CONFIG.autoHeight) {
+    const reportHeight = () => parent.postMessage({ type: "mock-height", frameId: CONFIG.frameId, height: document.body.offsetHeight }, "*");
+    new ResizeObserver(reportHeight).observe(document.body);
+  }
+
+  render();
+})();
+</script>
+</template>
+
+<script>
+(function () {
+  "use strict";
+
+  const headTemplate = document.getElementById("app-head").innerHTML;
+  const bodyTemplate = document.getElementById("app-body").innerHTML;
+  const CLOSE_SCRIPT = "<\/script>";
+  const GALLERY_FRAME_START_HEIGHT = 640;
+
+  const controls = { screen: "onb-new", view: "mobile", d1: "a", d2: "a", d3: "a" };
+
+  const SCREENS = {
+    "onb-new": { caption: "Onboarding de una cuenta nueva", config: { screen: "onboarding", onbMode: "new" } },
+    "onb-finish": { caption: "Dueño de una cuenta de la beta sin organización", config: { screen: "onboarding", onbMode: "finish" } },
+    "dash-first": { caption: "Primera llegada al panel", config: { screen: "dashboard", scenario: "independent" } },
+    "dash-ready": { caption: "El link ya funciona", config: { screen: "dashboard", scenario: "independent", hasSchedule: true, forceSpecialty: true } },
+    "dash-invited": { caption: "Médico invitado en una sede que ya recibe citas", config: { screen: "dashboard", scenario: "invited" } },
+    "dash-admin": { caption: "ADMIN que no atiende, sede sin médicos", config: { screen: "dashboard", scenario: "admin" } },
+    "dash-user": { caption: "Recepción (USER), sede sin médicos", config: { screen: "dashboard", scenario: "user" } },
+    "dash-loading": { caption: "Cargando (loading.tsx)", config: { screen: "loading", scenario: "independent" } },
+    "dash-error": { caption: "Error (error.tsx)", config: { screen: "error", scenario: "independent" } },
+    "today-select": { caption: "Hoy: «Elige dónde entrar» de una cuenta sin organización", config: { screen: "select-today" } },
+    "today-dash": { caption: "Hoy: dashboard de una sede recién creada", config: { screen: "dashboard-today", scenario: "independent" } },
+  };
+
+  const GALLERY = [
+    { title: "1. Onboarding: cuenta nueva", caption: "Un formulario crea la organización, la sede y deja al dueño como médico con su especialidad (D-1). El botón dice lo que pasa.", config: SCREENS["onb-new"].config },
+    { title: "2. Onboarding: errores", caption: "Enviado vacío: cada error debajo de su campo, con el foco en el primero. Lo escrito se conserva.", config: { screen: "onboarding", onbMode: "new", onbStatus: "errors" } },
+    { title: "3. Onboarding: enviando", caption: "Botón deshabilitado con el spinner y «Creando tu consultorio…».", config: { screen: "onboarding", onbMode: "new", onbStatus: "pending" } },
+    { title: "4. Onboarding: falló a medias", caption: "La cuenta se creó y el consultorio no (O-6). El reintento solo crea el consultorio.", config: { screen: "onboarding", onbMode: "new", onbStatus: "partial" } },
+    { title: "5. Cuenta de la beta sin organización", caption: "Con D-3 en a, el mismo formulario reemplaza a «Elige dónde entrar», sin la frase de la beta. Con D-3 en b, el recorrido de hoy explicado.", config: SCREENS["onb-finish"].config },
+    { title: "6. Primera llegada al panel", caption: "La guía reemplaza a «Copiar link de reservas»: el link todavía no funciona. Con D-1 en a solo falta el horario. Debajo, sin cambios, la mejora de plan de las métricas.", config: SCREENS["dash-first"].config },
+    { title: "7. El link ya funciona", caption: "La guía desaparece sola. Arriba, el estado, «Copiar link de reservas» (el único coral) y «Ver como paciente».", config: SCREENS["dash-ready"].config },
+    { title: "8. Médico invitado, la sede ya recibe citas", caption: "Puede copiar el link de la sede. La guía le dice que él todavía no aparece; la especialidad se la asigna un administrador. El botón es teal porque el coral ya está arriba.", config: SCREENS["dash-invited"].config },
+    { title: "9. ADMIN que no atiende, sede sin médicos", caption: "Sin guía (no atiende) y sin botón de copiar. El aviso dice cuándo funciona y lleva a Usuarios. Es el caso de una sede creada antes de #110.", config: SCREENS["dash-admin"].config },
+    { title: "10. Recepción (USER), sede sin médicos", caption: "El mismo aviso, sin enlace: no puede asignar médicos.", config: SCREENS["dash-user"].config },
+    { title: "11. Cargando", caption: "loading.tsx de la sede, sin cambios: conserva la barra lateral.", config: SCREENS["dash-loading"].config },
+    { title: "12. Error", caption: "error.tsx de la sede, sin cambios. Si solo falla una lectura de la guía, el dashboard se ve como hoy (L-5).", config: SCREENS["dash-error"].config },
+    { title: "Hoy (referencia): cuenta sin organización", caption: "Lo que ve hoy el médico después de «Crea tu cuenta»: un mensaje y «Crear organización». Le faltan cuatro formularios más.", config: SCREENS["today-select"].config },
+    { title: "Hoy (referencia): sede recién creada", caption: "«Copiar link de reservas» aparece aunque el link no funcione: el paciente que lo abra ve «Esta sede todavía no tiene médicos disponibles».", config: SCREENS["today-dash"].config },
+    { notApplicable: true, title: "403 y 402", body: "<strong>403:</strong> en el panel, quien no tiene membership en la sede vuelve a «Elige dónde entrar» con <code>?switch=1</code> (<code>loadWorkspace</code>, de <code>fix/platform-small-fixes</code>). El formulario solo se muestra al usuario sin cuenta y al dueño sin organización; el api responde 403 a cualquier otro.<br><br><strong>402 no aplica:</strong> el onboarding, la guía y el link van en todos los planes. La mejora de plan que se ve debajo es la de las métricas, sin cambios." },
+    { wide: true, title: "13. Escritorio: onboarding", caption: "Igual que en el celular, centrado, con el relleno de 32 px de AuthCard.", config: SCREENS["onb-new"].config },
+    { wide: true, title: "14. Escritorio: primera llegada al panel", caption: "El botón del paso va a la derecha desde sm.", config: SCREENS["dash-first"].config },
+    { wide: true, title: "15. Escritorio: el link ya funciona", caption: "El estado y los dos botones en una fila.", config: SCREENS["dash-ready"].config },
+    { wide: true, title: "16. Escritorio: cuenta de la beta sin organización", caption: "Según D-3.", config: SCREENS["onb-finish"].config },
+  ];
+
+  const frames = new Map();
+
+  function buildSrcdoc(config) {
+    return [
+      '<!doctype html><html lang="es-PE"><head><meta charset="utf-8">',
+      '<meta name="viewport" content="width=device-width, initial-scale=1">',
+      headTemplate,
+      '<script type="application/json" id="mock-config">',
+      JSON.stringify(config).replace(/</g, "\\u003c"),
+      CLOSE_SCRIPT,
+      '</head><body class="bg-background font-sans text-foreground antialiased">',
+      bodyTemplate,
+    ].join("");
+  }
+
+  function loadFrame(frameId) {
+    const entry = frames.get(frameId);
+    entry.loaded = true;
+    entry.frame.srcdoc = buildSrcdoc(Object.assign({ frameId }, entry.config, { d1: controls.d1, d2: controls.d2, d3: controls.d3 }));
+  }
+
+  /* ---------- Vista navegable ---------- */
+  const liveFrame = document.getElementById("live-frame");
+  const liveDevice = document.getElementById("live-device");
+  const liveCaption = document.getElementById("live-caption");
+
+  function viewLabel() {
+    return controls.view === "mobile" ? "Celular 375 px" : "Escritorio 1024 px";
+  }
+
+  function renderLive() {
+    frames.set("live", { frame: liveFrame, config: Object.assign({ autoHeight: false }, SCREENS[controls.screen].config), loaded: false });
+    loadFrame("live");
+    liveCaption.textContent = `${viewLabel()} · ${SCREENS[controls.screen].caption}`;
+  }
+
+  document.querySelectorAll('input[name="screen"]').forEach((input) => {
+    input.addEventListener("change", () => {
+      controls.screen = input.value;
+      renderLive();
+    });
+  });
+
+  ["d1", "d2", "d3"].forEach((name) => {
+    document.querySelectorAll(`input[name="${name}"]`).forEach((input) => {
+      input.addEventListener("change", () => {
+        controls[name] = input.value;
+        frames.forEach((entry, frameId) => {
+          if (entry.loaded) loadFrame(frameId);
+        });
+      });
+    });
+  });
+
+  document.querySelectorAll("[data-view]").forEach((button) => {
+    button.addEventListener("click", () => {
+      controls.view = button.dataset.view;
+      document.querySelectorAll("[data-view]").forEach((other) => other.setAttribute("aria-pressed", String(other === button)));
+      liveDevice.classList.toggle("mobile", controls.view === "mobile");
+      liveDevice.classList.toggle("desktop", controls.view === "desktop");
+      liveCaption.textContent = `${viewLabel()} · ${SCREENS[controls.screen].caption}`;
+    });
+  });
+
+  document.getElementById("restart").addEventListener("click", renderLive);
+
+  /* ---------- Galería ---------- */
+  const gallery = document.getElementById("gallery");
+  const frameIdByElement = new Map();
+  const lazyLoader = new IntersectionObserver((entries) => {
+    entries.forEach((entry) => {
+      if (!entry.isIntersecting) return;
+      lazyLoader.unobserve(entry.target);
+      loadFrame(frameIdByElement.get(entry.target));
+    });
+  }, { rootMargin: "800px 0px" });
+
+  GALLERY.forEach((shot, index) => {
+    const figure = document.createElement("figure");
+    figure.className = shot.wide ? "shot wide" : "shot";
+    const heading = document.createElement("h3");
+    heading.textContent = shot.title;
+    figure.appendChild(heading);
+
+    if (shot.notApplicable) {
+      const box = document.createElement("div");
+      box.className = "not-applicable";
+      box.innerHTML = shot.body;
+      figure.appendChild(box);
+      gallery.appendChild(figure);
+      return;
+    }
+
+    const caption = document.createElement("p");
+    caption.textContent = shot.caption;
+    figure.appendChild(caption);
+
+    const scroller = document.createElement("div");
+    scroller.className = "scroll";
+    const device = document.createElement("div");
+    device.className = shot.wide ? "device desktop" : "device mobile";
+    const frame = document.createElement("iframe");
+    const frameId = `shot-${index}`;
+    frame.title = shot.title;
+    frame.style.height = `${GALLERY_FRAME_START_HEIGHT}px`;
+    device.appendChild(frame);
+    scroller.appendChild(device);
+    figure.appendChild(scroller);
+    gallery.appendChild(figure);
+
+    frames.set(frameId, { frame, config: Object.assign({ autoHeight: true }, shot.config), loaded: false });
+    frameIdByElement.set(frame, frameId);
+    lazyLoader.observe(frame);
+  });
+
+  // Lavish aísla el prototipo en un sandbox sin origen: la página y cada vista solo se hablan por mensajes.
+  window.addEventListener("message", (event) => {
+    const message = event.data;
+    if (!message || message.type !== "mock-height") return;
+    const entry = frames.get(message.frameId);
+    if (entry && entry.config.autoHeight) {
+      entry.frame.style.height = `${Math.max(message.height, GALLERY_FRAME_START_HEIGHT)}px`;
+    }
+  });
+
+  renderLive();
+})();
+</script>
+</body>
+</html>

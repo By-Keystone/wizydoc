@@ -7,13 +7,15 @@ import {
   createOrganizationResource,
 } from "../../support/accounts";
 import { getTestPrisma } from "../../support/db";
+import { readFirstClinicRecords } from "../../support/first-use";
 import { createConfirmedUser, uniqueName } from "../../support/users";
-import { clinicDashboardUrl, loginViaUi } from "../../support/ui";
+import {
+  clinicDashboardUrl,
+  fillOnboardingForm,
+  loginViaUi,
+} from "../../support/ui";
 
-/**
- * docs/features/fix-org-clinic-creation-role/plan.md — CA-9, CA-10, CA-20 y
- * CA-21 ([e2e]).
- */
+// docs/features/fix-org-clinic-creation-role/plan.md CA-9, CA-10, CA-20 y CA-21; docs/features/primer-uso/plan.md CA-18 a CA-20.
 
 test("CA-9: un USER de una organización no ve el botón Crear organización ni puede abrir su modal", async ({
   page,
@@ -75,7 +77,7 @@ test("CA-20: un ADMIN sólo de una sede no ve el botón Crear organización", as
   ).not.toBeVisible();
 });
 
-test("CA-21: en una cuenta sin organizaciones, sólo el dueño ve el botón Crear organización", async ({
+test("CA-21: en una cuenta sin organizaciones, quien no es el dueño no ve Crear organización y el dueño llega a Termina de crear tu consultorio", async ({
   page,
 }) => {
   const owner = await createOnboardedAdmin({ emailPrefix: "owner-ca21" });
@@ -98,61 +100,44 @@ test("CA-21: en una cuenta sin organizaciones, sólo el dueño ve el botón Crea
   await expect(
     page.getByRole("button", { name: "Crear organización" }),
   ).not.toBeVisible();
+  await expect(
+    page.getByText("No perteneces a ninguna organización todavía."),
+  ).toBeVisible();
 
   await page.context().clearCookies();
-  await loginViaUi(
-    page,
-    owner.email,
-    new RegExp(`/account/${owner.accountId}/select$`),
-  );
+  await loginViaUi(page, owner.email, /\/onboarding$/);
+  await expect(
+    page.getByRole("heading", { name: "Termina de crear tu consultorio" }),
+  ).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Crear organización" }),
-  ).toBeVisible();
+  ).toHaveCount(0);
 });
 
-test("CA-10: el dueño nuevo crea su organización y una sede desde /select", async ({
+test("CA-10: el dueño nuevo crea su organización y su sede desde Termina de crear tu consultorio y queda Administrador y médico de la sede", async ({
   page,
 }) => {
   const owner = await createOnboardedAdmin({ emailPrefix: "owner-ca10" });
 
-  await loginViaUi(
-    page,
-    owner.email,
-    new RegExp(`/account/${owner.accountId}/select$`),
-  );
-
+  await loginViaUi(page, owner.email, /\/onboarding$/);
   await expect(
-    page.getByRole("button", { name: "Crear organización" }),
+    page.getByRole("heading", { name: "Termina de crear tu consultorio" }),
   ).toBeVisible();
-  await page.getByRole("button", { name: "Crear organización" }).click();
 
-  const organizationName = uniqueName("Consultorio CA-10");
-  await page.getByLabel("Nombre").fill(organizationName);
-  await page.getByRole("button", { name: "Crear" }).click();
-
-  await expect(page.getByText("Organización creada")).toBeVisible();
-  await expect(page.getByText(organizationName)).toBeVisible();
-
-  await page.getByRole("button", { name: "Entrar" }).click();
-  await expect(page).toHaveURL(
-    new RegExp(`/account/${owner.accountId}/organization/[^/]+$`),
-  );
-
-  await page.getByRole("link", { name: "Sedes" }).click();
-  await expect(page).toHaveURL(/\/clinics$/);
-  await expect(page.getByRole("heading", { name: "Sedes" })).toBeVisible();
-
-  await page.getByRole("button", { name: "Crear sede" }).click();
-  const clinicName = uniqueName("Sede CA-10");
-  await page.getByLabel("Nombre de la sede").fill(clinicName);
-  await page.getByLabel("Teléfono").fill("+51999888777");
-  await page.getByLabel("Dirección").fill("Av. Siempre Viva 123");
-  await page.getByRole("button", { name: "Crear" }).click();
-
-  await expect(page.getByText("Sede creada")).toBeVisible();
-  await expect(page.getByText(clinicName)).toBeVisible();
+  const clinicName = uniqueName("Consultorio CA-10");
+  await fillOnboardingForm(page, { name: clinicName });
+  await page.getByRole("button", { name: "Crear mi consultorio" }).click();
+  await expect(page).toHaveURL(clinicDashboardUrl(owner.accountId), {
+    timeout: 20_000,
+  });
 
   // Confirma que el dueño quedó ADMIN de la organización: /select muestra su rol.
   await page.goto(`/account/${owner.accountId}/select?switch=1`);
   await expect(page.getByText("Tu rol: Administrador")).toBeVisible();
+  await expect(page.getByText(clinicName).first()).toBeVisible();
+
+  const records = await readFirstClinicRecords(owner.accountId, owner.userId);
+  expect(records.organizationMembership?.role).toBe("ADMIN");
+  expect(records.clinicMembership?.role).toBe("DOCTOR");
+  expect(records.clinicMembership?.doctorProfile).not.toBeNull();
 });

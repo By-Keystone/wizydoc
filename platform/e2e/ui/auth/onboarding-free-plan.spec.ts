@@ -2,10 +2,16 @@ import type { Page } from "@playwright/test";
 import { test, expect } from "../../support/test";
 import { createApiContext } from "../../support/accounts";
 import { createConfirmedUser, uniqueName } from "../../support/users";
-import { loginViaUi } from "../../support/ui";
+import {
+  anyClinicDashboardUrl,
+  fillOnboardingForm,
+  loginViaUi,
+} from "../../support/ui";
 import { getTestPrisma } from "../../support/db";
 
-/** docs/features/beta-free-plan-only/plan.md — CA-11 a CA-14 ([e2e]). */
+// docs/features/beta-free-plan-only/plan.md CA-11 a CA-14; docs/features/primer-uso/plan.md CA-1 y CA-2.
+
+const CREATE_CLINIC = "Crear mi consultorio";
 
 async function loginAsAccountlessUser(
   page: Page,
@@ -23,7 +29,7 @@ test.describe("Onboarding de platform: sólo Gratis, sin tarjeta", () => {
     await loginAsAccountlessUser(page, "ca11");
 
     await expect(
-      page.getByRole("heading", { name: "Ponle nombre a tu consultorio" }),
+      page.getByRole("heading", { name: "Tu consultorio" }),
     ).toBeVisible();
     await expect(page.getByRole("combobox")).toHaveCount(0);
     await expect(page.getByLabel("Plan")).toHaveCount(0);
@@ -38,7 +44,7 @@ test.describe("Onboarding de platform: sólo Gratis, sin tarjeta", () => {
     );
   });
 
-  test("CA-12: no se pide nada de facturación y el botón dice Continuar", async ({
+  test("CA-12: no se pide nada de facturación y el botón dice Crear mi consultorio", async ({
     page,
   }) => {
     await loginAsAccountlessUser(page, "ca12");
@@ -46,7 +52,7 @@ test.describe("Onboarding de platform: sólo Gratis, sin tarjeta", () => {
     await expect(page.getByLabel("Dirección de facturación")).toHaveCount(0);
     await expect(page.getByLabel("Ciudad")).toHaveCount(0);
     await expect(
-      page.getByRole("button", { name: "Continuar", exact: true }),
+      page.getByRole("button", { name: CREATE_CLINIC, exact: true }),
     ).toBeVisible();
     await expect(
       page.getByRole("button", { name: "Continuar al pago" }),
@@ -65,16 +71,16 @@ test.describe("Onboarding de platform: sólo Gratis, sin tarjeta", () => {
     await loginAsAccountlessUser(page, "ca13");
 
     const accountName = uniqueName("Consultorio CA-13");
-    await page.getByLabel("Nombre del consultorio").fill(accountName);
+    await fillOnboardingForm(page, { name: accountName });
 
-    const continueButton = page.getByRole("button", {
-      name: "Continuar",
+    const createButton = page.getByRole("button", {
+      name: CREATE_CLINIC,
       exact: true,
     });
-    await expect(continueButton).toBeEnabled();
-    await continueButton.click();
+    await expect(createButton).toBeEnabled();
+    await createButton.click();
 
-    await expect(page).toHaveURL(/\/account\/[^/]+\/select$/);
+    await expect(page).toHaveURL(anyClinicDashboardUrl, { timeout: 20_000 });
     expect(culqiRequestUrls).toEqual([]);
 
     const prisma = await getTestPrisma();
@@ -98,7 +104,10 @@ test.describe("Onboarding de platform: sólo Gratis, sin tarjeta", () => {
   }) => {
     await loginAsAccountlessUser(page, "ca14");
 
-    await page.getByRole("button", { name: "Continuar", exact: true }).click();
+    await fillOnboardingForm(page, { name: "" });
+    await page
+      .getByRole("button", { name: CREATE_CLINIC, exact: true })
+      .click();
 
     await expect(page).toHaveURL(/\/onboarding$/);
     const nameInput = page.getByLabel("Nombre del consultorio");

@@ -21,7 +21,12 @@ export const CopyButton = ({ clinicId }: Props) => {
   };
 
   return (
-    <Button onClick={handleCopy} size={"sm"} variant={"coral"} className="mb-8">
+    <Button
+      onClick={handleCopy}
+      size={"sm"}
+      variant={"coral"}
+      className="min-h-10 sm:min-h-0"
+    >
       Copiar link de reservas
     </Button>
   );

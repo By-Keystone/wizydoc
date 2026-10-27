@@ -166,11 +166,7 @@ test("CA-23 y CA-33: el administrador Gratis con sesión abierta en el mismo nav
   page,
 }) => {
   const admin = await createOnboardedAdmin({ emailPrefix: "recupera-gratis" });
-  await loginViaUi(
-    page,
-    admin.email,
-    new RegExp(`/account/${admin.accountId}/select$`),
-  );
+  await loginViaUi(page, admin.email, /\/onboarding$/);
 
   const paymentRequired: string[] = [];
   page.on("response", (response) => {
@@ -188,12 +184,7 @@ test("CA-23 y CA-33: el administrador Gratis con sesión abierta en el mismo nav
   );
   expect(await session.json()).toBeNull();
 
-  await loginViaUi(
-    page,
-    admin.email,
-    new RegExp(`/account/${admin.accountId}/select$`),
-    NEW_PASSWORD,
-  );
+  await loginViaUi(page, admin.email, /\/onboarding$/, NEW_PASSWORD);
   expect(paymentRequired).toEqual([]);
   await expect(page.getByText("Tu plan no permite")).toHaveCount(0);
 });

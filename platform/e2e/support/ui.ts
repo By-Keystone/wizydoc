@@ -90,14 +90,39 @@ export async function loginAndGoTo(
   await expect(page).toHaveURL(path, { timeout: 20_000 });
 }
 
+export const ONBOARDING_ADDRESS = "Av. José Larco 812, of. 304, Miraflores";
+export const ONBOARDING_SPECIALTY = "Dermatología";
+
+export interface OnboardingDetails {
+  name: string;
+  address?: string;
+  specialty?: string;
+}
+
+export async function fillOnboardingForm(
+  page: Page,
+  {
+    name,
+    address = ONBOARDING_ADDRESS,
+    specialty = ONBOARDING_SPECIALTY,
+  }: OnboardingDetails,
+): Promise<void> {
+  await page.getByLabel("Nombre del consultorio").fill(name);
+  await page.getByLabel("Dirección", { exact: true }).fill(address);
+  await page.getByLabel("Tu especialidad").fill(specialty);
+}
+
+export const anyClinicDashboardUrl =
+  /\/account\/[^/]+\/clinic\/[^/]+\/dashboard$/;
+
 export async function completeOnboardingViaUi(
   page: Page,
-  accountName: string,
+  details: OnboardingDetails,
 ): Promise<void> {
   await expect(page).toHaveURL(/\/onboarding$/);
 
-  await page.getByLabel("Nombre del consultorio").fill(accountName);
-  await page.getByRole("button", { name: "Continuar" }).click();
+  await fillOnboardingForm(page, details);
+  await page.getByRole("button", { name: "Crear mi consultorio" }).click();
 
-  await expect(page).toHaveURL(/\/account\/[^/]+\/select$/);
+  await expect(page).toHaveURL(anyClinicDashboardUrl, { timeout: 20_000 });
 }

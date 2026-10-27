@@ -9,7 +9,7 @@ export function Welcome() {
     user.name && user.lastName ? `${user.name} ${user.lastName}` : user.email;
 
   return (
-    <div className="mb-4">
+    <div className="mb-4 break-words">
       <h1 className="text-2xl font-bold text-brand-teal-dark">Hola, {name}</h1>
       <p className="mt-1 text-sm text-brand-gray">
         Este es el panel de {membership.resourceName}.

@@ -4,6 +4,7 @@ import { MembershipsList } from "@/components/account/select-membership/membersh
 import { TopHeader } from "@/components/account/select-membership/top-header";
 import { type Membership, userMembershipsApi } from "@/lib/api/memberships";
 import { getMe, type Me } from "@/lib/auth/me";
+import { getOnboardingMode } from "@/lib/auth/onboarding-mode";
 import { SWITCH_WORKSPACE_PARAM } from "@/lib/auth/workspace-paths";
 
 export const metadata: Metadata = { title: "Elige dónde entrar" };
@@ -13,6 +14,8 @@ interface Props {
 }
 
 export default async function SelectPage({ searchParams }: Props) {
+  if ((await getOnboardingMode()) === "finish-clinic") redirect("/onboarding");
+
   const isSwitching =
     (await searchParams)[SWITCH_WORKSPACE_PARAM] !== undefined;
 
@@ -29,10 +32,9 @@ export default async function SelectPage({ searchParams }: Props) {
     );
   }
 
-  // Sin memberships equivale a 0 organizaciones: ninguna ruta borra la del dueño.
-  const canCreateOrganization =
-    (!!me?.isAccountOwner && memberships.length === 0) ||
-    memberships.some((membership) => membership.membership?.role === "ADMIN");
+  const canCreateOrganization = memberships.some(
+    (membership) => membership.membership?.role === "ADMIN",
+  );
 
   return (
     <div className="px-8 py-4 flex flex-col">

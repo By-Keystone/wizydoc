@@ -2,13 +2,14 @@ import { test, expect } from "@playwright/test";
 import { API_BASE_URL, PLATFORM_BASE_URL } from "../../support/env";
 import { uniqueEmail, uniqueName } from "../../support/users";
 import {
+  clinicDashboardUrl,
   completeOnboardingViaUi,
   confirmEmailViaLink,
   registerViaUi,
 } from "../../support/ui";
 
-/** docs/features/fix-auth-user-fields-input/plan.md — CA-12. */
-test("CA-12: registro, confirmación, login y onboarding dejan al médico en su cuenta nueva", async ({
+// docs/features/fix-auth-user-fields-input/plan.md CA-12; docs/features/primer-uso/plan.md CA-12 y CA-13.
+test("CA-12: registro, confirmación, login y onboarding dejan al médico en el dashboard de su sede nueva, con la guía", async ({
   page,
 }) => {
   const email = uniqueEmail("ca12");
@@ -25,7 +26,9 @@ test("CA-12: registro, confirmación, login y onboarding dejan al médico en su 
   // autoSignInAfterVerification deja sesión iniciada; sin cuenta, la app redirige sola a /onboarding.
   await expect(page).toHaveURL(/\/onboarding$/);
 
-  await completeOnboardingViaUi(page, uniqueName("Consultorio CA-12"));
+  await completeOnboardingViaUi(page, {
+    name: uniqueName("Consultorio CA-12"),
+  });
 
   const meResponse = await page.request.get(`${API_BASE_URL}/user/me`, {
     headers: { Origin: PLATFORM_BASE_URL },
@@ -37,5 +40,8 @@ test("CA-12: registro, confirmación, login y onboarding dejan al médico en su 
   expect(me.onboardingCompleted).toBe(true);
   expect(me.accountId).toBeTruthy();
 
-  await expect(page).toHaveURL(new RegExp(`/account/${me.accountId}/select$`));
+  await expect(page).toHaveURL(clinicDashboardUrl(me.accountId));
+  await expect(
+    page.getByRole("heading", { name: "Te falta 1 paso para recibir citas" }),
+  ).toBeVisible();
 });
