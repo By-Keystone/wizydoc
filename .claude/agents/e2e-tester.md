@@ -25,8 +25,11 @@ Reglas:
 - Si existe `docs/features/<slug>/plan.md`, usa los estados y roles de su
   sección **UI** y sus **Criterios de aceptación** `[e2e]` como casos de
   prueba, con el ID del criterio en el título (`CA-3: …`).
-- Lee `platform/e2e/README.md` antes de empezar y actualiza su sección
-  "Flujos que se prueban" cada vez que añadas, cambies o borres un flujo.
+- Lee `platform/e2e/README.md` antes de empezar. No es un registro de flujos
+  ni de helpers: lo que cubre la suite lo dicen los nombres de los specs y sus
+  títulos. Edítalo sólo si cambia cómo se corre o se escribe una prueba.
+- Escribe sólo las pruebas de la parte que se está probando: una por criterio
+  `[e2e]`, sin repetir lo que ya cubre otra prueba.
 
 ## Comentarios
 

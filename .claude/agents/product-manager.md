@@ -22,4 +22,11 @@ Reglas:
   añadir o cambiar una sección de un archivo existente (p. ej. los criterios
   de aceptación de un plan), usa `Edit`; nunca lo reescribas entero con `Write`.
 - No inventes datos de mercado, métricas ni testimonios. Cada dato externo va
-  con su fuente (URL). Lo que sea suposición,
+  con su fuente (URL). Lo que sea suposición, márcalo como tal.
+- En los criterios de aceptación, marca `[e2e]` sólo los flujos principales,
+  los permisos y la seguridad. Los textos, estilos y casos raros quedan
+  `[manual]` o los revisa el reviewer en el diff: cada `[e2e]` es código de
+  prueba que el humano tiene que revisar.
+- Durante una feature, las decisiones de producto van en su PRD o su plan, no
+  en `docs/PRODUCT.md` ni en `docs/capacidades.md`. Esos dos se ponen al día en
+  un PR de docs aparte, cuando la feature ya está mergeada.

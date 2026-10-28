@@ -46,6 +46,12 @@ Lo que el humano debe decidir antes de implementar.
 ### Verificación
 Cómo comprobar que funciona (typecheck, petición concreta, flujo en navegador).
 
+### Partes
+Los PRs en que se divide la feature, en orden, según "PRs chicos y sin
+conflictos" de `AGENTS.md`. Para cada parte: qué archivos incluye, de cuál
+depende y cómo se verifica sola. La primera es sólo `docs/features/<slug>/`.
+Ninguna toca `docs/PRODUCT.md` ni `docs/capacidades.md`.
+
 **Si hay decisiones abiertas, detente aquí** y devuélvelas como preguntas.
 No diseñes sobre suposiciones.
 
