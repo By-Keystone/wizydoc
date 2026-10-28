@@ -1,6 +1,6 @@
 # WizyDoc — Producto
 
-Última revisión: 25 de octubre de 2026. Describe el producto objetivo; la sección
+Última revisión: 28 de octubre de 2026. Describe el producto objetivo; la sección
 "Estado" dice qué existe hoy. Detalle de capacidades: `docs/capacidades.md`.
 
 ## Qué es
@@ -27,9 +27,9 @@ del paciente quedan dispersos.
 
 ## Prioridades
 **Ahora**
-- **Límites por citas:** quitar el límite de médicos y aplicar el tope de citas
-  al mes de cada plan (ver Planes). Va primero: cambia cómo funciona el
-  administrador que atiende.
+- **Límites por citas:** hecho. Ningún plan limita médicos y cada plan tiene su
+  tope de citas al mes (ver Planes y Estado; detalle en
+  `docs/features/tope-citas-mes/prd.md`).
 - **"Mi día":** la agenda del día del médico, centrada en su siguiente cita, con
   un resumen de la ficha del paciente en los planes de pago (mockup en
   `docs/features/agenda-dia-medico/mockup.html`).
@@ -88,13 +88,13 @@ El médico sólo marca "no asistió" cuando el paciente no vino. Así el médico
 hace trabajo administrativo en cada cita y el historial de la ficha refleja la
 realidad.
 
-## Planes (objetivo; el código aún no los refleja)
+## Planes (objetivo; el código ya aplica las citas al mes y las sedes)
 | Plan | Precio | Citas al mes | Sedes | WhatsApp incluido al mes |
 | --- | --- | --- | --- | --- |
 | Gratis | S/ 0 | 10 | 1 | 0 |
-| Consultorio | S/ 79 al mes (S/ 790 al año) | Por definir | 1 | 50 |
-| Clínica | S/ 199 al mes (S/ 1,990 al año) | Por definir | 3 (adicional S/ 40) | 250 |
-| Red | A medida | A medida | A medida | A medida |
+| Consultorio | S/ 79 al mes (S/ 790 al año) | 150 | 1 | 50 |
+| Clínica | S/ 199 al mes (S/ 1,990 al año) | 600 | 3 (adicional S/ 40) | 250 |
+| Red | A medida | A medida (hoy sin tope) | A medida | A medida |
 
 - **Sin límite de médicos ni de pacientes en ningún plan.** Lo que limita cada
   plan son las citas al mes y las sedes. Decidido el 18 de octubre de 2026:
@@ -112,21 +112,30 @@ realidad.
   solo lectura), no hay importación ni exportación y los links de autogestión
   ya enviados dejan de funcionar. Vale para todas las funciones de pago, las de
   hoy y las futuras.
-- **Tope de citas al mes:** cada plan tiene el suyo (Gratis, 10). Se aplica ya,
-  también durante la beta. Al llegar al tope no se pueden reservar más citas
-  ese mes hasta pasar a un plan mayor.
+- **Tope de citas al mes:** cada plan tiene el suyo (Gratis 10, Consultorio 150,
+  Clínica 600; Red, a medida). Se aplica también durante la beta. Al llegar al
+  tope, el link de todas las sedes de la cuenta deja de aceptar reservas hasta
+  el día 1 o hasta pasar a un plan mayor. Detalle y razones:
+  `docs/features/tope-citas-mes/prd.md`.
+  - **Qué cuenta como cita del mes:** cada cita que un paciente reserva en el
+    booking, en el mes calendario de Lima en que la reserva, sea para la fecha
+    que sea. Una vez contada no se descuenta: tampoco si se cancela (por el
+    paciente o el consultorio) o queda en "no asistió". Reprogramar no la cuenta
+    otra vez. El tope es de la cuenta: suma todas sus sedes y médicos.
   - **Las citas ya reservadas no se tocan:** se frena la reserva nueva, no la
-    consulta que ya existe.
+    consulta que ya existe. Cancelar y reprogramar desde el link siguen
+    funcionando.
   - **Al paciente, un mensaje y no un error:** "Este consultorio no está
-    recibiendo reservas en línea por ahora", con el contacto del consultorio.
-    Es la única excepción aceptada a "el médico no coordina nada", y la decide
-    el médico al no pasar a un plan mayor.
-  - **El médico ve lo que pierde:** se le avisa de cada reserva que no se pudo
-    hacer ("3 pacientes intentaron reservar esta semana"), con la mejora de
-    plan. Ese aviso es lo que empuja a pagar, no el bloqueo.
-  - **Al 80 %** se avisa al médico.
-  - Qué cuenta como cita del mes (por fecha de la cita o de la reserva; si las
-    canceladas cuentan) lo define el PRD del tope.
+    recibiendo reservas en línea por ahora", con el "WhatsApp o teléfono para
+    pacientes" de la sede si un administrador lo agregó (opcional, vacío al
+    principio). Es la única excepción aceptada a "el médico no coordina nada",
+    y la decide el médico al no pasar a un plan mayor.
+  - **El médico ve lo que pierde:** el administrador ve en el panel, en la
+    tarjeta de uso de Inicio, cuántos pacientes intentaron reservar y no
+    pudieron ("Este mes, 3 pacientes intentaron reservar y no pudieron"), con
+    la mejora de plan. Las reservas perdidas se ven sólo en el panel, sin
+    correo.
+  - **Al 80 % y al 100 %** se avisa por correo al dueño de la cuenta.
   - **Siguiente paso (post pay):** al 80 % se ofrece agregar tarjeta; si la
     agrega, al llegar al tope pasa solo al plan siguiente sin ningún corte.
     Requiere guardar tarjeta con Culqi, así que se lanza primero el bloqueo.
@@ -145,6 +154,12 @@ realidad.
   con un abogado.
 - **Cada médico ve sólo lo suyo:** en su agenda, sólo sus citas y sólo en la
   sede donde está; nunca las de otros médicos ni las de otras sedes.
+- **La ficha es del consultorio,** a diferencia de la agenda: cualquier miembro
+  de la sede ve a todos sus pacientes, y el historial de un paciente muestra sus citas en todas las sedes
+  de la organización, nunca las de otra organización. La ficha (datos de salud y
+  de contacto) es una sola por cuenta: en una cuenta con varias organizaciones
+  se comparte entre ellas. Decidido el 25 de octubre de 2026
+  (`docs/features/pacientes-busqueda/plan.md`, D-8, D-11 y r-10).
 - **El plan se nota, no falla:** una función fuera del plan muestra la mejora de
   plan (402), no un error. El plan que se paga es el plan que se tiene: al bajar
   de plan no se conserva ninguna función del anterior.
@@ -154,8 +169,6 @@ realidad.
 - **¿Quién usa el panel?** El médico independiente muchas veces no tiene
   asistente: el usuario sería él, desde el celular entre consultas. "Mi día" ya
   se diseñó mobile-first; falta validarlo con médicos reales.
-- **Topes de citas de los planes de pago.** Gratis tiene 10 al mes; faltan los
-  de Consultorio y Clínica.
 - **Precio sin límite de médicos.** Una clínica de 10 médicos y un consultorio
   de 1 pagan lo mismo si caben en el mismo tope de citas. ¿Basta con el tope y
   las sedes para separar los planes, antes de descongelar el cobro?
@@ -184,6 +197,14 @@ realidad.
   llega al tope en menos de una semana, y desde ahí sus pacientes no pueden
   reservar hasta que se le asigne un plan. Decidido aplicarlo ya el 18 de
   octubre de 2026; el número es una hipótesis por validar con médicos reales.
+- **Cerrar el link de un consultorio con reservas falsas.** Cualquiera puede
+  cerrar el link durante todo el mes: en Gratis bastan 10 reservas con DNI al
+  azar y un correo desechable, porque el contador nunca baja y el panel todavía
+  no cancela citas. Antes, bloquear la agenda exigía ocupar cientos de
+  horarios. Riesgo aceptado para la beta el 26 de octubre de 2026: mientras
+  tanto, WizyDoc puede reabrir un link a mano, corrigiendo el contador o
+  asignando un plan. El límite por IP en `POST /appointment` (WIZ-44) es
+  requisito antes de reactivar el cobro con Culqi.
 - **El sitio publicado** (wizydoc.app) muestra planes anteriores, distintos a
   estos.
 
@@ -216,6 +237,15 @@ Beta. Mercado inicial: Perú.
     reservas ve una guía de primeros pasos (especialidad y horario) que
     desaparece sola. "Copiar link de reservas" sólo aparece cuando el link
     funciona, junto a "Ver como paciente".
+  - **Tope de citas al mes** (`docs/features/tope-citas-mes/prd.md`). Cuenta las
+    citas reservadas en el booking por mes calendario de Lima (Gratis 10,
+    Consultorio 150, Clínica 600; Red sin tope) y ningún plan limita médicos.
+    Al llegar al tope, el booking de todas las sedes muestra "Este consultorio
+    no está recibiendo reservas en línea por ahora", con el "WhatsApp o
+    teléfono para pacientes" de la sede si un administrador lo agregó. Lo ya
+    reservado y la autogestión siguen igual. El administrador ve en Inicio el
+    uso del mes y las reservas perdidas; el dueño recibe un correo al 80 % y
+    otro al 100 %.
 - **Cobro con Culqi congelado durante la beta.** Sólo crea la suscripción al
   registrarse; no hay renovación, pagos fallidos ni cancelación. El onboarding
   sólo ofrece Gratis y los planes de pago se asignan a mano.
@@ -224,5 +254,5 @@ Beta. Mercado inicial: Perú.
   de autogestión en el panel ("Cancelada por el paciente", "Reprogramada por el
   paciente"), cancelar o mover citas desde el
   panel, agenda semanal, recordatorios (hoy sólo los correos de reserva,
-  cancelación y reprogramación), WhatsApp, tope de citas al mes (hoy el código
-  todavía limita médicos y no citas), importación desde Excel y exportación CSV.
+  cancelación y reprogramación), WhatsApp, importación desde Excel y exportación
+  CSV.

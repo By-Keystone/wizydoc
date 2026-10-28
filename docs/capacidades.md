@@ -61,8 +61,8 @@ la visión, sin fecha · **Fuera** = fuera de alcance por ahora.
 | Capacidad | Estado | Nota |
 | --- | --- | --- |
 | Varias sedes por cuenta | Hoy | Según plan |
-| Varios médicos con especialidades | Hoy | Sin límite en el producto; el código aún limita médicos por plan (ver Planes y cobro) |
-| El administrador también atiende (especialidad, disponibilidad y aparece en el booking) | Próximo | Hoy sólo tiene perfil de médico quien fue invitado como médico; el dueño de la cuenta no recibe citas |
+| Varios médicos con especialidades | Hoy | Sin límite en ningún plan, ni en el producto ni en el código |
+| El administrador también atiende (especialidad, disponibilidad y aparece en el booking) | Hoy | Desde #110: todo administrador de la organización queda como médico de cada sede nueva; con el primer uso, el dueño ya atiende desde el onboarding |
 | "Mi perfil": datos personales, cambio de contraseña y "Dónde atiendes" en solo lectura | Hoy | Una página por persona, desde el menú del avatar |
 | Tratamiento del médico (Dr./Dra.) | Hoy | Se elige en "Mi perfil" si se tiene perfil de médico; el api arma el nombre que muestran el booking y el panel. Sin tratamiento, sólo el nombre completo |
 | Especialidades por organización | Hoy | Nombre único dentro de cada organización; el booking de una sede muestra sólo las de su organización |
@@ -75,20 +75,19 @@ la visión, sin fecha · **Fuera** = fuera de alcance por ahora.
 | Capacidad | Estado | Nota |
 | --- | --- | --- |
 | Plan gratis sin tarjeta | Hoy | Único plan que ofrece el onboarding durante la beta |
-| Tope de citas al mes por plan (Gratis, 10) | Próximo | Se aplica ya, también en la beta; faltan los topes de Consultorio y Clínica. Las citas ya reservadas no se tocan, el paciente ve un mensaje con el contacto del consultorio y el médico recibe avisos al 80 % y de cada reserva perdida. Hoy el código no cuenta citas |
-| Límite por sedes, sin límite de médicos ni de pacientes | Parcial | Las sedes ya se limitan (1, 1 y 3). El código todavía limita médicos al invitar (Gratis 1, Consultorio 3, Clínica 8); los pacientes no se limitan |
+| Tope de citas al mes por plan (Gratis 10, Consultorio 150, Clínica 600; Red sin tope) | Hoy | También en la beta. Cuenta cada cita reservada en el booking en el mes calendario de Lima en que se reserva; no se descuenta al cancelar ni en "no asistió", y reprogramar no cuenta otra vez. Es de la cuenta: suma sedes y médicos. Al llegar al tope el booking de todas las sedes muestra "Este consultorio no está recibiendo reservas en línea por ahora", con el "WhatsApp o teléfono para pacientes" de la sede si existe. Lo ya reservado y la autogestión siguen igual. El administrador ve en Inicio el uso del mes y las reservas perdidas (sólo en el panel); el dueño recibe correos al 80 % y al 100 %. Ver `docs/features/tope-citas-mes/prd.md` |
+| Límite por sedes, sin límite de médicos ni de pacientes | Hoy | Las sedes se limitan (1, 1 y 3); ningún plan limita médicos ni pacientes |
 | Función fuera del plan muestra la mejora de plan | Hoy | Responde 402, no un error |
 | Al bajar a Gratis se pierde todo lo de pago, de inmediato | Parcial | La ficha y las métricas responden 402 y las citas nuevas salen sin link, pero los links de autogestión ya enviados siguen funcionando: el api no revisa el plan al usarlos |
 | Suscripción mensual con Culqi en soles | Parcial | Congelada en la beta: el api rechaza planes de pago al registrarse y no llama a Culqi; los planes de pago se asignan a mano |
-| Sede adicional (S/ 40 en Clínica) | Parcial | `extraClinics` amplía el tope de sedes si se asigna a mano, pero no se cobra. Los médicos adicionales ya no existen en el producto; el código aún suma `extraDoctors` al tope de médicos |
+| Sede adicional (S/ 40 en Clínica) | Parcial | `extraClinics` amplía el tope de sedes si se asigna a mano, pero no se cobra, y no suma citas. Los médicos adicionales ya no existen: `extraDoctors` queda en la base, pero no suma nada |
 
 ## Desajustes entre la landing y el código
 - "Cada reserva se confirma sola" y "confirmar asistencias": la cita se crea en
   `PENDING` y sólo se envía el correo; el paciente no confirma asistencia.
-- Médicos incluidos por plan (1, 3 y 8) y médico adicional (S/ 25 y S/ 20,
-  también en los términos y condiciones): coinciden con el código, pero
-  PRODUCT.md ya no limita médicos. La landing tampoco menciona el tope de citas.
-- Add-ons de médico y sede: anunciados, no se cobran.
+- Médicos: ni el producto ni el código los limitan. La landing publica los topes
+  de citas (10, 150, 600 y sin tope en Red).
+- Sede adicional (plan Clínica): anunciada, no se cobra. El médico adicional ya no se anuncia.
 - "Exportación de datos" (plan Red): ningún endpoint la usa.
 - La autogestión del paciente (cancelar y reprogramar por link) ya existe en los
   planes de pago y la landing no la menciona.
