@@ -17,6 +17,7 @@ import { AllergiesInput } from "./allergies-input";
 import { EMPTY, formatDocument } from "./format";
 
 interface Props {
+  resourceId: string;
   patient: PatientRecord;
 }
 
@@ -55,12 +56,10 @@ function ReadOnlyField({
   );
 }
 
-export function RecordForm({ patient }: Props) {
+export function RecordForm({ resourceId, patient }: Props) {
   const router = useRouter();
   const { membership } = useApp();
-  // El api vuelve a comprobarlo, y con más contexto: mira si el usuario tiene
-  // alguna membership sanitaria en la cuenta, no solo en esta sede. Ocultar el
-  // campo aquí es cosmético.
+  // Ocultar el campo es cosmético: el api decide con el rol de la membership de `resourceId`.
   const canEditHealthData =
     membership.role === MembershipRole.ADMIN ||
     membership.role === MembershipRole.DOCTOR;
@@ -72,7 +71,12 @@ export function RecordForm({ patient }: Props) {
   const { submit, isPending, fieldErrors } =
     useFormAction<UpdatePatientRecordFields>(
       (formData) =>
-        updatePatientRecordAction(patient.id, { status: "idle" }, formData),
+        updatePatientRecordAction(
+          resourceId,
+          patient.id,
+          { status: "idle" },
+          formData,
+        ),
       {
         successMessage: "Ficha actualizada",
         onSuccess: () => {

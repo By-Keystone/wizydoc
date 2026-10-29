@@ -1,5 +1,12 @@
 # Ficha de paciente e historial de citas — vertical de clínica
 
+> **Actualizado el 26 de octubre de 2026:** las rutas, el alcance y los permisos de la ficha
+> cambiaron con `docs/features/pacientes-busqueda/plan.md` (D-7 a D-11). Las rutas son
+> `/patients/in/:resourceId…` y quedan acotadas por sede u organización; el historial y las
+> métricas muestran sólo las citas de la misma organización, y el rol para editar datos de
+> salud sale de la membership de ese recurso. Lo que este documento dice sobre rutas sin
+> `:resourceId`, historial de toda la cuenta o rol a nivel de cuenta ya no vale.
+
 > Estado: **implementado** (fases 1 a 4). Pendiente de probar en navegador con
 > sesión iniciada; el resto está verificado contra la base y el API en marcha.
 

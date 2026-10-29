@@ -21,7 +21,16 @@ export type PatientMetrics = {
   nextAppointmentAt: string | null;
 };
 
+export const SEARCH_MIN_CHARACTERS = 2;
+export const SEARCH_MAX_CHARACTERS = 80;
+
 export type PatientListEntry = Patient & PatientMetrics;
+
+export type PatientsPage = {
+  patients: PatientListEntry[];
+  hasMore: boolean;
+  nextFrom: string | null;
+};
 
 export type PatientRecord = Patient & {
   sex: string | null;

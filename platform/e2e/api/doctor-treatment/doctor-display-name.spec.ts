@@ -176,7 +176,7 @@ test.describe("Nombre del médico en el api (tratamiento)", () => {
     const managed = await createManagedAppointment(scenario);
 
     const response = await scenario.admin.context.get(
-      `${API_BASE_URL}/patients/${managed.patientId}`,
+      `${API_BASE_URL}/patients/in/${scenario.clinicId}/${managed.patientId}`,
     );
 
     expect(response.status()).toBe(200);

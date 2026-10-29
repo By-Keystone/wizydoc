@@ -254,6 +254,10 @@ export interface TestPrisma {
   };
   patient: {
     create(args: { data: Record<string, unknown> }): Promise<{ id: string }>;
+    update(args: {
+      where: Record<string, unknown>;
+      data: Record<string, unknown>;
+    }): Promise<{ id: string }>;
     count(args: { where: Record<string, unknown> }): Promise<number>;
     findFirst(args: { where: Record<string, unknown> }): Promise<{
       id: string;
@@ -262,6 +266,9 @@ export interface TestPrisma {
       email: string;
       phone: string;
       birthDate: string | null;
+      allergies: string[];
+      bloodType: string | null;
+      emergencyContact: string | null;
     } | null>;
   };
   appointment: {

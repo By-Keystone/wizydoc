@@ -1,5 +1,8 @@
 import { Forbidden } from "@/application/errors/forbidden.error";
 import { NotFound } from "@/application/errors/not-found.error";
+import type { PatientScope } from "@/domain/entities/patient/scope";
+import type { MembershipRole } from "@/domain/enums/membership-role";
+import type { IPatientRepository } from "@/domain/repositories/patient.repository";
 import { getClient } from "@/infrastructure/postgres/transaction-context";
 import z from "zod";
 
@@ -28,6 +31,8 @@ export type UpdatePatientRecordDto = z.infer<
   patientId: string;
   accountId: string;
   userId: string;
+  scope: PatientScope;
+  role: MembershipRole;
 };
 
 /**
@@ -44,27 +49,36 @@ const HEALTH_FIELDS = [
   typeof updatePatientRecordSchema
 >)[];
 
-export class UpdatePatientRecordUseCase {
-  async execute(input: UpdatePatientRecordDto) {
-    const client = getClient();
+const HEALTH_DATA_EDITOR_ROLES: MembershipRole[] = ["ADMIN", "DOCTOR"];
 
-    const patient = await client.patient.findFirst({
-      where: { id: input.patientId, accountId: input.accountId },
-      select: { id: true, allergies: true, allergiesReviewedAt: true },
-    });
+export class UpdatePatientRecordUseCase {
+  constructor(private readonly patients: IPatientRepository) {}
+
+  async execute(input: UpdatePatientRecordDto) {
+    const patient = await this.patients.findInScope(input);
 
     if (!patient) throw new NotFound("Patient not found");
 
-    if (this.touchesHealthData(input) && !(await this.isClinicalStaff(input))) {
+    if (
+      this.touchesHealthData(input) &&
+      !HEALTH_DATA_EDITOR_ROLES.includes(input.role)
+    ) {
       throw new Forbidden(
         "Solo el personal sanitario puede editar los datos de salud",
       );
     }
 
-    const { patientId, accountId, userId, allergiesReviewed, ...fields } =
-      input;
+    const {
+      patientId,
+      accountId,
+      userId,
+      scope,
+      role,
+      allergiesReviewed,
+      ...fields
+    } = input;
 
-    return client.patient.update({
+    return getClient().patient.update({
       where: { id: patient.id },
       data: {
         ...fields,
@@ -76,25 +90,6 @@ export class UpdatePatientRecordUseCase {
 
   private touchesHealthData(input: UpdatePatientRecordDto) {
     return HEALTH_FIELDS.some((field) => input[field] !== undefined);
-  }
-
-  /**
-   * El rol vive en la membership de cada recurso, y un mismo usuario puede ser
-   * ADMIN en una sede y USER en otra: a nivel de cuenta no existe «el rol». Basta
-   * con tener una membership sanitaria viva en la cuenta.
-   */
-  private async isClinicalStaff(input: UpdatePatientRecordDto) {
-    const membership = await getClient().userResourceMembership.findFirst({
-      where: {
-        userId: input.userId,
-        accountId: input.accountId,
-        deletedAt: null,
-        role: { in: ["ADMIN", "DOCTOR"] },
-      },
-      select: { id: true },
-    });
-
-    return membership !== null;
   }
 
   /**

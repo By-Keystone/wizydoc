@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import type { APIResponse } from "@playwright/test";
 import {
   createClinicResource,
@@ -12,6 +11,8 @@ import {
 import { getTestPrisma } from "../../support/db";
 import { API_BASE_URL } from "../../support/env";
 import { softDeleteMembership } from "../../support/invitations";
+import { findDoctorProfileId } from "../../support/profile";
+import { seedPatientWithAppointment } from "../../support/patients";
 import { test, expect } from "../../support/test";
 import { uniqueName } from "../../support/users";
 
@@ -39,16 +40,18 @@ async function createWorkspace(label: string): Promise<Workspace> {
     where: { accountId: admin.accountId },
     data: { plan: "CONSULTORIO", status: "ACTIVE" },
   });
-  const patient = await prisma.patient.create({
-    data: {
-      name: "Paula",
-      lastName: "Paciente",
-      email: `paula-${randomUUID()}@example.com`,
-      phone: INITIAL_PHONE,
-      documentNumber: randomUUID().slice(0, 8),
-      documentType: "DNI",
-      accountId: admin.accountId,
-    },
+  const doctorProfileId = (await findDoctorProfileId(
+    admin.userId,
+    clinicId,
+  )) as string;
+  const patient = await seedPatientWithAppointment({
+    accountId: admin.accountId,
+    clinicId,
+    doctorProfileId,
+  });
+  await prisma.patient.update({
+    where: { id: patient.id },
+    data: { phone: INITIAL_PHONE },
   });
   return { admin, clinicId, patientId: patient.id };
 }
@@ -68,12 +71,14 @@ function addMember(
 
 function callRoutes(member: SeededMember, workspace: Workspace) {
   const { context } = member;
+  const patientsInClinic = `${API_BASE_URL}/patients/in/${workspace.clinicId}`;
   return {
-    list: () => context.get(`${API_BASE_URL}/patients`),
-    detail: () =>
-      context.get(`${API_BASE_URL}/patients/${workspace.patientId}`),
+    list: () => context.get(patientsInClinic),
+    search: () =>
+      context.post(`${patientsInClinic}/search`, { data: { search: "Paula" } }),
+    detail: () => context.get(`${patientsInClinic}/${workspace.patientId}`),
     update: (phone: string) =>
-      context.patch(`${API_BASE_URL}/patients/${workspace.patientId}`, {
+      context.patch(`${patientsInClinic}/${workspace.patientId}`, {
         data: { phone },
       }),
     clinics: () => context.get(`${API_BASE_URL}/clinic`),
@@ -102,6 +107,7 @@ for (const role of roles) {
     const routes = callRoutes(member, workspace);
 
     expect((await routes.list()).status()).toBe(200);
+    expect((await routes.search()).status()).toBe(200);
     expect((await routes.detail()).status()).toBe(200);
     expect((await routes.clinics()).status()).toBe(200);
     expect((await routes.update(PHONE_WHILE_MEMBER)).status()).toBe(204);
@@ -110,6 +116,7 @@ for (const role of roles) {
     await softDeleteMembership(member.membershipId);
 
     await expectResourceNotFound(await routes.list());
+    await expectResourceNotFound(await routes.search());
     await expectResourceNotFound(await routes.detail());
     await expectResourceNotFound(await routes.update(PHONE_AFTER_REMOVAL));
     await expectResourceNotFound(await routes.clinics());
@@ -121,8 +128,24 @@ test("en plan Gratis, sin membership viva responde 404 y no 402", async () => {
   const admin = await createOnboardedAdmin({
     emailPrefix: "admin-sin-membership",
   });
+  const otherWorkspace = await createWorkspace("pm-ajena");
+  const patientsInOtherClinic = `${API_BASE_URL}/patients/in/${otherWorkspace.clinicId}`;
 
-  const response = await admin.context.get(`${API_BASE_URL}/patients`);
-
-  await expectResourceNotFound(response);
+  await expectResourceNotFound(await admin.context.get(patientsInOtherClinic));
+  await expectResourceNotFound(
+    await admin.context.post(`${patientsInOtherClinic}/search`, {
+      data: { search: "Paula" },
+    }),
+  );
+  await expectResourceNotFound(
+    await admin.context.get(
+      `${patientsInOtherClinic}/${otherWorkspace.patientId}`,
+    ),
+  );
+  await expectResourceNotFound(
+    await admin.context.patch(
+      `${patientsInOtherClinic}/${otherWorkspace.patientId}`,
+      { data: { phone: PHONE_AFTER_REMOVAL } },
+    ),
+  );
 });

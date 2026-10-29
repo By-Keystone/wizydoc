@@ -1,16 +1,18 @@
-import { NotFound } from "@/application/errors/not-found.error";
+import type { PatientScope } from "@/domain/entities/patient/scope";
+import type { IPatientRepository } from "@/domain/repositories/patient.repository";
 import {
   type AppointmentForMetrics,
   buildPatientMetrics,
 } from "@/domain/services/patient-metrics";
-import { getClient } from "@/infrastructure/postgres/transaction-context";
 import z from "zod";
 
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 100;
+const SEARCH_MIN_CHARACTERS = 2;
+const SEARCH_MAX_CHARACTERS = 80;
 
-const getPatientsSchema = z.object({
-  accountId: z.string(),
+export const patientsScopeParamsSchema = z.object({
+  resourceId: z.uuid(),
 });
 
 export const getPatientsQuerySchema = z.object({
@@ -21,51 +23,53 @@ export const getPatientsQuerySchema = z.object({
     .max(MAX_LIMIT)
     .default(DEFAULT_LIMIT),
   from: z.uuid().optional(),
-  clinicId: z.uuid().optional(),
 });
 
-type GetPatientsQueryDto = z.infer<typeof getPatientsQuerySchema>;
-export type GetPatientsDto = z.infer<typeof getPatientsSchema> &
-  GetPatientsQueryDto;
+const searchTermSchema = z
+  .string()
+  .max(SEARCH_MAX_CHARACTERS, {
+    error: `La búsqueda admite hasta ${SEARCH_MAX_CHARACTERS} caracteres`,
+  })
+  .transform((term) => term.trim().replace(/\s+/g, " "))
+  .refine((term) => term.replaceAll(" ", "").length >= SEARCH_MIN_CHARACTERS, {
+    error: `Escribe al menos ${SEARCH_MIN_CHARACTERS} letras o números`,
+  });
+
+export const searchPatientsBodySchema = z.object({
+  limit: z.number().int().positive().max(MAX_LIMIT).default(DEFAULT_LIMIT),
+  from: z.uuid().optional(),
+  search: searchTermSchema,
+});
+
+export type GetPatientsDto = z.infer<typeof getPatientsQuerySchema> & {
+  accountId: string;
+  scope: PatientScope;
+  search?: string;
+};
 
 export class GetPatientsUseCase {
+  constructor(private readonly patients: IPatientRepository) {}
+
   async execute(input: GetPatientsDto) {
-    const client = getClient();
-
-    if (input.clinicId) await this.assertClinicInAccount(input);
-
-    // `id` es `uuid(7)`: lleva el instante de creación en los bits altos, así
-    // que ordenarlo es ordenar por antigüedad y `lt` significa "anterior a".
-    // Con un uuid v4 este cursor daría un orden estable pero arbitrario.
-    const patients = await client.patient.findMany({
-      where: {
-        accountId: input.accountId,
-        ...(input.from && { id: { lt: input.from } }),
-        ...(input.clinicId && {
-          appointments: { some: { clinicId: input.clinicId } },
-        }),
-      },
-      orderBy: { id: "desc" },
+    const rows = await this.patients.findPageInScope({
+      accountId: input.accountId,
+      scope: input.scope,
       take: input.limit + 1,
+      from: input.from,
+      search: input.search,
     });
 
-    const hasMore = patients.length > input.limit;
-    const page = hasMore ? patients.slice(0, input.limit) : patients;
+    const hasMore = rows.length > input.limit;
+    const page = hasMore ? rows.slice(0, input.limit) : rows;
 
     const appointmentsByPatient = await this.loadAppointments(
+      input,
       page.map((patient) => patient.id),
     );
 
     return {
       patients: page.map((patient) => ({
-        id: patient.id,
-        name: patient.name,
-        lastName: patient.lastName,
-        phone: patient.phone,
-        email: patient.email,
-        documentType: patient.documentType,
-        documentNumber: patient.documentNumber,
-        birthDate: patient.birthDate,
+        ...patient,
         ...buildPatientMetrics(appointmentsByPatient.get(patient.id) ?? []),
       })),
       hasMore,
@@ -73,30 +77,12 @@ export class GetPatientsUseCase {
     };
   }
 
-  /**
-   * Filtrar por una clínica de otra cuenta devuelve 404 y no 403: distinguirlos
-   * revelaría qué clínicas existen fuera de la cuenta del usuario.
-   */
-  private async assertClinicInAccount(input: GetPatientsDto) {
-    const clinic = await getClient().clinic.findFirst({
-      where: {
-        resourceId: input.clinicId,
-        resource: { accountId: input.accountId },
-      },
-      select: { resourceId: true },
-    });
-
-    if (!clinic) throw new NotFound("Clinic not found");
-  }
-
-  /**
-   * Las métricas se cuentan sobre toda la cuenta aunque el listado esté filtrado
-   * por sede: una sede ve el historial completo del paciente, no solo su trozo.
-   */
-  private async loadAppointments(patientIds: string[]) {
-    const appointments = await getClient().appointment.findMany({
-      where: { patientId: { in: patientIds } },
-      select: { patientId: true, scheduledAt: true, status: true },
+  // Solo las de la organización: la última visita y la próxima cita no pueden venir de otra.
+  private async loadAppointments(input: GetPatientsDto, patientIds: string[]) {
+    const appointments = await this.patients.findAppointmentsForMetrics({
+      accountId: input.accountId,
+      organizationId: input.scope.organizationId,
+      patientIds,
     });
 
     const byPatient = new Map<string, AppointmentForMetrics[]>();

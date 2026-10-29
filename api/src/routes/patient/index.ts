@@ -1,5 +1,6 @@
 import { ApplicationError } from "@/application/errors/application.errors";
 import { BadRequest } from "@/application/errors/bad-request.errors";
+import type { UserMembership } from "@/application/queries/membership/get-user-membership.query";
 import {
   getPatientDetailParamsSchema,
   GetPatientDetailQuery,
@@ -7,21 +8,41 @@ import {
 import {
   getPatientsQuerySchema,
   GetPatientsUseCase,
+  patientsScopeParamsSchema,
+  searchPatientsBodySchema,
 } from "@/application/use-cases/patient/get-patients.usecase";
 import {
   updatePatientRecordSchema,
   UpdatePatientRecordUseCase,
 } from "@/application/use-cases/patient/update-patient-record.usecase";
-import { policy } from "@/plugins/policy";
-import { requireLiveMembership } from "@/routes/hooks/require-live-membership";
+import type { PatientScope } from "@/domain/entities/patient/scope";
+import { PatientRepository } from "@/infrastructure/postgres/repositories/patient.repository";
+import { policy, requireMembership } from "@/plugins/policy";
 import type { ZodTypeProvider } from "@fastify/type-provider-zod";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 
-const patientPolicy = policy({
+const patientScopePolicy = policy({
   account: true,
   confirmed: true,
   onboarded: true,
+  member: true,
 });
+
+function toPatientScope(membership: UserMembership): PatientScope {
+  if (membership.resourceType === "CLINIC") {
+    return {
+      resourceType: "CLINIC",
+      resourceId: membership.resourceId,
+      organizationId: membership.parentOrganization.resourceId,
+    };
+  }
+
+  return {
+    resourceType: "ORGANIZATION",
+    resourceId: membership.resourceId,
+    organizationId: membership.resourceId,
+  };
+}
 
 function handleError(
   error: unknown,
@@ -48,32 +69,35 @@ export default async function patientRoutes(fastify: FastifyInstance) {
   // La ficha del paciente es un módulo entero, no un endpoint suelto: el plan
   // se comprueba una vez para todas las rutas de este scope. Al registrarse sin
   // `fastify-plugin`, el hook no se escapa al resto de la API.
-  fastify.addHook("preHandler", requireLiveMembership(fastify));
   fastify.addHook("preHandler", fastify.requireFeature("PATIENT_RECORD"));
 
   const app = fastify.withTypeProvider<ZodTypeProvider>();
+  const patientRepository = new PatientRepository();
 
   app.get(
-    "/",
+    "/in/:resourceId",
     {
-      ...patientPolicy,
-      schema: { querystring: getPatientsQuerySchema },
+      ...patientScopePolicy,
+      schema: {
+        params: patientsScopeParamsSchema,
+        querystring: getPatientsQuerySchema,
+      },
     },
     async (request, reply) => {
       try {
         const { accountId } = request.user;
-        const { limit, from, clinicId } = request.query;
+        const { limit, from } = request.query;
 
         if (!accountId)
           throw new BadRequest("User does not belong to an account");
 
-        const useCase = new GetPatientsUseCase();
+        const useCase = new GetPatientsUseCase(patientRepository);
 
         const { patients, hasMore, nextFrom } = await useCase.execute({
           accountId,
+          scope: toPatientScope(requireMembership(request)),
           limit,
           from,
-          clinicId,
         });
 
         return reply.status(200).send({ data: patients, hasMore, nextFrom });
@@ -88,10 +112,50 @@ export default async function patientRoutes(fastify: FastifyInstance) {
     },
   );
 
-  app.get(
-    "/:patientId",
+  app.post(
+    "/in/:resourceId/search",
     {
-      ...patientPolicy,
+      // POST y no GET: el término va en el cuerpo para que no quede en ningún log de acceso.
+      ...patientScopePolicy,
+      schema: {
+        params: patientsScopeParamsSchema,
+        body: searchPatientsBodySchema,
+      },
+    },
+    async (request, reply) => {
+      try {
+        const { accountId } = request.user;
+        const { limit, from, search } = request.body;
+
+        if (!accountId)
+          throw new BadRequest("User does not belong to an account");
+
+        const useCase = new GetPatientsUseCase(patientRepository);
+
+        const { patients, hasMore, nextFrom } = await useCase.execute({
+          accountId,
+          scope: toPatientScope(requireMembership(request)),
+          limit,
+          from,
+          search,
+        });
+
+        return reply.status(200).send({ data: patients, hasMore, nextFrom });
+      } catch (error) {
+        return handleError(
+          error,
+          request,
+          reply,
+          "Ocurrió un error al buscar pacientes",
+        );
+      }
+    },
+  );
+
+  app.get(
+    "/in/:resourceId/:patientId",
+    {
+      ...patientScopePolicy,
       schema: { params: getPatientDetailParamsSchema },
     },
     async (request, reply) => {
@@ -101,11 +165,12 @@ export default async function patientRoutes(fastify: FastifyInstance) {
         if (!accountId)
           throw new BadRequest("User does not belong to an account");
 
-        const query = new GetPatientDetailQuery();
+        const query = new GetPatientDetailQuery(patientRepository);
 
         const result = await query.execute({
           accountId,
           patientId: request.params.patientId,
+          scope: toPatientScope(requireMembership(request)),
         });
 
         return reply.status(200).send({ data: result });
@@ -121,9 +186,9 @@ export default async function patientRoutes(fastify: FastifyInstance) {
   );
 
   app.patch(
-    "/:patientId",
+    "/in/:resourceId/:patientId",
     {
-      ...patientPolicy,
+      ...patientScopePolicy,
       schema: {
         params: getPatientDetailParamsSchema,
         body: updatePatientRecordSchema,
@@ -136,13 +201,16 @@ export default async function patientRoutes(fastify: FastifyInstance) {
         if (!accountId)
           throw new BadRequest("User does not belong to an account");
 
-        const useCase = new UpdatePatientRecordUseCase();
+        const membership = requireMembership(request);
+        const useCase = new UpdatePatientRecordUseCase(patientRepository);
 
         await useCase.execute({
           ...request.body,
           accountId,
           userId,
           patientId: request.params.patientId,
+          scope: toPatientScope(membership),
+          role: membership.role,
         });
 
         return reply.status(204).send();

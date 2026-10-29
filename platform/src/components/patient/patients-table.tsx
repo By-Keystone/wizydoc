@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import Link from "next/link";
 import type { PatientListEntry } from "@/lib/api/patients/types";
 import { type Column, Table } from "../common/table";
@@ -5,8 +6,8 @@ import { formatDocument, formatShortDate } from "./format";
 
 interface Props {
   patients: PatientListEntry[];
-  /** Sin esto el nombre no enlaza: la vista de organización no tiene detalle. */
-  buildHref?: (patientId: string) => string;
+  patientsPath: string;
+  empty: ReactNode;
 }
 
 function StatusBadge({ patient }: { patient: PatientListEntry }) {
@@ -34,7 +35,7 @@ function StatusBadge({ patient }: { patient: PatientListEntry }) {
   );
 }
 
-export const PatientsTable = ({ patients, buildHref }: Props) => {
+export const PatientsTable = ({ patients, patientsPath, empty }: Props) => {
   const columns: Column<PatientListEntry>[] = [
     {
       key: "name",
@@ -45,16 +46,12 @@ export const PatientsTable = ({ patients, buildHref }: Props) => {
 
         return (
           <div className="flex flex-col">
-            {buildHref ? (
-              <Link
-                href={buildHref(row.id)}
-                className="font-medium text-brand-ink hover:text-brand-teal hover:underline"
-              >
-                {fullName}
-              </Link>
-            ) : (
-              <span className="font-medium text-brand-ink">{fullName}</span>
-            )}
+            <Link
+              href={`${patientsPath}/${row.id}`}
+              className="font-medium text-brand-ink hover:text-brand-teal hover:underline"
+            >
+              {fullName}
+            </Link>
             <span className="text-xs text-brand-gray">
               {formatDocument(row.documentType, row.documentNumber)}
             </span>
@@ -97,7 +94,7 @@ export const PatientsTable = ({ patients, buildHref }: Props) => {
       getRowKey={(row) => row.id}
       rows={patients}
       columns={columns}
-      empty="Todavía no hay pacientes registrados"
+      empty={empty}
     />
   );
 };
