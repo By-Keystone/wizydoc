@@ -29,7 +29,10 @@ Trabajas en dos fases, en este orden.
 Una o dos frases.
 
 ### Cambios por capa
-- **Prisma**: modelos/columnas/índices y si requiere migración.
+- **Prisma**: modelos/columnas/índices y si requiere migración. Para cada
+  tabla o columna nueva, di qué dato guarda que hoy no está en ninguna parte;
+  si se puede calcular de lo existente, va una consulta con índice, no una
+  tabla (ver "Base de datos" en `AGENTS.md`).
 - **api**: use cases, queries, rutas y la `policy({...})` exacta de cada ruta
   nueva (pública o no, roles, `requireFeature`).
 - **platform**: clientes en `lib/api`, server actions, páginas y componentes.

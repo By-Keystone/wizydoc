@@ -129,6 +129,10 @@ Los pasos 4 a 7 se repiten por cada parte, en orden.
 - Fechas: las horas de agenda son "hora de pared" de la clínica; los instantes
   se convierten con `api/src/domain/services/clinic-time.ts`. Nunca uses la
   zona horaria del servidor.
+- Base de datos: nada de tablas ni columnas con datos que se pueden calcular
+  de lo que ya existe (contadores, totales, copias). Se consulta lo existente
+  con un índice y, si hace falta atomicidad, un bloqueo de fila. Una tabla
+  nueva sólo para un dato que hoy no está en ninguna parte.
 
 ## Prohibido sin confirmación explícita
 
