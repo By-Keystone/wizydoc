@@ -25,22 +25,34 @@ async function raceForTheLastSeat(label: string) {
   const world = await createListedClinic(label, { booked: 9 });
   const secondDoctor = await addSecondDoctor(world);
   const patients = [newPortalPatient(), newPortalPatient()];
+  const prisma = await getTestPrisma();
+  const appointmentsBefore = await prisma.appointment.count({
+    where: { clinicId: world.clinicId },
+  });
+  const patientsBefore = await prisma.patient.count({
+    where: { accountId: world.accountId },
+  });
 
   const responses = await Promise.all([
     postBookingTo(world, slotInDays(3), patients[0]),
     postBookingTo(secondDoctor, slotInDays(4), patients[1]),
   ]);
 
-  return { world, patients, responses };
+  return {
+    world,
+    patients,
+    responses,
+    appointmentsBefore,
+    patientsBefore,
+  };
 }
 
-test("CA-13: con el contador en 9, dos reservas simultáneas dejan un 200 y un 409 BOOKING_CLOSED, una cita y una ficha, el contador en 10, una reserva perdida y los correos de quien entró", async () => {
+test("CA-13: con 9 citas en el mes, dos reservas simultáneas dejan un 200 y un 409 BOOKING_CLOSED, una cita y una ficha nuevas, el contador en 10, una reserva perdida y los correos de quien entró", async () => {
   const prisma = await getTestPrisma();
 
   for (let round = 1; round <= RACE_ROUNDS; round++) {
-    const { world, patients, responses } = await raceForTheLastSeat(
-      `race-ca13-${round}`,
-    );
+    const { world, patients, responses, appointmentsBefore, patientsBefore } =
+      await raceForTheLastSeat(`race-ca13-${round}`);
 
     expect(responses.map((response) => response.status()).sort()).toEqual([
       200, 409,
@@ -55,10 +67,10 @@ test("CA-13: con el contador en 9, dos reservas simultáneas dejan un 200 y un 4
     );
     expect(
       await prisma.appointment.count({ where: { clinicId: world.clinicId } }),
-    ).toBe(1);
+    ).toBe(appointmentsBefore + 1);
     expect(
       await prisma.patient.count({ where: { accountId: world.accountId } }),
-    ).toBe(1);
+    ).toBe(patientsBefore + 1);
     expect(await readMonthlyBookings(world.accountId)).toBe(10);
     expect(await countMissedBookings(world.accountId)).toBe(1);
     await waitForEmailTo(winner.email, {
@@ -87,7 +99,7 @@ test("CA-13: la tarjeta tras la carrera dice «Llegaste al tope de 10 citas de t
   await expect(usageCard(page)).not.toContainText(/\b11\b/);
 });
 
-test("CA-14: con el contador en 7, dos reservas simultáneas entran las dos, el contador queda en 9 y sale un solo aviso del 80 %", async () => {
+test("CA-14: con 7 citas en el mes, dos reservas simultáneas entran las dos, quedan 9 y sale un solo aviso del 80 %", async () => {
   const world = await createListedClinic("race-ca14", { booked: 7 });
   const secondDoctor = await addSecondDoctor(world);
 

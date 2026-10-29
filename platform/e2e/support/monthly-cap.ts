@@ -32,6 +32,7 @@ import {
   createOwnerWithFirstClinic,
   openClinicDashboard,
 } from "./first-use";
+import { createPatient } from "./patients";
 import { ONBOARDING_ADDRESS } from "./ui";
 import { uniqueEmail, uniqueName } from "./users";
 
@@ -74,6 +75,11 @@ export const REACHED_NOTICE_SUBJECT =
 export const DEFAULT_SLOT_TIME = "10:00";
 
 const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
+const LIMA_UTC_OFFSET = "-05:00";
+const SEEDED_SPECIALTY = "Cita sembrada";
+const SEEDED_SCHEDULED_AT = new Date("2020-01-01T15:00:00Z");
+const SLOT_FREEING_STATUS = "CANCELLED";
+const SEED_BATCH_SIZE = 1_000;
 const BEACON_SETTLE_MS = 1_500;
 const DOCUMENT_NUMBER_DIGITS = 8;
 const ONE_HUNDRED_MILLION = 100_000_000;
@@ -122,24 +128,83 @@ export function lastMinuteOfPreviousMonth(): Date {
   )
     .toISOString()
     .slice(0, 10);
-  return new Date(`${lastDay}T23:59:00-05:00`);
+  return new Date(`${lastDay}T23:59:00${LIMA_UTC_OFFSET}`);
 }
 
 export function firstMinuteOfCurrentMonth(): Date {
-  return new Date(`${currentMonth()}-01T00:00:00-05:00`);
+  return new Date(`${currentMonth()}-01T00:00:00${LIMA_UTC_OFFSET}`);
+}
+
+function monthWindow(month: string) {
+  return {
+    gte: new Date(`${month}-01T00:00:00${LIMA_UTC_OFFSET}`),
+    lt: new Date(`${shiftMonth(month, 1)}-01T00:00:00${LIMA_UTC_OFFSET}`),
+  };
+}
+
+function seededCreatedAt(month: string): Date {
+  return month === currentMonth()
+    ? new Date()
+    : new Date(`${month}-15T12:00:00${LIMA_UTC_OFFSET}`);
+}
+
+async function findDoctorToSeedWith(accountId: string) {
+  const prisma = await getTestPrisma();
+  const profile = await prisma.doctorProfile.findFirst({
+    where: { membership: { deletedAt: null, resource: { accountId } } },
+    select: { id: true, membership: { select: { resourceId: true } } },
+  });
+  if (!profile?.membership) {
+    throw new Error(
+      `La cuenta ${accountId} no tiene un médico con quien sembrar citas`,
+    );
+  }
+  return {
+    doctorProfileId: profile.id,
+    clinicId: profile.membership.resourceId,
+  };
 }
 
 export async function setMonthlyBookings(
   accountId: string,
-  booked: number,
+  total: number,
   month: string = currentMonth(),
 ): Promise<void> {
   const prisma = await getTestPrisma();
-  await prisma.accountMonthlyBookings.upsert({
-    where: { accountId_month: { accountId, month } },
-    create: { accountId, month, booked },
-    update: { booked },
+  await prisma.appointment.deleteMany({
+    where: {
+      clinic: { resource: { accountId } },
+      specialty: SEEDED_SPECIALTY,
+      createdAt: monthWindow(month),
+    },
   });
+  const missing = total - (await readMonthlyBookings(accountId, month));
+  if (missing < 0) {
+    throw new Error(
+      `La cuenta ya tiene ${total - missing} citas reales en ${month}: no se puede dejar en ${total}`,
+    );
+  }
+  if (missing === 0) return;
+
+  const { doctorProfileId, clinicId } = await findDoctorToSeedWith(accountId);
+  const patient = await createPatient(accountId);
+  for (let seeded = 0; seeded < missing; seeded += SEED_BATCH_SIZE) {
+    await prisma.appointment.createMany({
+      data: Array.from(
+        { length: Math.min(SEED_BATCH_SIZE, missing - seeded) },
+        () => ({
+          doctorProfileId,
+          clinicId,
+          patientId: patient.id,
+          scheduledAt: SEEDED_SCHEDULED_AT,
+          status: SLOT_FREEING_STATUS,
+          durationMinutes: 30,
+          specialty: SEEDED_SPECIALTY,
+          createdAt: seededCreatedAt(month),
+        }),
+      ),
+    });
+  }
 }
 
 export async function readMonthlyBookings(
@@ -147,10 +212,12 @@ export async function readMonthlyBookings(
   month: string = currentMonth(),
 ): Promise<number> {
   const prisma = await getTestPrisma();
-  const row = await prisma.accountMonthlyBookings.findUnique({
-    where: { accountId_month: { accountId, month } },
+  return prisma.appointment.count({
+    where: {
+      clinic: { resource: { accountId } },
+      createdAt: monthWindow(month),
+    },
   });
-  return row?.booked ?? 0;
 }
 
 export async function seedMissedBookings(

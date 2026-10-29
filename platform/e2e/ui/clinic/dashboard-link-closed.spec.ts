@@ -156,6 +156,10 @@ test("CA-35: con el tope alcanzado y una sede sin médicos en el link, quien no 
     createdBy: owner.userId,
     emailPrefix: "closed-ca35-usuario",
   });
+  await addTeamMember(
+    { accountId: owner.accountId, owner, clinicId },
+    "DOCTOR",
+  );
   await setMonthlyBookings(owner.accountId, 10);
 
   await openClinicDashboard(page, {

@@ -53,7 +53,7 @@ const PLANS_WITH_CAP: Array<Exclude<PlanKey, "RED">> = [
 const WARNING_PERCENT = 0.8;
 const MIN_CARD_BUTTON_HEIGHT = 40;
 const RED_BOOKED = 5_000;
-const APPOINTMENTS_SEEDED_BEFORE_DEPLOY = 10;
+const APPOINTMENTS_SEEDED_IN_THE_DATABASE = 10;
 const PATIENTS_WHO_TRIED = 3;
 const BOOKINGS_PER_CLINIC = 5;
 
@@ -178,22 +178,20 @@ test("CA-10: el mes anterior no cuenta: sin citas este mes el link está abierto
   );
 });
 
-test("CA-11: 10 citas creadas este mes sin pasar por el booking no cuentan: la tarjeta dice «0 de 10» y el link acepta reservas", async ({
+test("CA-11: cuentan todas las citas creadas este mes, también las que no pasaron por el booking: 10 sembradas directo en la base cierran el link y la tarjeta dice que llegó al tope", async ({
   page,
 }) => {
   const world = await createListedClinic("usage-ca11");
-  for (let index = 0; index < APPOINTMENTS_SEEDED_BEFORE_DEPLOY; index++) {
+  for (let index = 0; index < APPOINTMENTS_SEEDED_IN_THE_DATABASE; index++) {
     await seedPatientWithAppointment(world);
   }
 
   await openHome(page, world);
 
-  await expect(cardHeading(page, normalTitle())).toBeVisible();
-  await expect(usageCard(page)).toContainText("0 de 10");
+  await expect(cardHeading(page, reachedTitle(10, "FREE"))).toBeVisible();
   expect((await fetchBookingStatus(world.clinicId)).isAcceptingBookings).toBe(
-    true,
+    false,
   );
-  await bookSuccessfully(world, 30);
 });
 
 test("CA-37: el dueño, el ADMIN de la sede y el ADMIN de la organización ven la tarjeta en Gratis, Consultorio y Clínica y en todos sus estados; en Red y en el Inicio de la organización, no", async ({

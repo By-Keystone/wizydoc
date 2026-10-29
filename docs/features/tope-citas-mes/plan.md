@@ -48,10 +48,10 @@ de 2026: el humano no los objetó al aprobar el plan.
 
 ### Servidor
 
-- **SV-1. Qué sube el contador.** Solo el caso de uso de la reserva pública (`CreateApointmentUseCase`),
-  en la misma transacción que crea la cita. Reprogramar actualiza la misma fila de `appointment` y no pasa
-  por ahí (c-5). Cancelar no lo baja (c-4). Con el contador de SV-6, las citas sembradas por SQL o por las
-  pruebas no cuentan.
+- **SV-1. Qué cuenta.** No hay contador: las citas del mes son las filas de `appointment` de las sedes de
+  la cuenta con `created_at` dentro del mes de Lima, sea cual sea su estado (decidido por el humano el 29 de
+  octubre de 2026). Reprogramar actualiza la misma fila y no suma (c-5). Cancelar sólo cambia el estado, así
+  que la cita sigue contando (c-4).
 - **SV-2. El mes** es el mes calendario de Lima del instante en que el api acepta la reserva (c-3). Se
   calcula con `api/src/domain/services/clinic-time.ts` (`today()` ya da la fecha de Lima). Nunca con el huso
   del servidor.
@@ -67,21 +67,13 @@ de 2026: el humano no los objetó al aprobar el plan.
      tomado y el tope alcanzado gane el tope (t-3, cl-12). Esta primera lectura no bloquea nada: solo
      evita trabajo.
   4. Horario no ofrecido o tomado: 409 `SLOT_UNAVAILABLE`, como hoy.
-  5. Dentro de la transacción, primero se reserva el cupo (SV-6) y después se crean la ficha y la cita.
-     Si el cupo ya no está, no se crea nada, tampoco la ficha (pv-2).
-- **SV-6. Dos reservas simultáneas por la última cita (c-8, A-7).** La comprobación y el aumento del
-  contador tienen que ser una sola operación atómica dentro de la transacción de la reserva. Si la
-  creación de la cita falla después (horario tomado, P2002), la transacción revierte también el aumento.
-  El mecanismo lo elige el engineer. Dos opciones válidas:
-  - **Contador por cuenta y mes** (la que propongo, ver Prisma): un único `INSERT … ON CONFLICT DO UPDATE
-    SET booked = booked + 1 WHERE booked < :tope RETURNING booked`. Si no devuelve fila, el tope está
-    alcanzado. El bloqueo de fila de Postgres serializa a quien llega segundo, que ve el valor ya
-    actualizado. En Red se suma sin condición, para que una bajada de plan a mitad de mes encuentre el
-    número correcto. Además cumple d-17 sin hacer nada: la tabla empieza vacía en el despliegue.
-  - **Contar citas con bloqueo:** `lockAccountQuota(accountId)` (ya existe) y contar las citas creadas en
-    el mes. Ojo: bloquea la fila de `subscription`, y una cuenta sin suscripción no tiene fila, así que no
-    serializaría nada. Además necesitaría el instante del despliegue para d-17, y una columna de origen
-    cuando existan las citas del panel.
+  5. Dentro de la transacción, primero se bloquea la cuenta y se cuenta (SV-6) y después se crean la ficha
+     y la cita. Si el cupo ya no está, no se crea nada, tampoco la ficha (pv-2).
+- **SV-6. Dos reservas simultáneas por la última cita (c-8, A-7).** Dentro de la transacción de la
+  reserva, `SELECT 1 FROM account WHERE id = … FOR NO KEY UPDATE` (el mismo bloqueo que
+  `create-first-clinic.usecase.ts`) y después se cuentan las citas del mes. Bloquea sólo la fila de esa
+  cuenta: dos reservas de la misma cuenta van una detrás de otra y la segunda cuenta con la primera ya
+  creada; las de otras cuentas no esperan. Índice `appointment(clinic_id, created_at)` para el conteo.
 - **SV-7. Rechazo al confirmar.** Si el tope frena la reserva (en el paso 3 o en el 5 de SV-5), el caso de
   uso registra una reserva perdida (cuenta, sede, instante) **fuera** de la transacción que se revierte, y
   lanza `BookingClosed`. No sale ningún correo y no se registra nada del cuerpo de la petición (pv-2).
@@ -206,12 +198,12 @@ Las rutas, los nombres y los archivos son un punto de partida: los decide el eng
 ### Prisma
 
 Requiere una migración nueva, creada con `pnpm prisma:migrate` (`--create-only`), y revisar el SQL antes
-de aplicarlo. No borra ni rellena datos: el contacto empieza vacío (k-7) y el contador, sin filas (d-17).
+de aplicarlo. No borra ni rellena datos: el contacto empieza vacío (k-7).
 
 | Cambio | Para qué |
 | --- | --- |
 | `Clinic.patientContact String? @map("patient_contact")` | El contacto de la sede (d-15). Nulo en todas las sedes, también en las que tienen `phone`. |
-| Modelo nuevo de contador, por ejemplo `AccountMonthlyBookings { accountId, month ("YYYY-MM", mes de Lima), booked Int }`, con `@@id([accountId, month])` y relación con `Account` | SV-1 a SV-6. Es la opción propuesta en SV-6. Si el engineer elige contar citas, este modelo no hace falta, y sí un índice para contar las citas de una cuenta por `created_at`. |
+| `Appointment @@index([clinicId, createdAt])` | El conteo del mes de SV-1 y SV-6. Sin tabla de contador. |
 | Modelo nuevo `MissedBooking { id, accountId, clinicId, createdAt }`, con `@@index([accountId, createdAt])` y relaciones con `Account` y `Clinic` | Una fila por reserva perdida, con nada más que la cuenta, la sede y el momento (pv-1). La tarjeta cuenta las del mes desde el día 1 a las 00:00 de Lima. |
 
 **Sin cambios:** la columna `subscription.extra_doctors` y `AddOnType.DOCTOR_SEAT` se quedan. El dominio
@@ -525,7 +517,7 @@ formatea como fechas de calendario, sin pasarlos por el huso del servidor ni del
 | --- | --- | --- |
 | r-1 | El orden de los PR | Este plan cambia `BookingLinkStatus`, `FirstSteps` y `copy-button.tsx` del #126, y el #126 también toca `docs/PRODUCT.md`. Se implementa cuando el #126 entre o apilado sobre él (ver Depende). |
 | r-2 | Un 402 en el booking | `toActionState` mostraría «Tu plan no permite hacer uso de esta función» al paciente. SV-8 lo evita con un 409 y su `code`. |
-| r-3 | Cuentas sin fila de `subscription` | Son Gratis (pc-3). Con el contador de SV-6 no hace falta esa fila. Con `lockAccountQuota` no se serializarían. |
+| r-3 | Cuentas sin fila de `subscription` | Son Gratis (pc-3). El bloqueo de SV-6 es sobre la fila de `account`, que toda cuenta tiene. |
 | r-4 | Orden de despliegue | Primero el api con su migración, después platform. Con el api nuevo y el platform viejo, el paciente que choca con el tope al confirmar ve el mensaje del 409 en el toast, que ya está en español y sin datos del plan. Con el platform nuevo y el api viejo, las lecturas nuevas dan 404, el link se ve abierto y no hay tarjeta. |
 | r-5 | Dos mejoras de plan en Inicio | DP-2. |
 | r-6 | El contador y la agenda no coinciden (rg-7) | Lo mitiga «reservadas en {mes}» en la tarjeta. |
@@ -657,13 +649,13 @@ Convenciones:
 - **CA-8. [e2e] [security]** Las cuentas no se mezclan: una cuenta con 9 contadas sigue con 9 y con el link abierto después de que otra cuenta reserva hasta llegar a su tope.
 - **CA-9. [manual]** El mes es el calendario de Lima del instante en que el api acepta la reserva, con el servidor y el navegador en otro huso (c-3, SV-2). En el diff, el mes sale de `clinic-time.ts` y nunca del huso del servidor. Ejemplo para revisar el cálculo: una reserva aceptada el 30 de noviembre a las 23:30 de Lima (1 de diciembre, 04:30 UTC) cuenta en noviembre; una del 1 de diciembre a las 00:05 de Lima, en diciembre. `booking-usage` devuelve `month` y `renewsOn` de Lima, y la tarjeta los muestra sin pasarlos por el huso del navegador.
 - **CA-10. [e2e]** El mes anterior no cuenta (pc-5, A-18). Con la cuenta en el tope el mes anterior y reservas perdidas de ese mes (la prueba siembra las dos cosas), este mes el link está abierto, la tarjeta dice «0 de 10» y no muestra reservas perdidas. Una reserva perdida del último día del mes anterior a las 23:59 de Lima no suma este mes; una del día 1 a las 00:00 de Lima, sí.
-- **CA-11. [e2e]** Empieza en cero desde el despliegue (d-17, c-9). Una cuenta con 10 citas creadas este mes sin pasar por el booking con la función (la prueba las siembra directo en la base, como las de antes del despliegue) tiene el contador en 0: la tarjeta dice «0 de 10» y el link acepta reservas.
-- **CA-12. [manual]** El contador solo sube. En el diff, solo el caso de uso de la reserva pública lo aumenta, en la misma transacción que crea la cita, y ningún camino lo baja ni lo recalcula a partir de las citas: ni cancelar, ni reprogramar, ni un cambio de estado. Cuando exista «no asistió», esas citas siguen contando (d-7).
+- **CA-11. [e2e]** Cuentan todas las citas creadas en el mes, también las anteriores al despliegue (d-17, cambiada el 29 de octubre de 2026). Una cuenta Gratis con 10 citas creadas este mes, sembradas directo en la base, tiene el link cerrado y la tarjeta dice que llegó al tope.
+- **CA-12. [manual]** En el diff, el conteo no filtra por estado: canceladas, atendidas y, cuando exista, «no asistió» siguen contando (d-7).
 
 ### Concurrencia (c-8, SV-6)
 
-- **CA-13. [e2e] [security]** Con el contador en 9, dos reservas simultáneas a horarios distintos, de dos médicos de la sede, dejan exactamente un 200 y un 409 `BOOKING_CLOSED`. En la base hay una cita y una ficha nuevas, no dos. El contador queda en 10 y nunca en 11: la tarjeta dice «Llegaste al tope de 10 citas de tu plan Gratis», no «11 de 10». Hay una reserva perdida más. Sale la confirmación al paciente que entró, un solo aviso del 100 % al dueño y ningún correo a la dirección del paciente que no entró.
-- **CA-14. [e2e]** Con el contador en 7, dos reservas simultáneas entran las dos, el contador queda en 9 y sale un solo aviso del 80 %.
+- **CA-13. [e2e] [security]** Con 9 citas en el mes, dos reservas simultáneas a horarios distintos, de dos médicos de la sede, dejan exactamente un 200 y un 409 `BOOKING_CLOSED`. En la base hay una cita y una ficha nuevas, no dos. El contador queda en 10 y nunca en 11: la tarjeta dice «Llegaste al tope de 10 citas de tu plan Gratis», no «11 de 10». Hay una reserva perdida más. Sale la confirmación al paciente que entró, un solo aviso del 100 % al dueño y ningún correo a la dirección del paciente que no entró.
+- **CA-14. [e2e]** Con 7 citas en el mes, dos reservas simultáneas entran las dos, quedan 9 y sale un solo aviso del 80 %.
 
 ### Topes por plan y cambios de plan (d-14, pc-1 a pc-6, SV-3)
 

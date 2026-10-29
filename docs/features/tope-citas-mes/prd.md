@@ -61,7 +61,7 @@ Son firmes; el resto del documento las aplica.
 | d-14 | Topes al mes: Consultorio, 150; Clínica, 600; Red, a medida y sin tope. Resuelve q-3. No es la recomendación de la v1 (300 y 1,500). | Humano, 25 oct 2026 |
 | d-15 | Un campo nuevo y opcional por sede, «WhatsApp o teléfono para pacientes»: empieza vacío, lo agrega un ADMIN y no se precarga. Resuelve q-4. | Humano, 25 oct 2026 |
 | d-16 | Sin correo de reservas perdidas: se ven solo en el panel, en la tarjeta de uso. Los correos al dueño al 80 % y al 100 % se mantienen. Resuelve q-5. No es la recomendación de la v1. | Humano, 25 oct 2026 |
-| d-17 | En el mes del lanzamiento se cuenta desde el despliegue. Resuelve q-6. | Humano, 25 oct 2026 |
+| d-17 | En el mes del lanzamiento cuenta el mes entero, también lo reservado antes del despliegue. Resuelve q-6 (antes: «desde el despliegue», 25 oct 2026). | Humano, 29 oct 2026 |
 | d-18 | Autorizado cambiar `entitlements.ts` y `plan.ts` del dominio (`api/src/domain/entities/subscription/`). `api/src/plugins/entitlements.ts` solo se toca si el engineer demuestra que hace falta, y en ese caso se vuelve a preguntar al humano. Resuelve q-7. | Humano, 25 oct 2026 |
 
 Quedan aceptados, porque el humano no los objetó al decidir la v1, estos supuestos: solo el dueño
@@ -149,7 +149,7 @@ Cada regla la valida el servidor, no solo la pantalla.
 | c-6 | **[Decisión d-7 + Propuesta]** Cuenta la cita en cualquier estado: pendiente, atendida, no asistió o cancelada (y confirmada, si algún día vuelve). | Lo que se cuenta es la reserva, no lo que pasó después. |
 | c-7 | **[Propuesta]** El tope es **de la cuenta**: suma las reservas de todas sus sedes y de todos sus médicos. | El plan es de la cuenta (`PRODUCT.md`, «Planes»). Consecuencia: en Clínica, una sede con mucho movimiento puede cerrar el link de las otras (rg-4). |
 | c-8 | **[Propuesta]** El tope **nunca se supera**, ni con dos reservas simultáneas por la última cita disponible: una entra y la otra ve el mensaje del tope (t-3). | «10 al mes» tiene que ser 10, y el médico nunca debe ver «11 de 10». |
-| c-9 | **[Decisión d-17]** En el mes del lanzamiento solo cuentan las reservas hechas desde que la función entra en producción. | Así nadie amanece con el link cerrado sin haber recibido antes el aviso del 80 %. |
+| c-9 | **[Decisión d-17]** En el mes del lanzamiento cuentan todas las citas creadas en el mes, también las anteriores al despliegue. | Se cuentan las citas de `appointment`, sin contador aparte. Costo: una cuenta Gratis con 10 o más citas ese mes queda con el link cerrado el día del despliegue, sin el aviso del 80 %. |
 
 ### Alternativa descartada: contar por la fecha de la cita
 
@@ -534,7 +534,7 @@ Las siete preguntas de la v1 se decidieron el 25 de octubre de 2026. No quedan p
 | q-3 | Topes de Consultorio, Clínica y Red | A) 300 / 1,500 / sin tope. B) 150 / 600 / sin tope. C) Sin tope en los planes de pago. | A | **B** (d-14): Consultorio 150, Clínica 600, Red a medida y sin tope. Consecuencia en rg-10. |
 | q-4 | ¿Qué contacto ve el paciente con el link cerrado? | a) Dato nuevo por sede. b) Esperar a «Editar sede». c) El teléfono que ya tiene la sede. d) Ninguno. | a | **a** (d-15): «WhatsApp o teléfono para pacientes», opcional, vacío al principio, lo agrega un ADMIN, sin precargar. |
 | q-5 | ¿Con qué frecuencia se avisa por correo de las reservas perdidas? | a) Como mucho uno por día. b) Uno por intento. c) Resumen semanal. d) Solo en el panel. | a | **d** (d-16): sin correo; solo en la tarjeta de uso. Los correos del 80 % y el 100 % se mantienen. Consecuencia en rg-11. |
-| q-6 | ¿Qué cuenta en el mes del lanzamiento? | a) Solo desde el lanzamiento. b) Todo el mes. | a | **a** (d-17). |
+| q-6 | ¿Qué cuenta en el mes del lanzamiento? | a) Solo desde el lanzamiento. b) Todo el mes. | a | **b** (d-17, cambiada el 29 oct 2026). |
 | q-7 | ¿Se autoriza cambiar `entitlements.ts`? | Sí o no. | Sí, en el dominio | **Sí, en el dominio** (d-18): `entitlements.ts` y `plan.ts`. El plugin, solo si el engineer demuestra que hace falta, y volviendo a preguntar al humano. |
 
 ---
@@ -586,7 +586,7 @@ pantallas a 375 px y a 1280 px.
   quedan bajo el tope nuevo. Bajar de plan o cancelar la suscripción lo cierra si ya llegan al tope
   nuevo. Las citas existentes no cambian.
 - **A-18** El día 1 a las 00:00 de Lima el link se abre solo y la tarjeta empieza en «0 de {tope}».
-- **A-19** En el mes del lanzamiento solo cuentan las reservas posteriores al despliegue (d-17).
+- **A-19** En el mes del lanzamiento cuentan todas las citas creadas en el mes, también las anteriores al despliegue (d-17).
 - **A-20** De una reserva perdida solo quedan la cuenta, la sede y el momento; los registros del
   sistema no guardan datos del paciente, y la marca contra el doble conteo no lleva identificadores.
   Lo verifica el security-reviewer.

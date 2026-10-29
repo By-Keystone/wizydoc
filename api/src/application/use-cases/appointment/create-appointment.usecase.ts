@@ -171,7 +171,7 @@ export class CreateApointmentUseCase {
     if (!days[date]?.includes(time)) throw new Conflict(SLOT_UNAVAILABLE);
   }
 
-  private async assertMonthHasRoom({
+  private async countBookedOrCloseBooking({
     clinic,
     entitlements,
     month,
@@ -182,6 +182,14 @@ export class CreateApointmentUseCase {
     );
     if (!isWithinLimit(entitlements.monthlyAppointmentCap, booked))
       throw new BookingClosed();
+    return booked;
+  }
+
+  // Se bloquea account y no subscription: una cuenta sin suscripción (Gratis) no tiene esa fila.
+  private async lockAccount(accountId: string) {
+    await getClient().$queryRaw`
+      SELECT 1 FROM account WHERE id = ${accountId}::uuid FOR NO KEY UPDATE
+    `;
   }
 
   private async findBookableDoctor(
@@ -205,10 +213,10 @@ export class CreateApointmentUseCase {
   }
 
   private async book(dto: CreateAppointmentDto, target: BookingTarget) {
-    const { clinic, entitlements, month } = target;
+    const { clinic, entitlements } = target;
     const { accountId } = clinic.resource;
 
-    await this.assertMonthHasRoom(target);
+    await this.countBookedOrCloseBooking(target);
 
     const { date, time } = parseWallTime(dto.scheduledAt);
     await this.assertSlotIsOffered(dto, date, time);
@@ -219,12 +227,8 @@ export class CreateApointmentUseCase {
     );
 
     return inTransaction(async () => {
-      const bookedThisMonth = await this.monthlyBookings.reserveIfBelowCap({
-        accountId,
-        month,
-        cap: entitlements.monthlyAppointmentCap,
-      });
-      if (bookedThisMonth === null) throw new BookingClosed();
+      await this.lockAccount(accountId);
+      const bookedBefore = await this.countBookedOrCloseBooking(target);
 
       // El booking es anónimo: reutiliza la ficha del documento pero nunca la modifica.
       const bookedPatient = await getClient().patient.upsert({
@@ -262,7 +266,7 @@ export class CreateApointmentUseCase {
       return {
         patient: bookedPatient,
         appointment: bookedAppointment,
-        bookedThisMonth,
+        bookedThisMonth: bookedBefore + 1,
         accessToken: includesPatientAppointmentManagement
           ? await this.appointments.issueAccessToken(bookedAppointment.id)
           : null,

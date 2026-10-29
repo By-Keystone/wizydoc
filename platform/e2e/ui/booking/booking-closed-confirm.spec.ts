@@ -80,6 +80,13 @@ test("CA-22 y CA-23: si el contador llega a 10 mientras el paciente llena «Tus 
   await chooseSlotAndGoToPatientStep(page);
   await fillPatientDetails(page, details);
   await setMonthlyBookings(world.accountId, 10);
+  const prisma = await getTestPrisma();
+  const appointmentsBefore = await prisma.appointment.count({
+    where: { clinicId: world.clinicId },
+  });
+  const patientsBefore = await prisma.patient.count({
+    where: { accountId: world.accountId },
+  });
 
   await page.getByRole("button", { name: "Confirmar reserva" }).click();
 
@@ -99,13 +106,12 @@ test("CA-22 y CA-23: si el contador llega a 10 mientras el paciente llena «Tus 
   ).toBeVisible();
   await expect(page.getByRole("textbox")).toHaveCount(0);
   await expectNoPlanTalk(page);
-  const prisma = await getTestPrisma();
   expect(
     await prisma.patient.count({ where: { accountId: world.accountId } }),
-  ).toBe(0);
+  ).toBe(patientsBefore);
   expect(
     await prisma.appointment.count({ where: { clinicId: world.clinicId } }),
-  ).toBe(0);
+  ).toBe(appointmentsBefore);
   expect(readEmailsTo(details.email)).toHaveLength(0);
   await expectMissedBookings(world.accountId, 1);
   await expectMissedBookingsStay(world.accountId, 1);

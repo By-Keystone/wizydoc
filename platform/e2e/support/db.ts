@@ -122,16 +122,6 @@ export interface TestPrisma {
       where: Record<string, unknown>;
     }): Promise<TestPrismaSubscriptionRow>;
   };
-  accountMonthlyBookings: {
-    upsert(args: {
-      where: Record<string, unknown>;
-      create: Record<string, unknown>;
-      update: Record<string, unknown>;
-    }): Promise<{ booked: number }>;
-    findUnique(args: {
-      where: Record<string, unknown>;
-    }): Promise<{ booked: number } | null>;
-  };
   missedBooking: {
     count(args: { where: Record<string, unknown> }): Promise<number>;
     findMany(args: {
@@ -304,6 +294,10 @@ export interface TestPrisma {
   };
   appointment: {
     create(args: { data: Record<string, unknown> }): Promise<{ id: string }>;
+    createMany(args: { data: Record<string, unknown>[] }): Promise<unknown>;
+    deleteMany(args: {
+      where: Record<string, unknown>;
+    }): Promise<{ count: number }>;
     count(args: { where: Record<string, unknown> }): Promise<number>;
     findMany(args: {
       where: Record<string, unknown>;

@@ -39,18 +39,24 @@ async function postBody(body: Record<string, unknown>): Promise<APIResponse> {
 test("CA-24: con el tope alcanzado, POST /appointment responde 409 con el cuerpo exacto y no crea cita, ficha ni correo", async () => {
   const world = await createListedClinic("cap-ca24", { booked: 10 });
   const patient = newPortalPatient();
+  const prisma = await getTestPrisma();
+  const appointmentsBefore = await prisma.appointment.count({
+    where: { clinicId: world.clinicId },
+  });
+  const patientsBefore = await prisma.patient.count({
+    where: { accountId: world.accountId },
+  });
 
   const response = await postBookingTo(world, slotInDays(2), patient);
 
   expect(response.status()).toBe(409);
   expect(await response.json()).toEqual(BOOKING_CLOSED_BODY);
-  const prisma = await getTestPrisma();
   expect(
     await prisma.appointment.count({ where: { clinicId: world.clinicId } }),
-  ).toBe(0);
+  ).toBe(appointmentsBefore);
   expect(
     await prisma.patient.count({ where: { accountId: world.accountId } }),
-  ).toBe(0);
+  ).toBe(patientsBefore);
   expect(readEmailsTo(patient.email)).toHaveLength(0);
   expect(
     emailsWithSubject(world.owner.email, REACHED_NOTICE_SUBJECT),

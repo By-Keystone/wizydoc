@@ -24,6 +24,8 @@ import { expect, test } from "../../support/test";
 // docs/features/tope-citas-mes/plan.md: CA-17 y CA-18 (parte de navegador).
 
 const FREE_REACHED_TITLE = "Llegaste al tope de 10 citas de tu plan Gratis";
+const SEEDED_APPOINTMENTS = 119;
+const BOOKED_BY_PATIENTS = 2;
 
 async function openAsPatient(browser: Browser, clinicId: string) {
   const context = await browser.newContext({ baseURL: PLATFORM_BASE_URL });
@@ -91,7 +93,7 @@ test("CA-18: bajar de plan vale al instante: Consultorio con 120 que pasa a Grat
 }) => {
   const world = await createListedClinic("plan-ca18", {
     plan: "CONSULTORIO",
-    booked: 119,
+    booked: SEEDED_APPOINTMENTS,
   });
   await bookSuccessfully(world, 2);
   await bookSuccessfully(world, 3);
@@ -100,7 +102,9 @@ test("CA-18: bajar de plan vale al instante: Consultorio con 120 que pasa a Grat
   const patientsBefore = await prisma.patient.count({
     where: { accountId: world.accountId },
   });
-  expect(appointmentsBefore).toHaveLength(2);
+  expect(appointmentsBefore).toHaveLength(
+    SEEDED_APPOINTMENTS + BOOKED_BY_PATIENTS,
+  );
 
   await setPlan(world.accountId, "FREE");
 
