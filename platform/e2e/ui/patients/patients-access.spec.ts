@@ -21,7 +21,6 @@ import {
   toastItems,
   RECORD_SAVED,
 } from "../../support/patients-ui";
-import { PLATFORM_BASE_URL } from "../../support/env";
 import { expect, test } from "../../support/test";
 
 // docs/features/pacientes-busqueda/plan.md — CA-37, CA-38, CA-43 y CA-44 en el panel.
@@ -62,7 +61,7 @@ test.describe("Acceso a los pacientes en el panel", () => {
   });
 
   for (const role of ["DOCTOR", "USER"] as const) {
-    test(`CA-38: el ${role} de la sede A, al escribir a mano la sede B, llega a «Elige dónde entrar»; con la organización O1 ve el error y ningún dato`, async ({
+    test(`CA-38: el ${role} de la sede A, al escribir a mano la sede B o la organización O1, llega a «Elige dónde entrar» sin ningún dato`, async ({
       page,
     }) => {
       const world = await createPatientScopeWorld(
@@ -83,27 +82,14 @@ test.describe("Acceso a los pacientes en el panel", () => {
       ).toBeVisible();
       await expect(page).toHaveURL(/\/select\?switch=1$/);
 
-      await page.context().addCookies([
-        {
-          name: "resource_id",
-          value: world.clinicA.id,
-          url: PLATFORM_BASE_URL,
-          sameSite: "Lax",
-        },
-        {
-          name: "resource_type",
-          value: "CLINIC",
-          url: PLATFORM_BASE_URL,
-          sameSite: "Lax",
-        },
-      ]);
       await page.goto(
         organizationPatientsPath(accountId, world.organizationOne.id),
       );
 
       await expect(
-        page.getByRole("heading", { name: ERROR_HEADING }),
+        page.getByRole("heading", { name: SELECT_HEADING }),
       ).toBeVisible();
+      await expect(page).toHaveURL(/\/select\?switch=1$/);
       for (const hidden of [world.pa, world.pb, world.px]) {
         await expectNoPatientData(page, hidden);
       }
