@@ -199,11 +199,11 @@ realidad.
   octubre de 2026; el número es una hipótesis por validar con médicos reales.
 - **Cerrar el link de un consultorio con reservas falsas.** Cualquiera puede
   cerrar el link durante todo el mes: en Gratis bastan 10 reservas con DNI al
-  azar y un correo desechable, porque el contador nunca baja y el panel todavía
-  no cancela citas. Antes, bloquear la agenda exigía ocupar cientos de
+  azar y un correo desechable, porque las citas cuentan aunque se cancelen y el
+  panel todavía no cancela citas. Antes, bloquear la agenda exigía ocupar cientos de
   horarios. Riesgo aceptado para la beta el 26 de octubre de 2026: mientras
-  tanto, WizyDoc puede reabrir un link a mano, corrigiendo el contador o
-  asignando un plan. El límite por IP en `POST /appointment` (WIZ-44) es
+  tanto, WizyDoc puede reabrir un link a mano asignando un plan mayor o
+  borrando las citas falsas, con sus fichas. El límite por IP en `POST /appointment` (WIZ-44) es
   requisito antes de reactivar el cobro con Culqi.
 - **El sitio publicado** (wizydoc.app) muestra planes anteriores, distintos a
   estos.
