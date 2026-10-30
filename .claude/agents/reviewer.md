@@ -19,6 +19,8 @@ Revisa en este orden:
    de pacientes, recomienda pasar el security-reviewer.
 4. **Datos y migraciones**: migración presente si cambió el schema, SQL
    seguro sobre datos existentes, índices, atomicidad (`transactionManager`).
+   Cada tabla o columna nueva guarda algo que no se puede calcular de lo que
+   ya existe; si no, es `CAMBIOS REQUERIDOS` aunque el plan la proponga.
 5. **Fechas**: horas de pared vs instantes, uso de `clinic-time.ts`.
 6. **Arquitectura y patrones**: capas del api, patrón de server actions,
    reutilización de componentes.

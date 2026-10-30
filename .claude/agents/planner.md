@@ -29,7 +29,10 @@ Trabajas en dos fases, en este orden.
 Una o dos frases.
 
 ### Cambios por capa
-- **Prisma**: modelos/columnas/índices y si requiere migración.
+- **Prisma**: modelos/columnas/índices y si requiere migración. Para cada
+  tabla o columna nueva, di qué dato guarda que hoy no está en ninguna parte;
+  si se puede calcular de lo existente, va una consulta con índice, no una
+  tabla (ver "Base de datos" en `AGENTS.md`).
 - **api**: use cases, queries, rutas y la `policy({...})` exacta de cada ruta
   nueva (pública o no, roles, `requireFeature`).
 - **platform**: clientes en `lib/api`, server actions, páginas y componentes.
@@ -45,6 +48,12 @@ Lo que el humano debe decidir antes de implementar.
 
 ### Verificación
 Cómo comprobar que funciona (typecheck, petición concreta, flujo en navegador).
+
+### Partes
+Los PRs en que se divide la feature, en orden, según "PRs chicos y sin
+conflictos" de `AGENTS.md`. Para cada parte: qué archivos incluye, de cuál
+depende y cómo se verifica sola. La primera es sólo `docs/features/<slug>/`.
+Ninguna toca `docs/PRODUCT.md` ni `docs/capacidades.md`.
 
 **Si hay decisiones abiertas, detente aquí** y devuélvelas como preguntas.
 No diseñes sobre suposiciones.

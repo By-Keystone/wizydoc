@@ -73,17 +73,40 @@ worktree (sólo cuando el humano lo pide), el plan vive en ese worktree.
    revisa con [Lavish](https://github.com/kunchenguid/lavish-axi):
    `npx -y lavish-axi <archivo>`, sin instalar nada en el proyecto).
    El plan no incluye pasos en producción (auditorías, scripts contra datos reales).
+   Termina con sus **partes**: los PRs en que se divide (ver abajo).
 2. El humano aprueba el plan y el mockup.
 3. **product-manager** escribe los criterios de aceptación en el plan; los
-   marcados `[e2e]` los cubre el e2e-tester. Los cambios de tooling sin
+   marcados `[e2e]` los cubre el e2e-tester, y sólo se marcan así los flujos
+   principales, los permisos y la seguridad. Los cambios de tooling sin
    lógica de negocio (linter, build) no los llevan.
-4. **engineer** implementa según `docs/features/<slug>/`.
+4. **engineer** implementa la parte que toca según `docs/features/<slug>/`.
 5. **reviewer** revisa el diff; **security-reviewer** si toca rutas públicas,
    auth, billing, invitaciones o datos de pacientes.
 6. **e2e-tester** prueba los criterios y los flujos afectados. No hace falta
    otra ronda si después sólo cambian tipos o comentarios.
-7. Cumplida la definición de "terminado", Claude hace commit en la rama del
-   ticket, push y abre el PR con `gh pr create`. **El humano hace el merge.**
+7. Cumplida la definición de "terminado", Claude hace commit en la rama de la
+   parte, push y abre el PR con `gh pr create`. **El humano hace el merge.**
+
+Los pasos 4 a 7 se repiten por cada parte, en orden.
+
+### PRs chicos y sin conflictos
+
+- Un PR se entiende leyéndolo entero: tiene como mucho unas 400 líneas de
+  código de producción (sin contar pruebas ni docs) y se puede mergear solo
+  sin romper `main`.
+- La primera parte de una feature es sólo `docs/features/<slug>/` (plan,
+  mockup y criterios). Después, el api antes que platform. Si algo cambia de
+  forma (una ruta, un campo), primero se agrega lo nuevo, luego se cambia
+  quien lo usa y al final se quita lo viejo.
+- Una parte que depende de otra sin mergear se apila con `gh stack`; las demás
+  salen de `origin/main`.
+- Ningún PR de feature o de fix edita `docs/PRODUCT.md` ni
+  `docs/capacidades.md`: las decisiones de producto viven en el plan o el PRD
+  de la feature, y esos dos archivos se ponen al día en un PR `docs:` aparte
+  cuando la feature ya está mergeada. `platform/e2e/README.md` sólo cambia si
+  cambia cómo se corre o se escribe una prueba.
+- Después de cada merge, Claude rebasa los PRs abiertos sobre `origin/main` y
+  los deja sin conflictos antes de que el humano los revise.
 
 ## Definición de "terminado"
 
@@ -106,6 +129,10 @@ worktree (sólo cuando el humano lo pide), el plan vive en ese worktree.
 - Fechas: las horas de agenda son "hora de pared" de la clínica; los instantes
   se convierten con `api/src/domain/services/clinic-time.ts`. Nunca uses la
   zona horaria del servidor.
+- Base de datos: nada de tablas ni columnas con datos que se pueden calcular
+  de lo que ya existe (contadores, totales, copias). Se consulta lo existente
+  con un índice y, si hace falta atomicidad, un bloqueo de fila. Una tabla
+  nueva sólo para un dato que hoy no está en ninguna parte.
 
 ## Prohibido sin confirmación explícita
 
