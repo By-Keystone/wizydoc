@@ -32,7 +32,6 @@ import {
   createOwnerWithFirstClinic,
   openClinicDashboard,
 } from "./first-use";
-import { createPatient } from "./patients";
 import { ONBOARDING_ADDRESS } from "./ui";
 import { uniqueEmail, uniqueName } from "./users";
 
@@ -80,6 +79,8 @@ const SEEDED_SPECIALTY = "Cita sembrada";
 const SEEDED_SCHEDULED_AT = new Date("2020-01-01T15:00:00Z");
 const SLOT_FREEING_STATUS = "CANCELLED";
 const SEED_BATCH_SIZE = 1_000;
+const SEEDED_PATIENT_DOCUMENT_NUMBER = "SEMBRADO";
+const SEEDED_PATIENT_PHONE = "+51987654321";
 const BEACON_SETTLE_MS = 1_500;
 const DOCUMENT_NUMBER_DIGITS = 8;
 const ONE_HUNDRED_MILLION = 100_000_000;
@@ -165,6 +166,28 @@ async function findDoctorToSeedWith(accountId: string) {
   };
 }
 
+async function findOrCreateSeededPatient(accountId: string): Promise<string> {
+  const prisma = await getTestPrisma();
+  const identity = {
+    accountId,
+    documentType: "DNI",
+    documentNumber: SEEDED_PATIENT_DOCUMENT_NUMBER,
+  };
+  const existing = await prisma.patient.findFirst({ where: identity });
+  if (existing) return existing.id;
+
+  const created = await prisma.patient.create({
+    data: {
+      ...identity,
+      name: "Paciente",
+      lastName: "Sembrado",
+      email: `sembrado-${accountId}@example.com`,
+      phone: SEEDED_PATIENT_PHONE,
+    },
+  });
+  return created.id;
+}
+
 export async function setMonthlyBookings(
   accountId: string,
   total: number,
@@ -187,7 +210,7 @@ export async function setMonthlyBookings(
   if (missing === 0) return;
 
   const { doctorProfileId, clinicId } = await findDoctorToSeedWith(accountId);
-  const patient = await createPatient(accountId);
+  const patientId = await findOrCreateSeededPatient(accountId);
   for (let seeded = 0; seeded < missing; seeded += SEED_BATCH_SIZE) {
     await prisma.appointment.createMany({
       data: Array.from(
@@ -195,7 +218,7 @@ export async function setMonthlyBookings(
         () => ({
           doctorProfileId,
           clinicId,
-          patientId: patient.id,
+          patientId,
           scheduledAt: SEEDED_SCHEDULED_AT,
           status: SLOT_FREEING_STATUS,
           durationMinutes: 30,

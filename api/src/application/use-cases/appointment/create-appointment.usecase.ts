@@ -21,15 +21,16 @@ import type { IMonthlyBookingsRepository } from "@/domain/repositories/monthly-b
 import { formatDoctorName } from "@/domain/services/doctor-name";
 import {
   addDays,
-  currentMonth,
   firstDayOfNextMonth,
   formatClinicDateTime,
   formatDayAndMonth,
   formatMonthName,
   parseWallTime,
+  toWallTime,
   today,
   wallTimeToInstant,
 } from "@/domain/services/clinic-time";
+import { lockAccount } from "@/infrastructure/postgres/lock-account";
 import { AppointmentRepository } from "@/infrastructure/postgres/repositories/appointment.repository";
 import { MonthlyBookingsRepository } from "@/infrastructure/postgres/repositories/monthly-bookings.repository";
 import { GetAccountOwner } from "@/infrastructure/postgres/queries/account/get-account-owner.query";
@@ -133,6 +134,7 @@ interface BookableClinic {
 interface BookingTarget {
   clinic: BookableClinic;
   entitlements: Entitlements;
+  bookedAt: Date;
   month: string;
 }
 
@@ -171,7 +173,7 @@ export class CreateApointmentUseCase {
     if (!days[date]?.includes(time)) throw new Conflict(SLOT_UNAVAILABLE);
   }
 
-  private async countBookedOrCloseBooking({
+  private async countBookedOrThrowIfFull({
     clinic,
     entitlements,
     month,
@@ -183,13 +185,6 @@ export class CreateApointmentUseCase {
     if (!isWithinLimit(entitlements.monthlyAppointmentCap, booked))
       throw new BookingClosed();
     return booked;
-  }
-
-  // Se bloquea account y no subscription: una cuenta sin suscripción (Gratis) no tiene esa fila.
-  private async lockAccount(accountId: string) {
-    await getClient().$queryRaw`
-      SELECT 1 FROM account WHERE id = ${accountId}::uuid FOR NO KEY UPDATE
-    `;
   }
 
   private async findBookableDoctor(
@@ -213,10 +208,10 @@ export class CreateApointmentUseCase {
   }
 
   private async book(dto: CreateAppointmentDto, target: BookingTarget) {
-    const { clinic, entitlements } = target;
+    const { clinic, entitlements, bookedAt } = target;
     const { accountId } = clinic.resource;
 
-    await this.countBookedOrCloseBooking(target);
+    await this.countBookedOrThrowIfFull(target);
 
     const { date, time } = parseWallTime(dto.scheduledAt);
     await this.assertSlotIsOffered(dto, date, time);
@@ -227,8 +222,8 @@ export class CreateApointmentUseCase {
     );
 
     return inTransaction(async () => {
-      await this.lockAccount(accountId);
-      const bookedBefore = await this.countBookedOrCloseBooking(target);
+      await lockAccount(accountId);
+      const bookedBefore = await this.countBookedOrThrowIfFull(target);
 
       // El booking es anónimo: reutiliza la ficha del documento pero nunca la modifica.
       const bookedPatient = await getClient().patient.upsert({
@@ -260,6 +255,7 @@ export class CreateApointmentUseCase {
           scheduledAt: wallTimeToInstant(dto.scheduledAt),
           patientId: bookedPatient.id,
           clinicId: clinic.resourceId,
+          createdAt: bookedAt,
         },
       });
 
@@ -427,6 +423,7 @@ export class CreateApointmentUseCase {
   }
 
   async execute(dto: CreateAppointmentDto) {
+    const bookedAt = new Date();
     const client = getClient();
 
     const clinic = await client.clinic.findUnique({
@@ -451,7 +448,8 @@ export class CreateApointmentUseCase {
       entitlements: await this.entitlementsQuery.execute(
         clinic.resource.accountId,
       ),
-      month: currentMonth(),
+      bookedAt,
+      month: toWallTime(bookedAt).date.slice(0, 7),
     };
 
     const booked = await this.bookOrRecordMissed(dto, target);

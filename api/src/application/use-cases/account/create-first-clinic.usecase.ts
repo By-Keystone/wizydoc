@@ -4,6 +4,7 @@ import type { IClinicRepository } from "@/domain/repositories/clinic.repository"
 import type { IMembershipRepository } from "@/domain/repositories/membership.repository";
 import type { IOrganizationRepository } from "@/domain/repositories/organization.repository";
 import type { ITransactionManager } from "@/domain/services/transaction-manager";
+import { lockAccount } from "@/infrastructure/postgres/lock-account";
 import { lockAccountQuota } from "@/infrastructure/postgres/lock-account-quota";
 import { liveDoctorProfileWhere } from "@/infrastructure/postgres/queries/doctor-profile/live-doctor-profile";
 import { MembershipRepository } from "@/infrastructure/postgres/repositories/membership.repository";
@@ -58,7 +59,7 @@ export class CreateFirstClinicUseCase {
 
   async execute(dto: CreateFirstClinicDto) {
     return this.tx.runInTransaction(async () => {
-      await this.lockAccount(dto.accountId);
+      await lockAccount(dto.accountId);
       await lockAccountQuota(dto.accountId);
       await this.assertOwnerWithoutOrganizations(dto);
 
@@ -92,13 +93,6 @@ export class CreateFirstClinicUseCase {
         clinicId: clinic.resourceId,
       };
     });
-  }
-
-  // subscription es opcional en el schema: sin ella lockAccountQuota no bloquea nada.
-  private async lockAccount(accountId: string) {
-    await getClient().$queryRaw`
-      SELECT 1 FROM account WHERE id = ${accountId}::uuid FOR NO KEY UPDATE
-    `;
   }
 
   private async assertOwnerWithoutOrganizations(dto: CreateFirstClinicDto) {

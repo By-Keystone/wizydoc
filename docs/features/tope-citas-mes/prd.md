@@ -149,7 +149,7 @@ Cada regla la valida el servidor, no solo la pantalla.
 | c-6 | **[Decisión d-7 + Propuesta]** Cuenta la cita en cualquier estado: pendiente, atendida, no asistió o cancelada (y confirmada, si algún día vuelve). | Lo que se cuenta es la reserva, no lo que pasó después. |
 | c-7 | **[Propuesta]** El tope es **de la cuenta**: suma las reservas de todas sus sedes y de todos sus médicos. | El plan es de la cuenta (`PRODUCT.md`, «Planes»). Consecuencia: en Clínica, una sede con mucho movimiento puede cerrar el link de las otras (rg-4). |
 | c-8 | **[Propuesta]** El tope **nunca se supera**, ni con dos reservas simultáneas por la última cita disponible: una entra y la otra ve el mensaje del tope (t-3). | «10 al mes» tiene que ser 10, y el médico nunca debe ver «11 de 10». |
-| c-9 | **[Decisión d-17]** En el mes del lanzamiento cuentan todas las citas creadas en el mes, también las anteriores al despliegue. | Se cuentan las citas de `appointment`, sin contador aparte. Costo: una cuenta Gratis con 10 o más citas ese mes queda con el link cerrado el día del despliegue, sin el aviso del 80 %. |
+| c-9 | **[Decisión d-17]** En el mes del lanzamiento cuentan todas las citas creadas en el mes, también las anteriores al despliegue. | Se cuentan las citas de `appointment`, sin contador aparte. Costo: una cuenta Gratis con 10 o más citas ese mes queda con el link cerrado el día del despliegue sin ningún correo (ni el del 80 % ni el del 100 %), y una con 8 o 9 no recibe el del 80 %. Igual en Consultorio y Clínica con sus umbrales. |
 
 ### Alternativa descartada: contar por la fecha de la cita
 
@@ -517,8 +517,9 @@ redacción legal la valida un abogado.
   security-reviewer). En Gratis bastan 10 reservas con DNI al azar y un correo desechable para cerrar el
   link durante todo el mes, porque el contador nunca baja (d-13) y el panel todavía no cancela citas.
   Antes de esta feature, bloquear la agenda exigía ocupar cientos de horarios. **Aceptado por el humano
-  para la beta el 26 de octubre de 2026.** Mientras tanto, WizyDoc puede reabrir un link a mano,
-  corrigiendo el contador o asignando un plan. El límite por IP en `POST /appointment` (WIZ-44) es
+  para la beta el 26 de octubre de 2026.** Mientras tanto, WizyDoc puede reabrir un link a mano
+  asignando un plan mayor o borrando las citas falsas (con sus fichas) en la base; ya no hay contador que
+  corregir. El límite por IP en `POST /appointment` (WIZ-44) es
   requisito antes de reactivar el cobro con Culqi.
 
 ---

@@ -96,7 +96,9 @@ de 2026: el humano no los objetó al aprobar el plan.
   lo pone el navegador (VP-6), no el servidor (pv-3).
 - **SV-10. Correos al dueño (e-1 a e-3).** Salen después de confirmar la transacción, como el correo de
   confirmación de hoy. El del 80 % sale si el contador nuevo es igual a `ceil(tope × 0,8)`, y el del 100 %
-  si es igual al tope. Como el contador solo sube de a uno, cada valor se alcanza una sola vez por mes.
+  si es igual al tope. Las citas del mes suben de a una y nunca bajan mientras se cumplan dos cosas: ningún
+  camino borra citas y toda cita se crea con el bloqueo de SV-6 (hoy, sólo la reserva pública). Así cada
+  valor se alcanza una sola vez por mes.
   Por eso cada aviso sale una vez por mes y por tope, y al volver a un tope ya avisado no se repite (pc-4),
   sin guardar qué se avisó. Los umbrales de los tres planes con tope son todos distintos (8, 10, 120, 150,
   480 y 600). Destinatario: `account.ownerId` → correo y nombre del usuario. Si falla el envío, se
@@ -530,7 +532,7 @@ formatea como fechas de calendario, sin pasarlos por el huso del servidor ni del
 | cl-5 | Sede sin médicos y tope alcanzado | El paciente ve el mensaje de «sin médicos» (t-5), y en Inicio, el aviso L-3 o la guía. El ADMIN ve igual la tarjeta en el tope. |
 | cl-6 | Cancelación desde el link con el tope alcanzado | Se cancela como siempre y el link sigue cerrado (c-4, a-2). |
 | cl-7 | El ADMIN con varias sedes | El número es de la cuenta. El contacto y su diálogo son los de la sede donde está. |
-| cl-8 | El día 1 | Es otro mes: no hay fila del contador y las reservas perdidas se cuentan desde las 00:00 de Lima (pc-5). Nada que programar. |
+| cl-8 | El día 1 | Es otro mes: la ventana del conteo empieza de nuevo y las reservas perdidas se cuentan desde las 00:00 de Lima (pc-5). Nada que programar. |
 
 ## Fuera de alcance
 
@@ -597,7 +599,7 @@ Pueden romperse según cómo se implemente:
 | `ui/clinic/dashboard-link-status.spec.ts` (#126) | el estado del link cambia sin tope alcanzado | Con 0 o 1 cita sigue L-2. |
 
 **Helpers que hacen falta para las pruebas nuevas:** llevar el contador de una cuenta a un número sin
-reservar N veces (Prisma sobre la tabla del contador, si el engineer elige SV-6 con contador), leer las
+reservar N veces (citas sembradas por Prisma en el mes), leer las
 reservas perdidas y el `patient_contact`, y lanzar dos `POST /appointment` a la vez (A-7). Se agregan a
 `support/db.ts` (`TestPrisma`) y se documentan en `platform/e2e/README.md`.
 
@@ -769,7 +771,7 @@ Convenciones:
 - **CA-73. [manual]** `api/src/domain/entities/subscription/plan.ts` define `monthlyAppointmentCap`: Gratis 10, Consultorio 150, Clínica 600 y Red `null`, y ya no tiene `includedDoctors`. `entitlements.ts` del dominio ya no tiene `maxDoctors` ni `extraDoctors`. El tope se lee de ahí en cada comprobación, sin caché ni otra copia de 10, 150 o 600 en el api, y la tarjeta toma los números de `booking-usage`.
 - **CA-74. [manual] [security]** `api/src/plugins/entitlements.ts`, `api/src/plugins/policy.ts` y `api/src/plugins/auth.ts` no cambian. Si el engineer necesita tocar el plugin de entitlements, se detiene y pregunta al humano (d-18).
 - **CA-75. [e2e]** Ningún plan limita médicos (d-2): una cuenta Gratis invita a 3 médicos a su sede sin 402 ni mensaje de plan. `GET /user/me` devuelve `entitlements` con `monthlyAppointmentCap: 10` y sin `maxDoctors`.
-- **CA-76. [manual]** La migración es nueva, creada con `pnpm prisma:migrate`, y ninguna existente cambia. No borra `subscription.extra_doctors` ni `AddOnType.DOCTOR_SEAT`, y no rellena datos: el contacto queda nulo en todas las sedes, y el contador y las reservas perdidas, vacíos.
+- **CA-76. [manual]** La migración es nueva (creada con `pnpm prisma:migrate` y reescrita a mano el 29 de octubre de 2026, con permiso del humano, al quitar el contador) y ninguna existente cambia. No borra `subscription.extra_doctors` ni `AddOnType.DOCTOR_SEAT`, y no rellena datos: el contacto queda nulo en todas las sedes y las reservas perdidas, vacías.
 
 ### Celular, accesibilidad y fallos
 
