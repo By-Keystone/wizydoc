@@ -702,7 +702,7 @@ test("el booking refleja el cambio: el médico con horarios aparece con la espec
   await expect(specialtyShown(fresh)).toHaveCount(0);
 });
 
-test("CA-78: un DOCTOR y un USER que abren la URL ven el estado de error, sin tabla ni botones", async ({
+test("CA-78: un DOCTOR y un USER de la sede que abren la URL de la organización llegan a «Elige dónde entrar», sin tabla ni botones", async ({
   page,
 }) => {
   const world = await createProfileWorld("forbidden-roles");
@@ -711,11 +711,11 @@ test("CA-78: un DOCTOR y un USER que abren la URL ven el estado de error, sin ta
       role === "DOCTOR"
         ? await addDoctor(world, { label: "fr-doc" })
         : await addMember(world, "USER", { label: "fr-user" });
-    await openUsersExpectingError(page, member, world);
+    await openUsersWithoutOrganizationAccess(page, member, world);
   }
 });
 
-async function openUsersExpectingError(
+async function openUsersWithoutOrganizationAccess(
   page: Page,
   user: ProfileUser,
   world: ProfileWorld,
@@ -723,9 +723,9 @@ async function openUsersExpectingError(
   await page.context().clearCookies();
   await signIn(page, user, world.clinicId);
   await page.goto(usersPath(user, world));
-  await expect(
-    page.getByText("Algo salió mal", { exact: false }),
-  ).toBeVisible();
+  await expect(page).toHaveURL(
+    new RegExp(`/account/${user.accountId}/select\\?switch=1$`),
+  );
   await expect(page.getByRole("table")).toHaveCount(0);
   await expect(
     page.getByRole("button", { name: /Editar especialidades|Invitar usuario/ }),

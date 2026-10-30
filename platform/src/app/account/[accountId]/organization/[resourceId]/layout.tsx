@@ -1,9 +1,6 @@
 import { Sidebar } from "@/components/common/sidebar";
 import { AppProvider } from "@/context/app/app.context";
-import { getActiveResource } from "@/lib/auth/guards";
 import { loadWorkspace } from "@/lib/auth/load-workspace";
-import { switchWorkspacePath } from "@/lib/auth/workspace-paths";
-import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 
 export default async function OrganizationLayout({
@@ -11,12 +8,9 @@ export default async function OrganizationLayout({
   params,
 }: {
   children: ReactNode;
-  params: Promise<{ accountId: string }>;
+  params: Promise<{ accountId: string; resourceId: string }>;
 }) {
-  const { resourceId, resourceType } = await getActiveResource();
-  const { accountId } = await params;
-
-  if (!resourceId || !resourceType) redirect(switchWorkspacePath(accountId));
+  const { accountId, resourceId } = await params;
 
   const { user, membership } = await loadWorkspace({
     accountId,

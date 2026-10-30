@@ -213,11 +213,11 @@ título (`CA-3: …`); los criterios están al final de cada
 - Un `APIRequestContext` por actor: el registro inicia sesión solo y deja su
   cookie en el contexto.
 - Selectores accesibles en español (`getByRole`, `getByLabel`, `getByText`).
-- Las páginas de `/account/<id>/organization/...` exigen las cookies
-  `resource_id` y `resource_type` que pone "Entrar" en `/select`. Si entrar a
-  la organización no es lo que se prueba, fíjalas con `context.addCookies`. Con
-  una sola sede el login entra directo a su dashboard y no escribe esas
-  cookies: no las des por puestas.
+- Las páginas de organización y de sede cargan el recurso del id de la URL, no
+  de las cookies `resource_id` y `resource_type` que pone "Entrar" en
+  `/select`. Las cookies sólo deciden adónde llevan `/`, `/login` y
+  `/onboarding`. Con una sola sede el login entra directo a su dashboard y no
+  las escribe: no las des por puestas.
 - Una prueba que necesite la lista de `/select` con una sola sede abre
   `/select?switch=1`; sin `switch`, esa URL redirige al dashboard.
 - El correo de cada envío queda en `e2e/.artifacts/emails.jsonl`; los enlaces
