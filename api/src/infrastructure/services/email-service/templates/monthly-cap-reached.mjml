@@ -1,0 +1,29 @@
+<mjml>
+  <mj-body background-color="#f4f4f4">
+    <mj-section background-color="#ffffff" padding="40px">
+      <mj-column>
+        <mj-text font-size="20px" font-weight="bold">Hola {{ownerName}},</mj-text>
+        <mj-text font-size="16px">
+          Tus pacientes reservaron las {{monthlyCap}} citas que incluye tu plan {{planName}} en {{monthName}}. Desde ahora, quien abra tu link verá «Este consultorio no está recibiendo reservas en línea por ahora». Las citas ya reservadas no cambian.
+        </mj-text>
+        <mj-text font-size="16px">
+          Tu link vuelve a recibir reservas el {{renewsOn}}, o desde que pases al plan {{nextPlanName}}, {{#if nextPlanMonthlyCap}}que incluye {{nextPlanMonthlyCap}} citas al mes{{else}}que se arma a la medida de tu red{{/if}}.
+        </mj-text>
+        <mj-text font-size="14px" color="#5C6B6A">
+          En tu panel verás cuántos pacientes intentan reservar y no pueden.
+        </mj-text>
+        <mj-button background-color="#0E8C82" href="{{{requestPlanUrl}}}">
+          Pedir el plan {{nextPlanName}}
+        </mj-button>
+        {{#unless hasPatientContact}}
+        <mj-text font-size="14px" color="#5C6B6A">
+          Tus pacientes no verán ningún número para contactarte. Puedes agregarlo desde tu panel.
+        </mj-text>
+        {{/unless}}
+        <mj-button background-color="#ffffff" color="#5C6B6A" border="1px solid #d1d5db" href="{{{panelUrl}}}">
+          Ir a mi panel
+        </mj-button>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>

@@ -267,6 +267,7 @@ export async function createSimpleClinicScenario(
 // Sin esta fila `POST /appointment` responde 404: la reserva sólo llega hasta «Tus datos».
 export async function removeClinicRow(clinicId: string): Promise<void> {
   const prisma = await getTestPrisma();
+  await prisma.missedBooking.deleteMany({ where: { clinicId } });
   await prisma.clinic.delete({ where: { resourceId: clinicId } });
 }
 

@@ -7,8 +7,10 @@ export type Feature =
   | "PATIENT_APPOINTMENT_MANAGEMENT";
 
 interface PlanCapabilities {
-  /** `null` es ilimitado: el plan Red se negocia por contrato, no por tope. */
-  includedDoctors: number | null;
+  displayName: string;
+  nextPlan: Plan | null;
+  /** `null` es sin tope: el plan Red se negocia por contrato. */
+  monthlyAppointmentCap: number | null;
   includedClinics: number | null;
   /** `null` cuando el plan no se cobra al contratarlo: Gratis no cuesta y Red se negocia aparte. */
   monthlyPriceCents: number | null;
@@ -22,19 +24,25 @@ interface PlanCapabilities {
  */
 export const PLAN_CAPABILITIES: Record<Plan, PlanCapabilities> = {
   FREE: {
-    includedDoctors: 1,
+    displayName: "Gratis",
+    nextPlan: "CONSULTORIO",
+    monthlyAppointmentCap: 10,
     includedClinics: 1,
     monthlyPriceCents: null,
     features: [],
   },
   CONSULTORIO: {
-    includedDoctors: 3,
+    displayName: "Consultorio",
+    nextPlan: "CLINICA",
+    monthlyAppointmentCap: 150,
     includedClinics: 1,
     monthlyPriceCents: 7900,
     features: ["PATIENT_RECORD", "PATIENT_APPOINTMENT_MANAGEMENT"],
   },
   CLINICA: {
-    includedDoctors: 8,
+    displayName: "Clínica",
+    nextPlan: "RED",
+    monthlyAppointmentCap: 600,
     includedClinics: 3,
     monthlyPriceCents: 19900,
     features: [
@@ -44,7 +52,9 @@ export const PLAN_CAPABILITIES: Record<Plan, PlanCapabilities> = {
     ],
   },
   RED: {
-    includedDoctors: null,
+    displayName: "Red",
+    nextPlan: null,
+    monthlyAppointmentCap: null,
     includedClinics: null,
     monthlyPriceCents: null,
     features: [

@@ -9,15 +9,20 @@ import { type Feature, PLAN_CAPABILITIES } from "./plan";
 export interface Entitlements {
   plan: Plan;
   features: readonly Feature[];
-  maxDoctors: number | null;
+  monthlyAppointmentCap: number | null;
   maxClinics: number | null;
 }
 
 interface SubscriptionState {
   plan: Plan;
   status: SubscriptionStatus;
-  extraDoctors: number;
   extraClinics: number;
+}
+
+const CAP_WARNING_PERCENT = 80;
+
+export function monthlyCapWarningThreshold(cap: number): number {
+  return Math.ceil((cap * CAP_WARNING_PERCENT) / 100);
 }
 
 function withExtras(included: number | null, extra: number): number | null {
@@ -42,10 +47,7 @@ export function entitlementsFor(
   return {
     plan,
     features: capabilities.features,
-    maxDoctors: withExtras(
-      capabilities.includedDoctors,
-      subscription?.extraDoctors ?? 0,
-    ),
+    monthlyAppointmentCap: capabilities.monthlyAppointmentCap,
     maxClinics: withExtras(
       capabilities.includedClinics,
       subscription?.extraClinics ?? 0,

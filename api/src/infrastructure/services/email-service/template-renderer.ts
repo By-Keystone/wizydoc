@@ -12,7 +12,23 @@ export type EmailTemplate =
   | "patient-cancelled-appointment"
   | "doctor-cancelled-appointment"
   | "patient-rescheduled-appointment"
-  | "doctor-rescheduled-appointment";
+  | "doctor-rescheduled-appointment"
+  | "monthly-cap-warning"
+  | "monthly-cap-reached";
+
+interface MonthlyCapVariables {
+  ownerName: string;
+  monthlyCap: number;
+  planName: string;
+  monthName: string;
+  renewsOn: string;
+  nextPlanName: string;
+  /** `null` cuando el plan siguiente se arma a medida y no tiene tope. */
+  nextPlanMonthlyCap: number | null;
+  requestPlanUrl: string;
+  hasPatientContact: boolean;
+  panelUrl: string;
+}
 
 interface TemplateVariables {
   "confirm-email": { name: string; confirmUrl: string };
@@ -65,6 +81,8 @@ interface TemplateVariables {
     previousDoctorName: string | null;
     agendaUrl: string;
   };
+  "monthly-cap-warning": MonthlyCapVariables & { bookedCount: number };
+  "monthly-cap-reached": MonthlyCapVariables;
 }
 
 const compiledCache = new Map<EmailTemplate, HandlebarsTemplateDelegate>();

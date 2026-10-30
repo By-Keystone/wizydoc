@@ -12,7 +12,6 @@ export class GetAccountEntitlements implements IGetAccountEntitlements {
       select: {
         plan: true,
         status: true,
-        extraDoctors: true,
         extraClinics: true,
       },
     });

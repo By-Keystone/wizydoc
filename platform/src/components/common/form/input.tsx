@@ -6,6 +6,8 @@ interface Props
   name: string;
   value?: string;
   label?: string;
+  /** Ayuda que se pinta debajo del input y se enlaza con `aria-describedby`. */
+  hint?: string;
   /** Mensaje de error de validación para este campo (se pinta debajo del input). */
   error?: string;
 }
@@ -14,12 +16,13 @@ export const Input = ({
   name,
   value,
   label,
+  hint,
   error,
   className,
   "aria-describedby": describedBy,
   ...rest
 }: Props) => (
-  <Field label={label} htmlFor={name} error={error}>
+  <Field label={label} htmlFor={name} hint={hint} error={error}>
     <input
       type="text"
       id={name}
@@ -27,7 +30,11 @@ export const Input = ({
       defaultValue={value}
       aria-invalid={error ? true : undefined}
       aria-describedby={
-        [describedBy, error ? `${name}-error` : undefined]
+        [
+          describedBy,
+          hint ? `${name}-hint` : undefined,
+          error ? `${name}-error` : undefined,
+        ]
           .filter(Boolean)
           .join(" ") || undefined
       }

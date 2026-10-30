@@ -6,9 +6,10 @@ import { toast } from "@/lib/toast";
 
 interface Props {
   clinicId: string;
+  variant?: "coral" | "outline";
 }
 
-export const CopyButton = ({ clinicId }: Props) => {
+export const CopyButton = ({ clinicId, variant = "coral" }: Props) => {
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(
@@ -24,7 +25,7 @@ export const CopyButton = ({ clinicId }: Props) => {
     <Button
       onClick={handleCopy}
       size={"sm"}
-      variant={"coral"}
+      variant={variant}
       className="min-h-10 sm:min-h-0"
     >
       Copiar link de reservas

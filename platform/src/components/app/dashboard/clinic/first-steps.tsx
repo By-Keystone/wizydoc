@@ -19,6 +19,7 @@ interface Props {
   hasSchedule: boolean;
   canEditSpecialties: boolean;
   isClinicBookable: boolean;
+  isAcceptingBookings: boolean;
 }
 
 interface StepProps {
@@ -105,6 +106,7 @@ export function FirstSteps({
   hasSchedule,
   canEditSpecialties,
   isClinicBookable,
+  isAcceptingBookings,
 }: Props) {
   const hasSpecialty = specialties.length > 0;
   const hasSpecialtyAction = !hasSpecialty && canEditSpecialties;
@@ -112,7 +114,7 @@ export function FirstSteps({
   if (pendingCount === 0) return null;
 
   const clinicPath = `/account/${accountId}/clinic/${clinicId}`;
-  // Un solo coral por pantalla: si el link ya funciona, el coral es «Copiar link de reservas».
+  // Un solo coral por pantalla: si el link ya funciona, el coral es «Copiar link de reservas» o, con el link cerrado, pedir el plan.
   const firstActionVariant = isClinicBookable ? "default" : "coral";
   const scheduleActionVariant = hasSpecialtyAction
     ? "outline"
@@ -123,8 +125,11 @@ export function FirstSteps({
   const title = isClinicBookable
     ? `${missing} para aparecer en el link de reservas`
     : `${missing} para recibir citas`;
+  const otherDoctorsStatus = isAcceptingBookings
+    ? "ya recibe citas con otros médicos"
+    : "ya tiene otros médicos";
   const description = isClinicBookable
-    ? `El link de ${clinicName} ya recibe citas con otros médicos.`
+    ? `El link de ${clinicName} ${otherDoctorsStatus}.`
     : "Mientras tanto, tu link de reservas no funciona: quien lo abra no podrá reservar.";
 
   return (

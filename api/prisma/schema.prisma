@@ -67,15 +67,17 @@ model Organization {
 }
 
 model Clinic {
-  resourceId String   @id @map("resource_id") @db.Uuid
-  name       String
-  address    String
-  phone      String
-  createdAt  DateTime @default(now()) @map("created_at")
-  updatedAt  DateTime @updatedAt @map("updated_at")
+  resourceId     String   @id @map("resource_id") @db.Uuid
+  name           String
+  address        String
+  phone          String
+  patientContact String?  @map("patient_contact")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
 
-  resource     Resource      @relation(fields: [resourceId], references: [id])
-  appointments Appointment[]
+  resource       Resource        @relation(fields: [resourceId], references: [id])
+  appointments   Appointment[]
+  missedBookings MissedBooking[]
 
   @@map("clinic")
 }
@@ -164,8 +166,23 @@ model Account {
   resources               Resource[]
   patients                Patient[]
   organizations           Organization[]
+  missedBookings          MissedBooking[]
 
   @@map("account")
+}
+
+// Sin datos del paciente a propósito: solo la cuenta, la sede y el momento.
+model MissedBooking {
+  id        String   @id @default(uuid(7)) @db.Uuid
+  accountId String   @map("account_id") @db.Uuid
+  clinicId  String   @map("clinic_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  clinic  Clinic  @relation(fields: [clinicId], references: [resourceId], onDelete: NoAction)
+
+  @@index([accountId, createdAt])
+  @@map("missed_booking")
 }
 
 model UserInvitation {
@@ -230,6 +247,7 @@ model Appointment {
 
   @@index([scheduledAt])
   @@index([patientId, scheduledAt])
+  @@index([clinicId, createdAt])
   @@map("appointment")
 }
 

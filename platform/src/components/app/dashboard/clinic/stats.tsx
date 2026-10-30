@@ -1,12 +1,14 @@
 import { CalendarDays, UserRound, Users } from "lucide-react";
 import { PlanFeatureNotice } from "@/components/common/plan-feature-notice";
 import { clinicApi } from "@/lib/api/clinic";
-import type { ClinicMetrics } from "@/lib/api/clinic/types";
+import type { BookingUsage, ClinicMetrics } from "@/lib/api/clinic/types";
 import { isPlanFeatureError } from "@/lib/api/errors";
+import { offersPlanUpgrade } from "@/lib/booking-usage";
 import { StatCard } from "../statcard";
 
 interface Props {
   resourceId: string;
+  bookingUsage: Promise<BookingUsage | null>;
 }
 
 async function loadMetrics(resourceId: string): Promise<ClinicMetrics | null> {
@@ -18,10 +20,16 @@ async function loadMetrics(resourceId: string): Promise<ClinicMetrics | null> {
   }
 }
 
-export async function ClinicStats({ resourceId }: Props) {
-  const metrics = await loadMetrics(resourceId);
+export async function ClinicStats({ resourceId, bookingUsage }: Props) {
+  const [metrics, usage] = await Promise.all([
+    loadMetrics(resourceId),
+    bookingUsage,
+  ]);
 
   if (!metrics) {
+    // Una sola mejora de plan por pantalla: la de la tarjeta de uso, cuando la ofrece.
+    if (usage && offersPlanUpgrade(usage)) return null;
+
     // Un solo botón coral por pantalla: el coral lo lleva el link o la guía.
     return (
       <PlanFeatureNotice

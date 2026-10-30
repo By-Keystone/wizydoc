@@ -72,6 +72,13 @@ export interface TestPrismaVerificationRow {
   expiresAt: Date;
 }
 
+export interface TestPrismaMissedBookingRow {
+  id: string;
+  accountId: string;
+  clinicId: string;
+  createdAt: Date;
+}
+
 export interface TestPrismaProfileRow {
   id: string;
   membershipId: string;
@@ -111,6 +118,19 @@ export interface TestPrisma {
       where: Record<string, unknown>;
       data: Record<string, unknown>;
     }): Promise<TestPrismaSubscriptionRow>;
+    delete(args: {
+      where: Record<string, unknown>;
+    }): Promise<TestPrismaSubscriptionRow>;
+  };
+  missedBooking: {
+    count(args: { where: Record<string, unknown> }): Promise<number>;
+    findMany(args: {
+      where: Record<string, unknown>;
+    }): Promise<TestPrismaMissedBookingRow[]>;
+    createMany(args: { data: Record<string, unknown>[] }): Promise<unknown>;
+    deleteMany(args: {
+      where: Record<string, unknown>;
+    }): Promise<{ count: number }>;
   };
   organization: {
     findFirst(args: {
@@ -124,6 +144,7 @@ export interface TestPrisma {
       name: string;
       address: string;
       phone: string;
+      patientContact: string | null;
     } | null>;
     count(args: { where: Record<string, unknown> }): Promise<number>;
     create(args: {
@@ -273,6 +294,10 @@ export interface TestPrisma {
   };
   appointment: {
     create(args: { data: Record<string, unknown> }): Promise<{ id: string }>;
+    createMany(args: { data: Record<string, unknown>[] }): Promise<unknown>;
+    deleteMany(args: {
+      where: Record<string, unknown>;
+    }): Promise<{ count: number }>;
     count(args: { where: Record<string, unknown> }): Promise<number>;
     findMany(args: {
       where: Record<string, unknown>;
