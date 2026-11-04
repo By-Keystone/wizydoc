@@ -1,7 +1,7 @@
 {
   "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
   "files": {
-    "includes": ["lib/**", "test/**", "*.json"]
+    "includes": ["bin/**", "lib/**", "test/**", "*.json"]
   },
   "formatter": { "indentStyle": "space", "indentWidth": 2 },
   "assist": { "actions": { "source": { "organizeImports": "off" } } },

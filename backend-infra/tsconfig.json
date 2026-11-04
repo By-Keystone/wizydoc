@@ -10,5 +10,5 @@
     "forceConsistentCasingInFileNames": true,
     "types": ["node"]
   },
-  "include": ["lib/**/*", "test/**/*"]
+  "include": ["bin/**/*", "lib/**/*", "test/**/*"]
 }
