@@ -50,12 +50,12 @@ export class ApiGateway extends Construct {
       retention: logs.RetentionDays.ONE_MONTH,
     });
 
-    const api = new apigateway.LambdaRestApi(this, "Api", {
-      handler: props.handler,
+    const api = new apigateway.RestApi(this, "Api", {
       // Regional y no edge: quien llama es el servidor de platform, no el navegador.
       endpointTypes: [apigateway.EndpointType.REGIONAL],
       domainName: { domainName: props.domainName, certificate },
       disableExecuteApiEndpoint: true,
+      defaultIntegration: new apigateway.LambdaIntegration(props.handler),
       // El navegador nunca llama al api (platform lo hace desde su servidor y
       // con rewrites), así que la clave sólo vive en el servidor de platform.
       defaultMethodOptions: { apiKeyRequired: true },
@@ -69,6 +69,7 @@ export class ApiGateway extends Construct {
     // CDK siempre publica la URL execute-api, que está apagada: copiada en
     // API_URL, platform recibiría 403 en todo.
     api.node.tryRemoveChild("Endpoint");
+    api.root.addProxy();
 
     const platformApiKey = api.addApiKey("PlatformApiKey");
     const platformUsagePlan = api.addUsagePlan("PlatformUsagePlan", {
