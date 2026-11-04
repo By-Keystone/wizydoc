@@ -42,6 +42,6 @@ export class BackendStack extends Stack {
       domainName: props.apiDomainName,
     });
 
-    new Authentication(this, "Authentication", { domain: props.zoneName });
+    new Authentication(this, "Authentication");
   }
 }

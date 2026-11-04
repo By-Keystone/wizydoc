@@ -1,22 +1,17 @@
 import * as cognito from "aws-cdk-lib/aws-cognito";
 import { Construct } from "constructs";
 
-const SENDER_LOCAL_PART = "no-reply";
 const MINIMUM_PASSWORD_LENGTH = 8;
 
-export interface AuthenticationProps {
-  domain: string;
-}
-
 export class Authentication extends Construct {
-  constructor(scope: Construct, id: string, props: AuthenticationProps) {
+  constructor(scope: Construct, id: string) {
     super(scope, id);
 
+    // Cognito sólo autentica: el api crea los usuarios, confirma el correo y recupera la contraseña.
     const userPool = new cognito.UserPool(this, "UserPool", {
-      selfSignUpEnabled: true,
       signInAliases: { email: true },
       signInCaseSensitive: false,
-      autoVerify: { email: true },
+      autoVerify: { email: false },
       // Sólo el correo: rol y cuenta quedan en la base del api, fuera del alcance del cliente.
       standardAttributes: { email: { required: true, mutable: true } },
       passwordPolicy: {
@@ -26,22 +21,11 @@ export class Authentication extends Construct {
         requireDigits: false,
         requireSymbols: false,
       },
-      accountRecovery: cognito.AccountRecovery.EMAIL_ONLY,
-      email: cognito.UserPoolEmail.withSES({
-        fromEmail: `${SENDER_LOCAL_PART}@${props.domain}`,
-        fromName: "WizyDoc",
-        sesVerifiedDomain: props.domain,
-      }),
-      userVerification: {
-        emailSubject: "Tu código de WizyDoc",
-        emailBody:
-          "Tu código de WizyDoc es {####}. Si no lo pediste, ignora este correo.",
-        emailStyle: cognito.VerificationEmailStyle.CODE,
-      },
+      accountRecovery: cognito.AccountRecovery.NONE,
     });
 
     userPool.addClient("ApiClient", {
-      // Sin secreto, cualquiera con el id del cliente podría llamar a SignUp y mandar correos.
+      // Sin secreto, cualquiera con el id del cliente podría probar contraseñas contra Cognito sin pasar por el api.
       generateSecret: true,
       authFlows: { userPassword: true },
       disableOAuth: true,

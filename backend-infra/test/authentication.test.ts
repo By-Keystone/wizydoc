@@ -9,7 +9,7 @@ function synthesizeAuthentication() {
     env: { account: "111111111111", region: "us-east-2" },
   });
 
-  new Authentication(stack, "Authentication", { domain: "wizydoc.app" });
+  new Authentication(stack, "Authentication");
 
   return Template.fromStack(stack);
 }
@@ -37,9 +37,22 @@ test("se inicia sesión con el correo, sin distinguir mayúsculas", () => {
   template.hasResourceProperties("AWS::Cognito::UserPool", {
     UsernameAttributes: ["email"],
     UsernameConfiguration: { CaseSensitive: false },
-    EmailConfiguration: {
-      EmailSendingAccount: "DEVELOPER",
-      From: "WizyDoc <no-reply@wizydoc.app>",
-    },
   });
+});
+
+test("Cognito no registra, no confirma ni recupera: lo hace el api", () => {
+  const template = synthesizeAuthentication();
+
+  const [userPool] = Object.values(
+    template.findResources("AWS::Cognito::UserPool"),
+  );
+
+  assert.deepEqual(userPool.Properties.AdminCreateUserConfig, {
+    AllowAdminCreateUserOnly: true,
+  });
+  assert.deepEqual(userPool.Properties.AutoVerifiedAttributes, []);
+  assert.deepEqual(userPool.Properties.AccountRecoverySetting, {
+    RecoveryMechanisms: [{ Name: "admin_only", Priority: 1 }],
+  });
+  assert.equal(userPool.Properties.EmailConfiguration, undefined);
 });
