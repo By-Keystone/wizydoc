@@ -7,15 +7,15 @@ import * as route53 from "aws-cdk-lib/aws-route53";
 import * as route53Targets from "aws-cdk-lib/aws-route53-targets";
 import { Construct } from "constructs";
 
-// Techo de costo ante una clave filtrada o un bucle, no un límite por usuario:
-// todo el tráfico llega desde el servidor de platform.
+// Techo de costo, no límite por usuario: todo el tráfico llega desde platform.
 const PLATFORM_REQUESTS_PER_SECOND = 100;
 const PLATFORM_BURST_REQUESTS = 200;
 
+const DISABLED_EXECUTE_API_URL_OUTPUT = "Endpoint";
+
 const AccessLogField = apigateway.AccessLogField;
 
-// Sin la ruta: lleva los tokens de invitación, de autogestión y de cambio de
-// contraseña (ver requestSerializer en api/src/server.ts).
+// Sin la ruta: lleva tokens de invitación, de autogestión y de contraseña.
 const accessLogFormat = apigateway.AccessLogFormat.custom(
   JSON.stringify({
     requestId: AccessLogField.contextRequestId(),
@@ -51,24 +51,19 @@ export class ApiGateway extends Construct {
     });
 
     const api = new apigateway.RestApi(this, "Api", {
-      // Regional y no edge: quien llama es el servidor de platform, no el navegador.
       endpointTypes: [apigateway.EndpointType.REGIONAL],
       domainName: { domainName: props.domainName, certificate },
       disableExecuteApiEndpoint: true,
       defaultIntegration: new apigateway.LambdaIntegration(props.handler),
-      // El navegador nunca llama al api (platform lo hace desde su servidor y
-      // con rewrites), así que la clave sólo vive en el servidor de platform.
+      // La clave sólo vive en el servidor de platform: el navegador nunca llama al api.
       defaultMethodOptions: { apiKeyRequired: true },
-      // API Gateway escribe logs con un único rol por cuenta y región.
       cloudWatchRole: true,
       deployOptions: {
         accessLogDestination: new apigateway.LogGroupLogDestination(accessLogs),
         accessLogFormat,
       },
     });
-    // CDK siempre publica la URL execute-api, que está apagada: copiada en
-    // API_URL, platform recibiría 403 en todo.
-    api.node.tryRemoveChild("Endpoint");
+    api.node.tryRemoveChild(DISABLED_EXECUTE_API_URL_OUTPUT);
     api.root.addProxy();
 
     const platformApiKey = api.addApiKey("PlatformApiKey");

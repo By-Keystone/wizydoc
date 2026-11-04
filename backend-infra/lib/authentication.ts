@@ -17,10 +17,8 @@ export class Authentication extends Construct {
       signInAliases: { email: true },
       signInCaseSensitive: false,
       autoVerify: { email: true },
-      // Sólo el correo: nombre, teléfono, rol y cuenta quedan en la base del
-      // api, donde el cliente no puede fijarlos.
+      // Sólo el correo: rol y cuenta quedan en la base del api, fuera del alcance del cliente.
       standardAttributes: { email: { required: true, mutable: true } },
-      // La misma regla que hoy con Better Auth: 8 caracteres, sin exigir tipos.
       passwordPolicy: {
         minLength: MINIMUM_PASSWORD_LENGTH,
         requireLowercase: false,
@@ -43,9 +41,7 @@ export class Authentication extends Construct {
     });
 
     userPool.addClient("ApiClient", {
-      // Con secreto, sólo el api puede registrar e iniciar sesión: sin él,
-      // cualquiera con el id del cliente llamaría a SignUp y mandaría correos
-      // desde el dominio.
+      // Sin secreto, cualquiera con el id del cliente podría llamar a SignUp y mandar correos.
       generateSecret: true,
       authFlows: { userPassword: true },
       disableOAuth: true,

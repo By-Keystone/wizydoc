@@ -29,8 +29,6 @@ export class BackendStack extends Stack {
       { hostedZoneId: props.hostedZoneId, zoneName: props.zoneName },
     );
 
-    // Temporal, hasta que el api se mude a este proyecto: permite probar de
-    // punta a punta el gateway, el dominio y la clave de platform.
     const temporaryHandler = new lambda.Function(this, "TemporaryHandler", {
       runtime: lambda.Runtime.NODEJS_22_X,
       architecture: lambda.Architecture.ARM_64,
