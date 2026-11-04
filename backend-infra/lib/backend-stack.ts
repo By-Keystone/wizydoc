@@ -3,6 +3,7 @@ import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as route53 from "aws-cdk-lib/aws-route53";
 import type { Construct } from "constructs";
 import { ApiGateway } from "./api-gateway";
+import { Authentication } from "./authentication";
 
 const HEALTH_RESPONSE_HANDLER = `
 exports.handler = async () => ({
@@ -42,5 +43,7 @@ export class BackendStack extends Stack {
       hostedZone,
       domainName: props.apiDomainName,
     });
+
+    new Authentication(this, "Authentication", { domain: props.zoneName });
   }
 }
