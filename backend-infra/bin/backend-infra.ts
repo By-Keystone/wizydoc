@@ -3,26 +3,24 @@ import { BackendStack } from "../lib/backend-stack";
 
 const DEPLOYMENT_REGION = "us-east-2";
 
-const app = new App();
+function requireEnv(name: string): string {
+  const envValue = process.env[name];
 
-function requireContext(key: string): string {
-  const contextValue: unknown = app.node.tryGetContext(key);
-
-  if (typeof contextValue !== "string" || contextValue === "") {
-    throw new Error(
-      `Falta el contexto "${key}": pásalo con -c ${key}=... o agrégalo a cdk.json.`,
-    );
+  if (!envValue) {
+    throw new Error(`Falta la variable de entorno ${name}.`);
   }
 
-  return contextValue;
+  return envValue;
 }
 
-new BackendStack(app, "WizydocBackend", {
+const domain = requireEnv("DOMAIN");
+
+new BackendStack(new App(), "WizydocBackend", {
   env: {
     account: process.env.CDK_DEFAULT_ACCOUNT,
     region: DEPLOYMENT_REGION,
   },
-  hostedZoneId: requireContext("hostedZoneId"),
-  zoneName: requireContext("zoneName"),
-  apiDomainName: requireContext("apiDomainName"),
+  hostedZoneId: requireEnv("HOSTED_ZONE_ID"),
+  zoneName: domain,
+  apiDomainName: `${requireEnv("API_SUBDOMAIN")}.${domain}`,
 });
