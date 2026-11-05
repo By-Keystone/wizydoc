@@ -1,0 +1,24 @@
+{
+  "name": "@wizydoc/backend-infra",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "cdk": "cdk",
+    "typecheck": "tsc --noEmit",
+    "test": "node --import tsx --test \"test/**/*.test.ts\"",
+    "lint": "biome lint",
+    "format": "biome format --write",
+    "check": "biome check"
+  },
+  "dependencies": {
+    "aws-cdk-lib": "^2.275.0",
+    "constructs": "^10.8.1"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.4.13",
+    "@types/node": "^22.20.5",
+    "aws-cdk": "2.1147.0",
+    "tsx": "^4.23.15",
+    "typescript": "^5.9.3"
+  }
+}
