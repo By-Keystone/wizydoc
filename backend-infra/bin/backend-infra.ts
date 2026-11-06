@@ -19,7 +19,7 @@ const requireOrigin = (name: string): string => {
 
 const domain = requireEnv("DOMAIN");
 
-new BackendStack(new App(), "WizydocBackend", {
+new BackendStack(new App(), process.env.STACK_NAME || "WizydocBackend", {
   env: {
     account: process.env.CDK_DEFAULT_ACCOUNT,
     region: DEPLOYMENT_REGION,

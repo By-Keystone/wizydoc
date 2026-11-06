@@ -76,22 +76,31 @@ existen, y si `.env` no está, el comando corre igual.
   - corre `typecheck`, `check` y `test`, y si alguno falla no despliega;
   - hace `cdk bootstrap`, que crea o actualiza el stack `CDKToolkit`;
   - hace `cdk deploy` en `us-east-2`.
-- El workflow usa el entorno `wizydoc/production` de GitHub y entra a AWS por
-  OIDC con el rol de `AWS_DEPLOY_ROLE_ARN`. No hay claves de AWS guardadas en
-  GitHub.
+- Cada push a `main` que toca `backend-infra/` corre
+  `.github/workflows/backend-infra-staging-deployment.yml`, con los mismos
+  pasos y sin aprobación, sobre el stack `WizydocBackend-staging`. El nombre
+  llega en `STACK_NAME`; sin él, el stack es `WizydocBackend`, el de
+  producción. Staging y producción comparten la cuenta, el bootstrap y el rol.
+- Cada workflow usa su entorno de GitHub, `wizydoc/production` o
+  `wizydoc/staging`, y entra a AWS por OIDC con el rol de
+  `AWS_DEPLOY_ROLE_ARN`. No hay claves de AWS guardadas en GitHub.
 - La preparación se hace una sola vez, y la hace el humano:
   1. En IAM, el proveedor OIDC `token.actions.githubusercontent.com`
-     (audiencia `sts.amazonaws.com`) y un rol que confíe sólo en el `sub`
-     `repo:By-Keystone@268437219/wizydoc@1193274675:environment:wizydoc/production`.
-     El repo usa el `sub` inmutable de GitHub, con los ID de la organización y
-     del repo: con `repo:By-Keystone/wizydoc:…`, STS rechaza el token.
+     (audiencia `sts.amazonaws.com`) y un rol que confíe sólo en los `sub` de
+     los dos entornos:
+     `repo:By-Keystone@268437219/wizydoc@1193274675:environment:wizydoc/production`
+     y el mismo con `wizydoc/staging`. El repo usa el `sub` inmutable de
+     GitHub, con los ID de la organización y del repo: con
+     `repo:By-Keystone/wizydoc:…`, STS rechaza el token.
   2. El rol tiene `AdministratorAccess`, porque el bootstrap crea roles de IAM
      y el bucket de assets con sus credenciales. No es más poder del que da
      `cdk deploy`: CloudFormation despliega con el rol de ejecución del
      bootstrap, que es administrador.
-  3. En el entorno `wizydoc/production` de GitHub, las variables
-     `AWS_DEPLOY_ROLE_ARN`, `HOSTED_ZONE_ID`, `DOMAIN`, `API_SUBDOMAIN`,
-     `FRONTEND_URL`, `EMAIL_FROM` y `TERMS_ACCEPTANCE_REQUIRED`.
+  3. En los entornos `wizydoc/production` y `wizydoc/staging` de GitHub, las
+     variables `AWS_DEPLOY_ROLE_ARN`, `HOSTED_ZONE_ID`, `DOMAIN`,
+     `API_SUBDOMAIN`, `FRONTEND_URL`, `EMAIL_FROM` y
+     `TERMS_ACCEPTANCE_REQUIRED`. Staging lleva su propio `API_SUBDOMAIN`
+     (por ejemplo, `api-staging`) y el `FRONTEND_URL` de su platform.
 
 ## Prohibido sin confirmación explícita
 
