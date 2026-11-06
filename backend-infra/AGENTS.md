@@ -74,17 +74,21 @@ existen, y si `.env` no está, el comando corre igual.
   `.github/workflows/backend-infra-production-deployment.yml`:
   - instala con el lockfile;
   - corre `typecheck`, `check` y `test`, y si alguno falla no despliega;
+  - hace `cdk bootstrap`, que crea o actualiza el stack `CDKToolkit`;
   - hace `cdk deploy` en `us-east-2`.
 - El workflow usa el entorno `wizydoc/production` de GitHub y entra a AWS por
   OIDC con el rol de `AWS_DEPLOY_ROLE_ARN`. No hay claves de AWS guardadas en
   GitHub.
 - La preparación se hace una sola vez, y la hace el humano:
-  1. `pnpm cdk bootstrap aws://<cuenta>/us-east-2`.
-  2. En IAM, el proveedor OIDC `token.actions.githubusercontent.com`
-     (audiencia `sts.amazonaws.com`) y un rol que confíe sólo en
-     `repo:By-Keystone/wizydoc:environment:wizydoc/production`. El rol sólo
-     necesita asumir los roles que crea el bootstrap de CDK
-     (`arn:aws:iam::<cuenta>:role/cdk-hnb659fds-*-<cuenta>-us-east-2`).
+  1. En IAM, el proveedor OIDC `token.actions.githubusercontent.com`
+     (audiencia `sts.amazonaws.com`) y un rol que confíe sólo en el `sub`
+     `repo:By-Keystone@268437219/wizydoc@1193274675:environment:wizydoc/production`.
+     El repo usa el `sub` inmutable de GitHub, con los ID de la organización y
+     del repo: con `repo:By-Keystone/wizydoc:…`, STS rechaza el token.
+  2. El rol tiene `AdministratorAccess`, porque el bootstrap crea roles de IAM
+     y el bucket de assets con sus credenciales. No es más poder del que da
+     `cdk deploy`: CloudFormation despliega con el rol de ejecución del
+     bootstrap, que es administrador.
   3. En el entorno `wizydoc/production` de GitHub, las variables
      `AWS_DEPLOY_ROLE_ARN`, `HOSTED_ZONE_ID`, `DOMAIN`, `API_SUBDOMAIN`,
      `FRONTEND_URL`, `EMAIL_FROM` y `TERMS_ACCEPTANCE_REQUIRED`.
