@@ -7,7 +7,6 @@ import * as route53 from "aws-cdk-lib/aws-route53";
 import * as route53Targets from "aws-cdk-lib/aws-route53-targets";
 import { Construct } from "constructs";
 
-// Techo de costo, no límite por usuario: todo el tráfico llega desde platform.
 const PLATFORM_REQUESTS_PER_SECOND = 100;
 const PLATFORM_BURST_REQUESTS = 200;
 
@@ -15,7 +14,6 @@ const DISABLED_EXECUTE_API_URL_OUTPUT = "Endpoint";
 
 const AccessLogField = apigateway.AccessLogField;
 
-// Sin la ruta: lleva tokens de invitación, de autogestión y de contraseña.
 const accessLogFormat = apigateway.AccessLogFormat.custom(
   JSON.stringify({
     requestId: AccessLogField.contextRequestId(),
@@ -38,6 +36,8 @@ export interface ApiGatewayProps {
 }
 
 export class ApiGateway extends Construct {
+  readonly api: apigateway.RestApi;
+
   constructor(scope: Construct, id: string, props: ApiGatewayProps) {
     super(scope, id);
 
@@ -55,7 +55,6 @@ export class ApiGateway extends Construct {
       domainName: { domainName: props.domainName, certificate },
       disableExecuteApiEndpoint: true,
       defaultIntegration: new apigateway.LambdaIntegration(props.handler),
-      // La clave sólo vive en el servidor de platform: el navegador nunca llama al api.
       defaultMethodOptions: { apiKeyRequired: true },
       cloudWatchRole: true,
       deployOptions: {
@@ -63,6 +62,7 @@ export class ApiGateway extends Construct {
         accessLogFormat,
       },
     });
+    this.api = api;
     api.node.tryRemoveChild(DISABLED_EXECUTE_API_URL_OUTPUT);
     api.root.addProxy();
 

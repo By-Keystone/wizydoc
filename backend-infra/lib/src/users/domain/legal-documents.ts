@@ -1,0 +1,3 @@
+export const CURRENT_TERMS_VERSION = "2026-10-24";
+export const CURRENT_PRIVACY_POLICY_VERSION = "sin-publicar";
+export const CURRENT_CHECKBOX_TEXT_VERSION = "2026-11-06";

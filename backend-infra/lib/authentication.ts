@@ -4,15 +4,15 @@ import { Construct } from "constructs";
 const MINIMUM_PASSWORD_LENGTH = 8;
 
 export class Authentication extends Construct {
+  readonly userPool: cognito.UserPool;
+
   constructor(scope: Construct, id: string) {
     super(scope, id);
 
-    // Cognito sólo autentica: el api crea los usuarios, confirma el correo y recupera la contraseña.
-    const userPool = new cognito.UserPool(this, "UserPool", {
+    this.userPool = new cognito.UserPool(this, "UserPool", {
       signInAliases: { email: true },
       signInCaseSensitive: false,
       autoVerify: { email: false },
-      // Sólo el correo: rol y cuenta quedan en la base del api, fuera del alcance del cliente.
       standardAttributes: { email: { required: true, mutable: true } },
       passwordPolicy: {
         minLength: MINIMUM_PASSWORD_LENGTH,
@@ -24,8 +24,7 @@ export class Authentication extends Construct {
       accountRecovery: cognito.AccountRecovery.NONE,
     });
 
-    userPool.addClient("ApiClient", {
-      // Sin secreto, cualquiera con el id del cliente podría probar contraseñas contra Cognito sin pasar por el api.
+    this.userPool.addClient("ApiClient", {
       generateSecret: true,
       authFlows: { userPassword: true },
       disableOAuth: true,
