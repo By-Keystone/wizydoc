@@ -1,0 +1,211 @@
+import assert from "node:assert/strict";
+import { test } from "node:test";
+import { ConditionalCheckFailedException } from "@aws-sdk/client-dynamodb";
+import type {
+  DynamoDBDocumentClient,
+  TransactWriteCommandInput,
+  UpdateCommandInput,
+} from "@aws-sdk/lib-dynamodb";
+import { createConfirmationToken } from "../../lib/src/users/domain/confirmation-token.entity";
+import {
+  CURRENT_CHECKBOX_TEXT_VERSION,
+  CURRENT_PRIVACY_POLICY_VERSION,
+  CURRENT_TERMS_VERSION,
+} from "../../lib/src/users/domain/legal-documents";
+import { createTermsAcceptance } from "../../lib/src/users/domain/terms-acceptance.entity";
+import { DynamoDBEmailSendAttempts } from "../../lib/src/users/infrastructure/persistence/dynamodb/email-send-attempts";
+import { fromDomainToDynamo } from "../../lib/src/users/infrastructure/persistence/dynamodb/user.mappers";
+import { UserRepository } from "../../lib/src/users/infrastructure/persistence/dynamodb/user.repository";
+import { buildUser } from "./fakes";
+
+const TABLE_NAME = "MainTable";
+const TEN_PAST_NOON = Date.UTC(2026, 10, 6, 12, 10, 30);
+const WINDOW_START = Date.UTC(2026, 10, 6, 12, 10, 0) / 1000;
+
+const capturingClient = ({
+  failure,
+  response = {},
+}: {
+  failure?: Error;
+  response?: unknown;
+} = {}) => {
+  const inputs: unknown[] = [];
+  const client = {
+    send: async (command: { input: unknown }) => {
+      inputs.push(command.input);
+      if (failure) throw failure;
+      return response;
+    },
+  } as unknown as DynamoDBDocumentClient;
+  return { client, inputs };
+};
+
+test("crea el usuario sin confirmar, su token y su constancia en una sola transacción, cada uno con su tipo y sin pisar ítems existentes", async () => {
+  const { client, inputs } = capturingClient();
+  const user = buildUser({ confirmed: false, onboardingCompleted: false });
+  const confirmationToken = createConfirmationToken(user.id);
+  const acceptedAt = new Date(TEN_PAST_NOON);
+  const termsAcceptance = createTermsAcceptance(
+    {
+      userId: user.id,
+      email: user.email,
+      ipAddress: "190.42.10.7",
+      userAgent: "Mozilla/5.0",
+    },
+    acceptedAt,
+  );
+
+  await new UserRepository(client, TABLE_NAME).create(
+    user,
+    confirmationToken,
+    termsAcceptance,
+  );
+
+  const [transaction] = inputs as TransactWriteCommandInput[];
+  const puts =
+    transaction.TransactItems?.map((operation) => operation.Put) ?? [];
+  assert.equal(puts.length, 3);
+  for (const put of puts) {
+    assert.equal(put?.TableName, TABLE_NAME);
+    assert.equal(put?.ConditionExpression, "attribute_not_exists(PK)");
+  }
+  const [userRecord, tokenRecord, termsRecord] = puts.map((put) => put?.Item);
+  assert.equal(userRecord?.PK, `USER#${user.id}`);
+  assert.equal(userRecord?.ItemType, "USER");
+  assert.equal(userRecord?.GSI1PK, "USER_EMAIL#ana@clinica.pe");
+  assert.equal(userRecord?.Confirmed, false);
+  assert.equal(userRecord?.OnboardingCompleted, false);
+  assert.equal(
+    tokenRecord?.PK,
+    `EMAIL_CONFIRMATION#${confirmationToken.tokenHash}`,
+  );
+  assert.equal(tokenRecord?.ItemType, "EMAIL_CONFIRMATION");
+  assert.deepEqual(termsRecord, {
+    PK: `USER#${user.id}`,
+    SK: `TERMS_ACCEPTANCE#${acceptedAt.toISOString()}`,
+    ItemType: "TERMS_ACCEPTANCE",
+    Email: "ana@clinica.pe",
+    TermsVersion: CURRENT_TERMS_VERSION,
+    PrivacyPolicyVersion: CURRENT_PRIVACY_POLICY_VERSION,
+    CheckboxTextVersion: CURRENT_CHECKBOX_TEXT_VERSION,
+    AcceptedAt: "2026-11-06T12:10:30.000Z",
+    IpAddress: "190.42.10.7",
+    UserAgent: "Mozilla/5.0",
+    Source: "sign-up",
+  });
+});
+
+test("el ítem del token guarda sólo su hash y vence con TTL", async () => {
+  const { client, inputs } = capturingClient();
+  const user = buildUser();
+  const confirmationToken = createConfirmationToken(user.id);
+
+  await new UserRepository(client, TABLE_NAME).create(user, confirmationToken);
+
+  assert.equal(JSON.stringify(inputs).includes(confirmationToken.token), false);
+  const [transaction] = inputs as TransactWriteCommandInput[];
+  assert.equal(transaction.TransactItems?.length, 2);
+  const tokenRecord = transaction.TransactItems?.[1]?.Put?.Item;
+  const expiresAt = Math.floor(confirmationToken.expiresAt.getTime() / 1000);
+  assert.equal(tokenRecord?.ExpiresAt, expiresAt);
+  assert.equal(tokenRecord?.DeleteAfter, expiresAt);
+});
+
+test("findByEmail busca por el índice del correo y devuelve sólo ítems de tipo usuario", async () => {
+  const user = buildUser();
+  const userRecord = fromDomainToDynamo(user);
+  const withUser = capturingClient({ response: { Items: [userRecord] } });
+  const withOtherType = capturingClient({
+    response: { Items: [{ ...userRecord, ItemType: "PATIENT" }] },
+  });
+
+  const found = await new UserRepository(
+    withUser.client,
+    TABLE_NAME,
+  ).findByEmail(user.email);
+  const notFound = await new UserRepository(
+    withOtherType.client,
+    TABLE_NAME,
+  ).findByEmail(user.email);
+
+  assert.equal(found?.id, user.id);
+  assert.equal(notFound, undefined);
+  const [query] = withUser.inputs as {
+    IndexName?: string;
+    ExpressionAttributeValues?: Record<string, unknown>;
+  }[];
+  assert.equal(query.IndexName, "GSI1");
+  assert.equal(
+    query.ExpressionAttributeValues?.[":gsi1pk"],
+    "USER_EMAIL#ana@clinica.pe",
+  );
+});
+
+test("cuenta los envíos por IP en ventanas fijas de 10 minutos, y rechaza desde el cuarto", async () => {
+  const { client, inputs } = capturingClient();
+  const attempts = new DynamoDBEmailSendAttempts(
+    client,
+    TABLE_NAME,
+    () => TEN_PAST_NOON,
+  );
+
+  assert.equal(await attempts.tryRegister("190.42.10.7"), true);
+
+  const [update] = inputs as UpdateCommandInput[];
+  assert.deepEqual(update.Key, {
+    PK: "EMAIL_SEND_ATTEMPTS#190.42.10.7",
+    SK: String(WINDOW_START),
+  });
+  assert.equal(
+    update.UpdateExpression,
+    "ADD Attempts :one SET DeleteAfter = :deleteAfter, ItemType = :itemType",
+  );
+  assert.equal(
+    update.ConditionExpression,
+    "attribute_not_exists(Attempts) OR Attempts < :maxAttempts",
+  );
+  assert.deepEqual(update.ExpressionAttributeValues, {
+    ":one": 1,
+    ":maxAttempts": 3,
+    ":deleteAfter": WINDOW_START + 600,
+    ":itemType": "EMAIL_SEND_ATTEMPTS",
+  });
+});
+
+test("agrupa las IPv6 por su red /64 y sin IP usa un cupo compartido", async () => {
+  const { client, inputs } = capturingClient();
+  const attempts = new DynamoDBEmailSendAttempts(
+    client,
+    TABLE_NAME,
+    () => TEN_PAST_NOON,
+  );
+
+  await attempts.tryRegister("2001:db8:85a3:12::1");
+  await attempts.tryRegister("2001:DB8:85A3:12:ffff:ffff:ffff:ffff");
+  await attempts.tryRegister("::ffff:190.42.10.7");
+  await attempts.tryRegister(undefined);
+
+  const keys = (inputs as UpdateCommandInput[]).map((update) => update.Key?.PK);
+  assert.deepEqual(keys, [
+    "EMAIL_SEND_ATTEMPTS#2001:0db8:85a3:0012::/64",
+    "EMAIL_SEND_ATTEMPTS#2001:0db8:85a3:0012::/64",
+    "EMAIL_SEND_ATTEMPTS#190.42.10.7",
+    "EMAIL_SEND_ATTEMPTS#unknown",
+  ]);
+});
+
+test("superado el máximo, el intento no se registra", async () => {
+  const { client } = capturingClient({
+    failure: new ConditionalCheckFailedException({
+      message: "límite",
+      $metadata: {},
+    }),
+  });
+
+  const isAllowed = await new DynamoDBEmailSendAttempts(
+    client,
+    TABLE_NAME,
+  ).tryRegister("190.42.10.7");
+
+  assert.equal(isAllowed, false);
+});

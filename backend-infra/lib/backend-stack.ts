@@ -1,9 +1,16 @@
-import { Stack, type StackProps } from "aws-cdk-lib";
+import * as path from "node:path";
+import { Duration, Stack, type StackProps } from "aws-cdk-lib";
+import * as apigateway from "aws-cdk-lib/aws-apigateway";
+import type { ITableV2 } from "aws-cdk-lib/aws-dynamodb";
+import * as iam from "aws-cdk-lib/aws-iam";
 import * as lambda from "aws-cdk-lib/aws-lambda";
+import { NodejsFunction } from "aws-cdk-lib/aws-lambda-nodejs";
+import * as logs from "aws-cdk-lib/aws-logs";
 import * as route53 from "aws-cdk-lib/aws-route53";
 import type { Construct } from "constructs";
 import { ApiGateway } from "./api-gateway";
 import { Authentication } from "./authentication";
+import { DynamoTables } from "./dynamo";
 
 const HEALTH_RESPONSE_HANDLER = `
 exports.handler = async () => ({
@@ -13,10 +20,28 @@ exports.handler = async () => ({
 });
 `;
 
+const USERS_HANDLERS_DIRECTORY = path.join(__dirname, "src/users/handlers");
+const USERS_FUNCTION_TIMEOUT = Duration.seconds(15);
+const USERS_FUNCTION_MEMORY_MB = 512;
+const USER_EMAIL_INDEX = "GSI1";
+
+const SIGN_UP_KEY_PREFIXES = [
+  "USER#*",
+  "EMAIL_CONFIRMATION#*",
+  "EMAIL_SEND_ATTEMPTS#*",
+];
+const RESEND_CONFIRMATION_KEY_PREFIXES = [
+  "EMAIL_CONFIRMATION#*",
+  "EMAIL_SEND_ATTEMPTS#*",
+];
+
 export interface BackendStackProps extends StackProps {
   hostedZoneId: string;
   zoneName: string;
   apiDomainName: string;
+  frontendUrl: string;
+  emailFrom: string;
+  termsAcceptanceRequired: boolean;
 }
 
 export class BackendStack extends Stack {
@@ -36,12 +61,113 @@ export class BackendStack extends Stack {
       code: lambda.Code.fromInline(HEALTH_RESPONSE_HANDLER),
     });
 
-    new ApiGateway(this, "ApiGateway", {
+    const apiGateway = new ApiGateway(this, "ApiGateway", {
       handler: temporaryHandler,
       hostedZone,
       domainName: props.apiDomainName,
     });
 
-    new Authentication(this, "Authentication");
+    const authentication = new Authentication(this, "Authentication");
+    const database = new DynamoTables(this, "Database");
+
+    const sharedEnvironment = {
+      TABLE_NAME: database.table.tableName,
+      FRONTEND_URL: props.frontendUrl,
+      EMAIL_FROM: props.emailFrom,
+    };
+    const sendEmailFromDomain = new iam.PolicyStatement({
+      actions: ["ses:SendEmail"],
+      resources: [
+        this.formatArn({
+          service: "ses",
+          resource: "identity",
+          resourceName: props.zoneName,
+        }),
+      ],
+    });
+
+    const signUpFunction = this.usersFunction("SignUpFunction", "sign-up", {
+      ...sharedEnvironment,
+      USER_POOL_ID: authentication.userPool.userPoolId,
+      TERMS_ACCEPTANCE_REQUIRED: String(props.termsAcceptanceRequired),
+    });
+    grantUsersTableAccess(signUpFunction, database.table, SIGN_UP_KEY_PREFIXES);
+    authentication.userPool.grant(
+      signUpFunction,
+      "cognito-idp:AdminCreateUser",
+      "cognito-idp:AdminSetUserPassword",
+      "cognito-idp:AdminDeleteUser",
+    );
+    signUpFunction.addToRolePolicy(sendEmailFromDomain);
+
+    const resendConfirmationFunction = this.usersFunction(
+      "ResendConfirmationFunction",
+      "resend-confirmation",
+      sharedEnvironment,
+    );
+    grantUsersTableAccess(
+      resendConfirmationFunction,
+      database.table,
+      RESEND_CONFIRMATION_KEY_PREFIXES,
+    );
+    resendConfirmationFunction.addToRolePolicy(sendEmailFromDomain);
+
+    const signUpResource =
+      apiGateway.api.root.resourceForPath("api/auth/sign-up");
+    signUpResource
+      .addResource("email")
+      .addMethod("POST", new apigateway.LambdaIntegration(signUpFunction));
+    signUpResource
+      .addResource("resend-confirmation")
+      .addMethod(
+        "POST",
+        new apigateway.LambdaIntegration(resendConfirmationFunction),
+      );
+  }
+
+  private usersFunction(
+    id: string,
+    handlerName: string,
+    environment: Record<string, string>,
+  ): NodejsFunction {
+    return new NodejsFunction(this, id, {
+      entry: path.join(USERS_HANDLERS_DIRECTORY, `${handlerName}.handler.ts`),
+      runtime: lambda.Runtime.NODEJS_22_X,
+      architecture: lambda.Architecture.ARM_64,
+      timeout: USERS_FUNCTION_TIMEOUT,
+      memorySize: USERS_FUNCTION_MEMORY_MB,
+      environment: {
+        ...environment,
+        NODE_OPTIONS: "--enable-source-maps",
+      },
+      logGroup: new logs.LogGroup(this, `${id}Logs`, {
+        retention: logs.RetentionDays.ONE_MONTH,
+      }),
+      bundling: { minify: true, sourceMap: true },
+    });
   }
 }
+
+const grantUsersTableAccess = (
+  usersFunction: NodejsFunction,
+  table: ITableV2,
+  writableKeyPrefixes: string[],
+) => {
+  usersFunction.addToRolePolicy(
+    new iam.PolicyStatement({
+      actions: ["dynamodb:PutItem", "dynamodb:UpdateItem"],
+      resources: [table.tableArn],
+      conditions: {
+        "ForAllValues:StringLike": {
+          "dynamodb:LeadingKeys": writableKeyPrefixes,
+        },
+      },
+    }),
+  );
+  usersFunction.addToRolePolicy(
+    new iam.PolicyStatement({
+      actions: ["dynamodb:Query"],
+      resources: [`${table.tableArn}/index/${USER_EMAIL_INDEX}`],
+    }),
+  );
+};
