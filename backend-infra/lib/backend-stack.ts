@@ -11,6 +11,7 @@ import type { Construct } from "constructs";
 import { ApiGateway } from "./api-gateway";
 import { Authentication } from "./authentication";
 import { DynamoTables } from "./dynamo";
+import { senderDomainOf } from "./sender-domain";
 import {
   type SignUpEmailTemplate,
   SignUpEmailTemplates,
@@ -86,15 +87,15 @@ export class BackendStack extends Stack {
       PENDING_CONFIRMATION_TEMPLATE: emailTemplates.pendingConfirmation.name,
       ACCOUNT_EXISTS_TEMPLATE: emailTemplates.accountExists.name,
     };
-    const domainIdentity = this.formatArn({
+    const senderIdentity = this.formatArn({
       service: "ses",
       resource: "identity",
-      resourceName: props.zoneName,
+      resourceName: senderDomainOf(props.emailFrom),
     });
     const sendEmailWithTemplates = (templates: SignUpEmailTemplate[]) =>
       new iam.PolicyStatement({
         actions: ["ses:SendEmail"],
-        resources: [domainIdentity, ...templates.map(({ arn }) => arn)],
+        resources: [senderIdentity, ...templates.map(({ arn }) => arn)],
       });
 
     const signUpFunction = this.usersFunction("SignUpFunction", "sign-up", {

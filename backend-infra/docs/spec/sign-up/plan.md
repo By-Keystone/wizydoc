@@ -153,8 +153,11 @@ si no, no hace nada. Siempre responde 202.
       `AdminDeleteUser` sobre el user pool. Cognito no permite acotarlos a un
       usuario, así que la Lambda del registro puede cambiar la contraseña de
       cualquiera;
-    - `ses:SendEmail` sobre la identidad de `DOMAIN` y sobre sus tres
-      plantillas, y el reenvío sólo sobre la de confirmación. Eso acota las
+    - `ses:SendEmail` sobre la identidad de SES del dominio de `EMAIL_FROM`
+      (`lib/sender-domain.ts`) y sobre sus tres plantillas, y el reenvío sólo
+      sobre la de confirmación. Es la del remitente y no la de `DOMAIN`,
+      porque SES revisa el permiso sobre la identidad verificada, que puede
+      ser un subdominio como `support.wizydoc.app`. Eso acota las
       plantillas guardadas, pero el permiso sobre la identidad igual permite
       enviar un correo armado en la llamada. Acotar además el remitente con
       la condición `ses:FromAddress` queda pendiente, porque una condición mal

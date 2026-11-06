@@ -2,11 +2,11 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { App } from "aws-cdk-lib";
 import { Match, Template } from "aws-cdk-lib/assertions";
-import { BackendStack } from "../lib/backend-stack";
+import { BackendStack, type BackendStackProps } from "../lib/backend-stack";
 
 const SKIP_BUNDLING = { "aws:cdk:bundling-stacks": [] };
 
-function synthesizeBackend(termsAcceptanceRequired = false) {
+function synthesizeBackend(overrides: Partial<BackendStackProps> = {}) {
   const stack = new BackendStack(
     new App({ context: SKIP_BUNDLING }),
     "BackendTest",
@@ -17,7 +17,8 @@ function synthesizeBackend(termsAcceptanceRequired = false) {
       apiDomainName: "api.wizydoc.app",
       frontendUrl: "https://app.wizydoc.app",
       emailFrom: "WizyDoc <no-reply@wizydoc.app>",
-      termsAcceptanceRequired,
+      termsAcceptanceRequired: false,
+      ...overrides,
     },
   );
 
@@ -193,8 +194,26 @@ test("el flag de los términos llega apagado a la Lambda del registro salvo que 
     functionProperties(template, "SignUpFunction").Environment.Variables
       .TERMS_ACCEPTANCE_REQUIRED;
 
-  assert.equal(flagOf(synthesizeBackend(false)), "false");
-  assert.equal(flagOf(synthesizeBackend(true)), "true");
+  assert.equal(
+    flagOf(synthesizeBackend({ termsAcceptanceRequired: false })),
+    "false",
+  );
+  assert.equal(
+    flagOf(synthesizeBackend({ termsAcceptanceRequired: true })),
+    "true",
+  );
+});
+
+test("el permiso de envío es sobre la identidad de SES del dominio del remitente, aunque sea un subdominio", () => {
+  const template = synthesizeBackend({
+    emailFrom: "WizyDoc <no-reply@support.wizydoc.app>",
+  });
+
+  for (const functionName of ["SignUpFunction", "ResendConfirmationFunction"]) {
+    const policy = policyFor(template, functionName);
+    assert.ok(policy.includes(":identity/support.wizydoc.app"), functionName);
+    assert.equal(policy.includes(":identity/wizydoc.app"), false, functionName);
+  }
 });
 
 test("la tabla borra con TTL los ítems con DeleteAfter", () => {
