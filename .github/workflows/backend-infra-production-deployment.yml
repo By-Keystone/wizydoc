@@ -67,6 +67,11 @@ jobs:
           role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
           aws-region: us-east-2
 
+      # La cuenta de producción no se prepara a mano. Si el bootstrap ya está al
+      # día, este paso no cambia nada.
+      - name: Bootstrap CDK
+        run: pnpm cdk bootstrap --yes
+
       # Sin terminal no hay a quién pedirle que apruebe los cambios de IAM: la
       # aprobación es la del entorno `wizydoc/production` antes de empezar.
       - name: Deploy Backend Stack
