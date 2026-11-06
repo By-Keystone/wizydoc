@@ -1,0 +1,73 @@
+name: Deploy backend-infra on Release
+
+on:
+  release:
+    types: [published]
+
+# Dos releases seguidos no deben pisarse. No se cancela el que esté en curso:
+# abortar un despliegue a medias deja el servicio en peor estado que encolarlo.
+concurrency:
+  group: deploy-backend-infra
+  cancel-in-progress: false
+
+# OIDC: GitHub entrega un token de corta duración y AWS lo cambia por el rol de
+# despliegue, sin claves guardadas en GitHub.
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy-backend-infra:
+    environment: wizydoc/production
+    # Solo los releases etiquetados `backend-infra-*` tocan este servicio.
+    if: startsWith(github.event.release.tag_name, 'backend-infra-')
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend-infra
+    env:
+      HOSTED_ZONE_ID: ${{ vars.HOSTED_ZONE_ID }}
+      DOMAIN: ${{ vars.DOMAIN }}
+      API_SUBDOMAIN: ${{ vars.API_SUBDOMAIN }}
+      FRONTEND_URL: ${{ vars.FRONTEND_URL }}
+      EMAIL_FROM: ${{ vars.EMAIL_FROM }}
+      TERMS_ACCEPTANCE_REQUIRED: ${{ vars.TERMS_ACCEPTANCE_REQUIRED }}
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.9.0
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+          cache-dependency-path: backend-infra/pnpm-lock.yaml
+
+      - name: Install Dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Lint and Format
+        run: pnpm check
+
+      - name: Test
+        run: pnpm test
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: us-east-2
+
+      # Sin terminal no hay a quién pedirle que apruebe los cambios de IAM: la
+      # aprobación es la del entorno `wizydoc/production` antes de empezar.
+      - name: Deploy Backend Stack
+        run: pnpm cdk deploy --require-approval never

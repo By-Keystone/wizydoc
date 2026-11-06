@@ -142,8 +142,8 @@ Los pasos 4 a 7 se repiten por cada parte, en orden.
 - Instalar o actualizar dependencias.
 - Cualquier commit o push en `main`.
 - Commit o push fuera del paso 7 del flujo.
-- Hacer merge, crear tags o releases. **Un release `api-*` o `platform-*`
-  despliega a producción** (ver `.github/workflows/`).
+- Hacer merge, crear tags o releases. **Un release `api-*`, `platform-*` o
+  `backend-infra-*` despliega a producción** (ver `.github/workflows/`).
 - Cambiar `api/src/plugins/policy.ts`, `auth.ts` o `entitlements.ts`.
 - Llamar a Culqi o SES reales (usa claves de test o stubs).
 
