@@ -1,17 +1,16 @@
 import { App } from "aws-cdk-lib";
 import { BackendStack } from "../lib/backend-stack";
+import { isPlatformOrigin } from "../lib/platform-origin";
 import { requireEnv } from "../lib/src/shared/env";
 
 const DEPLOYMENT_REGION = "us-east-2";
 
 const requireOrigin = (name: string): string => {
   const value = requireEnv(name);
-  const isOrigin =
-    URL.canParse(value) && new URL(value).origin === value.replace(/\/$/, "");
 
-  if (!isOrigin) {
+  if (!isPlatformOrigin(value)) {
     throw new Error(
-      `${name} tiene que ser sólo el origen, sin ruta: por ejemplo, https://app.wizydoc.app.`,
+      `${name} tiene que ser sólo el origen, sin ruta, con https (salvo localhost) y con un host de letras, números, puntos y guiones: por ejemplo, https://app.wizydoc.app.`,
     );
   }
 

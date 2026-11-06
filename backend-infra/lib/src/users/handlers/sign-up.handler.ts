@@ -9,7 +9,7 @@ import { CognitoIdentityProvider } from "../infrastructure/identity-provider/cog
 import { getClient } from "../infrastructure/persistence/dynamodb/client";
 import { DynamoDBEmailSendAttempts } from "../infrastructure/persistence/dynamodb/email-send-attempts";
 import { UserRepository } from "../infrastructure/persistence/dynamodb/user.repository";
-import { signUpEmailsFromEnvironment } from "./environment";
+import { signUpEmailsFromEnvironment } from "./sign-up-emails-from-environment";
 import { handleSignUp } from "./sign-up.http";
 
 const tableName = requireEnv("TABLE_NAME");

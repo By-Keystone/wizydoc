@@ -2,7 +2,7 @@ Hola {{name}},
 
 Alguien intentó crear una cuenta en WizyDoc con este correo. Tu cuenta todavía no está confirmada.
 
-Si fuiste tú, confírmala con este enlace:
+Si fuiste tú, confírmala con este botón:
 
 {{confirmUrl}}
 

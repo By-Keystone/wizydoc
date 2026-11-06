@@ -1,37 +1,14 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import type { SendEmailCommandInput, SESv2Client } from "@aws-sdk/client-sesv2";
 import { createConfirmationToken } from "../../lib/src/users/domain/confirmation-token.entity";
-import { SesSignUpEmails } from "../../lib/src/users/infrastructure/email/ses/sign-up-emails";
-import { buildUser } from "./fakes";
-
-export const FROM_ADDRESS = "WizyDoc <no-reply@wizydoc.app>";
-export const TEMPLATE_NAMES = {
-  confirmEmail: "Test-confirm-email",
-  pendingConfirmation: "Test-pending-confirmation",
-  accountExists: "Test-account-exists",
-};
-
-export const capturingSes = () => {
-  const inputs: SendEmailCommandInput[] = [];
-  const sesClient = {
-    send: async (command: { input: SendEmailCommandInput }) => {
-      inputs.push(command.input);
-      return {};
-    },
-  } as unknown as SESv2Client;
-  return { sesClient, inputs };
-};
-
-export const emailsFor = (sesClient: SESv2Client) =>
-  new SesSignUpEmails(sesClient, {
-    fromAddress: FROM_ADDRESS,
-    frontendUrl: "https://app.wizydoc.app/",
-    templates: TEMPLATE_NAMES,
-  });
-
-export const templateDataOf = (input: SendEmailCommandInput) =>
-  JSON.parse(input.Content?.Template?.TemplateData ?? "{}");
+import {
+  buildUser,
+  capturingSes,
+  emailsFor,
+  FROM_ADDRESS,
+  TEMPLATE_NAMES,
+  templateDataOf,
+} from "./fakes";
 
 test("la confirmación usa su plantilla, con el token en el fragmento del enlace a /verify-email", async () => {
   const { sesClient, inputs } = capturingSes();
@@ -44,7 +21,10 @@ test("la confirmación usa su plantilla, con el token en el fragmento del enlace
   assert.equal(sent.FromEmailAddress, FROM_ADDRESS);
   assert.deepEqual(sent.Destination?.ToAddresses, ["ana@clinica.pe"]);
   assert.equal(sent.Content?.Simple, undefined);
-  assert.equal(sent.Content?.Template?.TemplateName, "Test-confirm-email");
+  assert.equal(
+    sent.Content?.Template?.TemplateName,
+    TEMPLATE_NAMES.confirmEmail,
+  );
   assert.deepEqual(templateDataOf(sent), {
     name: "Ana",
     escapedName: "Ana",
@@ -63,12 +43,14 @@ test("a una cuenta sin confirmar le manda el aviso con el enlace para confirmarl
   const [sent] = inputs;
   assert.equal(
     sent.Content?.Template?.TemplateName,
-    "Test-pending-confirmation",
+    TEMPLATE_NAMES.pendingConfirmation,
   );
-  assert.equal(
-    templateDataOf(sent).confirmUrl,
-    `https://app.wizydoc.app/verify-email#token=${confirmationToken.token}`,
-  );
+  assert.deepEqual(templateDataOf(sent), {
+    name: "Ana",
+    escapedName: "Ana",
+    confirmUrl: `https://app.wizydoc.app/verify-email#token=${confirmationToken.token}`,
+    linkLifetimeHours: "24",
+  });
 });
 
 test("a una cuenta confirmada le manda el aviso con los enlaces para iniciar sesión y cambiar la contraseña", async () => {
@@ -77,7 +59,10 @@ test("a una cuenta confirmada le manda el aviso con los enlaces para iniciar ses
   await emailsFor(sesClient).sendAccountExists(buildUser());
 
   const [sent] = inputs;
-  assert.equal(sent.Content?.Template?.TemplateName, "Test-account-exists");
+  assert.equal(
+    sent.Content?.Template?.TemplateName,
+    TEMPLATE_NAMES.accountExists,
+  );
   assert.deepEqual(templateDataOf(sent), {
     name: "Ana",
     escapedName: "Ana",

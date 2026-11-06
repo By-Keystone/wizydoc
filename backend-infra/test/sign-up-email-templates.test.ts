@@ -1,148 +1,197 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
-import * as path from "node:path";
 import { test } from "node:test";
-import { App } from "aws-cdk-lib";
+import { App, Stack } from "aws-cdk-lib";
 import { Template } from "aws-cdk-lib/assertions";
-import { BackendStack } from "../lib/backend-stack";
-import { createConfirmationToken } from "../lib/src/users/domain/confirmation-token.entity";
-import { buildUser } from "./users/fakes";
+import { SignUpEmailTemplates } from "../lib/sign-up-email-templates";
 import {
+  type ConfirmationToken,
+  createConfirmationToken,
+} from "../lib/src/users/domain/confirmation-token.entity";
+import type { User } from "../lib/src/users/domain/user.entity";
+import type { SesSignUpEmails } from "../lib/src/users/infrastructure/email/ses/sign-up-emails";
+import {
+  buildUser,
   capturingSes,
   emailsFor,
+  TEMPLATES_STACK_NAME,
   templateDataOf,
-} from "./users/sign-up-emails.test";
+} from "./users/fakes";
 
-const TEMPLATES_DIRECTORY = path.join(__dirname, "../lib/email-templates");
+interface SesTemplate {
+  TemplateName: string;
+  SubjectPart: string;
+  HtmlPart: string;
+  TextPart: string;
+}
 
-const placeholdersOf = (fileName: string): Set<string> =>
-  new Set(
-    [
-      ...readFileSync(
-        path.join(TEMPLATES_DIRECTORY, fileName),
-        "utf8",
-      ).matchAll(/{{\s*(\w+)\s*}}/g),
-    ].map(([, placeholder]) => placeholder),
+type SendEmail = (
+  emails: SesSignUpEmails,
+  user: User,
+  confirmationToken: ConfirmationToken,
+) => Promise<void>;
+
+const PLACEHOLDER = /{{\s*(\w+)\s*}}/g;
+const NAME_WITH_HTML = "Ñandú & <b>";
+const ESCAPED_NAME_WITH_HTML = "Ñandú &amp; &lt;b&gt;";
+
+const sendConfirmation: SendEmail = (emails, user, confirmationToken) =>
+  emails.sendConfirmation(user, confirmationToken);
+const sendPendingConfirmation: SendEmail = (emails, user, confirmationToken) =>
+  emails.sendPendingConfirmation(user, confirmationToken);
+const sendAccountExists: SendEmail = (emails, user) =>
+  emails.sendAccountExists(user);
+
+const synthesizedTemplates = (): Map<string, SesTemplate> => {
+  const stack = new Stack(new App(), TEMPLATES_STACK_NAME);
+  new SignUpEmailTemplates(stack, "SignUpEmailTemplates");
+  const resources =
+    Template.fromStack(stack).findResources("AWS::SES::Template");
+  return new Map(
+    Object.values(resources).map((resource) => {
+      const sesTemplate: SesTemplate = resource.Properties.Template;
+      return [sesTemplate.TemplateName, sesTemplate];
+    }),
+  );
+};
+
+const SES_TEMPLATES = synthesizedTemplates();
+
+const fillPlaceholders = (
+  content: string,
+  templateData: Record<string, string>,
+): string =>
+  content.replace(
+    PLACEHOLDER,
+    (_, placeholder: string) => templateData[placeholder],
   );
 
-const sentTemplateData = async () => {
+const placeholdersOf = (content: string): string[] =>
+  [
+    ...new Set(
+      [...content.matchAll(PLACEHOLDER)].map(([, placeholder]) => placeholder),
+    ),
+  ].sort();
+
+const collapsedWhitespace = (text: string): string =>
+  text.replace(/\s+/g, " ").trim();
+
+const visibleText = (html: string): string =>
+  collapsedWhitespace(html.replace(/<[^>]+>/g, " "));
+
+const buttonsOf = (html: string) =>
+  [...html.matchAll(/<a href="([^"]*)"[^>]*>([^<]*)<\/a>/g)].map(
+    ([, href, label]) => ({ label, href }),
+  );
+
+const sendAndRender = async (sendEmail: SendEmail) => {
   const { sesClient, inputs } = capturingSes();
-  const emails = emailsFor(sesClient);
-  const user = buildUser({ confirmed: false });
+  const user = buildUser({ name: NAME_WITH_HTML, confirmed: false });
   const confirmationToken = createConfirmationToken(user.id);
 
-  await emails.sendConfirmation(user, confirmationToken);
-  await emails.sendPendingConfirmation(user, confirmationToken);
-  await emails.sendAccountExists(user);
+  await sendEmail(emailsFor(sesClient), user, confirmationToken);
 
-  const [confirmEmail, pendingConfirmation, accountExists] = inputs.map(
-    (input) => new Set(Object.keys(templateDataOf(input))),
+  const [sent] = inputs;
+  const sesTemplate = SES_TEMPLATES.get(
+    sent.Content?.Template?.TemplateName ?? "",
   );
+  assert.ok(sesTemplate, "el adaptador usa una plantilla que el stack no crea");
+  const templateData = templateDataOf(sent);
   return {
-    "confirm-email": confirmEmail,
-    "pending-confirmation": pendingConfirmation,
-    "account-exists": accountExists,
+    sesTemplate,
+    templateData,
+    confirmUrl: `https://app.wizydoc.app/verify-email#token=${confirmationToken.token}`,
+    html: fillPlaceholders(sesTemplate.HtmlPart, templateData),
+    text: fillPlaceholders(sesTemplate.TextPart, templateData),
   };
 };
 
-const synthesizeBackend = () =>
-  Template.fromStack(
-    new BackendStack(
-      new App({ context: { "aws:cdk:bundling-stacks": [] } }),
-      "BackendTest",
-      {
-        env: { account: "111111111111", region: "us-east-2" },
-        hostedZoneId: "Z0000000000000000000",
-        zoneName: "wizydoc.app",
-        apiDomainName: "api.wizydoc.app",
-        frontendUrl: "https://app.wizydoc.app",
-        emailFrom: "WizyDoc <no-reply@wizydoc.app>",
-        termsAcceptanceRequired: false,
-      },
-    ),
-  );
-
-test("cada marcador de las plantillas recibe un dato del adaptador, y el HTML sólo usa el nombre escapado", async () => {
-  const dataByTemplate = await sentTemplateData();
-
-  for (const [templateName, sentKeys] of Object.entries(dataByTemplate)) {
-    const htmlPlaceholders = placeholdersOf(`${templateName}.html`);
-    const textPlaceholders = placeholdersOf(`${templateName}.txt`);
-
-    for (const placeholder of [...htmlPlaceholders, ...textPlaceholders]) {
-      assert.ok(
-        sentKeys.has(placeholder),
-        `${templateName}: {{${placeholder}}}`,
-      );
-    }
-    assert.ok(htmlPlaceholders.has("escapedName"), templateName);
-    assert.equal(htmlPlaceholders.has("name"), false, templateName);
-    assert.equal(textPlaceholders.has("escapedName"), false, templateName);
+const assertSaysInBothParts = (
+  email: { html: string; text: string },
+  paragraphs: string[],
+) => {
+  const htmlText = visibleText(email.html);
+  const plainText = collapsedWhitespace(email.text);
+  for (const paragraph of paragraphs) {
+    assert.ok(htmlText.includes(paragraph), `HTML: ${paragraph}`);
+    assert.ok(plainText.includes(paragraph), `texto: ${paragraph}`);
   }
+};
+
+test("la confirmación dice el texto de la spec, con el botón «Confirmar correo» al enlace con el token y el plazo de 24 horas", async () => {
+  const email = await sendAndRender(sendConfirmation);
+
+  assert.equal(email.sesTemplate.SubjectPart, "Confirma tu correo en WizyDoc");
+  assertSaysInBothParts(email, [
+    "Gracias por registrarte en WizyDoc. Para activar tu cuenta, confirma tu correo haciendo clic en el botón:",
+    "El enlace vence en 24 horas. Si no creaste esta cuenta, puedes ignorar este correo.",
+  ]);
+  assert.deepEqual(buttonsOf(email.html), [
+    { label: "Confirmar correo", href: email.confirmUrl },
+  ]);
+  assert.ok(email.text.includes(email.confirmUrl));
 });
 
-test("el stack crea las tres plantillas con el nombre del stack y el asunto de cada correo", () => {
-  const template = synthesizeBackend();
+test("el aviso a una cuenta sin confirmar dice el texto de la spec, con el botón «Confirmar cuenta» al enlace con el token y el plazo de 24 horas", async () => {
+  const email = await sendAndRender(sendPendingConfirmation);
 
-  for (const [templateName, subject] of [
-    ["BackendTest-confirm-email", "Confirma tu correo en WizyDoc"],
-    ["BackendTest-pending-confirmation", "Confirma tu cuenta en WizyDoc"],
-    ["BackendTest-account-exists", "Intentaron crear una cuenta con tu correo"],
-  ]) {
-    template.hasResourceProperties("AWS::SES::Template", {
-      Template: { TemplateName: templateName, SubjectPart: subject },
-    });
-  }
+  assert.equal(email.sesTemplate.SubjectPart, "Confirma tu cuenta en WizyDoc");
+  assertSaysInBothParts(email, [
+    "Alguien intentó crear una cuenta en WizyDoc con este correo. Tu cuenta todavía no está confirmada.",
+    "Si fuiste tú, confírmala con este botón:",
+    "El enlace vence en 24 horas. Si no fuiste tú, ignora este correo: la cuenta no se activa sin tu confirmación.",
+  ]);
+  assert.deepEqual(buttonsOf(email.html), [
+    { label: "Confirmar cuenta", href: email.confirmUrl },
+  ]);
+  assert.ok(email.text.includes(email.confirmUrl));
 });
 
-test("cada Lambda recibe los nombres de las plantillas y sólo puede enviar con las suyas", () => {
-  const template = synthesizeBackend();
-  const functions = template.findResources("AWS::Lambda::Function");
-  const policies = Object.values(template.findResources("AWS::IAM::Policy"));
-  const policyOf = (functionName: string) => {
-    const [logicalId] = Object.keys(functions).filter((id) =>
-      id.startsWith(functionName),
-    );
-    const role = functions[logicalId].Properties.Role["Fn::GetAtt"][0];
-    return {
-      environment: functions[logicalId].Properties.Environment.Variables,
-      policy: JSON.stringify(
-        policies.find((candidate) =>
-          JSON.stringify(candidate.Properties.Roles).includes(role),
-        )?.Properties.PolicyDocument,
-      ),
-    };
-  };
-
-  const signUp = policyOf("SignUpFunction");
-  const resend = policyOf("ResendConfirmationFunction");
+test("el aviso a una cuenta confirmada dice el texto de la spec, con los botones para iniciar sesión y cambiar la contraseña", async () => {
+  const email = await sendAndRender(sendAccountExists);
 
   assert.equal(
-    signUp.environment.CONFIRM_EMAIL_TEMPLATE,
-    "BackendTest-confirm-email",
+    email.sesTemplate.SubjectPart,
+    "Intentaron crear una cuenta con tu correo",
   );
-  assert.equal(
-    signUp.environment.PENDING_CONFIRMATION_TEMPLATE,
-    "BackendTest-pending-confirmation",
-  );
-  assert.equal(
-    signUp.environment.ACCOUNT_EXISTS_TEMPLATE,
-    "BackendTest-account-exists",
-  );
-  for (const templateName of [
-    "confirm-email",
-    "pending-confirmation",
-    "account-exists",
+  assertSaysInBothParts(email, [
+    "Alguien intentó crear una cuenta en WizyDoc con este correo. Ya tienes una cuenta con él.",
+    "Si fuiste tú, inicia sesión:",
+    "Si no fuiste tú, te recomendamos cambiar tu contraseña:",
+  ]);
+  assert.deepEqual(buttonsOf(email.html), [
+    { label: "Iniciar sesión", href: "https://app.wizydoc.app/login" },
+    {
+      label: "Cambiar contraseña",
+      href: "https://app.wizydoc.app/forgot-password",
+    },
+  ]);
+  assert.ok(email.text.includes("https://app.wizydoc.app/login"));
+  assert.ok(email.text.includes("https://app.wizydoc.app/forgot-password"));
+});
+
+test("cada plantilla usa exactamente los datos que manda el adaptador: el HTML con el nombre escapado y el texto con el nombre tal cual", async () => {
+  for (const sendEmail of [
+    sendConfirmation,
+    sendPendingConfirmation,
+    sendAccountExists,
   ]) {
-    assert.ok(
-      signUp.policy.includes(`:template/BackendTest-${templateName}`),
+    const { sesTemplate, templateData, html, text } =
+      await sendAndRender(sendEmail);
+    const sentKeys = Object.keys(templateData);
+    const templateName = sesTemplate.TemplateName;
+
+    assert.deepEqual(
+      placeholdersOf(sesTemplate.HtmlPart),
+      sentKeys.filter((key) => key !== "name").sort(),
       templateName,
     );
+    assert.deepEqual(
+      placeholdersOf(sesTemplate.TextPart),
+      sentKeys.filter((key) => key !== "escapedName").sort(),
+      templateName,
+    );
+    assert.ok(html.includes(`Hola ${ESCAPED_NAME_WITH_HTML},`), templateName);
+    assert.equal(html.includes("<b>"), false, templateName);
+    assert.ok(text.startsWith(`Hola ${NAME_WITH_HTML},`), templateName);
   }
-  assert.ok(resend.policy.includes(":template/BackendTest-confirm-email"));
-  assert.equal(resend.policy.includes("BackendTest-account-exists"), false);
-  assert.equal(
-    resend.policy.includes("BackendTest-pending-confirmation"),
-    false,
-  );
 });

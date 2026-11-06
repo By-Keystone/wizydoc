@@ -9,10 +9,15 @@ const TEMPLATES_DIRECTORY = path.join(__dirname, "email-templates");
 const readTemplateFile = (fileName: string): string =>
   readFileSync(path.join(TEMPLATES_DIRECTORY, fileName), "utf8");
 
+export interface SignUpEmailTemplate {
+  name: string;
+  arn: string;
+}
+
 export class SignUpEmailTemplates extends Construct {
-  readonly confirmEmail: string;
-  readonly pendingConfirmation: string;
-  readonly accountExists: string;
+  readonly confirmEmail: SignUpEmailTemplate;
+  readonly pendingConfirmation: SignUpEmailTemplate;
+  readonly accountExists: SignUpEmailTemplate;
 
   constructor(scope: Construct, id: string) {
     super(scope, id);
@@ -31,26 +36,26 @@ export class SignUpEmailTemplates extends Construct {
     );
   }
 
-  arnOf(templateName: string): string {
-    return Stack.of(this).formatArn({
-      service: "ses",
-      resource: "template",
-      resourceName: templateName,
-    });
-  }
-
-  private template(fileName: string, subject: string): string {
-    const templateName = `${Stack.of(this).stackName}-${fileName}`;
+  private template(fileName: string, subject: string): SignUpEmailTemplate {
+    const stack = Stack.of(this);
+    const name = `${stack.stackName}-${fileName}`;
 
     new ses.CfnTemplate(this, fileName, {
       template: {
-        templateName,
+        templateName: name,
         subjectPart: subject,
         htmlPart: readTemplateFile(`${fileName}.html`),
         textPart: readTemplateFile(`${fileName}.txt`),
       },
     });
 
-    return templateName;
+    return {
+      name,
+      arn: stack.formatArn({
+        service: "ses",
+        resource: "template",
+        resourceName: name,
+      }),
+    };
   }
 }

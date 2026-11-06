@@ -11,7 +11,10 @@ import type { Construct } from "constructs";
 import { ApiGateway } from "./api-gateway";
 import { Authentication } from "./authentication";
 import { DynamoTables } from "./dynamo";
-import { SignUpEmailTemplates } from "./sign-up-email-templates";
+import {
+  type SignUpEmailTemplate,
+  SignUpEmailTemplates,
+} from "./sign-up-email-templates";
 
 const HEALTH_RESPONSE_HANDLER = `
 exports.handler = async () => ({
@@ -79,24 +82,19 @@ export class BackendStack extends Stack {
       TABLE_NAME: database.table.tableName,
       FRONTEND_URL: props.frontendUrl,
       EMAIL_FROM: props.emailFrom,
-      CONFIRM_EMAIL_TEMPLATE: emailTemplates.confirmEmail,
-      PENDING_CONFIRMATION_TEMPLATE: emailTemplates.pendingConfirmation,
-      ACCOUNT_EXISTS_TEMPLATE: emailTemplates.accountExists,
+      CONFIRM_EMAIL_TEMPLATE: emailTemplates.confirmEmail.name,
+      PENDING_CONFIRMATION_TEMPLATE: emailTemplates.pendingConfirmation.name,
+      ACCOUNT_EXISTS_TEMPLATE: emailTemplates.accountExists.name,
     };
     const domainIdentity = this.formatArn({
       service: "ses",
       resource: "identity",
       resourceName: props.zoneName,
     });
-    const sendEmailWithTemplates = (templateNames: string[]) =>
+    const sendEmailWithTemplates = (templates: SignUpEmailTemplate[]) =>
       new iam.PolicyStatement({
         actions: ["ses:SendEmail"],
-        resources: [
-          domainIdentity,
-          ...templateNames.map((templateName) =>
-            emailTemplates.arnOf(templateName),
-          ),
-        ],
+        resources: [domainIdentity, ...templates.map(({ arn }) => arn)],
       });
 
     const signUpFunction = this.usersFunction("SignUpFunction", "sign-up", {
@@ -118,6 +116,7 @@ export class BackendStack extends Stack {
         emailTemplates.accountExists,
       ]),
     );
+    signUpFunction.node.addDependency(emailTemplates);
 
     const resendConfirmationFunction = this.usersFunction(
       "ResendConfirmationFunction",
@@ -132,6 +131,7 @@ export class BackendStack extends Stack {
     resendConfirmationFunction.addToRolePolicy(
       sendEmailWithTemplates([emailTemplates.confirmEmail]),
     );
+    resendConfirmationFunction.node.addDependency(emailTemplates);
 
     const signUpResource =
       apiGateway.api.root.resourceForPath("api/auth/sign-up");

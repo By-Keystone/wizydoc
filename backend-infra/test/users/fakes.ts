@@ -1,3 +1,4 @@
+import type { SendEmailCommandInput, SESv2Client } from "@aws-sdk/client-sesv2";
 import type { IEmailSendAttempts } from "../../lib/src/users/application/ports/email-send-attempts.port";
 import type {
   CreateUserIfAbsentInput,
@@ -12,8 +13,16 @@ import {
   type EmailVO,
   emailSchema,
 } from "../../lib/src/users/domain/value-objects/email.vo";
+import { SesSignUpEmails } from "../../lib/src/users/infrastructure/email/ses/sign-up-emails";
 
 export const COGNITO_SUB = "4b1c7a2e-0000-4000-8000-000000000001";
+export const FROM_ADDRESS = "WizyDoc <no-reply@wizydoc.app>";
+export const TEMPLATES_STACK_NAME = "Test";
+export const TEMPLATE_NAMES = {
+  confirmEmail: `${TEMPLATES_STACK_NAME}-confirm-email`,
+  pendingConfirmation: `${TEMPLATES_STACK_NAME}-pending-confirmation`,
+  accountExists: `${TEMPLATES_STACK_NAME}-account-exists`,
+};
 
 export class InMemoryUsers implements IUserRepository {
   readonly users: User[];
@@ -107,6 +116,29 @@ export class RecordingEmails implements ISignUpEmails {
     this.sent.push({ kind: "account-exists", to: user.email });
   }
 }
+
+export const capturingSes = () => {
+  const inputs: SendEmailCommandInput[] = [];
+  const sesClient = {
+    send: async (command: { input: SendEmailCommandInput }) => {
+      inputs.push(command.input);
+      return {};
+    },
+  } as unknown as SESv2Client;
+  return { sesClient, inputs };
+};
+
+export const emailsFor = (sesClient: SESv2Client) =>
+  new SesSignUpEmails(sesClient, {
+    fromAddress: FROM_ADDRESS,
+    frontendUrl: "https://app.wizydoc.app/",
+    templates: TEMPLATE_NAMES,
+  });
+
+export const templateDataOf = (
+  input: SendEmailCommandInput,
+): Record<string, string> =>
+  JSON.parse(input.Content?.Template?.TemplateData ?? "{}");
 
 export class CountingEmailSendAttempts implements IEmailSendAttempts {
   readonly ipAddresses: (string | undefined)[] = [];

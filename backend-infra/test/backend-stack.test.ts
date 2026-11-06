@@ -44,6 +44,7 @@ const policyFor = (template: Template, functionName: string) => {
   ).filter((candidate) =>
     JSON.stringify(candidate.Properties.Roles).includes(role),
   );
+  assert.ok(policy, `no se encontró la política de ${functionName}`);
   return JSON.stringify(policy.Properties.PolicyDocument);
 };
 
@@ -98,6 +99,72 @@ test("el reenvío no toca Cognito ni escribe usuarios", () => {
   assert.equal(policy.includes("USER#*"), false);
   assert.ok(policy.includes("EMAIL_CONFIRMATION#*"));
   assert.ok(policy.includes("ses:SendEmail"));
+});
+
+test("las dos Lambdas reciben los nombres de las tres plantillas del stack y se crean después de ellas", () => {
+  const template = synthesizeBackend();
+  const sesTemplates = template.findResources("AWS::SES::Template");
+
+  assert.deepEqual(
+    Object.values(sesTemplates)
+      .map((resource) => resource.Properties.Template.TemplateName)
+      .sort(),
+    [
+      "BackendTest-account-exists",
+      "BackendTest-confirm-email",
+      "BackendTest-pending-confirmation",
+    ],
+  );
+  for (const functionName of ["SignUpFunction", "ResendConfirmationFunction"]) {
+    const {
+      CONFIRM_EMAIL_TEMPLATE,
+      PENDING_CONFIRMATION_TEMPLATE,
+      ACCOUNT_EXISTS_TEMPLATE,
+    } = functionProperties(template, functionName).Environment.Variables;
+    assert.deepEqual(
+      {
+        CONFIRM_EMAIL_TEMPLATE,
+        PENDING_CONFIRMATION_TEMPLATE,
+        ACCOUNT_EXISTS_TEMPLATE,
+      },
+      {
+        CONFIRM_EMAIL_TEMPLATE: "BackendTest-confirm-email",
+        PENDING_CONFIRMATION_TEMPLATE: "BackendTest-pending-confirmation",
+        ACCOUNT_EXISTS_TEMPLATE: "BackendTest-account-exists",
+      },
+      functionName,
+    );
+
+    const { DependsOn } = template.findResources("AWS::Lambda::Function")[
+      functionLogicalId(template, functionName)
+    ];
+    for (const sesTemplateId of Object.keys(sesTemplates)) {
+      assert.ok(DependsOn.includes(sesTemplateId), functionName);
+    }
+  }
+});
+
+test("el registro puede enviar con sus tres plantillas, y el reenvío sólo con la de confirmación", () => {
+  const template = synthesizeBackend();
+  const signUpPolicy = policyFor(template, "SignUpFunction");
+  const resendPolicy = policyFor(template, "ResendConfirmationFunction");
+
+  for (const templateName of [
+    "confirm-email",
+    "pending-confirmation",
+    "account-exists",
+  ]) {
+    assert.ok(
+      signUpPolicy.includes(`:template/BackendTest-${templateName}`),
+      templateName,
+    );
+  }
+  assert.ok(resendPolicy.includes(":template/BackendTest-confirm-email"));
+  assert.equal(
+    resendPolicy.includes("BackendTest-pending-confirmation"),
+    false,
+  );
+  assert.equal(resendPolicy.includes("BackendTest-account-exists"), false);
 });
 
 test("las dos Lambdas tienen 15 segundos, 512 MB y logs que se conservan un mes", () => {

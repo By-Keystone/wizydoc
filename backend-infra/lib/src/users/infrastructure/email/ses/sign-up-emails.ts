@@ -36,20 +36,22 @@ export class SesSignUpEmails implements ISignUpEmails {
     user: User,
     confirmationToken: ConfirmationToken,
   ): Promise<void> {
-    await this.send(user, this.settings.templates.confirmEmail, {
-      confirmUrl: this.confirmUrl(confirmationToken),
-      linkLifetimeHours: String(CONFIRMATION_TOKEN_LIFETIME_HOURS),
-    });
+    await this.send(
+      user,
+      this.settings.templates.confirmEmail,
+      this.confirmationPlaceholders(confirmationToken),
+    );
   }
 
   async sendPendingConfirmation(
     user: User,
     confirmationToken: ConfirmationToken,
   ): Promise<void> {
-    await this.send(user, this.settings.templates.pendingConfirmation, {
-      confirmUrl: this.confirmUrl(confirmationToken),
-      linkLifetimeHours: String(CONFIRMATION_TOKEN_LIFETIME_HOURS),
-    });
+    await this.send(
+      user,
+      this.settings.templates.pendingConfirmation,
+      this.confirmationPlaceholders(confirmationToken),
+    );
   }
 
   async sendAccountExists(user: User): Promise<void> {
@@ -59,10 +61,15 @@ export class SesSignUpEmails implements ISignUpEmails {
     });
   }
 
-  private confirmUrl(confirmationToken: ConfirmationToken): string {
+  private confirmationPlaceholders(
+    confirmationToken: ConfirmationToken,
+  ): Record<string, string> {
     const confirmUrl = this.frontendUrl("/verify-email");
     confirmUrl.hash = `token=${confirmationToken.token}`;
-    return confirmUrl.href;
+    return {
+      confirmUrl: confirmUrl.href,
+      linkLifetimeHours: String(CONFIRMATION_TOKEN_LIFETIME_HOURS),
+    };
   }
 
   private frontendUrl(path: string): URL {
@@ -72,7 +79,7 @@ export class SesSignUpEmails implements ISignUpEmails {
   private async send(
     user: User,
     templateName: string,
-    links: Record<string, string>,
+    placeholders: Record<string, string>,
   ): Promise<void> {
     await this.sesClient.send(
       new SendEmailCommand({
@@ -84,7 +91,7 @@ export class SesSignUpEmails implements ISignUpEmails {
             TemplateData: JSON.stringify({
               name: user.name,
               escapedName: escapeHtml(user.name),
-              ...links,
+              ...placeholders,
             }),
           },
         },
