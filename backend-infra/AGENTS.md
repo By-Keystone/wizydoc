@@ -68,6 +68,27 @@ pnpm test        # pruebas de síntesis, de casos de uso y de criterios
 En GitHub Actions las variables llegan del entorno; dotenv no pisa las que ya
 existen, y si `.env` no está, el comando corre igual.
 
+## Despliegue
+
+- Publicar un release `backend-infra-*` corre
+  `.github/workflows/backend-infra-production-deployment.yml`:
+  - instala con el lockfile;
+  - corre `typecheck`, `check` y `test`, y si alguno falla no despliega;
+  - hace `cdk deploy` en `us-east-2`.
+- El workflow usa el entorno `wizydoc/production` de GitHub y entra a AWS por
+  OIDC con el rol de `AWS_DEPLOY_ROLE_ARN`. No hay claves de AWS guardadas en
+  GitHub.
+- La preparación se hace una sola vez, y la hace el humano:
+  1. `pnpm cdk bootstrap aws://<cuenta>/us-east-2`.
+  2. En IAM, el proveedor OIDC `token.actions.githubusercontent.com`
+     (audiencia `sts.amazonaws.com`) y un rol que confíe sólo en
+     `repo:By-Keystone/wizydoc:environment:wizydoc/production`. El rol sólo
+     necesita asumir los roles que crea el bootstrap de CDK
+     (`arn:aws:iam::<cuenta>:role/cdk-hnb659fds-*-<cuenta>-us-east-2`).
+  3. En el entorno `wizydoc/production` de GitHub, las variables
+     `AWS_DEPLOY_ROLE_ARN`, `HOSTED_ZONE_ID`, `DOMAIN`, `API_SUBDOMAIN`,
+     `FRONTEND_URL`, `EMAIL_FROM` y `TERMS_ACCEPTANCE_REQUIRED`.
+
 ## Prohibido sin confirmación explícita
 
 - `cdk deploy`, `cdk bootstrap` o `cdk destroy` contra una cuenta real.
