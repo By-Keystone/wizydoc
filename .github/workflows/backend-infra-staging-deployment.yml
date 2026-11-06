@@ -27,7 +27,6 @@ jobs:
       run:
         working-directory: backend-infra
     env:
-      STACK_NAME: WizydocBackend-staging
       HOSTED_ZONE_ID: ${{ vars.HOSTED_ZONE_ID }}
       DOMAIN: ${{ vars.DOMAIN }}
       API_SUBDOMAIN: ${{ vars.API_SUBDOMAIN }}
@@ -69,8 +68,8 @@ jobs:
           role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
           aws-region: us-east-2
 
-      # Staging comparte la cuenta y el bootstrap con producción. Si el
-      # bootstrap ya está al día, este paso no cambia nada.
+      # La cuenta de staging no se prepara a mano. Si el bootstrap ya está al
+      # día, este paso no cambia nada.
       - name: Bootstrap CDK
         run: pnpm cdk bootstrap --yes
 
