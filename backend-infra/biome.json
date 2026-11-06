@@ -4,6 +4,7 @@
     "includes": ["bin/**", "lib/**", "test/**", "*.json"]
   },
   "formatter": { "indentStyle": "space", "indentWidth": 2 },
+  "html": { "parser": { "interpolation": true } },
   "assist": { "actions": { "source": { "organizeImports": "off" } } },
   "linter": {
     "rules": {

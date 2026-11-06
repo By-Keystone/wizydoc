@@ -102,11 +102,20 @@ si no, no hace nada. Siempre responde 202.
 | `ISignUpEmails`: `sendConfirmation(user, token)`, `sendPendingConfirmation(user, token)`, `sendAccountExists(user)` | `email/ses/sign-up-emails.ts`, con `SendEmailCommand` de `@aws-sdk/client-sesv2` |
 | `IEmailSendAttempts`: `tryRegister(ip)` | `persistence/dynamodb/email-send-attempts.ts` |
 
-**Plantillas:** `infrastructure/email/sign-up-messages.ts` arma el HTML y el
-texto plano de los tres correos (confirmación, intento con una cuenta sin
-confirmar e intento con una cuenta confirmada), con los colores y el texto de
-`confirm-email.mjml` de `api/`. Se escribieron a mano para no sumar `mjml` como
-dependencia. El nombre de la persona se escapa en el HTML.
+**Plantillas de SES** (WIZ-73):
+- **Los tres correos son plantillas de SES:** confirmación, intento con una
+  cuenta sin confirmar e intento con una cuenta confirmada. Cada uno tiene su
+  HTML y su texto plano en `lib/email-templates/`, con los colores y el texto
+  de `confirm-email.mjml` de `api/`.
+- **CDK las crea al sintetizar** (`lib/sign-up-email-templates.ts`, recursos
+  `AWS::SES::Template`), con nombres que empiezan con el nombre del stack para
+  que dos stacks no choquen.
+- **El adaptador** envía con `Content.Template`: el nombre de la plantilla y los
+  datos (`name`, `escapedName`, los enlaces y `linkLifetimeHours`).
+- **SES no escapa el HTML de los datos** («SES doesn't escape HTML content when
+  rendering the HTML template»). Por eso el adaptador manda `escapedName` para
+  el HTML y `name` para el texto plano, y una prueba revisa que cada plantilla
+  use el que le corresponde.
 
 ## Infraestructura
 
@@ -116,9 +125,11 @@ dependencia. El nombre de la persona se escapa en el HTML.
 - `lib/backend-stack.ts`:
   - instancia `DynamoTables`;
   - crea un `NodejsFunction` (Node 22, arm64, 15 segundos, 512 MB) por handler,
-    con `TABLE_NAME`, `FRONTEND_URL`, `EMAIL_FROM`, `NODE_OPTIONS` para los
-    source maps y, en el registro, `USER_POOL_ID` y
-    `TERMS_ACCEPTANCE_REQUIRED`. Sus logs se conservan un mes;
+    con `TABLE_NAME`, `FRONTEND_URL`, `EMAIL_FROM`, los nombres de las
+    plantillas (`CONFIRM_EMAIL_TEMPLATE`, `PENDING_CONFIRMATION_TEMPLATE` y
+    `ACCOUNT_EXISTS_TEMPLATE`), `NODE_OPTIONS` para los source maps y, en el
+    registro, `USER_POOL_ID` y `TERMS_ACCEPTANCE_REQUIRED`. Sus logs se
+    conservan un mes;
   - **permisos del registro:**
     - `dynamodb:PutItem` y `UpdateItem` sólo sobre ítems cuya clave empiece con
       `USER#`, `EMAIL_CONFIRMATION#` o `EMAIL_SEND_ATTEMPTS#`, con la condición
@@ -128,7 +139,8 @@ dependencia. El nombre de la persona se escapa en el HTML.
       `AdminDeleteUser` sobre el user pool. Cognito no permite acotarlos a un
       usuario, así que la Lambda del registro puede cambiar la contraseña de
       cualquiera;
-    - `ses:SendEmail` sobre la identidad de `DOMAIN`;
+    - `ses:SendEmail` sobre la identidad de `DOMAIN` y sobre sus tres
+      plantillas. El reenvío sólo puede usar la de confirmación;
   - **permisos del reenvío:** los mismos de DynamoDB, sin `USER#`, y los de SES,
     sin Cognito;
   - registra `POST /api/auth/sign-up/email` y

@@ -5,9 +5,14 @@ import { createConfirmationToken } from "../../lib/src/users/domain/confirmation
 import { SesSignUpEmails } from "../../lib/src/users/infrastructure/email/ses/sign-up-emails";
 import { buildUser } from "./fakes";
 
-const FROM_ADDRESS = "WizyDoc <no-reply@wizydoc.app>";
+export const FROM_ADDRESS = "WizyDoc <no-reply@wizydoc.app>";
+export const TEMPLATE_NAMES = {
+  confirmEmail: "Test-confirm-email",
+  pendingConfirmation: "Test-pending-confirmation",
+  accountExists: "Test-account-exists",
+};
 
-const capturingSes = () => {
+export const capturingSes = () => {
   const inputs: SendEmailCommandInput[] = [];
   const sesClient = {
     send: async (command: { input: SendEmailCommandInput }) => {
@@ -18,13 +23,17 @@ const capturingSes = () => {
   return { sesClient, inputs };
 };
 
-const emailsFor = (sesClient: SESv2Client) =>
+export const emailsFor = (sesClient: SESv2Client) =>
   new SesSignUpEmails(sesClient, {
     fromAddress: FROM_ADDRESS,
     frontendUrl: "https://app.wizydoc.app/",
+    templates: TEMPLATE_NAMES,
   });
 
-test("la confirmación lleva el token en el fragmento del enlace a /verify-email", async () => {
+export const templateDataOf = (input: SendEmailCommandInput) =>
+  JSON.parse(input.Content?.Template?.TemplateData ?? "{}");
+
+test("la confirmación usa su plantilla, con el token en el fragmento del enlace a /verify-email", async () => {
   const { sesClient, inputs } = capturingSes();
   const user = buildUser({ confirmed: false });
   const confirmationToken = createConfirmationToken(user.id);
@@ -32,39 +41,19 @@ test("la confirmación lleva el token en el fragmento del enlace a /verify-email
   await emailsFor(sesClient).sendConfirmation(user, confirmationToken);
 
   const [sent] = inputs;
-  const confirmUrl = `https://app.wizydoc.app/verify-email#token=${confirmationToken.token}`;
   assert.equal(sent.FromEmailAddress, FROM_ADDRESS);
   assert.deepEqual(sent.Destination?.ToAddresses, ["ana@clinica.pe"]);
-  assert.equal(
-    sent.Content?.Simple?.Subject?.Data,
-    "Confirma tu correo en WizyDoc",
-  );
-  assert.ok(sent.Content?.Simple?.Body?.Html?.Data?.includes(confirmUrl));
-  assert.ok(sent.Content?.Simple?.Body?.Text?.Data?.includes(confirmUrl));
-  assert.ok(
-    sent.Content?.Simple?.Body?.Text?.Data?.includes("vence en 24 horas"),
-  );
+  assert.equal(sent.Content?.Simple, undefined);
+  assert.equal(sent.Content?.Template?.TemplateName, "Test-confirm-email");
+  assert.deepEqual(templateDataOf(sent), {
+    name: "Ana",
+    escapedName: "Ana",
+    confirmUrl: `https://app.wizydoc.app/verify-email#token=${confirmationToken.token}`,
+    linkLifetimeHours: "24",
+  });
 });
 
-test("a una cuenta confirmada le avisa del intento, con enlaces para iniciar sesión y cambiar la contraseña", async () => {
-  const { sesClient, inputs } = capturingSes();
-
-  await emailsFor(sesClient).sendAccountExists(buildUser());
-
-  const [sent] = inputs;
-  const html = sent.Content?.Simple?.Body?.Html?.Data ?? "";
-  const text = sent.Content?.Simple?.Body?.Text?.Data ?? "";
-  assert.equal(
-    sent.Content?.Simple?.Subject?.Data,
-    "Intentaron crear una cuenta con tu correo",
-  );
-  assert.ok(html.includes('href="https://app.wizydoc.app/login"'));
-  assert.ok(html.includes('href="https://app.wizydoc.app/forgot-password"'));
-  assert.ok(html.includes("Cambiar contraseña"));
-  assert.ok(text.includes("te recomendamos cambiar tu contraseña"));
-});
-
-test("a una cuenta sin confirmar le avisa del intento y le da el botón para confirmarla", async () => {
+test("a una cuenta sin confirmar le manda el aviso con el enlace para confirmarla", async () => {
   const { sesClient, inputs } = capturingSes();
   const user = buildUser({ confirmed: false });
   const confirmationToken = createConfirmationToken(user.id);
@@ -72,26 +61,42 @@ test("a una cuenta sin confirmar le avisa del intento y le da el botón para con
   await emailsFor(sesClient).sendPendingConfirmation(user, confirmationToken);
 
   const [sent] = inputs;
-  const html = sent.Content?.Simple?.Body?.Html?.Data ?? "";
-  const confirmUrl = `https://app.wizydoc.app/verify-email#token=${confirmationToken.token}`;
   assert.equal(
-    sent.Content?.Simple?.Subject?.Data,
-    "Confirma tu cuenta en WizyDoc",
+    sent.Content?.Template?.TemplateName,
+    "Test-pending-confirmation",
   );
-  assert.ok(html.includes("Alguien intentó crear una cuenta"));
-  assert.ok(html.includes("Si fuiste tú, confírmala"));
-  assert.ok(html.includes(confirmUrl));
-  assert.ok(html.includes("Confirmar cuenta"));
+  assert.equal(
+    templateDataOf(sent).confirmUrl,
+    `https://app.wizydoc.app/verify-email#token=${confirmationToken.token}`,
+  );
 });
 
-test("el nombre se escapa en el HTML del correo", async () => {
+test("a una cuenta confirmada le manda el aviso con los enlaces para iniciar sesión y cambiar la contraseña", async () => {
+  const { sesClient, inputs } = capturingSes();
+
+  await emailsFor(sesClient).sendAccountExists(buildUser());
+
+  const [sent] = inputs;
+  assert.equal(sent.Content?.Template?.TemplateName, "Test-account-exists");
+  assert.deepEqual(templateDataOf(sent), {
+    name: "Ana",
+    escapedName: "Ana",
+    loginUrl: "https://app.wizydoc.app/login",
+    forgotPasswordUrl: "https://app.wizydoc.app/forgot-password",
+  });
+});
+
+test("manda el nombre escapado para el HTML, porque SES no escapa los datos", async () => {
   const { sesClient, inputs } = capturingSes();
 
   await emailsFor(sesClient).sendAccountExists(
     buildUser({ name: '<img src=x onerror="alert(1)">' }),
   );
 
-  const html = inputs[0].Content?.Simple?.Body?.Html?.Data ?? "";
-  assert.equal(html.includes("<img"), false);
-  assert.ok(html.includes("&lt;img src=x onerror=&quot;alert(1)&quot;&gt;"));
+  const templateData = templateDataOf(inputs[0]);
+  assert.equal(templateData.name, '<img src=x onerror="alert(1)">');
+  assert.equal(
+    templateData.escapedName,
+    "&lt;img src=x onerror=&quot;alert(1)&quot;&gt;",
+  );
 });
