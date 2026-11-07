@@ -2,11 +2,11 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { App } from "aws-cdk-lib";
 import { Match, Template } from "aws-cdk-lib/assertions";
-import { BackendStack } from "../lib/backend-stack";
+import { BackendStack, type BackendStackProps } from "../lib/backend-stack";
 
 const SKIP_BUNDLING = { "aws:cdk:bundling-stacks": [] };
 
-function synthesizeBackend(termsAcceptanceRequired = false) {
+function synthesizeBackend(overrides: Partial<BackendStackProps> = {}) {
   const stack = new BackendStack(
     new App({ context: SKIP_BUNDLING }),
     "BackendTest",
@@ -17,7 +17,8 @@ function synthesizeBackend(termsAcceptanceRequired = false) {
       apiDomainName: "api.wizydoc.app",
       frontendUrl: "https://app.wizydoc.app",
       emailFrom: "WizyDoc <no-reply@wizydoc.app>",
-      termsAcceptanceRequired,
+      termsAcceptanceRequired: false,
+      ...overrides,
     },
   );
 
@@ -44,6 +45,7 @@ const policyFor = (template: Template, functionName: string) => {
   ).filter((candidate) =>
     JSON.stringify(candidate.Properties.Roles).includes(role),
   );
+  assert.ok(policy, `no se encontró la política de ${functionName}`);
   return JSON.stringify(policy.Properties.PolicyDocument);
 };
 
@@ -100,6 +102,72 @@ test("el reenvío no toca Cognito ni escribe usuarios", () => {
   assert.ok(policy.includes("ses:SendEmail"));
 });
 
+test("las dos Lambdas reciben los nombres de las tres plantillas del stack y se crean después de ellas", () => {
+  const template = synthesizeBackend();
+  const sesTemplates = template.findResources("AWS::SES::Template");
+
+  assert.deepEqual(
+    Object.values(sesTemplates)
+      .map((resource) => resource.Properties.Template.TemplateName)
+      .sort(),
+    [
+      "BackendTest-account-exists",
+      "BackendTest-confirm-email",
+      "BackendTest-pending-confirmation",
+    ],
+  );
+  for (const functionName of ["SignUpFunction", "ResendConfirmationFunction"]) {
+    const {
+      CONFIRM_EMAIL_TEMPLATE,
+      PENDING_CONFIRMATION_TEMPLATE,
+      ACCOUNT_EXISTS_TEMPLATE,
+    } = functionProperties(template, functionName).Environment.Variables;
+    assert.deepEqual(
+      {
+        CONFIRM_EMAIL_TEMPLATE,
+        PENDING_CONFIRMATION_TEMPLATE,
+        ACCOUNT_EXISTS_TEMPLATE,
+      },
+      {
+        CONFIRM_EMAIL_TEMPLATE: "BackendTest-confirm-email",
+        PENDING_CONFIRMATION_TEMPLATE: "BackendTest-pending-confirmation",
+        ACCOUNT_EXISTS_TEMPLATE: "BackendTest-account-exists",
+      },
+      functionName,
+    );
+
+    const { DependsOn } = template.findResources("AWS::Lambda::Function")[
+      functionLogicalId(template, functionName)
+    ];
+    for (const sesTemplateId of Object.keys(sesTemplates)) {
+      assert.ok(DependsOn.includes(sesTemplateId), functionName);
+    }
+  }
+});
+
+test("el registro puede enviar con sus tres plantillas, y el reenvío sólo con la de confirmación", () => {
+  const template = synthesizeBackend();
+  const signUpPolicy = policyFor(template, "SignUpFunction");
+  const resendPolicy = policyFor(template, "ResendConfirmationFunction");
+
+  for (const templateName of [
+    "confirm-email",
+    "pending-confirmation",
+    "account-exists",
+  ]) {
+    assert.ok(
+      signUpPolicy.includes(`:template/BackendTest-${templateName}`),
+      templateName,
+    );
+  }
+  assert.ok(resendPolicy.includes(":template/BackendTest-confirm-email"));
+  assert.equal(
+    resendPolicy.includes("BackendTest-pending-confirmation"),
+    false,
+  );
+  assert.equal(resendPolicy.includes("BackendTest-account-exists"), false);
+});
+
 test("las dos Lambdas tienen 15 segundos, 512 MB y logs que se conservan un mes", () => {
   const template = synthesizeBackend();
 
@@ -126,8 +194,26 @@ test("el flag de los términos llega apagado a la Lambda del registro salvo que 
     functionProperties(template, "SignUpFunction").Environment.Variables
       .TERMS_ACCEPTANCE_REQUIRED;
 
-  assert.equal(flagOf(synthesizeBackend(false)), "false");
-  assert.equal(flagOf(synthesizeBackend(true)), "true");
+  assert.equal(
+    flagOf(synthesizeBackend({ termsAcceptanceRequired: false })),
+    "false",
+  );
+  assert.equal(
+    flagOf(synthesizeBackend({ termsAcceptanceRequired: true })),
+    "true",
+  );
+});
+
+test("el permiso de envío es sobre la identidad de SES del dominio del remitente, aunque sea un subdominio", () => {
+  const template = synthesizeBackend({
+    emailFrom: "WizyDoc <no-reply@support.wizydoc.app>",
+  });
+
+  for (const functionName of ["SignUpFunction", "ResendConfirmationFunction"]) {
+    const policy = policyFor(template, functionName);
+    assert.ok(policy.includes(":identity/support.wizydoc.app"), functionName);
+    assert.equal(policy.includes(":identity/wizydoc.app"), false, functionName);
+  }
 });
 
 test("la tabla borra con TTL los ítems con DeleteAfter", () => {

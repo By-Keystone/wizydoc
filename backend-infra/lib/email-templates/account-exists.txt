@@ -1,0 +1,7 @@
+Hola {{name}},
+
+Alguien intentó crear una cuenta en WizyDoc con este correo. Ya tienes una cuenta con él.
+
+Si fuiste tú, inicia sesión: {{loginUrl}}
+
+Si no fuiste tú, te recomendamos cambiar tu contraseña: {{forgotPasswordUrl}}

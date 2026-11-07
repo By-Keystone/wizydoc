@@ -11,6 +11,11 @@ import type { Construct } from "constructs";
 import { ApiGateway } from "./api-gateway";
 import { Authentication } from "./authentication";
 import { DynamoTables } from "./dynamo";
+import { senderDomainOf } from "./sender-domain";
+import {
+  type SignUpEmailTemplate,
+  SignUpEmailTemplates,
+} from "./sign-up-email-templates";
 
 const HEALTH_RESPONSE_HANDLER = `
 exports.handler = async () => ({
@@ -69,22 +74,29 @@ export class BackendStack extends Stack {
 
     const authentication = new Authentication(this, "Authentication");
     const database = new DynamoTables(this, "Database");
+    const emailTemplates = new SignUpEmailTemplates(
+      this,
+      "SignUpEmailTemplates",
+    );
 
     const sharedEnvironment = {
       TABLE_NAME: database.table.tableName,
       FRONTEND_URL: props.frontendUrl,
       EMAIL_FROM: props.emailFrom,
+      CONFIRM_EMAIL_TEMPLATE: emailTemplates.confirmEmail.name,
+      PENDING_CONFIRMATION_TEMPLATE: emailTemplates.pendingConfirmation.name,
+      ACCOUNT_EXISTS_TEMPLATE: emailTemplates.accountExists.name,
     };
-    const sendEmailFromDomain = new iam.PolicyStatement({
-      actions: ["ses:SendEmail"],
-      resources: [
-        this.formatArn({
-          service: "ses",
-          resource: "identity",
-          resourceName: props.zoneName,
-        }),
-      ],
+    const senderIdentity = this.formatArn({
+      service: "ses",
+      resource: "identity",
+      resourceName: senderDomainOf(props.emailFrom),
     });
+    const sendEmailWithTemplates = (templates: SignUpEmailTemplate[]) =>
+      new iam.PolicyStatement({
+        actions: ["ses:SendEmail"],
+        resources: [senderIdentity, ...templates.map(({ arn }) => arn)],
+      });
 
     const signUpFunction = this.usersFunction("SignUpFunction", "sign-up", {
       ...sharedEnvironment,
@@ -98,7 +110,14 @@ export class BackendStack extends Stack {
       "cognito-idp:AdminSetUserPassword",
       "cognito-idp:AdminDeleteUser",
     );
-    signUpFunction.addToRolePolicy(sendEmailFromDomain);
+    signUpFunction.addToRolePolicy(
+      sendEmailWithTemplates([
+        emailTemplates.confirmEmail,
+        emailTemplates.pendingConfirmation,
+        emailTemplates.accountExists,
+      ]),
+    );
+    signUpFunction.node.addDependency(emailTemplates);
 
     const resendConfirmationFunction = this.usersFunction(
       "ResendConfirmationFunction",
@@ -110,7 +129,10 @@ export class BackendStack extends Stack {
       database.table,
       RESEND_CONFIRMATION_KEY_PREFIXES,
     );
-    resendConfirmationFunction.addToRolePolicy(sendEmailFromDomain);
+    resendConfirmationFunction.addToRolePolicy(
+      sendEmailWithTemplates([emailTemplates.confirmEmail]),
+    );
+    resendConfirmationFunction.node.addDependency(emailTemplates);
 
     const signUpResource =
       apiGateway.api.root.resourceForPath("api/auth/sign-up");

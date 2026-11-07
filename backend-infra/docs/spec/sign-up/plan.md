@@ -1,6 +1,7 @@
 # Plan: registro de usuarios
 
-Spec: [spec.md](./spec.md) · Ticket: WIZ-72
+Spec: [spec.md](./spec.md) · Tickets: WIZ-72 (registro) y WIZ-73 (plantillas
+de SES)
 
 ## Flujo del registro
 
@@ -102,11 +103,29 @@ si no, no hace nada. Siempre responde 202.
 | `ISignUpEmails`: `sendConfirmation(user, token)`, `sendPendingConfirmation(user, token)`, `sendAccountExists(user)` | `email/ses/sign-up-emails.ts`, con `SendEmailCommand` de `@aws-sdk/client-sesv2` |
 | `IEmailSendAttempts`: `tryRegister(ip)` | `persistence/dynamodb/email-send-attempts.ts` |
 
-**Plantillas:** `infrastructure/email/sign-up-messages.ts` arma el HTML y el
-texto plano de los tres correos (confirmación, intento con una cuenta sin
-confirmar e intento con una cuenta confirmada), con los colores y el texto de
-`confirm-email.mjml` de `api/`. Se escribieron a mano para no sumar `mjml` como
-dependencia. El nombre de la persona se escapa en el HTML.
+**Plantillas de SES** (WIZ-73):
+- **Los tres correos son plantillas de SES:** confirmación, intento con una
+  cuenta sin confirmar e intento con una cuenta confirmada. Cada uno tiene su
+  HTML y su texto plano en `lib/email-templates/`, con los colores y el texto
+  de `confirm-email.mjml` de `api/`.
+- **CDK las crea al sintetizar** (`lib/sign-up-email-templates.ts`, recursos
+  `AWS::SES::Template`), con nombres que empiezan con el nombre del stack para
+  que dos stacks no choquen.
+- **El adaptador** envía con `Content.Template`: el nombre de la plantilla y los
+  datos (`name`, `escapedName`, los enlaces y `linkLifetimeHours`).
+- **SES no escapa el HTML de los datos** («SES doesn't escape HTML content when
+  rendering the HTML template»). Por eso el adaptador manda `escapedName` para
+  el HTML y `name` para el texto plano.
+- **Las pruebas llenan cada plantilla** tal como la crea el construct, con los
+  datos reales del adaptador (`test/sign-up-email-templates.test.ts`), y
+  revisan el texto de la spec, cada botón con su enlace, el plazo de 24 horas
+  y el nombre escapado. Además exigen que los marcadores del HTML sean los
+  datos menos `name`, y los del texto, los datos menos `escapedName`.
+- **Riesgo aceptado: SES falla en silencio al rendir.** Según su
+  documentación, si a una plantilla le falta un dato, el envío igual responde
+  bien y el correo no sale; sólo queda un evento «Rendering Failure» si un
+  configuration set lo publica, y hoy no hay ninguno. Lo cubre la prueba de
+  los marcadores, que falla si el adaptador y la plantilla dejan de coincidir.
 
 ## Infraestructura
 
@@ -116,9 +135,15 @@ dependencia. El nombre de la persona se escapa en el HTML.
 - `lib/backend-stack.ts`:
   - instancia `DynamoTables`;
   - crea un `NodejsFunction` (Node 22, arm64, 15 segundos, 512 MB) por handler,
-    con `TABLE_NAME`, `FRONTEND_URL`, `EMAIL_FROM`, `NODE_OPTIONS` para los
-    source maps y, en el registro, `USER_POOL_ID` y
-    `TERMS_ACCEPTANCE_REQUIRED`. Sus logs se conservan un mes;
+    con `TABLE_NAME`, `FRONTEND_URL`, `EMAIL_FROM`, los nombres de las
+    plantillas (`CONFIRM_EMAIL_TEMPLATE`, `PENDING_CONFIRMATION_TEMPLATE` y
+    `ACCOUNT_EXISTS_TEMPLATE`), `NODE_OPTIONS` para los source maps y, en el
+    registro, `USER_POOL_ID` y `TERMS_ACCEPTANCE_REQUIRED`. Sus logs se
+    conservan un mes;
+  - hace que las dos Lambdas dependan de las plantillas
+    (`node.addDependency`): los nombres llegan como texto y no como
+    referencia, así que sin eso CloudFormation podría crear una Lambda antes
+    que su plantilla;
   - **permisos del registro:**
     - `dynamodb:PutItem` y `UpdateItem` sólo sobre ítems cuya clave empiece con
       `USER#`, `EMAIL_CONFIRMATION#` o `EMAIL_SEND_ATTEMPTS#`, con la condición
@@ -128,7 +153,15 @@ dependencia. El nombre de la persona se escapa en el HTML.
       `AdminDeleteUser` sobre el user pool. Cognito no permite acotarlos a un
       usuario, así que la Lambda del registro puede cambiar la contraseña de
       cualquiera;
-    - `ses:SendEmail` sobre la identidad de `DOMAIN`;
+    - `ses:SendEmail` sobre la identidad de SES del dominio de `EMAIL_FROM`
+      (`lib/sender-domain.ts`) y sobre sus tres plantillas, y el reenvío sólo
+      sobre la de confirmación. Es la del remitente y no la de `DOMAIN`,
+      porque SES revisa el permiso sobre la identidad verificada, que puede
+      ser un subdominio como `support.wizydoc.app`. Eso acota las
+      plantillas guardadas, pero el permiso sobre la identidad igual permite
+      enviar un correo armado en la llamada. Acotar además el remitente con
+      la condición `ses:FromAddress` queda pendiente, porque una condición mal
+      armada haría fallar todo envío y no se puede probar sin AWS;
   - **permisos del reenvío:** los mismos de DynamoDB, sin `USER#`, y los de SES,
     sin Cognito;
   - registra `POST /api/auth/sign-up/email` y
@@ -136,9 +169,35 @@ dependencia. El nombre de la persona se escapa en el HTML.
 - `bin/backend-infra.ts` exige `FRONTEND_URL` y `EMAIL_FROM`, y lee
   `TERMS_ACCEPTANCE_REQUIRED`, que sólo con `"true"` se enciende. En local
   llegan de `.env` (ver `.env.example`), y en GitHub Actions del entorno.
+- **`FRONTEND_URL` tiene que ser sólo el origen** (`lib/platform-origin.ts`):
+  https, o http sólo en localhost, sin ruta, consulta ni fragmento, y con un
+  host de letras, números, puntos y guiones. Si no, falla al sintetizar. El
+  adaptador arma los enlaces con él y SES no los escapa: `URL` acepta comillas
+  en el host, y unas comillas cerrarían el `href` de los botones.
 
 **Sin verificar contra AWS:** que `dynamodb:LeadingKeys` se aplique a cada
-`Put` de la transacción, y los tiempos reales de cada camino.
+`Put` de la transacción, y los tiempos reales de cada camino. De las
+plantillas (WIZ-73):
+- que `AWS::SES::Template` sirva para el `SendEmail` de SES v2, porque
+  CloudFormation lo documenta para el envío con la API v1;
+- que `ses:SendEmail` sobre `template/<nombre>` sea el permiso que pide SES v2
+  al enviar con una plantilla;
+- que SES no escape lo que va entre `{{ }}`, como dice su documentación, y
+  que respete las tildes y la ñ.
+
+Después del despliegue se revisa sin enviar nada:
+
+```bash
+aws sesv2 test-render-email-template \
+  --template-name WizydocBackend-confirm-email \
+  --template-data '{"name":"A & <b>","escapedName":"A &amp; &lt;b&gt;","confirmUrl":"https://app.wizydoc.app/verify-email#token=x","linkLifetimeHours":"24"}'
+```
+
+La respuesta es el mensaje MIME entero. El HTML tiene que mostrar
+`A &amp; &lt;b&gt;`, y el texto, `A & <b>`. Las tildes y la ñ se revisan
+aparte, con un nombre como `Ñandú`, decodificando cada parte: con caracteres
+fuera de ASCII pueden venir en quoted-printable o base64. El permiso sobre la
+plantilla se comprueba con el primer registro.
 
 **Dependencias nuevas,** aprobadas por el humano: `@aws-sdk/client-sesv2`, y
 como devDependencies `esbuild` (empaqueta las Lambdas) y `dotenv-cli` (carga
@@ -149,7 +208,8 @@ como devDependencies `esbuild` (empaqueta las Lambdas) y `dotenv-cli` (carga
 La spec y la implementación van en un solo PR, decidido el 6 de noviembre de
 2026. El primer despliegue espera a la confirmación del correo y a SES fuera
 del sandbox, y encender `TERMS_ACCEPTANCE_REQUIRED` espera a la lista «Antes de
-encender la aceptación de los términos» de la spec.
+encender la aceptación de los términos» de la spec. Las plantillas de SES
+(WIZ-73) van en un PR propio.
 
 ## Cobertura de los criterios
 
@@ -157,10 +217,10 @@ encender la aceptación de los términos» de la spec.
 |---|---|
 | Correo nuevo: usuario sin confirmar en Cognito y DynamoDB | `users/sign-up.usecase.test.ts` y `users/dynamodb.test.ts` |
 | Correo y teléfono normalizados | `users/sign-up.usecase.test.ts` y `users/sign-up-input.test.ts` |
-| Correo de confirmación con el token en el fragmento, guardado con hash y TTL | `users/sign-up.usecase.test.ts`, `users/dynamodb.test.ts` y `users/sign-up-emails.test.ts` |
+| Correo de confirmación con el token en el fragmento, guardado con hash y TTL | `users/sign-up.usecase.test.ts`, `users/dynamodb.test.ts`, `users/sign-up-emails.test.ts` y `sign-up-email-templates.test.ts` |
 | Constancia completa en la misma transacción | `users/sign-up.usecase.test.ts`, `users/sign-up.http.test.ts` y `users/dynamodb.test.ts` |
-| Correo confirmado: aviso que recomienda cambiar la contraseña, y nada más | `users/sign-up.usecase.test.ts` y `users/sign-up-emails.test.ts` |
-| Correo sin confirmar: aviso con el botón para confirmar, sin cambiar nada | `users/sign-up.usecase.test.ts` y `users/sign-up-emails.test.ts` |
+| Correo confirmado: aviso que recomienda cambiar la contraseña, y nada más | `users/sign-up.usecase.test.ts`, `users/sign-up-emails.test.ts` y `sign-up-email-templates.test.ts` |
+| Correo sin confirmar: aviso con el botón para confirmar, sin cambiar nada | `users/sign-up.usecase.test.ts`, `users/sign-up-emails.test.ts` y `sign-up-email-templates.test.ts` |
 | Correo sólo en Cognito: nada guardado ni enviado | `users/sign-up.usecase.test.ts` y `users/cognito.test.ts` |
 | Respuesta idéntica en los cuatro casos | `users/sign-up.http.test.ts` |
 | Fallo de DynamoDB o de la contraseña: se borra de Cognito | `users/sign-up.usecase.test.ts` y `users/cognito.test.ts` |
