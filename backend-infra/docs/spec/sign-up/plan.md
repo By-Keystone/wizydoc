@@ -153,15 +153,15 @@ si no, no hace nada. Siempre responde 202.
       `AdminDeleteUser` sobre el user pool. Cognito no permite acotarlos a un
       usuario, así que la Lambda del registro puede cambiar la contraseña de
       cualquiera;
-    - `ses:SendEmail` sobre la identidad de SES del dominio de `EMAIL_FROM`
-      (`lib/sender-domain.ts`) y sobre sus tres plantillas, y el reenvío sólo
-      sobre la de confirmación. Es la del remitente y no la de `DOMAIN`,
-      porque SES revisa el permiso sobre la identidad verificada, que puede
-      ser un subdominio como `support.wizydoc.app`. Eso acota las
-      plantillas guardadas, pero el permiso sobre la identidad igual permite
-      enviar un correo armado en la llamada. Acotar además el remitente con
-      la condición `ses:FromAddress` queda pendiente, porque una condición mal
-      armada haría fallar todo envío y no se puede probar sin AWS;
+    - `ses:SendEmail` sobre cualquier identidad de la cuenta (`identity/*`) y
+      sobre sus tres plantillas, y el reenvío sólo sobre la de confirmación,
+      con la condición `ses:FromAddress` igual a la dirección de `EMAIL_FROM`
+      (`lib/sender-address.ts`). Es `identity/*` porque, con la cuenta en el
+      sandbox, SES también revisa el permiso sobre la identidad del
+      destinatario: con sólo la del remitente, el envío fallaba con
+      `AccessDeniedException`. La condición sigue acotando el remitente. Eso
+      acota las plantillas guardadas, pero el permiso igual permite enviar un
+      correo armado en la llamada, desde esa misma dirección;
   - **permisos del reenvío:** los mismos de DynamoDB, sin `USER#`, y los de SES,
     sin Cognito;
   - registra `POST /api/auth/sign-up/email` y
@@ -182,6 +182,9 @@ plantillas (WIZ-73):
   CloudFormation lo documenta para el envío con la API v1;
 - que `ses:SendEmail` sobre `template/<nombre>` sea el permiso que pide SES v2
   al enviar con una plantilla;
+- que con `identity/*` y la condición el envío pase en el sandbox, y que
+  `ses:FromAddress` sea sólo la dirección, sin el nombre visible (SES tiene
+  otra clave para el nombre, `ses:FromDisplayName`);
 - que SES no escape lo que va entre `{{ }}`, como dice su documentación, y
   que respete las tildes y la ñ.
 

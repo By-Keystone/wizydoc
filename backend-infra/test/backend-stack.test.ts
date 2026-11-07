@@ -86,7 +86,7 @@ test("el registro crea y borra usuarios en Cognito, escribe sólo sus prefijos, 
     "dynamodb:Query",
     "/index/GSI1",
     "ses:SendEmail",
-    ":identity/wizydoc.app",
+    ":identity/*",
   ]) {
     assert.ok(policy.includes(expected), expected);
   }
@@ -204,15 +204,28 @@ test("el flag de los términos llega apagado a la Lambda del registro salvo que 
   );
 });
 
-test("el permiso de envío es sobre la identidad de SES del dominio del remitente, aunque sea un subdominio", () => {
+test("las Lambdas pueden enviar a cualquier identidad, como el destinatario en el sandbox, pero sólo desde la dirección de EMAIL_FROM", () => {
   const template = synthesizeBackend({
     emailFrom: "WizyDoc <no-reply@support.wizydoc.app>",
   });
 
   for (const functionName of ["SignUpFunction", "ResendConfirmationFunction"]) {
-    const policy = policyFor(template, functionName);
-    assert.ok(policy.includes(":identity/support.wizydoc.app"), functionName);
-    assert.equal(policy.includes(":identity/wizydoc.app"), false, functionName);
+    const sendEmailStatement = JSON.parse(
+      policyFor(template, functionName),
+    ).Statement.find(
+      (statement: { Action: string | string[] }) =>
+        JSON.stringify(statement.Action) === '"ses:SendEmail"',
+    );
+    assert.ok(sendEmailStatement, functionName);
+    assert.ok(
+      JSON.stringify(sendEmailStatement.Resource).includes(":identity/*"),
+      functionName,
+    );
+    assert.deepEqual(
+      sendEmailStatement.Condition,
+      { StringEquals: { "ses:FromAddress": "no-reply@support.wizydoc.app" } },
+      functionName,
+    );
   }
 });
 

@@ -11,7 +11,7 @@ import type { Construct } from "constructs";
 import { ApiGateway } from "./api-gateway";
 import { Authentication } from "./authentication";
 import { DynamoTables } from "./dynamo";
-import { senderDomainOf } from "./sender-domain";
+import { senderAddressOf } from "./sender-address";
 import {
   type SignUpEmailTemplate,
   SignUpEmailTemplates,
@@ -87,15 +87,20 @@ export class BackendStack extends Stack {
       PENDING_CONFIRMATION_TEMPLATE: emailTemplates.pendingConfirmation.name,
       ACCOUNT_EXISTS_TEMPLATE: emailTemplates.accountExists.name,
     };
-    const senderIdentity = this.formatArn({
+    // En el sandbox, SES también revisa el permiso sobre la identidad del
+    // destinatario: por eso `identity/*`, y la condición acota el remitente.
+    const anyIdentity = this.formatArn({
       service: "ses",
       resource: "identity",
-      resourceName: senderDomainOf(props.emailFrom),
+      resourceName: "*",
     });
     const sendEmailWithTemplates = (templates: SignUpEmailTemplate[]) =>
       new iam.PolicyStatement({
         actions: ["ses:SendEmail"],
-        resources: [senderIdentity, ...templates.map(({ arn }) => arn)],
+        resources: [anyIdentity, ...templates.map(({ arn }) => arn)],
+        conditions: {
+          StringEquals: { "ses:FromAddress": senderAddressOf(props.emailFrom) },
+        },
       });
 
     const signUpFunction = this.usersFunction("SignUpFunction", "sign-up", {
