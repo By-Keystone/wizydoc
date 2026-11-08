@@ -35,7 +35,8 @@ export async function requestSignUpCodeAction(
   const email = parsedEmail.data;
 
   const progress = await readSignUpProgress();
-  if (progress?.email === email) {
+  // Con token el código ya se gastó: el backend sí envía uno nuevo.
+  if (progress?.email === email && !progress.verificationToken) {
     const secondsLeft = secondsUntilResend(progress, Date.now());
     if (secondsLeft > 0) {
       revalidatePath("/register");

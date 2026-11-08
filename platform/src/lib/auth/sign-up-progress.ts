@@ -39,6 +39,13 @@ export async function saveSignUpProgress(
   });
 }
 
+export async function clearSignUpProgress(): Promise<void> {
+  (await cookies()).delete({
+    name: COOKIE_NAMES.signUpProgress,
+    path: "/register",
+  });
+}
+
 export function secondsUntilResend(
   progress: SignUpProgress,
   now: number,

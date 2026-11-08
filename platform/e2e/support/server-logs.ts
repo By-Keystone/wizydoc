@@ -1,5 +1,9 @@
 import { readFileSync } from "node:fs";
-import { API_LOG_PATH, PLATFORM_LOG_PATH } from "./env";
+import {
+  API_LOG_PATH,
+  PLATFORM_LOG_PATH,
+  SERVERLESS_PLATFORM_LOG_PATH,
+} from "./env";
 
 function readLog(path: string): string {
   try {
@@ -11,3 +15,5 @@ function readLog(path: string): string {
 
 export const readApiLog = () => readLog(API_LOG_PATH);
 export const readPlatformLog = () => readLog(PLATFORM_LOG_PATH);
+export const readServerlessPlatformLog = () =>
+  readLog(SERVERLESS_PLATFORM_LOG_PATH);

@@ -1,9 +1,8 @@
-/**
- * Cookies propias de la aplicación (la sesión la gestiona Better Auth con su
- * propia cookie `better-auth.session_token`).
- */
 export const COOKIE_NAMES = {
   resourceId: "resource_id",
   resourceType: "resource_type",
   signUpProgress: "sign_up_progress",
+  idToken: "session_id_token",
+  accessToken: "session_access_token",
+  refreshToken: "session_refresh_token",
 } as const;
