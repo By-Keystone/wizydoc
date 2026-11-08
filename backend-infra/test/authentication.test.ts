@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { App, Stack } from "aws-cdk-lib";
 import { Template } from "aws-cdk-lib/assertions";
-import { Authentication } from "../lib/authentication";
+import { Authentication, PLATFORM_CLIENT_NAME } from "../lib/authentication";
 
 function synthesizeAuthentication() {
   const stack = new Stack(new App(), "AuthenticationTest", {
@@ -31,9 +31,9 @@ test("hay un cliente para el api y otro para la sesión, ambos con secreto, sin 
   }
 });
 
-test("el cliente de la sesión sólo admite ADMIN_USER_PASSWORD_AUTH y el refresco, y su refresh token dura 30 días", () => {
+test("el cliente de platform sólo admite ADMIN_USER_PASSWORD_AUTH y el refresco, y su refresh token dura 30 días", () => {
   const [session] = clientProperties(synthesizeAuthentication()).filter(
-    ({ ClientName }) => ClientName === "session",
+    ({ ClientName }) => ClientName === PLATFORM_CLIENT_NAME,
   );
 
   assert.deepEqual(session.ExplicitAuthFlows, [
@@ -46,7 +46,7 @@ test("el cliente de la sesión sólo admite ADMIN_USER_PASSWORD_AUTH y el refres
 
 test("el cliente del api conserva USER_PASSWORD_AUTH", () => {
   const [api] = clientProperties(synthesizeAuthentication()).filter(
-    ({ ClientName }) => ClientName !== "session",
+    ({ ClientName }) => ClientName !== PLATFORM_CLIENT_NAME,
   );
 
   assert.deepEqual(api.ExplicitAuthFlows, [

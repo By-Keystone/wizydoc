@@ -4,6 +4,7 @@ import { Construct } from "constructs";
 
 const MINIMUM_PASSWORD_LENGTH = 8;
 const REFRESH_TOKEN_VALIDITY = Duration.days(30);
+export const PLATFORM_CLIENT_NAME = "wizydoc-platform";
 
 const writableAttributes =
   new cognito.ClientAttributes().withStandardAttributes({
@@ -14,7 +15,7 @@ const writableAttributes =
 
 export class Authentication extends Construct {
   readonly userPool: cognito.UserPool;
-  readonly sessionClient: cognito.UserPoolClient;
+  readonly platformClient: cognito.UserPoolClient;
 
   constructor(scope: Construct, id: string) {
     super(scope, id);
@@ -43,8 +44,8 @@ export class Authentication extends Construct {
       writeAttributes: writableAttributes,
     });
 
-    this.sessionClient = this.userPool.addClient("SessionClient", {
-      userPoolClientName: "session",
+    this.platformClient = this.userPool.addClient("PlatformClient", {
+      userPoolClientName: PLATFORM_CLIENT_NAME,
       generateSecret: true,
       authFlows: { adminUserPassword: true },
       disableOAuth: true,

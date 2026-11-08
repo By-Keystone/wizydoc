@@ -67,7 +67,7 @@ export class CognitoSessionProvider implements ISessionProvider {
       }),
     );
     if (!UserPoolClient?.ClientSecret) {
-      throw new Error("El cliente de la sesión no tiene secreto.");
+      throw new Error("El cliente de platform no tiene secreto.");
     }
     this.clientSecret = UserPoolClient.ClientSecret;
     return this.clientSecret;

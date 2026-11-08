@@ -77,7 +77,7 @@ milisegundos menos. Distinguir una sola dirección lleva horas: como mucho 5
 muestras útiles por minuto y por correo, y un correo por minuto a la víctima.
 Igualarlo exigiría escrituras de relleno.
 
-**Parte 3a: el cliente de la sesión (hecho)**
+**Parte 3a: el cliente de platform (hecho)**
 - **Pool nuevo con `email` inmutable.** Comprobado contra AWS: Cognito rechaza
   un app client sin `email` en `writeAttributes` mientras `email` sea
   obligatorio (`InvalidParameterException: Invalid write attributes specified
@@ -100,12 +100,14 @@ Igualarlo exigiría escrituras de relleno.
 - **`ApiClient`:** nada en `backend-infra` usa su `USER_PASSWORD_AUTH` hoy; lo
   usaría el inicio de sesión, que es otro subticket de WIZ-71. Se deja con sus
   flujos y sólo gana `writeAttributes`. Propuesta: si el inicio de sesión usa el
-  cliente de la sesión o uno propio, quitarlo.
-- **Cliente `session`:** `authFlows: { adminUserPassword: true }` (CDK emite
+  cliente de platform o uno propio, quitarlo.
+- **Cliente `wizydoc-platform`:** `authFlows: { adminUserPassword: true }` (CDK emite
   `ALLOW_ADMIN_USER_PASSWORD_AUTH` y `ALLOW_REFRESH_TOKEN_AUTH`, sin SRP,
   CUSTOM_AUTH ni `USER_PASSWORD_AUTH`), `generateSecret`,
   `preventUserExistenceErrors` y refresh token de 30 días (el valor por
-  defecto de Cognito, explícito). `Authentication.sessionClient` lo expone.
+  defecto de Cognito, explícito). `Authentication.platformClient` lo expone.
+  Es el cliente de platform: cada app que reciba tokens tiene el suyo, así que
+  una app móvil tendría otro app client con su propia configuración.
 - **El secreto no va a la plantilla ni al entorno,** y no usa Secrets Manager:
   el adaptador (`CognitoSessionProvider`) lo lee con `DescribeUserPoolClient`
   la primera vez y lo guarda sólo en memoria. Decisión del humano. Motivos:
@@ -157,7 +159,7 @@ Igualarlo exigiría escrituras de relleno.
   - Nada de SES ni de los demás prefijos.
   - `DescribeUserPoolClient` y `AdminInitiateAuth` no pasan a las otras
     Lambdas.
-- **El cliente de la sesión** (hecho en 3a) existe para que el id del cliente
+- **El cliente de platform** (hecho en 3a) existe para que el id del cliente
   del `AdminInitiateAuth` tenga `preventUserExistenceErrors` y secreto: el id
   viaja en los tokens, y un cliente sin secreto dejaría llamar a
   `ForgotPassword` y `ResendConfirmationCode` sin autenticarse, con lo que se
