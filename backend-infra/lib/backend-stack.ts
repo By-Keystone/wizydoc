@@ -30,20 +30,32 @@ const USERS_FUNCTION_TIMEOUT = Duration.seconds(15);
 const USERS_FUNCTION_MEMORY_MB = 512;
 const USER_EMAIL_INDEX = "GSI1";
 
-const SIGN_UP_KEY_PREFIXES = [
-  "USER#*",
-  "EMAIL_CONFIRMATION#*",
-  "EMAIL_SEND_ATTEMPTS#*",
-];
-const REQUEST_SIGN_UP_CODE_KEY_PREFIXES = [
-  "SIGN_UP_CODE#*",
-  "SIGN_UP_NOTICE#*",
-  "EMAIL_SEND_ATTEMPTS#*",
-];
-const RESEND_CONFIRMATION_KEY_PREFIXES = [
-  "EMAIL_CONFIRMATION#*",
-  "EMAIL_SEND_ATTEMPTS#*",
-];
+type TableWrites = Partial<
+  Record<
+    "dynamodb:PutItem" | "dynamodb:UpdateItem" | "dynamodb:DeleteItem",
+    string[]
+  >
+>;
+
+const EMAIL_SEND_ATTEMPTS_KEYS = "EMAIL_SEND_ATTEMPTS#*";
+
+const SIGN_UP_WRITES: TableWrites = {
+  "dynamodb:PutItem": ["USER#*", "EMAIL_CONFIRMATION#*"],
+  "dynamodb:UpdateItem": [EMAIL_SEND_ATTEMPTS_KEYS],
+};
+const RESEND_CONFIRMATION_WRITES: TableWrites = {
+  "dynamodb:PutItem": ["EMAIL_CONFIRMATION#*"],
+  "dynamodb:UpdateItem": [EMAIL_SEND_ATTEMPTS_KEYS],
+};
+const REQUEST_SIGN_UP_CODE_WRITES: TableWrites = {
+  "dynamodb:PutItem": ["SIGN_UP_CODE#*", "SIGN_UP_NOTICE#*"],
+  "dynamodb:UpdateItem": [EMAIL_SEND_ATTEMPTS_KEYS],
+};
+const VERIFY_SIGN_UP_CODE_WRITES: TableWrites = {
+  "dynamodb:PutItem": ["SIGN_UP_VERIFICATION#*"],
+  "dynamodb:UpdateItem": ["SIGN_UP_CODE#*", "SIGN_UP_VERIFY_ATTEMPTS#*"],
+  "dynamodb:DeleteItem": ["SIGN_UP_CODE#*"],
+};
 
 export interface BackendStackProps extends StackProps {
   hostedZoneId: string;
@@ -115,7 +127,8 @@ export class BackendStack extends Stack {
       USER_POOL_ID: authentication.userPool.userPoolId,
       TERMS_ACCEPTANCE_REQUIRED: String(props.termsAcceptanceRequired),
     });
-    grantUsersTableAccess(signUpFunction, database.table, SIGN_UP_KEY_PREFIXES);
+    grantTableWrites(signUpFunction, database.table, SIGN_UP_WRITES);
+    grantUserEmailLookup(signUpFunction, database.table);
     authentication.userPool.grant(
       signUpFunction,
       "cognito-idp:AdminCreateUser",
@@ -136,11 +149,12 @@ export class BackendStack extends Stack {
       "resend-confirmation",
       sharedEnvironment,
     );
-    grantUsersTableAccess(
+    grantTableWrites(
       resendConfirmationFunction,
       database.table,
-      RESEND_CONFIRMATION_KEY_PREFIXES,
+      RESEND_CONFIRMATION_WRITES,
     );
+    grantUserEmailLookup(resendConfirmationFunction, database.table);
     resendConfirmationFunction.addToRolePolicy(
       sendEmailWithTemplates([emailTemplates.confirmEmail]),
     );
@@ -151,11 +165,12 @@ export class BackendStack extends Stack {
       "request-sign-up-code",
       sharedEnvironment,
     );
-    grantUsersTableAccess(
+    grantTableWrites(
       requestSignUpCodeFunction,
       database.table,
-      REQUEST_SIGN_UP_CODE_KEY_PREFIXES,
+      REQUEST_SIGN_UP_CODE_WRITES,
     );
+    grantUserEmailLookup(requestSignUpCodeFunction, database.table);
     requestSignUpCodeFunction.addToRolePolicy(
       sendEmailWithTemplates([
         emailTemplates.signUpCode,
@@ -164,16 +179,32 @@ export class BackendStack extends Stack {
     );
     requestSignUpCodeFunction.node.addDependency(emailTemplates);
 
+    const verifySignUpCodeFunction = this.usersFunction(
+      "VerifySignUpCodeFunction",
+      "verify-sign-up-code",
+      { TABLE_NAME: database.table.tableName },
+    );
+    grantTableWrites(
+      verifySignUpCodeFunction,
+      database.table,
+      VERIFY_SIGN_UP_CODE_WRITES,
+    );
+
     const signUpResource =
       apiGateway.api.root.resourceForPath("api/auth/sign-up");
     signUpResource
       .addResource("email")
       .addMethod("POST", new apigateway.LambdaIntegration(signUpFunction));
-    signUpResource
-      .addResource("code")
+    const signUpCodeResource = signUpResource.addResource("code");
+    signUpCodeResource.addMethod(
+      "POST",
+      new apigateway.LambdaIntegration(requestSignUpCodeFunction),
+    );
+    signUpCodeResource
+      .addResource("verify")
       .addMethod(
         "POST",
-        new apigateway.LambdaIntegration(requestSignUpCodeFunction),
+        new apigateway.LambdaIntegration(verifySignUpCodeFunction),
       );
     signUpResource
       .addResource("resend-confirmation")
@@ -206,26 +237,28 @@ export class BackendStack extends Stack {
   }
 }
 
-const grantUsersTableAccess = (
+const grantTableWrites = (
   usersFunction: NodejsFunction,
   table: ITableV2,
-  writableKeyPrefixes: string[],
+  writes: TableWrites,
 ) => {
-  usersFunction.addToRolePolicy(
-    new iam.PolicyStatement({
-      actions: ["dynamodb:PutItem", "dynamodb:UpdateItem"],
-      resources: [table.tableArn],
-      conditions: {
-        "ForAllValues:StringLike": {
-          "dynamodb:LeadingKeys": writableKeyPrefixes,
+  for (const [action, keyPrefixes] of Object.entries(writes)) {
+    usersFunction.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: [action],
+        resources: [table.tableArn],
+        conditions: {
+          "ForAllValues:StringLike": { "dynamodb:LeadingKeys": keyPrefixes },
         },
-      },
-    }),
-  );
+      }),
+    );
+  }
+};
+
+const grantUserEmailLookup = (usersFunction: NodejsFunction, table: ITableV2) =>
   usersFunction.addToRolePolicy(
     new iam.PolicyStatement({
       actions: ["dynamodb:Query"],
       resources: [`${table.tableArn}/index/${USER_EMAIL_INDEX}`],
     }),
   );
-};

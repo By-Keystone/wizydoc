@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { ConditionalCheckFailedException } from "@aws-sdk/client-dynamodb";
+import {
+  ConditionalCheckFailedException,
+  TransactionCanceledException,
+  TransactionConflictException,
+} from "@aws-sdk/client-dynamodb";
 import type {
   DynamoDBDocumentClient,
   PutCommandInput,
@@ -13,10 +17,15 @@ import {
   CURRENT_PRIVACY_POLICY_VERSION,
   CURRENT_TERMS_VERSION,
 } from "../../lib/src/users/domain/legal-documents";
+import { createSignUpVerificationToken } from "../../lib/src/users/domain/sign-up-verification-token.entity";
 import { createSignUpCode } from "../../lib/src/users/domain/sign-up-code.entity";
 import { createTermsAcceptance } from "../../lib/src/users/domain/terms-acceptance.entity";
 import { DynamoDBAccountExistsNotices } from "../../lib/src/users/infrastructure/persistence/dynamodb/account-exists-notices";
-import { DynamoDBEmailSendAttempts } from "../../lib/src/users/infrastructure/persistence/dynamodb/email-send-attempts";
+import {
+  DynamoDBIpRateLimit,
+  EMAIL_SEND_RATE_LIMIT,
+  SIGN_UP_VERIFY_RATE_LIMIT,
+} from "../../lib/src/users/infrastructure/persistence/dynamodb/ip-rate-limit";
 import { SignUpCodeRepository } from "../../lib/src/users/infrastructure/persistence/dynamodb/sign-up-code.repository";
 import { fromDomainToDynamo } from "../../lib/src/users/infrastructure/persistence/dynamodb/user.mappers";
 import { UserRepository } from "../../lib/src/users/infrastructure/persistence/dynamodb/user.repository";
@@ -187,9 +196,10 @@ test("existsByEmail consulta el índice del correo con una proyección mínima y
 
 test("cuenta los envíos por IP en ventanas fijas de 10 minutos, y rechaza desde el cuarto", async () => {
   const { client, inputs } = capturingClient();
-  const attempts = new DynamoDBEmailSendAttempts(
+  const attempts = new DynamoDBIpRateLimit(
     client,
     TABLE_NAME,
+    EMAIL_SEND_RATE_LIMIT,
     () => TEN_PAST_NOON,
   );
 
@@ -218,9 +228,10 @@ test("cuenta los envíos por IP en ventanas fijas de 10 minutos, y rechaza desde
 
 test("agrupa las IPv6 por su red /64 y sin IP usa un cupo compartido", async () => {
   const { client, inputs } = capturingClient();
-  const attempts = new DynamoDBEmailSendAttempts(
+  const attempts = new DynamoDBIpRateLimit(
     client,
     TABLE_NAME,
+    EMAIL_SEND_RATE_LIMIT,
     () => TEN_PAST_NOON,
   );
 
@@ -246,9 +257,10 @@ test("superado el máximo, el intento no se registra", async () => {
     }),
   });
 
-  const isAllowed = await new DynamoDBEmailSendAttempts(
+  const isAllowed = await new DynamoDBIpRateLimit(
     client,
     TABLE_NAME,
+    EMAIL_SEND_RATE_LIMIT,
   ).tryRegister("190.42.10.7");
 
   assert.equal(isAllowed, false);
@@ -379,4 +391,147 @@ test("si el aviso anterior salió hace menos de un minuto, informa que no se reg
     ).tryRegister(email),
     { message: "DynamoDB no disponible" },
   );
+});
+
+test("la verificación suma el intento antes de comparar, sólo si el código existe, no venció y le quedan intentos, y lee el hash guardado", async () => {
+  const { client, inputs } = capturingClient({
+    response: { Attributes: { CodeHash: "hash-guardado" } },
+  });
+  const email = emailSchema.parse("ana@clinica.pe");
+
+  const codeHash = await new SignUpCodeRepository(
+    client,
+    TABLE_NAME,
+    () => TEN_PAST_NOON,
+  ).registerAttemptAndReadCodeHash(email);
+
+  const [update] = inputs as UpdateCommandInput[];
+  assert.equal(codeHash, "hash-guardado");
+  assert.deepEqual(update.Key, { PK: "SIGN_UP_CODE#ana@clinica.pe", SK: "!" });
+  assert.equal(update.UpdateExpression, "ADD Attempts :one");
+  assert.equal(
+    update.ConditionExpression,
+    "attribute_exists(PK) AND Attempts < :maxAttempts AND DeleteAfter > :now",
+  );
+  assert.deepEqual(update.ExpressionAttributeValues, {
+    ":one": 1,
+    ":maxAttempts": 5,
+    ":now": TEN_PAST_NOON / 1000,
+  });
+  assert.equal(update.ReturnValues, "ALL_NEW");
+});
+
+test("sin código que probar, o si una transacción lo está cambiando, no hay hash; cualquier otro error sube", async () => {
+  const email = emailSchema.parse("ana@clinica.pe");
+  const repositoryFailingWith = (failure: Error) =>
+    new SignUpCodeRepository(capturingClient({ failure }).client, TABLE_NAME);
+
+  assert.equal(
+    await repositoryFailingWith(
+      new ConditionalCheckFailedException({ message: "x", $metadata: {} }),
+    ).registerAttemptAndReadCodeHash(email),
+    undefined,
+  );
+  assert.equal(
+    await repositoryFailingWith(
+      new TransactionConflictException({ message: "x", $metadata: {} }),
+    ).registerAttemptAndReadCodeHash(email),
+    undefined,
+  );
+  await assert.rejects(
+    repositoryFailingWith(
+      new Error("DynamoDB no disponible"),
+    ).registerAttemptAndReadCodeHash(email),
+    { message: "DynamoDB no disponible" },
+  );
+});
+
+test("gastar el código borra el código sólo si sigue siendo el mismo y guarda el token de verificación, con sólo su hash, en una transacción", async () => {
+  const { client, inputs } = capturingClient();
+  const email = emailSchema.parse("ana@clinica.pe");
+  const verificationToken = createSignUpVerificationToken(
+    email,
+    new Date(TEN_PAST_NOON),
+  );
+
+  const wasSpent = await new SignUpCodeRepository(
+    client,
+    TABLE_NAME,
+  ).spendForVerificationToken(email, "hash-del-codigo", verificationToken);
+
+  const [transaction] = inputs as TransactWriteCommandInput[];
+  const [deletion, creation] = transaction.TransactItems ?? [];
+  assert.equal(wasSpent, true);
+  assert.deepEqual(deletion.Delete?.Key, {
+    PK: "SIGN_UP_CODE#ana@clinica.pe",
+    SK: "!",
+  });
+  assert.equal(deletion.Delete?.ConditionExpression, "CodeHash = :codeHash");
+  assert.deepEqual(deletion.Delete?.ExpressionAttributeValues, {
+    ":codeHash": "hash-del-codigo",
+  });
+  assert.equal(creation.Put?.ConditionExpression, "attribute_not_exists(PK)");
+  assert.deepEqual(creation.Put?.Item, {
+    PK: `SIGN_UP_VERIFICATION#${verificationToken.tokenHash}`,
+    SK: "!",
+    ItemType: "SIGN_UP_VERIFICATION",
+    Email: "ana@clinica.pe",
+    DeleteAfter: (TEN_PAST_NOON + 15 * 60 * 1000) / 1000,
+  });
+  assert.equal(JSON.stringify(inputs).includes(verificationToken.token), false);
+});
+
+test("si otra verificación gastó el código antes, la transacción cancelada informa que no se gastó, y cualquier otro error sube", async () => {
+  const email = emailSchema.parse("ana@clinica.pe");
+  const verificationToken = createSignUpVerificationToken(email);
+  const spendWith = (failure: Error) =>
+    new SignUpCodeRepository(
+      capturingClient({ failure }).client,
+      TABLE_NAME,
+    ).spendForVerificationToken(email, "hash", verificationToken);
+  const canceledBecause = (codes: string[]) =>
+    new TransactionCanceledException({
+      message: "cancelada",
+      $metadata: {},
+      CancellationReasons: codes.map((Code) => ({ Code })),
+    });
+
+  assert.equal(
+    await spendWith(canceledBecause(["ConditionalCheckFailed", "None"])),
+    false,
+  );
+  assert.equal(
+    await spendWith(canceledBecause(["TransactionConflict", "None"])),
+    false,
+  );
+  await assert.rejects(
+    spendWith(canceledBecause(["ProvisionedThroughputExceeded", "None"])),
+  );
+  await assert.rejects(spendWith(canceledBecause([])));
+  await assert.rejects(spendWith(new Error("DynamoDB no disponible")), {
+    message: "DynamoDB no disponible",
+  });
+});
+
+test("el límite de verificaciones usa su propio prefijo y su máximo de 10, aparte del de los envíos", async () => {
+  const { client, inputs } = capturingClient();
+
+  await new DynamoDBIpRateLimit(
+    client,
+    TABLE_NAME,
+    SIGN_UP_VERIFY_RATE_LIMIT,
+    () => TEN_PAST_NOON,
+  ).tryRegister("190.42.10.7");
+
+  const [update] = inputs as UpdateCommandInput[];
+  assert.deepEqual(update.Key, {
+    PK: "SIGN_UP_VERIFY_ATTEMPTS#190.42.10.7",
+    SK: String(WINDOW_START),
+  });
+  assert.deepEqual(update.ExpressionAttributeValues, {
+    ":one": 1,
+    ":maxAttempts": 10,
+    ":deleteAfter": WINDOW_START + 600,
+    ":itemType": "SIGN_UP_VERIFY_ATTEMPTS",
+  });
 });

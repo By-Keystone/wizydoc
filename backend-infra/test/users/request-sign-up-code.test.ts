@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { INVALID_REQUEST } from "../../lib/src/shared/messages";
-import type { IEmailSendAttempts } from "../../lib/src/users/application/ports/email-send-attempts.port";
 import { RequestSignUpCodeUseCase } from "../../lib/src/users/application/request-sign-up-code.usecase";
 import {
   createSignUpCode,
@@ -14,8 +13,9 @@ import {
 } from "../../lib/src/users/handlers/http-messages";
 import { handleRequestSignUpCode } from "../../lib/src/users/handlers/request-sign-up-code.http";
 import {
+  AllowingFirstAttempts,
   buildUser,
-  CountingEmailSendAttempts,
+  CountingIpRateLimit,
   InMemoryAccountExistsNotices,
   InMemorySignUpCodes,
   InMemoryUsers,
@@ -34,7 +34,7 @@ const requestFlow = ({
   signUpCodes = new InMemorySignUpCodes(),
   accountExistsNotices = new InMemoryAccountExistsNotices(),
   emails = new RecordingEmails(),
-  emailSendAttempts = new CountingEmailSendAttempts(),
+  emailSendAttempts = new CountingIpRateLimit(),
 } = {}) => ({
   users,
   signUpCodes,
@@ -161,19 +161,8 @@ test("pedir el código con un correo que ya tiene cuenta no guarda nada y envía
   );
 });
 
-class AllowingFirstEmailSends implements IEmailSendAttempts {
-  readonly ipAddresses: (string | undefined)[] = [];
-
-  constructor(private readonly allowedSends: number) {}
-
-  async tryRegister(ipAddress: string | undefined): Promise<boolean> {
-    this.ipAddresses.push(ipAddress);
-    return this.ipAddresses.length <= this.allowedSends;
-  }
-}
-
 test("el cuarto envío de correo en 10 minutos desde la misma IP responde 429 y no guarda ni envía nada", async () => {
-  const emailSendAttempts = new AllowingFirstEmailSends(3);
+  const emailSendAttempts = new AllowingFirstAttempts(3);
   const flow = { ...requestFlow(), emailSendAttempts };
 
   const statusCodes: number[] = [];

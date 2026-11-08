@@ -49,7 +49,7 @@ const policyFor = (template: Template, functionName: string) => {
   return JSON.stringify(policy.Properties.PolicyDocument);
 };
 
-test("las tres rutas son POST y exigen la clave de platform", () => {
+test("las cuatro rutas son POST y exigen la clave de platform", () => {
   const template = synthesizeBackend();
 
   const postMethods = Object.values(
@@ -58,7 +58,7 @@ test("las tres rutas son POST y exigen la clave de platform", () => {
     }),
   );
 
-  assert.equal(postMethods.length, 3);
+  assert.equal(postMethods.length, 4);
   for (const method of postMethods) {
     assert.equal(method.Properties.ApiKeyRequired, true);
   }
@@ -71,6 +71,74 @@ test("las tres rutas son POST y exigen la clave de platform", () => {
   template.hasResourceProperties("AWS::ApiGateway::Resource", {
     PathPart: "code",
   });
+  template.hasResourceProperties("AWS::ApiGateway::Resource", {
+    PathPart: "verify",
+  });
+});
+
+const writesByAction = (template: Template, functionName: string) => {
+  const statements: {
+    Action: string | string[];
+    Condition?: Record<string, Record<string, string[]>>;
+  }[] = JSON.parse(policyFor(template, functionName)).Statement;
+  return Object.fromEntries(
+    statements
+      .filter(({ Condition }) => Condition?.["ForAllValues:StringLike"])
+      .map(({ Action, Condition }) => [
+        Action,
+        Condition?.["ForAllValues:StringLike"]["dynamodb:LeadingKeys"],
+      ]),
+  );
+};
+
+test("cada Lambda escribe en DynamoDB sólo las acciones y los prefijos que usa", () => {
+  const template = synthesizeBackend();
+
+  assert.deepEqual(writesByAction(template, "SignUpFunction"), {
+    "dynamodb:PutItem": ["USER#*", "EMAIL_CONFIRMATION#*"],
+    "dynamodb:UpdateItem": ["EMAIL_SEND_ATTEMPTS#*"],
+  });
+  assert.deepEqual(writesByAction(template, "ResendConfirmationFunction"), {
+    "dynamodb:PutItem": ["EMAIL_CONFIRMATION#*"],
+    "dynamodb:UpdateItem": ["EMAIL_SEND_ATTEMPTS#*"],
+  });
+  assert.deepEqual(writesByAction(template, "RequestSignUpCodeFunction"), {
+    "dynamodb:PutItem": ["SIGN_UP_CODE#*", "SIGN_UP_NOTICE#*"],
+    "dynamodb:UpdateItem": ["EMAIL_SEND_ATTEMPTS#*"],
+  });
+  assert.deepEqual(writesByAction(template, "VerifySignUpCodeFunction"), {
+    "dynamodb:PutItem": ["SIGN_UP_VERIFICATION#*"],
+    "dynamodb:UpdateItem": ["SIGN_UP_CODE#*", "SIGN_UP_VERIFY_ATTEMPTS#*"],
+    "dynamodb:DeleteItem": ["SIGN_UP_CODE#*"],
+  });
+});
+
+test("la verificación del código no envía correos, no toca Cognito ni usuarios y no consulta índices", () => {
+  const policy = policyFor(synthesizeBackend(), "VerifySignUpCodeFunction");
+
+  for (const forbidden of [
+    "ses:",
+    "cognito-idp",
+    "dynamodb:Query",
+    "/index/",
+    "USER#*",
+    "EMAIL_CONFIRMATION#*",
+    "EMAIL_SEND_ATTEMPTS#*",
+  ]) {
+    assert.equal(policy.includes(forbidden), false, forbidden);
+  }
+});
+
+test("la Lambda de la verificación sólo recibe el nombre de la tabla", () => {
+  const { Environment } = functionProperties(
+    synthesizeBackend(),
+    "VerifySignUpCodeFunction",
+  );
+
+  assert.deepEqual(Object.keys(Environment.Variables).sort(), [
+    "NODE_OPTIONS",
+    "TABLE_NAME",
+  ]);
 });
 
 test("el pedido del código escribe sólo sus prefijos, consulta sólo el índice por correo, envía con sus dos plantillas y no toca Cognito", () => {
@@ -211,13 +279,14 @@ test("el registro puede enviar con sus tres plantillas, y el reenvío sólo con 
   assert.equal(resendPolicy.includes("BackendTest-sign-up-code"), false);
 });
 
-test("las tres Lambdas tienen 15 segundos, 512 MB y logs que se conservan un mes", () => {
+test("las cuatro Lambdas tienen 15 segundos, 512 MB y logs que se conservan un mes", () => {
   const template = synthesizeBackend();
 
   for (const functionName of [
     "SignUpFunction",
     "ResendConfirmationFunction",
     "RequestSignUpCodeFunction",
+    "VerifySignUpCodeFunction",
   ]) {
     const properties = functionProperties(template, functionName);
     assert.equal(properties.Timeout, 15, functionName);
@@ -231,7 +300,7 @@ test("las tres Lambdas tienen 15 segundos, 512 MB y logs que se conservan un mes
   assert.equal(
     Object.values(template.findResources("AWS::Logs::LogGroup")).filter(
       (logGroup) => logGroup.Properties.RetentionInDays === 30,
-    ).length >= 3,
+    ).length >= 4,
     true,
   );
 });

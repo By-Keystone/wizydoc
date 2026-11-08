@@ -6,7 +6,7 @@ import { emailSchema } from "../../lib/src/users/domain/value-objects/email.vo";
 import { handleResendConfirmation } from "../../lib/src/users/handlers/resend-confirmation.http";
 import {
   buildUser,
-  CountingEmailSendAttempts,
+  CountingIpRateLimit,
   InMemoryUsers,
   RecordingEmails,
 } from "./fakes";
@@ -44,7 +44,7 @@ test("con un correo confirmado o inexistente no envía nada, y la respuesta es i
   const responses = await Promise.all(
     scenarios.map((users, index) =>
       handleResendConfirmation(event({ email: "ana@clinica.pe" }), {
-        emailSendAttempts: new CountingEmailSendAttempts(),
+        emailSendAttempts: new CountingIpRateLimit(),
         resendConfirmation: new ResendConfirmationUseCase(
           users,
           emailsByScenario[index],
@@ -62,7 +62,7 @@ test("con un correo confirmado o inexistente no envía nada, y la respuesta es i
 });
 
 test("una entrada que no es un objeto responde 400 en español sin contar para el límite", async () => {
-  const emailSendAttempts = new CountingEmailSendAttempts();
+  const emailSendAttempts = new CountingIpRateLimit();
 
   for (const body of ["", "null", "{no es json"]) {
     const response = await handleResendConfirmation(event(body), {
@@ -80,7 +80,7 @@ test("una entrada que no es un objeto responde 400 en español sin contar para e
 
 test("el reenvío también cuenta para el límite de la IP", async () => {
   const emails = new RecordingEmails();
-  const emailSendAttempts = new CountingEmailSendAttempts(false);
+  const emailSendAttempts = new CountingIpRateLimit(false);
 
   const response = await handleResendConfirmation(
     event({ email: "ana@clinica.pe" }, { "x-real-ip": "190.42.10.7" }),

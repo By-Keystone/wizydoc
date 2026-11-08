@@ -12,7 +12,7 @@ pruebas ni docs).
 | Parte | Qué entrega | Tamaño estimado |
 |---|---|---|
 | 1 | `POST /api/auth/sign-up/code`: dominio e ítem del código (con el enfriamiento de un minuto por correo), caso de uso, handler, plantilla de SES, Lambda y permisos. «Intentaron crear una cuenta con tu correo» pasa a «Hola,» y tiene el mismo minuto de espera. | ~385 líneas |
-| 2 | `POST /api/auth/sign-up/code/verify`: límite por IP, intentos, gasto del código y token de verificación. | ~280 líneas |
+| 2 | `POST /api/auth/sign-up/code/verify`: límite por IP, intentos, gasto del código y token de verificación. | ~380 líneas netas (unas 435 brutas, con el renombre del límite por IP y los permisos por acción) |
 | 3 | `POST /api/auth/sign-up/confirm`: crea la cuenta sin nombre, apellido ni teléfono, e inicia la sesión con `ADMIN_USER_PASSWORD_AUTH` (`adminUserPassword` en el app client). | ~380 líneas |
 | 4 | Quita `POST /api/auth/sign-up/email`, `POST /api/auth/sign-up/resend-confirmation`, los correos «Confirma tu correo» y «Confirma tu cuenta» y lo que sólo usaban ellos. | Sólo borra (neto negativo) |
 
@@ -49,18 +49,50 @@ pruebas ni docs).
   - Ítem: `PK = SIGN_UP_VERIFY_ATTEMPTS#<ip o red /64>`, `SK = <inicio de la
     ventana de 10 minutos>`, `ItemType = SIGN_UP_VERIFY_ATTEMPTS`, `Attempts` y
     `DeleteAfter` (TTL), igual que los envíos.
-  - **Se reutiliza `DynamoDBEmailSendAttempts`:** hoy el prefijo
-    (`EMAIL_SEND_ATTEMPTS`), el tipo de ítem y el máximo (3) son constantes del
-    módulo. La parte 2 los pasa al constructor (`{ keyPrefix, itemType,
-    maxAttempts }`), con los valores de hoy para los envíos y 10 para las
-    verificaciones; la agrupación por IP y la ventana no cambian. Como
-    ya no sirve sólo a los envíos, la clase y el puerto se renombran por lo que
-    son, un límite por IP (`DynamoDBIpRateLimit` e `IIpRateLimit`), en esa
-    misma parte.
-  - La Lambda de verificación tiene `PutItem`/`UpdateItem` sobre
+  - **Se reutiliza el adaptador de envíos,** renombrado por lo que es,
+    `DynamoDBIpRateLimit` (puerto `IIpRateLimit`). El tipo de ítem y el máximo
+    pasan al constructor como `{ itemType, maxAttempts }`
+    (`EMAIL_SEND_RATE_LIMIT` = `EMAIL_SEND_ATTEMPTS`, 3;
+    `SIGN_UP_VERIFY_RATE_LIMIT` = `SIGN_UP_VERIFY_ATTEMPTS`, 10). El tipo de
+    ítem es también el prefijo de la clave: no hay motivo para que difieran,
+    así que no hay un `keyPrefix` aparte. La agrupación por IP y la ventana no
+    cambian.
+  - La Lambda de verificación tiene `UpdateItem` sobre
     `SIGN_UP_VERIFY_ATTEMPTS#*`, además de lo suyo.
+- **Un código que no sirve** incluye perder la carrera de la transacción:
+  `ConditionalCheckFailedException`, `TransactionConflictException` o
+  `TransactionCanceledException` cuyas razones sean todas `ConditionalCheckFailed`,
+  `TransactionConflict` o `None`. Cualquier otra razón sube y responde 500.
+- **Puerto:** `ISignUpCodeRepository` gana `registerAttemptAndReadCodeHash(email)`
+  (el `UpdateItem` de arriba; devuelve el hash guardado o `undefined`) y
+  `spendForVerificationToken(email, codeHash, verificationToken)` (la
+  transacción; devuelve si gastó). El caso de uso compara el hash entre las dos.
+  El token de verificación y su ítem (`SIGN_UP_VERIFICATION#<sha256>`, con
+  `Email` y `DeleteAfter` a los 15 minutos) los guarda la misma transacción.
+
+**Riesgo aceptado de la parte 2: oráculo de tiempo de la verificación.** Para
+un correo sin cuenta, los primeros intentos escriben en DynamoDB; para uno con
+cuenta no hay código y el `UpdateItem` falla sin escribir, así que tarda unos
+milisegundos menos. Distinguir una sola dirección lleva horas: como mucho 5
+muestras útiles por minuto y por correo, y un correo por minuto a la víctima.
+Igualarlo exigiría escrituras de relleno.
 
 **Parte 3: crear la cuenta**
+- **El token se lee antes de crear nada.** Antes de `AdminCreateUser`, un
+  `GetItem` con `ConsistentRead: true` sobre
+  `SIGN_UP_VERIFICATION#<sha256(token)>` comprueba `ItemType`, que `Email` sea
+  el correo pedido y que `DeleteAfter > ahora`. Si sólo se comprobara que
+  existe, un token del correo del atacante, mandado con el correo de otra
+  persona, crearía en Cognito el usuario de ella con la contraseña de él.
+- **Un token nunca actúa sobre un usuario que ya existe.** Con
+  `UsernameExistsException` responde 400 sin tocar nada, y no adopta ni repara
+  usuarios huérfanos de Cognito. Puede haber varios tokens vigentes para el
+  mismo correo.
+- **IAM de confirm:** `grantTableWrites` gana `GetItem` con
+  `dynamodb:LeadingKeys`, sólo sobre `SIGN_UP_VERIFICATION#*` y sólo para la
+  Lambda de confirm. Esa Lambda tiene además `DeleteItem` sobre
+  `SIGN_UP_VERIFICATION#*` y `PutItem` sobre `USER#*`. La de verificación sigue
+  sin `GetItem`.
 - **App client propio para la sesión:** sólo `ADMIN_USER_PASSWORD_AUTH`
   (`authFlows: { adminUserPassword: true }`, explícito, con una prueba de
   síntesis: sin `authFlows`, Cognito habilita SRP y CUSTOM_AUTH). **Conserva su
@@ -118,7 +150,7 @@ cada `AWS::Cognito::UserPoolClient`.
   1. Valida el cuerpo con `requestSignUpCodeInputSchema`. Un cuerpo que no es
      un objeto JSON responde 400 con «La solicitud no es válida.»; un correo
      inválido, con «Correo inválido». No cuenta para el límite.
-  2. Cuenta el pedido con `IEmailSendAttempts.tryRegister(readIpAddress(event))`
+  2. Cuenta el pedido con `IIpRateLimit.tryRegister(readIpAddress(event))`
      (3 envíos cada 10 minutos). Si devuelve `false`, 429 con
      `TOO_MANY_ATTEMPTS`.
   3. Llama a `RequestSignUpCodeUseCase.execute` y responde 202 vacío. Ante
@@ -208,7 +240,9 @@ por lo que tarda la respuesta.
 |---|---|
 | `ISignUpCodeRepository`: `saveUnlessRequestedRecently(signUpCode)`, que devuelve si guardó | `persistence/dynamodb/sign-up-code.repository.ts`, con `sign-up-code.schema.ts` y `sign-up-code.mappers.ts` |
 | `ISignUpEmails`: se agrega `sendSignUpCode(signUpCode)`, y `sendAccountExists` recibe el `EmailVO` en vez del `User` | `email/ses/sign-up-emails.ts` |
-| `IUserRepository`: se agrega `existsByEmail(email)`; `findByEmail` y `IEmailSendAttempts.tryRegister` quedan como hoy | `persistence/dynamodb/user.repository.ts` |
+| `ISignUpCodeRepository` (parte 2): `registerAttemptAndReadCodeHash(email)` y `spendForVerificationToken(email, codeHash, verificationToken)` | `persistence/dynamodb/sign-up-code.repository.ts`, con `sign-up-verification-token.schema.ts` y `.mappers.ts` |
+| `IIpRateLimit` (antes `IEmailSendAttempts`): `tryRegister(ip)` | `persistence/dynamodb/ip-rate-limit.ts` (`DynamoDBIpRateLimit`) |
+| `IUserRepository`: se agrega `existsByEmail(email)`; `findByEmail` queda como hoy | `persistence/dynamodb/user.repository.ts` |
 
 **Plantillas de SES**
 - **Nueva: `sign-up-code`** (`lib/email-templates/sign-up-code.{html,txt}`),
@@ -245,8 +279,19 @@ por lo que tarda la respuesta.
       `lib/sender-address.ts`, igual que las otras dos Lambdas. Nada de
       Cognito, ni `USER#*`, ni `EMAIL_CONFIRMATION#*`.
   - `node.addDependency(emailTemplates)`, como las otras.
-  - Ruta `POST /api/auth/sign-up/code`; la parte 2 le cuelga `verify` y la
-    parte 3 agrega `confirm` junto a ella. Como toda ruta del gateway, exige la
+  - **`VerifySignUpCodeFunction` (parte 2):** `TABLE_NAME` como único dato de
+    entorno, sin SES, Cognito, `Query` ni índices. `PutItem` sobre
+    `SIGN_UP_VERIFICATION#*`; `UpdateItem` sobre `SIGN_UP_CODE#*` y
+    `SIGN_UP_VERIFY_ATTEMPTS#*`; `DeleteItem` sobre `SIGN_UP_CODE#*`.
+  - **Permisos por acción y prefijo:** `grantTableWrites` recibe, por Lambda,
+    qué acciones y con qué prefijos de `dynamodb:LeadingKeys`. Las tres Lambdas
+    anteriores quedan con menos que antes (ya no tienen `UpdateItem` sobre
+    sus propios ítems ni `PutItem` sobre `EMAIL_SEND_ATTEMPTS#*`, que el límite
+    por IP nunca usó), y `backend-stack.test.ts` fija el mapa exacto de las
+    cuatro. El `Query` sobre `GSI1` va aparte (`grantUserEmailLookup`).
+  - Ruta `POST /api/auth/sign-up/code`; la parte 2 le cuelga `verify` (y la
+    respuesta de éxito lleva `Cache-Control: no-store`) y la parte 3 agrega
+    `confirm` junto a `code`. Como toda ruta del gateway, exige la
     clave de platform.
 - `lib/dynamo.ts`: sin cambios; `DeleteAfter` ya es el TTL.
 
@@ -260,21 +305,22 @@ Prueba en `test/`. Entre paréntesis, la parte que cubre cada criterio.
 | Pedir el código con un correo que ya tiene cuenta no guarda nada y envía «Intentaron crear una cuenta con tu correo»; responde 202, igual | 1 | `users/request-sign-up-code.test.ts` y `sign-up-email-templates.test.ts` |
 | Pedir el código con un correo con cuenta antes de que pase un minuto desde el último aviso no envía nada y responde 202 | 1 | `users/request-sign-up-code.test.ts` y `users/dynamodb.test.ts` (la condición y el `false`) |
 | Pedir otro código pasado un minuto hace que el anterior deje de servir | 1 (el reemplazo) y 2 (que no sirva) | `users/request-sign-up-code.test.ts` y `users/dynamodb.test.ts` en la parte 1; la prueba de verificación en la parte 2 |
-| Pedir otro código antes de que pase un minuto no guarda ni envía nada, el anterior sigue sirviendo y responde 202 | 1 (no guarda ni envía) y 2 (que sigue sirviendo) | `users/request-sign-up-code.test.ts` y `users/dynamodb.test.ts` (la condición y el `false`) en la parte 1; la prueba de verificación en la parte 2 |
+| Pedir otro código antes de que pase un minuto no guarda ni envía nada, el anterior sigue sirviendo y responde 202 | 1 (no guarda ni envía) y 2 (que sigue sirviendo) | `users/request-sign-up-code.test.ts` y `users/dynamodb.test.ts` (la condición y el `false`) en la parte 1; `users/verify-sign-up-code.test.ts` en la parte 2 |
 | El cuarto envío en 10 minutos desde la misma IP responde 429 | 1 | `users/request-sign-up-code.test.ts` y `users/dynamodb.test.ts` |
-| La undécima verificación en 10 minutos desde la misma IP responde 429 y no cuenta como intento del código | 2 | `users/verify-sign-up-code.test.ts` y `users/dynamodb.test.ts` |
+| La undécima verificación en 10 minutos desde la misma IP responde 429 y no cuenta como intento del código | 2 | `users/verify-sign-up-code.test.ts` y `users/dynamodb.test.ts` (prefijo y máximo del límite) |
 | Verificar el código correcto responde 200 con un token y gasta el código | 2 | `users/verify-sign-up-code.test.ts` |
 | Un código incorrecto, vencido, agotado, usado o que nunca se pidió responde 400 con el mismo mensaje | 2 | `users/verify-sign-up-code.test.ts` |
-| Al quinto intento fallido, el código deja de servir | 2 | `users/verify-sign-up-code.test.ts` |
-| De dos verificaciones a la vez, sólo una recibe el token | 2 | `users/dynamodb.test.ts` (la condición de la transacción) |
+| Al quinto intento fallido, el código deja de servir | 2 | `users/verify-sign-up-code.test.ts` y `users/dynamodb.test.ts` (la condición del `UpdateItem`) |
+| N verificaciones incorrectas en paralelo evalúan 5 como mucho | 2 | `users/verify-sign-up-code.test.ts` y `users/dynamodb.test.ts` |
+| De dos verificaciones a la vez, sólo una recibe el token | 2 | `users/verify-sign-up-code.test.ts` y `users/dynamodb.test.ts` (la condición de la transacción y la carrera perdida) |
 | Crear la cuenta con un token vigente crea el usuario, lo confirma, gasta el token y responde 200 con los tokens | 3 | `users/confirm-sign-up.test.ts` y `users/cognito.test.ts` |
 | Crear la cuenta sin token, vencido, usado o de otro correo responde 400 y no crea nada | 3 | `users/confirm-sign-up.test.ts` |
 | Con el flag encendido, la constancia va en la misma transacción; sin aceptar, 400 | 3 | `users/confirm-sign-up.test.ts` y `users/dynamodb.test.ts` |
 | De dos pedidos con el mismo token, sólo uno crea la cuenta | 3 | `users/dynamodb.test.ts` |
 | Si falla DynamoDB, el usuario se borra de Cognito y responde 500 | 3 | `users/confirm-sign-up.test.ts` |
 | Si Cognito no entrega los tokens, la cuenta queda y responde 204 | 3 | `users/confirm-sign-up.test.ts` |
-| Ni el código, ni el token, ni sus hashes, ni la contraseña, ni los tokens aparecen en los logs | 1 (código y hash), 2 y 3 (el resto) | `users/request-sign-up-code.test.ts` y sus equivalentes |
-| Las tres rutas exigen la clave de platform y cada Lambda sólo tiene los permisos que usa | 1 (la ruta y la Lambda del código), 2 y 3 | `backend-stack.test.ts` |
+| Ni el código, ni el token, ni sus hashes, ni la contraseña, ni los tokens aparecen en los logs | 1 (código y hash), 2 (también el token de verificación y su hash) y 3 (el resto) | `users/request-sign-up-code.test.ts`, `users/verify-sign-up-code.test.ts` y sus equivalentes |
+| Las tres rutas exigen la clave de platform y cada Lambda sólo tiene los permisos que usa | 1 (la ruta y la Lambda del código), 2 (la verificación, y el mapa exacto de permisos de las cuatro Lambdas) y 3 | `backend-stack.test.ts` |
 
 ## Sin verificar contra AWS
 
@@ -296,6 +342,12 @@ aws sesv2 test-render-email-template \
 - Que la condición del enfriamiento (`DeleteAfter <= :latestReplaceableExpiry`)
   se evalúe como esperamos en DynamoDB real, con dos pedidos del mismo correo
   separados por menos y por más de un minuto.
+- Que `dynamodb:LeadingKeys` con `SIGN_UP_VERIFICATION#*`, `SIGN_UP_CODE#*` y
+  `SIGN_UP_VERIFY_ATTEMPTS#*` permita el `PutItem`, el `UpdateItem` y el
+  `DeleteItem` reales, en particular dentro de `TransactWriteItems`.
+- Que, con 6 verificaciones incorrectas en paralelo contra DynamoDB real, el
+  `UpdateItem` condicionado deje pasar sólo 5, y que un `UpdateItem` que choque
+  con la transacción responda `TransactionConflictException` y no otro error.
 - Los tiempos reales del camino con y sin cuenta.
 - Las partes 2 y 3 agregan lo suyo: la condición de la transacción del token y
   `ADMIN_USER_PASSWORD_AUTH` con `adminUserPassword` en el app client.

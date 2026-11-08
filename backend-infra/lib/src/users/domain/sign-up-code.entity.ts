@@ -6,6 +6,7 @@ const MILLISECONDS_PER_MINUTE = 60 * 1000;
 
 export const SIGN_UP_CODE_LIFETIME_MINUTES = 10;
 export const SIGN_UP_EMAIL_COOLDOWN_SECONDS = 60;
+export const SIGN_UP_CODE_MAX_ATTEMPTS = 5;
 
 export interface SignUpCode {
   code: string;

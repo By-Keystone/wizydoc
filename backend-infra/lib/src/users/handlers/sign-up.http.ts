@@ -11,7 +11,7 @@ import {
   readIpAddress,
 } from "../../shared/http/api-gateway";
 import { INVALID_REQUEST } from "../../shared/messages";
-import type { IEmailSendAttempts } from "../application/ports/email-send-attempts.port";
+import type { IIpRateLimit } from "../application/ports/ip-rate-limit.port";
 import type {
   SignUpInput,
   SignUpUseCase,
@@ -20,7 +20,7 @@ import { SIGN_UP_FAILED, TOO_MANY_ATTEMPTS } from "./http-messages";
 
 export interface SignUpHttpDependencies {
   inputSchema: z.ZodType<SignUpInput>;
-  emailSendAttempts: IEmailSendAttempts;
+  emailSendAttempts: IIpRateLimit;
   signUp: Pick<SignUpUseCase, "execute">;
 }
 

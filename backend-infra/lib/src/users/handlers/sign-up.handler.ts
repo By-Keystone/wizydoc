@@ -7,7 +7,10 @@ import {
 } from "../application/sign-up.usecase";
 import { CognitoIdentityProvider } from "../infrastructure/identity-provider/cognito/cognito";
 import { getClient } from "../infrastructure/persistence/dynamodb/client";
-import { DynamoDBEmailSendAttempts } from "../infrastructure/persistence/dynamodb/email-send-attempts";
+import {
+  DynamoDBIpRateLimit,
+  EMAIL_SEND_RATE_LIMIT,
+} from "../infrastructure/persistence/dynamodb/ip-rate-limit";
 import { UserRepository } from "../infrastructure/persistence/dynamodb/user.repository";
 import { signUpEmailsFromEnvironment } from "./sign-up-emails-from-environment";
 import { handleSignUp } from "./sign-up.http";
@@ -18,7 +21,11 @@ const documentClient = getClient();
 
 const dependencies = {
   inputSchema: signUpInputSchemaFor(requireTermsAcceptance),
-  emailSendAttempts: new DynamoDBEmailSendAttempts(documentClient, tableName),
+  emailSendAttempts: new DynamoDBIpRateLimit(
+    documentClient,
+    tableName,
+    EMAIL_SEND_RATE_LIMIT,
+  ),
   signUp: new SignUpUseCase(
     new UserRepository(documentClient, tableName),
     new CognitoIdentityProvider(

@@ -1,6 +1,7 @@
 import { isIP } from "node:net";
 
 export const HTTP_STATUS = {
+  OK: 200,
   ACCEPTED: 202,
   BAD_REQUEST: 400,
   TOO_MANY_REQUESTS: 429,
@@ -21,6 +22,12 @@ export interface ApiGatewayResult {
 export const acceptedResponse = (): ApiGatewayResult => ({
   statusCode: HTTP_STATUS.ACCEPTED,
   body: "",
+});
+
+export const noStoreJsonResponse = (body: object): ApiGatewayResult => ({
+  statusCode: HTTP_STATUS.OK,
+  headers: { "content-type": "application/json", "cache-control": "no-store" },
+  body: JSON.stringify(body),
 });
 
 export const messageResponse = (

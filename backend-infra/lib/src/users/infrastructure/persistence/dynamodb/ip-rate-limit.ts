@@ -4,12 +4,10 @@ import {
   type DynamoDBDocumentClient,
   UpdateCommand,
 } from "@aws-sdk/lib-dynamodb";
-import type { IEmailSendAttempts } from "../../../application/ports/email-send-attempts.port";
+import type { IIpRateLimit } from "../../../application/ports/ip-rate-limit.port";
 
-const MAX_EMAIL_SENDS_PER_WINDOW = 3;
 const WINDOW_SECONDS = 10 * 60;
 const UNKNOWN_IP_ADDRESS = "unknown";
-const EMAIL_SEND_ATTEMPTS_ITEM_TYPE = "EMAIL_SEND_ATTEMPTS";
 const IPV6_GROUP_COUNT = 8;
 const IPV6_NETWORK_GROUP_COUNT = 4;
 const IPV4_MAPPED_IPV6_PREFIX = "::ffff:";
@@ -46,10 +44,26 @@ const rateLimitSubject = (ipAddress: string | undefined): string => {
   return `${network}::/64`;
 };
 
-export class DynamoDBEmailSendAttempts implements IEmailSendAttempts {
+export interface IpRateLimitSettings {
+  itemType: string;
+  maxAttempts: number;
+}
+
+export const EMAIL_SEND_RATE_LIMIT: IpRateLimitSettings = {
+  itemType: "EMAIL_SEND_ATTEMPTS",
+  maxAttempts: 3,
+};
+
+export const SIGN_UP_VERIFY_RATE_LIMIT: IpRateLimitSettings = {
+  itemType: "SIGN_UP_VERIFY_ATTEMPTS",
+  maxAttempts: 10,
+};
+
+export class DynamoDBIpRateLimit implements IIpRateLimit {
   constructor(
     private readonly client: DynamoDBDocumentClient,
     private readonly tableName: string,
+    private readonly limit: IpRateLimitSettings,
     private readonly nowInMilliseconds: () => number = Date.now,
   ) {}
 
@@ -62,7 +76,7 @@ export class DynamoDBEmailSendAttempts implements IEmailSendAttempts {
         new UpdateCommand({
           TableName: this.tableName,
           Key: {
-            PK: `EMAIL_SEND_ATTEMPTS#${rateLimitSubject(ipAddress)}`,
+            PK: `${this.limit.itemType}#${rateLimitSubject(ipAddress)}`,
             SK: String(windowStart),
           },
           UpdateExpression:
@@ -71,9 +85,9 @@ export class DynamoDBEmailSendAttempts implements IEmailSendAttempts {
             "attribute_not_exists(Attempts) OR Attempts < :maxAttempts",
           ExpressionAttributeValues: {
             ":one": 1,
-            ":maxAttempts": MAX_EMAIL_SENDS_PER_WINDOW,
+            ":maxAttempts": this.limit.maxAttempts,
             ":deleteAfter": windowStart + WINDOW_SECONDS,
-            ":itemType": EMAIL_SEND_ATTEMPTS_ITEM_TYPE,
+            ":itemType": this.limit.itemType,
           },
         }),
       );

@@ -1,13 +1,17 @@
 import type { SendEmailCommandInput, SESv2Client } from "@aws-sdk/client-sesv2";
 import type { IAccountExistsNotices } from "../../lib/src/users/application/ports/account-exists-notices.port";
-import type { IEmailSendAttempts } from "../../lib/src/users/application/ports/email-send-attempts.port";
+import type { IIpRateLimit } from "../../lib/src/users/application/ports/ip-rate-limit.port";
 import type {
   CreateUserIfAbsentInput,
   IIdentityProvider,
 } from "../../lib/src/users/application/ports/identity-provider.port";
 import type { ISignUpEmails } from "../../lib/src/users/application/ports/sign-up-emails.port";
 import type { ISignUpCodeRepository } from "../../lib/src/users/domain/repository/sign-up-code.repository";
-import type { SignUpCode } from "../../lib/src/users/domain/sign-up-code.entity";
+import {
+  SIGN_UP_CODE_MAX_ATTEMPTS,
+  type SignUpCode,
+} from "../../lib/src/users/domain/sign-up-code.entity";
+import type { SignUpVerificationToken } from "../../lib/src/users/domain/sign-up-verification-token.entity";
 import type { ConfirmationToken } from "../../lib/src/users/domain/confirmation-token.entity";
 import type { IUserRepository } from "../../lib/src/users/domain/repository/user.repository";
 import type { TermsAcceptance } from "../../lib/src/users/domain/terms-acceptance.entity";
@@ -68,12 +72,45 @@ export class InMemoryUsers implements IUserRepository {
 
 export class InMemorySignUpCodes implements ISignUpCodeRepository {
   readonly saved: SignUpCode[] = [];
+  readonly attemptsCounted: string[] = [];
+  readonly verificationTokens: SignUpVerificationToken[] = [];
+  private readonly current = new Map<string, SignUpCode>();
 
-  constructor(private readonly isOnCooldown = false) {}
+  isOnCooldown: boolean;
+
+  constructor(isOnCooldown = false) {
+    this.isOnCooldown = isOnCooldown;
+  }
 
   async saveUnlessRequestedRecently(signUpCode: SignUpCode): Promise<boolean> {
     if (this.isOnCooldown) return false;
     this.saved.push(signUpCode);
+    this.current.set(signUpCode.email, { ...signUpCode });
+    return true;
+  }
+
+  async registerAttemptAndReadCodeHash(
+    email: EmailVO,
+  ): Promise<string | undefined> {
+    const signUpCode = this.current.get(email);
+    const canBeTried =
+      signUpCode &&
+      signUpCode.attempts < SIGN_UP_CODE_MAX_ATTEMPTS &&
+      signUpCode.expiresAt.getTime() > Date.now();
+    if (!canBeTried) return undefined;
+    signUpCode.attempts += 1;
+    this.attemptsCounted.push(email);
+    return signUpCode.codeHash;
+  }
+
+  async spendForVerificationToken(
+    email: EmailVO,
+    codeHash: string,
+    verificationToken: SignUpVerificationToken,
+  ): Promise<boolean> {
+    if (this.current.get(email)?.codeHash !== codeHash) return false;
+    this.current.delete(email);
+    this.verificationTokens.push(verificationToken);
     return true;
   }
 }
@@ -81,7 +118,11 @@ export class InMemorySignUpCodes implements ISignUpCodeRepository {
 export class InMemoryAccountExistsNotices implements IAccountExistsNotices {
   readonly registered: string[] = [];
 
-  constructor(private readonly isOnCooldown = false) {}
+  isOnCooldown: boolean;
+
+  constructor(isOnCooldown = false) {
+    this.isOnCooldown = isOnCooldown;
+  }
 
   async tryRegister(email: EmailVO): Promise<boolean> {
     if (this.isOnCooldown) return false;
@@ -182,7 +223,18 @@ export const templateDataOf = (
 ): Record<string, string> =>
   JSON.parse(input.Content?.Template?.TemplateData ?? "{}");
 
-export class CountingEmailSendAttempts implements IEmailSendAttempts {
+export class AllowingFirstAttempts implements IIpRateLimit {
+  readonly ipAddresses: (string | undefined)[] = [];
+
+  constructor(private readonly allowedSends: number) {}
+
+  async tryRegister(ipAddress: string | undefined): Promise<boolean> {
+    this.ipAddresses.push(ipAddress);
+    return this.ipAddresses.length <= this.allowedSends;
+  }
+}
+
+export class CountingIpRateLimit implements IIpRateLimit {
   readonly ipAddresses: (string | undefined)[] = [];
 
   constructor(private readonly isAllowed = true) {}
