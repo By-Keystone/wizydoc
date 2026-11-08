@@ -1,7 +1,6 @@
 import { CfnOutput } from "aws-cdk-lib";
 import * as apigateway from "aws-cdk-lib/aws-apigateway";
 import * as acm from "aws-cdk-lib/aws-certificatemanager";
-import type * as lambda from "aws-cdk-lib/aws-lambda";
 import * as logs from "aws-cdk-lib/aws-logs";
 import * as route53 from "aws-cdk-lib/aws-route53";
 import * as route53Targets from "aws-cdk-lib/aws-route53-targets";
@@ -11,6 +10,7 @@ const PLATFORM_REQUESTS_PER_SECOND = 100;
 const PLATFORM_BURST_REQUESTS = 200;
 
 const DISABLED_EXECUTE_API_URL_OUTPUT = "Endpoint";
+const UNKNOWN_ROUTE_BODY = JSON.stringify({ message: "Not found" });
 
 const AccessLogField = apigateway.AccessLogField;
 
@@ -30,7 +30,6 @@ const accessLogFormat = apigateway.AccessLogFormat.custom(
 );
 
 export interface ApiGatewayProps {
-  handler: lambda.IFunction;
   hostedZone: route53.IHostedZone;
   domainName: string;
 }
@@ -54,7 +53,6 @@ export class ApiGateway extends Construct {
       endpointTypes: [apigateway.EndpointType.REGIONAL],
       domainName: { domainName: props.domainName, certificate },
       disableExecuteApiEndpoint: true,
-      defaultIntegration: new apigateway.LambdaIntegration(props.handler),
       defaultMethodOptions: { apiKeyRequired: true },
       cloudWatchRole: true,
       deployOptions: {
@@ -64,7 +62,13 @@ export class ApiGateway extends Construct {
     });
     this.api = api;
     api.node.tryRemoveChild(DISABLED_EXECUTE_API_URL_OUTPUT);
-    api.root.addProxy();
+    // API Gateway responde 403 «Missing Authentication Token» a una ruta que no
+    // existe; un 404 dice lo que pasa.
+    api.addGatewayResponse("UnknownRoute", {
+      type: apigateway.ResponseType.MISSING_AUTHENTICATION_TOKEN,
+      statusCode: "404",
+      templates: { "application/json": UNKNOWN_ROUTE_BODY },
+    });
 
     const platformApiKey = api.addApiKey("PlatformApiKey");
     const platformUsagePlan = api.addUsagePlan("PlatformUsagePlan", {

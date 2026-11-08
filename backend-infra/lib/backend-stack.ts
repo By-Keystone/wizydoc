@@ -74,7 +74,7 @@ export class BackendStack extends Stack {
       { hostedZoneId: props.hostedZoneId, zoneName: props.zoneName },
     );
 
-    const temporaryHandler = new lambda.Function(this, "TemporaryHandler", {
+    const healthFunction = new lambda.Function(this, "HealthFunction", {
       runtime: lambda.Runtime.NODEJS_22_X,
       architecture: lambda.Architecture.ARM_64,
       handler: "index.handler",
@@ -82,7 +82,6 @@ export class BackendStack extends Stack {
     });
 
     const apiGateway = new ApiGateway(this, "ApiGateway", {
-      handler: temporaryHandler,
       hostedZone,
       domainName: props.apiDomainName,
     });
@@ -191,6 +190,9 @@ export class BackendStack extends Stack {
         "POST",
         new apigateway.LambdaIntegration(confirmSignUpFunction),
       );
+    apiGateway.api.root
+      .addResource("health")
+      .addMethod("GET", new apigateway.LambdaIntegration(healthFunction));
   }
 
   private usersFunction(
