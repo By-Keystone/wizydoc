@@ -1,3 +1,4 @@
+import type { CognitoIdentityProviderClient } from "@aws-sdk/client-cognito-identity-provider";
 import type { SendEmailCommandInput, SESv2Client } from "@aws-sdk/client-sesv2";
 import type { IAccountExistsNotices } from "../../lib/src/users/application/ports/account-exists-notices.port";
 import type { IIpRateLimit } from "../../lib/src/users/application/ports/ip-rate-limit.port";
@@ -256,3 +257,25 @@ export const buildUser = (overrides: Partial<User> = {}): User => ({
   cognitoSub: COGNITO_SUB,
   ...overrides,
 });
+
+export interface SentCommand {
+  name: string;
+  input: Record<string, unknown>;
+}
+
+export const cognitoClient = (responses: Record<string, unknown>) => {
+  const sent: SentCommand[] = [];
+  const client = {
+    send: async (command: {
+      constructor: { name: string };
+      input: Record<string, unknown>;
+    }) => {
+      const name = command.constructor.name;
+      sent.push({ name, input: command.input });
+      const response = responses[name];
+      if (response instanceof Error) throw response;
+      return response ?? {};
+    },
+  } as unknown as CognitoIdentityProviderClient;
+  return { client, sent };
+};

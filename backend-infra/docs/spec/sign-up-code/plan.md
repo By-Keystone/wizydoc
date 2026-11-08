@@ -13,12 +13,12 @@ pruebas ni docs).
 |---|---|---|
 | 1 | `POST /api/auth/sign-up/code`: dominio e ítem del código (con el enfriamiento de un minuto por correo), caso de uso, handler, plantilla de SES, Lambda y permisos. «Intentaron crear una cuenta con tu correo» pasa a «Hola,» y tiene el mismo minuto de espera. | ~385 líneas |
 | 2 | `POST /api/auth/sign-up/code/verify`: límite por IP, intentos, gasto del código y token de verificación. | ~380 líneas netas (unas 435 brutas, con el renombre del límite por IP y los permisos por acción) |
-| 3 | `POST /api/auth/sign-up/confirm`: crea la cuenta sin nombre, apellido ni teléfono, e inicia la sesión con `ADMIN_USER_PASSWORD_AUTH` (`adminUserPassword` en el app client). | ~380 líneas |
+| 3a | Los cimientos de la sesión, sin ruta nueva: el app client `session` (`adminUserPassword`, con secreto, `preventUserExistenceErrors`, `writeAttributes` `email`, `given_name` y `family_name`, el pool recreado con `email` inmutable, `enableTokenRevocation`, refresh token de 30 días), lo mismo en el `ApiClient`, `name`, `lastName` y `phone` opcionales, y el adaptador que inicia la sesión con `AdminInitiateAuth`. | ~110 líneas |
+| 3b | `POST /api/auth/sign-up/confirm`: lee y gasta el token de verificación, crea la cuenta sin nombre, apellido ni teléfono e inicia la sesión con el adaptador de 3a. | ~300 líneas |
 | 4 | Quita `POST /api/auth/sign-up/email`, `POST /api/auth/sign-up/resend-confirmation`, los correos «Confirma tu correo» y «Confirma tu cuenta» y lo que sólo usaban ellos. | Sólo borra (neto negativo) |
 
-- La parte 3 es la más cercana al tope y, con las decisiones de más abajo, puede
-  pasar de ~400 líneas: en ese caso se divide en 3a (sesión de Cognito, app
-  client y `adminUserPassword`) y 3b (la ruta).
+- La parte 3 se dividió en 3a y 3b porque, con las decisiones de más abajo, no
+  cabía en ~400 líneas. 3a no agrega rutas ni Lambdas: se puede mergear sola.
 - La parte 4 va al final porque `SignUpUseCase` y la Lambda `sign-up` siguen
   atendiendo a quien use la ruta vieja hasta entonces. Mover el esquema de la
   contraseña de `sign-up.usecase.ts` a `domain/value-objects/` es de la parte 3,
@@ -77,7 +77,63 @@ milisegundos menos. Distinguir una sola dirección lleva horas: como mucho 5
 muestras útiles por minuto y por correo, y un correo por minuto a la víctima.
 Igualarlo exigiría escrituras de relleno.
 
-**Parte 3: crear la cuenta**
+**Parte 3a: el cliente de la sesión (hecho)**
+- **Pool nuevo con `email` inmutable.** Comprobado contra AWS: Cognito rechaza
+  un app client sin `email` en `writeAttributes` mientras `email` sea
+  obligatorio (`InvalidParameterException: Invalid write attributes specified
+  while creating a client`). Por eso `email` sigue siendo obligatorio pero
+  `mutable: false`, y los dos clientes lo incluyen en `writeAttributes`: como
+  es inmutable, nadie puede cambiarlo con su access token. Cognito no deja
+  cambiar las propiedades de un atributo existente, así que CloudFormation no
+  puede actualizar el pool actual: el construct pasa a llamarse
+  `UserPoolWithImmutableEmail`, lo que crea un pool nuevo (y sus clientes)
+  y las Lambdas reciben su id. El pool viejo **se conserva** (CDK retiene los
+  user pools por defecto, y la `removalPolicy` del nuevo sigue reteniendo); se
+  borra a mano después de desplegar, en la cuenta de desarrollo y en staging.
+  Con el correo inmutable nadie puede cambiar su correo en Cognito: si un día
+  se quiere permitir, hará falta un flujo de administrador.
+- **`writeAttributes` de los dos clientes:** exactamente `email`, `given_name`
+  y `family_name`. `phone_number` no, por el riesgo de fraude con SMS si algún
+  día se activan. `authentication.test.ts` lo comprueba en cada
+  `AWS::Cognito::UserPoolClient`, junto con `enableTokenRevocation: true`
+  explícito y que `email` sea inmutable en el pool.
+- **`ApiClient`:** nada en `backend-infra` usa su `USER_PASSWORD_AUTH` hoy; lo
+  usaría el inicio de sesión, que es otro subticket de WIZ-71. Se deja con sus
+  flujos y sólo gana `writeAttributes`. Propuesta: si el inicio de sesión usa el
+  cliente de la sesión o uno propio, quitarlo.
+- **Cliente `session`:** `authFlows: { adminUserPassword: true }` (CDK emite
+  `ALLOW_ADMIN_USER_PASSWORD_AUTH` y `ALLOW_REFRESH_TOKEN_AUTH`, sin SRP,
+  CUSTOM_AUTH ni `USER_PASSWORD_AUTH`), `generateSecret`,
+  `preventUserExistenceErrors` y refresh token de 30 días (el valor por
+  defecto de Cognito, explícito). `Authentication.sessionClient` lo expone.
+- **El secreto no va a la plantilla ni al entorno,** y no usa Secrets Manager:
+  el adaptador (`CognitoSessionProvider`) lo lee con `DescribeUserPoolClient`
+  la primera vez y lo guarda sólo en memoria. Decisión del humano. Motivos:
+  `@aws-sdk/client-secrets-manager` no está instalado y agregarlo es una
+  dependencia nueva; un `AWS::SecretsManager::Secret` agrega un recurso, un costo
+  mensual y una copia más del secreto. Costo del permiso:
+  `cognito-idp:DescribeUserPoolClient` no se puede acotar a un cliente (es sobre
+  el pool), así que la Lambda que lo tenga podría leer el secreto de cualquier
+  cliente del pool; ya puede cambiar la contraseña de cualquier usuario, así que
+  no amplía lo que puede hacer.
+  **Condiciones:** `DescribeUserPoolClient` sólo en las Lambdas que inician o
+  renuevan sesiones; nunca se registra su respuesta; el secreto vive sólo en
+  memoria.
+- **El adaptador** inicia la sesión con el `sub` como usuario
+  (`AdminInitiateAuth`, `ADMIN_USER_PASSWORD_AUTH`) y `SECRET_HASH` =
+  base64(HMAC-SHA256(secreto, sub + clientId)), y devuelve
+  `{ idToken, accessToken, refreshToken, expiresIn }`. Si Cognito no los
+  entrega completos, lanza un error sin ningún valor. La Lambda de confirm (3b)
+  necesita `cognito-idp:AdminInitiateAuth` y `DescribeUserPoolClient`, y el id
+  del cliente en el entorno.
+- **Usuarios sin nombre:** `name`, `lastName` y `phone` son opcionales en
+  `User`, `CreateUserInput`, el ítem y los mappers. Los correos viejos con
+  saludo por nombre mandan el nombre vacío si falta (se van en la parte 4).
+- **Pregunta para el humano:** hoy la sesión de Better Auth dura 7 días y se
+  renueva con el uso; el refresh token de Cognito dura 30 días fijos desde el
+  inicio de sesión y no se renueva con el uso. ¿Se deja en 30 o se acorta?
+
+**Parte 3b: crear la cuenta**
 - **El token se lee antes de crear nada.** Antes de `AdminCreateUser`, un
   `GetItem` con `ConsistentRead: true` sobre
   `SIGN_UP_VERIFICATION#<sha256(token)>` comprueba `ItemType`, que `Email` sea
@@ -93,24 +149,20 @@ Igualarlo exigiría escrituras de relleno.
   Lambda de confirm. Esa Lambda tiene además `DeleteItem` sobre
   `SIGN_UP_VERIFICATION#*` y `PutItem` sobre `USER#*`. La de verificación sigue
   sin `GetItem`.
-- **App client propio para la sesión:** sólo `ADMIN_USER_PASSWORD_AUTH`
-  (`authFlows: { adminUserPassword: true }`, explícito, con una prueba de
-  síntesis: sin `authFlows`, Cognito habilita SRP y CUSTOM_AUTH). **Conserva su
-  secreto,** que la Lambda de confirm lee de Secrets Manager para calcular
-  `SECRET_HASH`; no se pone en una variable de entorno en claro. Lleva
-  `preventUserExistenceErrors: true`. Motivo: el id del cliente viaja en los
-  tokens, y un cliente sin secreto deja llamar a `ForgotPassword` y
-  `ResendConfirmationCode` sin autenticarse, con lo que se podrían enumerar
-  cuentas fuera del gateway. Si nada usa `userPassword`, el cliente actual lo
-  pierde. `AdminInitiateAuth` va sólo a la Lambda de confirm.
-- **Configuración del cliente:** `writeAttributes` sin `email`, para que el
-  usuario no cambie su correo en Cognito con su access token, y la vigencia del
-  refresh token fijada de forma explícita. **Antes de escribir la parte 3** hay
-  que comprobar en una cuenta de prueba que Cognito acepta un `writeAttributes`
-  sin `email`, porque `email` es obligatorio en el pool. Si no lo acepta, la
-  salida (`email` con `mutable: false`, recreando el pool) es decisión del
-  humano.
-- **Datos opcionales:** `name`, `lastName` y `phone` pasan a ser opcionales en
+- **Permisos exactos de la Lambda de confirm:**
+  - Cognito: `AdminCreateUser`, `AdminSetUserPassword`, `AdminDeleteUser`,
+    `AdminInitiateAuth` y `DescribeUserPoolClient`.
+  - DynamoDB: `GetItem` y `DeleteItem` sobre `SIGN_UP_VERIFICATION#*`,
+    `PutItem` sobre `USER#*` y `Query` sobre `GSI1` para `existsByEmail`.
+  - Nada de SES ni de los demás prefijos.
+  - `DescribeUserPoolClient` y `AdminInitiateAuth` no pasan a las otras
+    Lambdas.
+- **El cliente de la sesión** (hecho en 3a) existe para que el id del cliente
+  del `AdminInitiateAuth` tenga `preventUserExistenceErrors` y secreto: el id
+  viaja en los tokens, y un cliente sin secreto dejaría llamar a
+  `ForgotPassword` y `ResendConfirmationCode` sin autenticarse, con lo que se
+  podrían enumerar cuentas fuera del gateway.
+- **(3a, hecho) Datos opcionales:** `name`, `lastName` y `phone` pasan a ser opcionales en
   `User`, `CreateUserInput`, el esquema y los mappers, sin romper las rutas
   viejas.
 - **Correo duplicado:** si Cognito responde `UsernameExistsException`, se
@@ -118,9 +170,7 @@ Igualarlo exigiría escrituras de relleno.
   deshacer va por el `sub` recién creado, nunca por correo.
 - **Condición del `Delete` del token** dentro de la transacción:
   `attribute_exists(PK) AND Email = :email AND DeleteAfter > :now`.
-- **Tamaño:** con esto la parte 3 puede pasar de 400 líneas; si pasa, se
-  divide en 3a (sesión de Cognito, app client y `adminUserPassword`) y 3b (la
-  ruta).
+- **Tamaño:** dividida en 3a y 3b (ver «Partes»).
 
 **Orden de despliegue:** antes de que platform apunte al registro de
 `backend-infra` se exigen tres cosas:
@@ -136,8 +186,9 @@ Igualarlo exigiría escrituras de relleno.
 llamar a `AdminUserGlobalSignOut`, porque Cognito no revoca los refresh tokens
 al restablecer la contraseña. Y el stage del gateway sigue sin
 `dataTraceEnabled`. Todo app client que emita tokens a usuarios lleva la misma
-restricción de `writeAttributes`, y `backend-stack.test.ts` la comprueba para
-cada `AWS::Cognito::UserPoolClient`.
+restricción de `writeAttributes`, y `authentication.test.ts` la comprueba para
+cada `AWS::Cognito::UserPoolClient`. El cierre de sesión llama a `RevokeToken`
+desde el backend.
 
 ## Flujo de la parte 1: pedir el código
 
@@ -313,14 +364,34 @@ Prueba en `test/`. Entre paréntesis, la parte que cubre cada criterio.
 | Al quinto intento fallido, el código deja de servir | 2 | `users/verify-sign-up-code.test.ts` y `users/dynamodb.test.ts` (la condición del `UpdateItem`) |
 | N verificaciones incorrectas en paralelo evalúan 5 como mucho | 2 | `users/verify-sign-up-code.test.ts` y `users/dynamodb.test.ts` |
 | De dos verificaciones a la vez, sólo una recibe el token | 2 | `users/verify-sign-up-code.test.ts` y `users/dynamodb.test.ts` (la condición de la transacción y la carrera perdida) |
-| Crear la cuenta con un token vigente crea el usuario, lo confirma, gasta el token y responde 200 con los tokens | 3 | `users/confirm-sign-up.test.ts` y `users/cognito.test.ts` |
+| Crear la cuenta con un token vigente crea el usuario, lo confirma, gasta el token y responde 200 con los tokens | 3a (el adaptador y el cliente) y 3b | `users/confirm-sign-up.test.ts`, `users/cognito-session.test.ts` y `authentication.test.ts` |
 | Crear la cuenta sin token, vencido, usado o de otro correo responde 400 y no crea nada | 3 | `users/confirm-sign-up.test.ts` |
 | Con el flag encendido, la constancia va en la misma transacción; sin aceptar, 400 | 3 | `users/confirm-sign-up.test.ts` y `users/dynamodb.test.ts` |
 | De dos pedidos con el mismo token, sólo uno crea la cuenta | 3 | `users/dynamodb.test.ts` |
 | Si falla DynamoDB, el usuario se borra de Cognito y responde 500 | 3 | `users/confirm-sign-up.test.ts` |
-| Si Cognito no entrega los tokens, la cuenta queda y responde 204 | 3 | `users/confirm-sign-up.test.ts` |
+| Si Cognito no entrega los tokens, la cuenta queda y responde 204 | 3a (el adaptador falla sin filtrar valores) y 3b (el 204) | `users/cognito-session.test.ts` y `users/confirm-sign-up.test.ts` |
 | Ni el código, ni el token, ni sus hashes, ni la contraseña, ni los tokens aparecen en los logs | 1 (código y hash), 2 (también el token de verificación y su hash) y 3 (el resto) | `users/request-sign-up-code.test.ts`, `users/verify-sign-up-code.test.ts` y sus equivalentes |
 | Las tres rutas exigen la clave de platform y cada Lambda sólo tiene los permisos que usa | 1 (la ruta y la Lambda del código), 2 (la verificación, y el mapa exacto de permisos de las cuatro Lambdas) y 3 | `backend-stack.test.ts` |
+
+## Verificado contra AWS
+
+El 8 de noviembre de 2026, en la cuenta de desarrollo, con un pool temporal
+configurado como el de la parte 3a y borrado después:
+
+- Un app client sin `email` en `writeAttributes` se rechaza mientras `email`
+  sea obligatorio («Invalid write attributes specified while creating a
+  client»). Por eso el pool nuevo tiene `email` inmutable.
+- Cognito acepta el pool con `email` obligatorio e inmutable y el cliente con
+  `writeAttributes` `email`, `given_name` y `family_name`, sólo
+  `ALLOW_ADMIN_USER_PASSWORD_AUTH` y `ALLOW_REFRESH_TOKEN_AUTH`, secreto,
+  revocación de tokens y refresh token de 30 días.
+- `DescribeUserPoolClient` devuelve `ClientSecret`.
+- `AdminInitiateAuth` con `ADMIN_USER_PASSWORD_AUTH`, el `sub` como `USERNAME`
+  y el `SECRET_HASH` calculado con el `sub` devuelve el id token, el access
+  token y el refresh token.
+- Con su access token, el usuario no puede cambiar su correo («Attribute cannot
+  be updated») ni escribir `phone_number` («A client attempted to write
+  unauthorized attribute»).
 
 ## Sin verificar contra AWS
 

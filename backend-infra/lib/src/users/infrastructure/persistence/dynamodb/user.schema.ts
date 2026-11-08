@@ -27,9 +27,9 @@ export interface UsersDynamoDBSchema {
   GSI2SK?: GSI2SK;
   Id: ULID;
   Email: string;
-  Name: string;
-  LastName: string;
-  Phone: string;
+  Name?: string;
+  LastName?: string;
+  Phone?: string;
   Confirmed: boolean;
   Treatment?: string;
   AccountId?: ULID;

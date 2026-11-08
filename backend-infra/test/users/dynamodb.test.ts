@@ -27,7 +27,10 @@ import {
   SIGN_UP_VERIFY_RATE_LIMIT,
 } from "../../lib/src/users/infrastructure/persistence/dynamodb/ip-rate-limit";
 import { SignUpCodeRepository } from "../../lib/src/users/infrastructure/persistence/dynamodb/sign-up-code.repository";
-import { fromDomainToDynamo } from "../../lib/src/users/infrastructure/persistence/dynamodb/user.mappers";
+import {
+  fromDomainToDynamo,
+  fromDynamoToDomain,
+} from "../../lib/src/users/infrastructure/persistence/dynamodb/user.mappers";
 import { UserRepository } from "../../lib/src/users/infrastructure/persistence/dynamodb/user.repository";
 import { emailSchema } from "../../lib/src/users/domain/value-objects/email.vo";
 import { buildUser } from "./fakes";
@@ -534,4 +537,23 @@ test("el límite de verificaciones usa su propio prefijo y su máximo de 10, apa
     ":deleteAfter": WINDOW_START + 600,
     ":itemType": "SIGN_UP_VERIFY_ATTEMPTS",
   });
+});
+
+test("un usuario sin nombre, apellido ni teléfono se guarda y se lee sin esos datos", () => {
+  const user = buildUser({
+    name: undefined,
+    lastName: undefined,
+    phone: undefined,
+  });
+
+  const record = fromDomainToDynamo(user);
+  const restored = fromDynamoToDomain(record);
+
+  assert.equal(record.Name, undefined);
+  assert.equal(record.LastName, undefined);
+  assert.equal(record.Phone, undefined);
+  assert.equal(restored.name, undefined);
+  assert.equal(restored.lastName, undefined);
+  assert.equal(restored.phone, undefined);
+  assert.equal(restored.email, user.email);
 });

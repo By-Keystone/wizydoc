@@ -33,8 +33,8 @@ const escapeHtml = (text: string): string =>
     .replace(/'/g, "&#39;");
 
 const namePlaceholders = (user: User) => ({
-  name: user.name,
-  escapedName: escapeHtml(user.name),
+  name: user.name ?? "",
+  escapedName: escapeHtml(user.name ?? ""),
 });
 
 export class SesSignUpEmails implements ISignUpEmails {
