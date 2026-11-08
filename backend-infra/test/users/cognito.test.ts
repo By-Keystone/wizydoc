@@ -15,6 +15,22 @@ const createdUserResponse = {
   User: { Attributes: [{ Name: "sub", Value: COGNITO_SUB }] },
 };
 
+test("crea el usuario con el correo verificado, porque el registro ya lo comprobó con el código", async () => {
+  const { client, sent } = cognitoClient({
+    AdminCreateUserCommand: createdUserResponse,
+  });
+
+  await new CognitoIdentityProvider(client, USER_POOL_ID).createUserIfAbsent({
+    email,
+    password: "una-clave-segura",
+  });
+
+  assert.deepEqual(sent[0].input.UserAttributes, [
+    { Name: "email", Value: "ana@clinica.pe" },
+    { Name: "email_verified", Value: "true" },
+  ]);
+});
+
 test("crea el usuario sin que Cognito mande correos y le fija la contraseña definitiva", async () => {
   const { client, sent } = cognitoClient({
     AdminCreateUserCommand: createdUserResponse,

@@ -44,7 +44,12 @@ export class CognitoIdentityProvider implements IIdentityProvider {
         new AdminCreateUserCommand({
           UserPoolId: this.userPoolId,
           Username: email,
-          UserAttributes: [{ Name: "email", Value: email }],
+          // El registro ya comprobó el correo con su código antes de crear al
+          // usuario, así que Cognito lo recibe verificado.
+          UserAttributes: [
+            { Name: "email", Value: email },
+            { Name: "email_verified", Value: "true" },
+          ],
           MessageAction: "SUPPRESS",
         }),
       );
