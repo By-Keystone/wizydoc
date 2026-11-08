@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { createConfirmationToken } from "../../lib/src/users/domain/confirmation-token.entity";
+import { createSignUpCode } from "../../lib/src/users/domain/sign-up-code.entity";
+import { emailSchema } from "../../lib/src/users/domain/value-objects/email.vo";
 import {
   buildUser,
   capturingSes,
@@ -56,7 +58,7 @@ test("a una cuenta sin confirmar le manda el aviso con el enlace para confirmarl
 test("a una cuenta confirmada le manda el aviso con los enlaces para iniciar sesión y cambiar la contraseña", async () => {
   const { sesClient, inputs } = capturingSes();
 
-  await emailsFor(sesClient).sendAccountExists(buildUser());
+  await emailsFor(sesClient).sendAccountExists(buildUser().email);
 
   const [sent] = inputs;
   assert.equal(
@@ -64,18 +66,33 @@ test("a una cuenta confirmada le manda el aviso con los enlaces para iniciar ses
     TEMPLATE_NAMES.accountExists,
   );
   assert.deepEqual(templateDataOf(sent), {
-    name: "Ana",
-    escapedName: "Ana",
     loginUrl: "https://app.wizydoc.app/login",
     forgotPasswordUrl: "https://app.wizydoc.app/forgot-password",
   });
 });
 
-test("manda el nombre escapado para el HTML, porque SES no escapa los datos", async () => {
+test("el código va a su plantilla con su vigencia, y el correo no manda el nombre", async () => {
+  const { sesClient, inputs } = capturingSes();
+  const signUpCode = createSignUpCode(emailSchema.parse("ana@clinica.pe"));
+
+  await emailsFor(sesClient).sendSignUpCode(signUpCode);
+
+  const [sent] = inputs;
+  assert.equal(sent.FromEmailAddress, FROM_ADDRESS);
+  assert.deepEqual(sent.Destination?.ToAddresses, ["ana@clinica.pe"]);
+  assert.equal(sent.Content?.Template?.TemplateName, TEMPLATE_NAMES.signUpCode);
+  assert.deepEqual(templateDataOf(sent), {
+    code: signUpCode.code,
+    codeLifetimeMinutes: "10",
+  });
+});
+
+test("las confirmaciones mandan el nombre escapado para el HTML, porque SES no escapa los datos", async () => {
   const { sesClient, inputs } = capturingSes();
 
-  await emailsFor(sesClient).sendAccountExists(
-    buildUser({ name: '<img src=x onerror="alert(1)">' }),
+  await emailsFor(sesClient).sendConfirmation(
+    buildUser({ name: '<img src=x onerror="alert(1)">', confirmed: false }),
+    createConfirmationToken(buildUser().id),
   );
 
   const templateData = templateDataOf(inputs[0]);

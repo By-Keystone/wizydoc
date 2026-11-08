@@ -5,9 +5,7 @@ import {
   confirmationTokenPk,
   confirmationTokenSk,
 } from "./confirmation-token.schema";
-
-const toEpochSeconds = (date: Date): number =>
-  Math.floor(date.getTime() / 1000);
+import { toEpochSeconds } from "./epoch-seconds";
 
 export const fromConfirmationTokenToDynamo = (
   confirmationToken: ConfirmationToken,

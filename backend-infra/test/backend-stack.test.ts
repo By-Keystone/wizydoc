@@ -49,7 +49,7 @@ const policyFor = (template: Template, functionName: string) => {
   return JSON.stringify(policy.Properties.PolicyDocument);
 };
 
-test("las dos rutas son POST y exigen la clave de platform", () => {
+test("las tres rutas son POST y exigen la clave de platform", () => {
   const template = synthesizeBackend();
 
   const postMethods = Object.values(
@@ -58,7 +58,7 @@ test("las dos rutas son POST y exigen la clave de platform", () => {
     }),
   );
 
-  assert.equal(postMethods.length, 2);
+  assert.equal(postMethods.length, 3);
   for (const method of postMethods) {
     assert.equal(method.Properties.ApiKeyRequired, true);
   }
@@ -68,6 +68,39 @@ test("las dos rutas son POST y exigen la clave de platform", () => {
   template.hasResourceProperties("AWS::ApiGateway::Resource", {
     PathPart: "resend-confirmation",
   });
+  template.hasResourceProperties("AWS::ApiGateway::Resource", {
+    PathPart: "code",
+  });
+});
+
+test("el pedido del código escribe sólo sus prefijos, consulta sólo el índice por correo, envía con sus dos plantillas y no toca Cognito", () => {
+  const policy = policyFor(synthesizeBackend(), "RequestSignUpCodeFunction");
+
+  for (const expected of [
+    "dynamodb:PutItem",
+    "dynamodb:LeadingKeys",
+    "SIGN_UP_CODE#*",
+    "SIGN_UP_NOTICE#*",
+    "EMAIL_SEND_ATTEMPTS#*",
+    "dynamodb:Query",
+    "/index/GSI1",
+    "ses:SendTemplatedEmail",
+    ":identity/*",
+    ":template/BackendTest-sign-up-code",
+    ":template/BackendTest-account-exists",
+  ]) {
+    assert.ok(policy.includes(expected), expected);
+  }
+  for (const forbidden of [
+    "cognito-idp",
+    "USER#*",
+    "EMAIL_CONFIRMATION#*",
+    "/index/*",
+    "BackendTest-confirm-email",
+    "BackendTest-pending-confirmation",
+  ]) {
+    assert.equal(policy.includes(forbidden), false, forbidden);
+  }
 });
 
 test("el registro crea y borra usuarios en Cognito, escribe sólo sus prefijos, consulta sólo el índice por correo y envía correos", () => {
@@ -102,7 +135,7 @@ test("el reenvío no toca Cognito ni escribe usuarios", () => {
   assert.ok(policy.includes("ses:SendTemplatedEmail"));
 });
 
-test("las dos Lambdas reciben los nombres de las tres plantillas del stack y se crean después de ellas", () => {
+test("las tres Lambdas reciben los nombres de las cuatro plantillas del stack y se crean después de ellas", () => {
   const template = synthesizeBackend();
   const sesTemplates = template.findResources("AWS::SES::Template");
 
@@ -114,24 +147,32 @@ test("las dos Lambdas reciben los nombres de las tres plantillas del stack y se 
       "BackendTest-account-exists",
       "BackendTest-confirm-email",
       "BackendTest-pending-confirmation",
+      "BackendTest-sign-up-code",
     ],
   );
-  for (const functionName of ["SignUpFunction", "ResendConfirmationFunction"]) {
+  for (const functionName of [
+    "SignUpFunction",
+    "ResendConfirmationFunction",
+    "RequestSignUpCodeFunction",
+  ]) {
     const {
       CONFIRM_EMAIL_TEMPLATE,
       PENDING_CONFIRMATION_TEMPLATE,
       ACCOUNT_EXISTS_TEMPLATE,
+      SIGN_UP_CODE_TEMPLATE,
     } = functionProperties(template, functionName).Environment.Variables;
     assert.deepEqual(
       {
         CONFIRM_EMAIL_TEMPLATE,
         PENDING_CONFIRMATION_TEMPLATE,
         ACCOUNT_EXISTS_TEMPLATE,
+        SIGN_UP_CODE_TEMPLATE,
       },
       {
         CONFIRM_EMAIL_TEMPLATE: "BackendTest-confirm-email",
         PENDING_CONFIRMATION_TEMPLATE: "BackendTest-pending-confirmation",
         ACCOUNT_EXISTS_TEMPLATE: "BackendTest-account-exists",
+        SIGN_UP_CODE_TEMPLATE: "BackendTest-sign-up-code",
       },
       functionName,
     );
@@ -166,12 +207,18 @@ test("el registro puede enviar con sus tres plantillas, y el reenvío sólo con 
     false,
   );
   assert.equal(resendPolicy.includes("BackendTest-account-exists"), false);
+  assert.equal(signUpPolicy.includes("BackendTest-sign-up-code"), false);
+  assert.equal(resendPolicy.includes("BackendTest-sign-up-code"), false);
 });
 
-test("las dos Lambdas tienen 15 segundos, 512 MB y logs que se conservan un mes", () => {
+test("las tres Lambdas tienen 15 segundos, 512 MB y logs que se conservan un mes", () => {
   const template = synthesizeBackend();
 
-  for (const functionName of ["SignUpFunction", "ResendConfirmationFunction"]) {
+  for (const functionName of [
+    "SignUpFunction",
+    "ResendConfirmationFunction",
+    "RequestSignUpCodeFunction",
+  ]) {
     const properties = functionProperties(template, functionName);
     assert.equal(properties.Timeout, 15, functionName);
     assert.equal(properties.MemorySize, 512, functionName);
@@ -184,7 +231,7 @@ test("las dos Lambdas tienen 15 segundos, 512 MB y logs que se conservan un mes"
   assert.equal(
     Object.values(template.findResources("AWS::Logs::LogGroup")).filter(
       (logGroup) => logGroup.Properties.RetentionInDays === 30,
-    ).length >= 2,
+    ).length >= 3,
     true,
   );
 });
@@ -209,7 +256,11 @@ test("las Lambdas pueden enviar a cualquier identidad, como el destinatario en e
     emailFrom: "WizyDoc <no-reply@support.wizydoc.app>",
   });
 
-  for (const functionName of ["SignUpFunction", "ResendConfirmationFunction"]) {
+  for (const functionName of [
+    "SignUpFunction",
+    "ResendConfirmationFunction",
+    "RequestSignUpCodeFunction",
+  ]) {
     const sendEmailStatement = JSON.parse(
       policyFor(template, functionName),
     ).Statement.find(

@@ -5,6 +5,7 @@ import type { EmailVO } from "../value-objects/email.vo";
 
 export interface IUserRepository {
   findByEmail(email: EmailVO): Promise<User | undefined>;
+  existsByEmail(email: EmailVO): Promise<boolean>;
   create(
     user: User,
     confirmationToken: ConfirmationToken,

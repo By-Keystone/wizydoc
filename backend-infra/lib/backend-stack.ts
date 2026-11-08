@@ -35,6 +35,11 @@ const SIGN_UP_KEY_PREFIXES = [
   "EMAIL_CONFIRMATION#*",
   "EMAIL_SEND_ATTEMPTS#*",
 ];
+const REQUEST_SIGN_UP_CODE_KEY_PREFIXES = [
+  "SIGN_UP_CODE#*",
+  "SIGN_UP_NOTICE#*",
+  "EMAIL_SEND_ATTEMPTS#*",
+];
 const RESEND_CONFIRMATION_KEY_PREFIXES = [
   "EMAIL_CONFIRMATION#*",
   "EMAIL_SEND_ATTEMPTS#*",
@@ -86,6 +91,7 @@ export class BackendStack extends Stack {
       CONFIRM_EMAIL_TEMPLATE: emailTemplates.confirmEmail.name,
       PENDING_CONFIRMATION_TEMPLATE: emailTemplates.pendingConfirmation.name,
       ACCOUNT_EXISTS_TEMPLATE: emailTemplates.accountExists.name,
+      SIGN_UP_CODE_TEMPLATE: emailTemplates.signUpCode.name,
     };
     // SES autoriza el envío con plantilla como `ses:SendTemplatedEmail`, y en el
     // sandbox también sobre la identidad del destinatario: por eso
@@ -140,11 +146,35 @@ export class BackendStack extends Stack {
     );
     resendConfirmationFunction.node.addDependency(emailTemplates);
 
+    const requestSignUpCodeFunction = this.usersFunction(
+      "RequestSignUpCodeFunction",
+      "request-sign-up-code",
+      sharedEnvironment,
+    );
+    grantUsersTableAccess(
+      requestSignUpCodeFunction,
+      database.table,
+      REQUEST_SIGN_UP_CODE_KEY_PREFIXES,
+    );
+    requestSignUpCodeFunction.addToRolePolicy(
+      sendEmailWithTemplates([
+        emailTemplates.signUpCode,
+        emailTemplates.accountExists,
+      ]),
+    );
+    requestSignUpCodeFunction.node.addDependency(emailTemplates);
+
     const signUpResource =
       apiGateway.api.root.resourceForPath("api/auth/sign-up");
     signUpResource
       .addResource("email")
       .addMethod("POST", new apigateway.LambdaIntegration(signUpFunction));
+    signUpResource
+      .addResource("code")
+      .addMethod(
+        "POST",
+        new apigateway.LambdaIntegration(requestSignUpCodeFunction),
+      );
     signUpResource
       .addResource("resend-confirmation")
       .addMethod(

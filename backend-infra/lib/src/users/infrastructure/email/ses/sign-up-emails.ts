@@ -4,12 +4,18 @@ import {
   CONFIRMATION_TOKEN_LIFETIME_HOURS,
   type ConfirmationToken,
 } from "../../../domain/confirmation-token.entity";
+import {
+  SIGN_UP_CODE_LIFETIME_MINUTES,
+  type SignUpCode,
+} from "../../../domain/sign-up-code.entity";
 import type { User } from "../../../domain/user.entity";
+import type { EmailVO } from "../../../domain/value-objects/email.vo";
 
 export interface SignUpEmailTemplateNames {
   confirmEmail: string;
   pendingConfirmation: string;
   accountExists: string;
+  signUpCode: string;
 }
 
 export interface SesSignUpEmailsSettings {
@@ -26,6 +32,11 @@ const escapeHtml = (text: string): string =>
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
 
+const namePlaceholders = (user: User) => ({
+  name: user.name,
+  escapedName: escapeHtml(user.name),
+});
+
 export class SesSignUpEmails implements ISignUpEmails {
   constructor(
     private readonly sesClient: SESv2Client,
@@ -36,26 +47,31 @@ export class SesSignUpEmails implements ISignUpEmails {
     user: User,
     confirmationToken: ConfirmationToken,
   ): Promise<void> {
-    await this.send(
-      user,
-      this.settings.templates.confirmEmail,
-      this.confirmationPlaceholders(confirmationToken),
-    );
+    await this.send(user.email, this.settings.templates.confirmEmail, {
+      ...namePlaceholders(user),
+      ...this.confirmationPlaceholders(confirmationToken),
+    });
   }
 
   async sendPendingConfirmation(
     user: User,
     confirmationToken: ConfirmationToken,
   ): Promise<void> {
-    await this.send(
-      user,
-      this.settings.templates.pendingConfirmation,
-      this.confirmationPlaceholders(confirmationToken),
-    );
+    await this.send(user.email, this.settings.templates.pendingConfirmation, {
+      ...namePlaceholders(user),
+      ...this.confirmationPlaceholders(confirmationToken),
+    });
   }
 
-  async sendAccountExists(user: User): Promise<void> {
-    await this.send(user, this.settings.templates.accountExists, {
+  async sendSignUpCode({ email, code }: SignUpCode): Promise<void> {
+    await this.send(email, this.settings.templates.signUpCode, {
+      code,
+      codeLifetimeMinutes: String(SIGN_UP_CODE_LIFETIME_MINUTES),
+    });
+  }
+
+  async sendAccountExists(email: EmailVO): Promise<void> {
+    await this.send(email, this.settings.templates.accountExists, {
       loginUrl: this.frontendUrl("/login").href,
       forgotPasswordUrl: this.frontendUrl("/forgot-password").href,
     });
@@ -77,22 +93,18 @@ export class SesSignUpEmails implements ISignUpEmails {
   }
 
   private async send(
-    user: User,
+    to: EmailVO,
     templateName: string,
     placeholders: Record<string, string>,
   ): Promise<void> {
     await this.sesClient.send(
       new SendEmailCommand({
         FromEmailAddress: this.settings.fromAddress,
-        Destination: { ToAddresses: [user.email] },
+        Destination: { ToAddresses: [to] },
         Content: {
           Template: {
             TemplateName: templateName,
-            TemplateData: JSON.stringify({
-              name: user.name,
-              escapedName: escapeHtml(user.name),
-              ...placeholders,
-            }),
+            TemplateData: JSON.stringify(placeholders),
           },
         },
       }),
