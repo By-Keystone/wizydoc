@@ -3,7 +3,10 @@ import type { ApiGatewayEvent } from "../../shared/http/api-gateway";
 import { RequestSignUpCodeUseCase } from "../application/request-sign-up-code.usecase";
 import { DynamoDBAccountExistsNotices } from "../infrastructure/persistence/dynamodb/account-exists-notices";
 import { getClient } from "../infrastructure/persistence/dynamodb/client";
-import { DynamoDBEmailSendAttempts } from "../infrastructure/persistence/dynamodb/email-send-attempts";
+import {
+  DynamoDBIpRateLimit,
+  EMAIL_SEND_RATE_LIMIT,
+} from "../infrastructure/persistence/dynamodb/ip-rate-limit";
 import { SignUpCodeRepository } from "../infrastructure/persistence/dynamodb/sign-up-code.repository";
 import { UserRepository } from "../infrastructure/persistence/dynamodb/user.repository";
 import { handleRequestSignUpCode } from "./request-sign-up-code.http";
@@ -13,7 +16,11 @@ const tableName = requireEnv("TABLE_NAME");
 const documentClient = getClient();
 
 const dependencies = {
-  emailSendAttempts: new DynamoDBEmailSendAttempts(documentClient, tableName),
+  emailSendAttempts: new DynamoDBIpRateLimit(
+    documentClient,
+    tableName,
+    EMAIL_SEND_RATE_LIMIT,
+  ),
   requestSignUpCode: new RequestSignUpCodeUseCase(
     new UserRepository(documentClient, tableName),
     new SignUpCodeRepository(documentClient, tableName),

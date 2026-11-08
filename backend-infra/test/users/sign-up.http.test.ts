@@ -17,7 +17,7 @@ import {
 import { handleSignUp } from "../../lib/src/users/handlers/sign-up.http";
 import {
   buildUser,
-  CountingEmailSendAttempts,
+  CountingIpRateLimit,
   InMemoryIdentityProvider,
   InMemoryUsers,
   RecordingEmails,
@@ -49,13 +49,13 @@ class RecordingSignUp {
 
 interface DependencyOverrides {
   signUp?: Pick<SignUpUseCase, "execute">;
-  emailSendAttempts?: CountingEmailSendAttempts;
+  emailSendAttempts?: CountingIpRateLimit;
   requireTermsAcceptance?: boolean;
 }
 
 const dependencies = ({
   signUp = new RecordingSignUp(),
-  emailSendAttempts = new CountingEmailSendAttempts(),
+  emailSendAttempts = new CountingIpRateLimit(),
   requireTermsAcceptance = false,
 }: DependencyOverrides = {}) => ({
   inputSchema: signUpInputSchemaFor(requireTermsAcceptance),
@@ -80,7 +80,7 @@ test("pasa la IP y el navegador al caso de uso", async () => {
 
 test("una IP que no es válida se trata como si faltara la cabecera", async () => {
   const signUp = new RecordingSignUp();
-  const emailSendAttempts = new CountingEmailSendAttempts();
+  const emailSendAttempts = new CountingIpRateLimit();
 
   await handleSignUp(
     event(validBody, { "x-real-ip": "no-es-una-ip<script>" }),
@@ -146,7 +146,7 @@ test("si el registro falla, responde 500 en español", async () => {
 
 test("una entrada inválida responde 400 en español, no llama al caso de uso y no cuenta para el límite", async () => {
   const signUp = new RecordingSignUp();
-  const emailSendAttempts = new CountingEmailSendAttempts();
+  const emailSendAttempts = new CountingIpRateLimit();
   const invalidBodies = ["{no es json", "", "null", "[]", "1"];
 
   const invalidPhone = await handleSignUp(
@@ -201,7 +201,7 @@ test("con el flag encendido y versiones que no son las vigentes, responde 400 si
 
 test("si se superó el límite de la IP, responde 429 sin llamar al caso de uso", async () => {
   const signUp = new RecordingSignUp();
-  const emailSendAttempts = new CountingEmailSendAttempts(false);
+  const emailSendAttempts = new CountingIpRateLimit(false);
 
   const response = await handleSignUp(
     event(validBody, { "x-real-ip": "190.42.10.7" }),

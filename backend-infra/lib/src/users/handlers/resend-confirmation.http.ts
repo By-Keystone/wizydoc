@@ -9,7 +9,7 @@ import {
   readIpAddress,
 } from "../../shared/http/api-gateway";
 import { INVALID_REQUEST } from "../../shared/messages";
-import type { IEmailSendAttempts } from "../application/ports/email-send-attempts.port";
+import type { IIpRateLimit } from "../application/ports/ip-rate-limit.port";
 import {
   type ResendConfirmationUseCase,
   resendConfirmationInputSchema,
@@ -17,7 +17,7 @@ import {
 import { SIGN_UP_FAILED, TOO_MANY_ATTEMPTS } from "./http-messages";
 
 export interface ResendConfirmationHttpDependencies {
-  emailSendAttempts: IEmailSendAttempts;
+  emailSendAttempts: IIpRateLimit;
   resendConfirmation: Pick<ResendConfirmationUseCase, "execute">;
 }
 
