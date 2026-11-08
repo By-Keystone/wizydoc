@@ -11,6 +11,7 @@ const MILLISECONDS_PER_SECOND = 1000;
 const signUpProgressSchema = z.object({
   email: z.string(),
   codeRequestedAt: z.number(),
+  verificationToken: z.string().optional(),
 });
 
 export type SignUpProgress = z.infer<typeof signUpProgressSchema>;
