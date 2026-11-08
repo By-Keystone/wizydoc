@@ -85,7 +85,7 @@ test("el registro crea y borra usuarios en Cognito, escribe sólo sus prefijos, 
     "EMAIL_SEND_ATTEMPTS#*",
     "dynamodb:Query",
     "/index/GSI1",
-    "ses:SendEmail",
+    "ses:SendTemplatedEmail",
     ":identity/*",
   ]) {
     assert.ok(policy.includes(expected), expected);
@@ -99,7 +99,7 @@ test("el reenvío no toca Cognito ni escribe usuarios", () => {
   assert.equal(policy.includes("cognito-idp"), false);
   assert.equal(policy.includes("USER#*"), false);
   assert.ok(policy.includes("EMAIL_CONFIRMATION#*"));
-  assert.ok(policy.includes("ses:SendEmail"));
+  assert.ok(policy.includes("ses:SendTemplatedEmail"));
 });
 
 test("las dos Lambdas reciben los nombres de las tres plantillas del stack y se crean después de ellas", () => {
@@ -214,7 +214,7 @@ test("las Lambdas pueden enviar a cualquier identidad, como el destinatario en e
       policyFor(template, functionName),
     ).Statement.find(
       (statement: { Action: string | string[] }) =>
-        JSON.stringify(statement.Action) === '"ses:SendEmail"',
+        JSON.stringify(statement.Action) === '"ses:SendTemplatedEmail"',
     );
     assert.ok(sendEmailStatement, functionName);
     assert.ok(
