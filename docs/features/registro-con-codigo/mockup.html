@@ -1,0 +1,974 @@
+<!doctype html>
+<html lang="es-PE">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototipo: registro con código</title>
+<style>
+  :root {
+    --teal: #0C7E75;
+    --teal-dark: #0B4F49;
+    --ink: #1F2A2A;
+    --gray: #5C6B6A;
+    --surface: #EFF5F4;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    color: var(--ink);
+    background: #e5e7eb;
+    -webkit-font-smoothing: antialiased;
+  }
+  button, input { font: inherit; }
+  code { font-size: 11.5px; background: #f3f4f6; border-radius: 4px; padding: 0 3px; overflow-wrap: anywhere; }
+  :focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
+  .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+
+  /* ---------- Barra del prototipo (no es parte de la app) ---------- */
+  .proto { display: grid; grid-template-columns: 340px minmax(0, 1fr); min-height: 100vh; }
+  .proto-panel { background: #fff; border-right: 1px solid #d1d5db; padding: 20px; overflow-y: auto; max-height: 100vh; position: sticky; top: 0; min-width: 0; }
+  .proto-panel h1 { font-size: 15px; margin: 0; color: var(--teal-dark); }
+  .proto-panel p.lead { font-size: 12px; color: var(--gray); margin: 6px 0 14px; line-height: 1.45; }
+  .proto-panel h2 { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--teal); margin: 18px 0 8px; }
+  .proto-panel fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
+  .proto-panel legend { padding: 0; }
+  .proto-panel label { display: flex; gap: 8px; align-items: flex-start; font-size: 13px; color: var(--ink); padding: 4px 0; cursor: pointer; line-height: 1.35; }
+  .proto-panel input { margin-top: 2px; accent-color: var(--teal); }
+  .seg { display: flex; border: 1px solid #d1d5db; border-radius: 8px; overflow: hidden; }
+  .seg button { flex: 1; border: 0; background: #fff; padding: 6px; font-size: 12.5px; color: var(--gray); cursor: pointer; }
+  .seg button[aria-pressed="true"] { background: var(--teal); color: #fff; }
+  .restart { display: block; width: 100%; margin-top: 16px; border: 1px solid #d1d5db; background: #fff; border-radius: 8px; padding: 7px 10px; font-size: 13px; color: var(--ink); cursor: pointer; }
+  .restart:hover { background: #f9fafb; }
+  .note { font-size: 11.5px; color: var(--gray); background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 8px 10px; margin-top: 12px; line-height: 1.45; }
+  .note strong { color: var(--ink); }
+  .note ul, .note ol { margin: 4px 0 0; padding-left: 16px; }
+  .note li { margin: 4px 0; }
+
+  .stage { display: flex; align-items: flex-start; padding: 28px 16px 40px; overflow-x: auto; min-width: 0; }
+  .stage > div { margin: 0 auto; }
+  .frame-caption { text-align: center; font-size: 12.5px; color: var(--gray); margin: 0 0 10px; }
+  .device { background: #fff; box-shadow: 0 10px 30px rgba(0, 0, 0, .12); overflow: hidden; box-sizing: content-box; }
+  .device.mobile { width: 375px; border: 8px solid #1f2937; border-radius: 28px; }
+  .device.desktop { width: 1024px; border: 1px solid #cbd5e1; border-radius: 10px; }
+  .device iframe { display: block; width: 100%; border: 0; }
+  #live-device { height: 780px; }
+  #live-device iframe { height: 100%; }
+
+  /* ---------- Galería de estados ---------- */
+  .gallery { padding: 32px 24px 72px; border-top: 1px solid #d1d5db; background: #f3f4f6; }
+  .gallery > h2 { font-size: 18px; margin: 0; color: var(--teal-dark); }
+  .gallery > p { font-size: 13px; color: var(--gray); margin: 6px 0 24px; max-width: 780px; line-height: 1.5; }
+  .gallery-grid { display: flex; flex-wrap: wrap; gap: 36px 28px; align-items: flex-start; }
+  .shot { margin: 0; width: 391px; min-width: 0; }
+  .shot.wide { width: 100%; }
+  .shot h3 { font-size: 14px; margin: 0; color: var(--ink); }
+  .shot p { font-size: 12.5px; color: var(--gray); margin: 4px 0 10px; line-height: 1.45; min-height: 54px; }
+  .shot .scroll { overflow-x: auto; padding-bottom: 8px; }
+  .not-applicable { width: 391px; max-width: 100%; border: 1px dashed #9ca3af; border-radius: 16px; background: #fff; padding: 18px; font-size: 13px; color: var(--gray); line-height: 1.5; }
+  .not-applicable strong { color: var(--ink); }
+
+  @media (max-width: 900px) {
+    .proto { grid-template-columns: minmax(0, 1fr); }
+    .proto-panel { position: static; max-height: none; border-right: 0; border-bottom: 1px solid #d1d5db; }
+  }
+</style>
+</head>
+<body>
+<div class="proto">
+  <aside class="proto-panel" aria-label="Controles del prototipo">
+    <h1>Registro con código</h1>
+    <p class="lead">
+      Las tres pantallas de <code>/sign-up</code>: el correo, el código y la contraseña, con sus errores, la carga y el reenvío.
+      Sólo existen con <code>AUTH_BACKEND=serverless</code>, y entonces <code>/register</code> lleva aquí.
+      Datos ficticios. Lo que está en esta barra no es parte de la app. Plan: <code>plan.md</code> en esta carpeta.
+    </p>
+
+    <h2>Vista</h2>
+    <div class="seg" role="group" aria-label="Tamaño de la vista">
+      <button type="button" data-view="mobile" aria-pressed="true">Celular 375 px</button>
+      <button type="button" data-view="desktop" aria-pressed="false">Escritorio 1024 px</button>
+    </div>
+
+    <h2>Empezar en</h2>
+    <fieldset>
+      <legend class="sr-only">Pantalla de inicio</legend>
+      <label><input type="radio" name="screen" value="email" checked> 1. Crea tu cuenta (correo)</label>
+      <label><input type="radio" name="screen" value="code"> 2. Revisa tu correo (código)</label>
+      <label><input type="radio" name="screen" value="password"> 3. Crea tu contraseña</label>
+      <label><input type="radio" name="screen" value="expired"> Tu verificación venció</label>
+      <label><input type="radio" name="screen" value="login-created"> Login después de un 204</label>
+      <label><input type="radio" name="screen" value="mail-code"> Referencia: correo con el código</label>
+      <label><input type="radio" name="screen" value="mail-exists"> Referencia: correo a una cuenta que ya existe</label>
+    </fieldset>
+
+    <h2>Opciones</h2>
+    <label><input type="checkbox" id="long-email"> Correo largo (para revisar los 375 px)</label>
+    <label><input type="checkbox" id="fast-clock"> Reloj rápido: la espera de 60 s dura 6 s</label>
+
+    <h2>Resultado de «Crear cuenta»</h2>
+    <fieldset>
+      <legend class="sr-only">Respuesta del backend al crear la cuenta</legend>
+      <label><input type="radio" name="outcome" value="ok" checked> 200: cuenta creada y sesión iniciada</label>
+      <label><input type="radio" name="outcome" value="no-session"> 204: cuenta creada, sin sesión</label>
+      <label><input type="radio" name="outcome" value="expired"> 400: la verificación venció</label>
+      <label><input type="radio" name="outcome" value="failure"> 500 o sin conexión</label>
+    </fieldset>
+
+    <button type="button" class="restart" id="restart">Reiniciar la pantalla</button>
+
+    <div class="note">
+      <strong>Recorrido sugerido</strong>
+      <ol>
+        <li>Escribe un correo y pulsa «Continuar». Si empieza con <code>limite</code>, sale el 429; si empieza con <code>falla</code>, el error del envío.</li>
+        <li>Escribe <code>482913</code>: al sexto dígito se envía solo. Cualquier otro código da el mensaje único; <code>000000</code> da el 429; con menos de 6, pulsa «Verificar código».</li>
+        <li>Espera la cuenta (o enciende el reloj rápido) y pulsa «Reenviar código».</li>
+        <li>«Cambiar» vuelve al correo. Con el mismo correo dentro del minuto, «Continuar» va directo al código sin pedir otro.</li>
+        <li>Escribe la contraseña y pulsa «Crear cuenta», con el resultado elegido arriba.</li>
+      </ol>
+    </div>
+    <div class="note">
+      <strong>Qué propone</strong>
+      <ul>
+        <li>Nunca conviven dos registros: el killswitch <code>AUTH_BACKEND</code> elige uno por entorno. Con <code>better-auth</code>, el de por defecto, estas pantallas responden 404.</li>
+        <li>Tenga o no cuenta el correo, se ve lo mismo. A quien ya tiene cuenta le llega otro correo, y el pie «¿Ya tienes cuenta?» lo lleva al login.</li>
+        <li>Un solo campo para el código, que se envía solo con el sexto dígito.</li>
+        <li>«Reenviar en N s» lo calcula el servidor, así que sigue contando aunque recargues. Un reenvío dentro del minuto no envía nada: la cuenta sigue, sin aviso.</li>
+        <li>El avance del registro dura una hora, más que el token (15 minutos): si el token vence, el correo sigue escrito.</li>
+        <li>Los mensajes de error son los de la spec de WIZ-75. Un código que no sirve muestra siempre el mismo.</li>
+        <li>Sin la casilla de los términos: vuelve cuando se publique la política de privacidad.</li>
+        <li>Igual para todos: no hay roles, ni 403, ni 402.</li>
+      </ul>
+    </div>
+  </aside>
+
+  <div class="stage">
+    <div>
+      <p class="frame-caption" id="live-caption"></p>
+      <div id="live-device" class="device mobile">
+        <iframe id="live-frame" title="Registro con código, prototipo navegable"></iframe>
+      </div>
+    </div>
+  </div>
+</div>
+
+<section class="gallery" id="estados" aria-labelledby="gallery-title">
+  <h2 id="gallery-title">Estados</h2>
+  <p>
+    Cada vista es un celular de 375 px real, con los breakpoints de la app, salvo las tres últimas, que son de escritorio.
+    Todas se pueden tocar: los formularios responden igual que en la vista navegable.
+  </p>
+  <div class="gallery-grid" id="gallery"></div>
+</section>
+
+<template id="app-head">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com/3.4.16"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          border: "hsl(var(--border))",
+          ring: "hsl(var(--ring))",
+          background: "hsl(var(--background))",
+          foreground: "hsl(var(--foreground))",
+          brand: {
+            teal: "#0C7E75",
+            "teal-dark": "#0B4F49",
+            ink: "#1F2A2A",
+            gray: "#5C6B6A",
+            surface: "#EFF5F4",
+            coral: "#FF6F59",
+          },
+        },
+        borderRadius: {
+          lg: "var(--radius)",
+          md: "calc(var(--radius) - 2px)",
+          sm: "calc(var(--radius) - 4px)",
+        },
+        fontFamily: { sans: ["Inter", "ui-sans-serif", "system-ui", "sans-serif"] },
+      },
+    },
+  };
+</script>
+<style>
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222 47% 11%;
+    --border: 214 32% 91%;
+    --ring: 175 83% 27%;
+    --radius: 0.625rem;
+  }
+  * { border-color: hsl(var(--border)); }
+</style>
+</template>
+
+<template id="app-body">
+<div id="root"></div>
+<div id="toasts" aria-live="polite" class="pointer-events-none fixed bottom-4 right-4 z-[60] flex max-w-[calc(100%-2rem)] flex-col gap-2"></div>
+<script>
+(function () {
+  "use strict";
+
+  const CONFIG = JSON.parse(document.getElementById("mock-config").textContent);
+
+  const ICONS = {
+    loader: '<path d="M21 12a9 9 0 1 1-6.219-8.56"/>',
+    circleCheck: '<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>',
+    xCircle: '<circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/>',
+  };
+
+  const icon = (name, className) =>
+    `<svg class="${className}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name]}</svg>`;
+  const escapeHtml = (text) =>
+    String(text).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+
+  /* ---------- Clases de ui/button.tsx, common/auth-card.tsx y common/form ---------- */
+  const BUTTON_BASE = "inline-flex items-center justify-center whitespace-nowrap rounded-lg text-sm font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50";
+  const BUTTON_DEFAULT = "bg-brand-teal text-white shadow hover:bg-brand-teal-dark active:scale-[0.98] disabled:bg-brand-teal/50";
+  const BUTTON_SIZE = "h-10 px-5 py-2";
+  const buttonClass = (extra) => `${BUTTON_BASE} ${BUTTON_DEFAULT} ${BUTTON_SIZE} ${extra || ""}`;
+  const TEXT_LINK_CLASS = "inline-flex min-h-10 items-center text-sm font-medium text-brand-teal hover:text-brand-teal-dark";
+  const FIELD_OK = "border-gray-300 focus:border-brand-teal focus:ring-brand-teal/20";
+  const FIELD_ERROR = "border-red-400 focus:border-red-500 focus:ring-red-100";
+  const ALERT_CLASS = "rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700";
+  const NOTICE_CLASS = "flex items-start gap-2 rounded-lg bg-brand-teal/10 px-3 py-2 text-sm text-brand-teal-dark";
+
+  /* ---------- Reglas y textos de la spec de WIZ-75 y del plan (D-6) ---------- */
+  const EMAIL = "lucia.paredes@gmail.com";
+  const LONG_EMAIL = "consultorio.dermatologico.lucia.paredes.quispe@clinicasanborja.com.pe";
+  const CORRECT_CODE = "482913";
+  const RATE_LIMITED_CODE = "000000";
+  const CODE_LENGTH = 6;
+  const RESEND_COOLDOWN_SECONDS = 60;
+  const MIN_PASSWORD_LENGTH = 8;
+  const MAX_PASSWORD_LENGTH = 256;
+  const SMTP_MAX_LOCAL_PART_LENGTH = 64;
+  const SMTP_MAX_ADDRESS_LENGTH = 254;
+  const PASSWORD_ACCEPTED_BY_COGNITO = /^\S(?:.*\S)?$/;
+  const NETWORK_DELAY_MS = 900;
+  const COUNTDOWN_TICK_MS = 250;
+  const CLOCK_SPEED = CONFIG.fastClock ? 10 : 1;
+
+  const MESSAGES = {
+    invalidEmail: "Correo inválido",
+    tooManyAttempts: "Demasiados intentos. Intenta de nuevo en unos minutos.",
+    codeFailed: "No pudimos enviarte el código. Intenta de nuevo.",
+    wrongCode: "El código no es correcto o ya venció. Pide uno nuevo si lo necesitas.",
+    incompleteCode: "Escribe los 6 dígitos del código.",
+    verifyFailed: "No pudimos comprobar el código. Intenta de nuevo.",
+    codeResent: "Te enviamos un código nuevo.",
+    resendReady: "Ya puedes pedir otro código.",
+    passwordTooShort: "La contraseña debe tener al menos 8 caracteres",
+    passwordTooLong: "La contraseña puede tener hasta 256 caracteres",
+    passwordEdges: "La contraseña no puede empezar ni terminar con un espacio, ni tener saltos de línea",
+    signUpFailed: "No pudimos crear tu cuenta. Intenta de nuevo.",
+    accountCreated: "Tu cuenta quedó creada. Inicia sesión con tu correo y tu contraseña.",
+  };
+  const message = (key) => (key ? MESSAGES[key] || key : "");
+
+  const isLive = Boolean(CONFIG.live);
+  const confirmOutcome = CONFIG.confirmOutcome || "ok";
+
+  const state = {
+    screen: CONFIG.screen || "email",
+    status: CONFIG.status || "idle",
+    email: CONFIG.longEmail ? LONG_EMAIL : EMAIL,
+    emailDraft: CONFIG.emailDraft === undefined ? "" : CONFIG.emailDraft,
+    code: CONFIG.code || "",
+    secondsLeft: CONFIG.secondsLeft === undefined ? RESEND_COOLDOWN_SECONDS : CONFIG.secondsLeft,
+    codeRequestedAt: null,
+    resend: CONFIG.resend || "idle",
+    password: CONFIG.password || "",
+    isPasswordVisible: false,
+    errors: CONFIG.errors || {},
+    alert: CONFIG.alert || "",
+  };
+
+  /* ---------- Piezas compartidas ---------- */
+  function logo(height) {
+    const fontSize = Math.round(height * 0.82);
+    return `<span class="inline-flex shrink-0 items-center gap-1.5" role="img" aria-label="WizyDoc">
+      <svg viewBox="0 0 40 44" style="height:${height}px;width:auto" aria-hidden="true">
+        <path d="M7 0h21l12 12v25a7 7 0 0 1-7 7H7a7 7 0 0 1-7-7V7a7 7 0 0 1 7-7z" fill="#0C7E75"/>
+        <path d="M28 0v7a5 5 0 0 0 5 5h7z" fill="#0B4F49" fill-opacity=".45"/>
+        <text x="19" y="33" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-weight="800" font-size="24" fill="#fff">w</text>
+      </svg>
+      <span class="font-extrabold leading-none tracking-tight" style="font-size:${fontSize}px"><span class="text-brand-ink">wizy</span><span class="text-brand-teal">doc</span></span>
+    </span>`;
+  }
+
+  function authShell(inner) {
+    return `<div class="flex min-h-screen flex-col bg-gradient-to-br from-brand-surface via-white to-brand-surface">
+      <header class="px-6 py-5"><a href="#" data-action="go-login" class="inline-flex items-center">${logo(32)}</a></header>
+      <main class="flex flex-1 items-center justify-center px-4 py-12">${inner}</main>
+      <footer class="py-6 text-center text-xs text-brand-gray">© 2026 WizyDoc. Todos los derechos reservados.</footer>
+    </div>`;
+  }
+
+  const ICON_TONES = {
+    brand: { tile: "bg-brand-teal/10", glyph: "text-brand-teal" },
+    danger: { tile: "bg-red-100", glyph: "text-red-500" },
+  };
+
+  function authCard({ title, description, iconName, tone, body, footer }) {
+    const isMessage = Boolean(iconName);
+    const iconTone = ICON_TONES[tone || "brand"];
+    return `<div class="w-full max-w-md rounded-2xl border border-gray-200 bg-white p-5 shadow-xl sm:p-8 ${isMessage ? "text-center" : ""}">
+      ${isMessage ? `<div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl ${iconTone.tile}">${icon(iconName, `h-7 w-7 ${iconTone.glyph}`)}</div>` : ""}
+      <div class="${isMessage ? "" : "mb-8"}">
+        <h1 tabindex="-1" class="text-2xl font-bold text-brand-teal-dark focus:outline-none">${title}</h1>
+        ${description ? `<p class="text-sm text-brand-gray ${isMessage ? "mt-2" : "mt-1"}">${description}</p>` : ""}
+      </div>
+      ${body || ""}
+      ${footer ? `<p class="mt-6 text-center text-sm text-brand-gray">${footer}</p>` : ""}
+    </div>`;
+  }
+
+  function textField({ id, label, type, value, placeholder, autocomplete, inputmode, maxlength, hint, error, isReadOnly, extraClass }) {
+    const describedBy = [hint ? `${id}-hint` : "", error ? `${id}-error` : ""].filter(Boolean).join(" ");
+    return `<div class="flex flex-col gap-y-1.5">
+      <label for="${id}" class="text-sm font-medium text-brand-gray">${label}</label>
+      <input type="${type || "text"}" id="${id}" name="${id}" value="${escapeHtml(value || "")}"
+        ${placeholder ? `placeholder="${escapeHtml(placeholder)}"` : ""} autocomplete="${autocomplete}"
+        ${inputmode ? `inputmode="${inputmode}"` : ""} ${maxlength ? `maxlength="${maxlength}"` : ""}
+        ${isReadOnly ? "readonly" : ""} ${error ? 'aria-invalid="true"' : ""} ${describedBy ? `aria-describedby="${describedBy}"` : ""}
+        class="rounded-lg border px-3 py-2 text-sm outline-none transition focus:ring-2 ${error ? FIELD_ERROR : FIELD_OK} ${extraClass || ""}">
+      ${hint ? `<p id="${id}-hint" class="text-xs text-brand-gray">${hint}</p>` : ""}
+      ${error ? `<p id="${id}-error" class="text-xs text-red-700" role="alert">${escapeHtml(error)}</p>` : ""}
+    </div>`;
+  }
+
+  function passwordField({ id, label, value, autocomplete, placeholder, error, isVisible }) {
+    const action = isVisible ? "Ocultar" : "Mostrar";
+    return `<div class="flex flex-col gap-y-1.5">
+      <label for="${id}" class="text-sm font-medium text-brand-gray">${label}</label>
+      <div class="relative">
+        <input id="${id}" name="${id}" type="${isVisible ? "text" : "password"}" value="${escapeHtml(value || "")}" autocomplete="${autocomplete}" placeholder="${placeholder}"
+          ${error ? `aria-invalid="true" aria-describedby="${id}-error"` : ""}
+          class="w-full rounded-lg border py-2 pl-3 pr-20 text-sm outline-none transition focus:ring-2 ${error ? FIELD_ERROR : FIELD_OK}">
+        <button type="button" data-action="toggle-password" aria-label="${action} ${label.toLowerCase()}" class="absolute right-1.5 top-1/2 -translate-y-1/2 rounded p-1.5 text-xs font-semibold text-brand-teal">${action}</button>
+      </div>
+      ${error ? `<p id="${id}-error" class="text-xs text-red-700" role="alert">${escapeHtml(error)}</p>` : ""}
+    </div>`;
+  }
+
+  const alertBox = (key) => (key ? `<p role="alert" class="${ALERT_CLASS}">${message(key)}</p>` : "");
+
+  const submitButton = (label, pendingLabel, isPending) =>
+    `<button type="submit" class="${buttonClass("mt-2 w-full")}" ${isPending ? "disabled" : ""}>
+      ${isPending ? `${icon("loader", "mr-2 h-4 w-4 animate-spin")}${pendingLabel}` : label}
+    </button>`;
+
+  const signInFooter = () =>
+    `¿Ya tienes cuenta? <a href="#" data-action="go-login" class="${TEXT_LINK_CLASS}">Inicia sesión</a>`;
+
+  /* ---------- Pantalla 1: el correo ---------- */
+  function renderEmail() {
+    const isPending = state.status === "pending";
+    return authShell(authCard({
+      title: "Crea tu cuenta",
+      description: "Empieza gratis, sin tarjeta de crédito",
+      body: `<form id="email-form" novalidate class="flex flex-col gap-4">
+        ${textField({ id: "email", type: "email", label: "Correo electrónico", value: state.emailDraft, placeholder: "ana@consultorio.com", autocomplete: "email", hint: "Te enviaremos un código para confirmarlo.", error: message(state.errors.email), isReadOnly: isPending })}
+        ${alertBox(state.alert)}
+        ${submitButton("Continuar", "Enviando código…", isPending)}
+      </form>`,
+      footer: signInFooter(),
+    }));
+  }
+
+  /* ---------- Pantalla 2: el código ---------- */
+  function secondsUntilResend() {
+    if (!state.codeRequestedAt) return state.secondsLeft;
+    const elapsedSeconds = Math.floor(((Date.now() - state.codeRequestedAt) * CLOCK_SPEED) / 1000);
+    return Math.max(0, RESEND_COOLDOWN_SECONDS - elapsedSeconds);
+  }
+
+  const isResendBlocked = () => state.secondsLeft > 0 || state.resend === "pending";
+
+  function resendLabel() {
+    if (state.resend === "pending") return `${icon("loader", "mr-1.5 h-4 w-4 animate-spin")}Enviando…`;
+    if (state.secondsLeft > 0) return `Reenviar en ${state.secondsLeft} s`;
+    return "Reenviar código";
+  }
+
+  function resendFeedback() {
+    if (state.resend === "sent") {
+      return `<p role="status" class="flex items-center justify-center gap-1.5 text-sm text-brand-teal-dark">${icon("circleCheck", "h-4 w-4 shrink-0")}${MESSAGES.codeResent}</p>`;
+    }
+    if (state.resend === "limit") return `<p role="alert" class="mt-1 ${ALERT_CLASS}">${MESSAGES.tooManyAttempts}</p>`;
+    if (state.resend === "failure") return `<p role="alert" class="mt-1 ${ALERT_CLASS}">${MESSAGES.codeFailed}</p>`;
+    return "";
+  }
+
+  function renderCode() {
+    const isPending = state.status === "pending";
+    return authShell(authCard({
+      title: "Revisa tu correo",
+      description: "Escribe el código de 6 dígitos que te enviamos. Vence en 10 minutos.",
+      body: `<div class="mb-4 flex items-center justify-between gap-3 rounded-lg bg-brand-surface py-1 pl-3 pr-2">
+          <span class="min-w-0 break-all text-sm font-semibold text-brand-ink">${escapeHtml(state.email)}</span>
+          <a href="#" data-action="change-email" class="${TEXT_LINK_CLASS} shrink-0 px-1">Cambiar<span class="sr-only"> correo</span></a>
+        </div>
+        <form id="code-form" novalidate class="flex flex-col gap-4">
+          ${textField({ id: "code", label: "Código de 6 dígitos", value: state.code, autocomplete: "one-time-code", inputmode: "numeric", maxlength: CODE_LENGTH, hint: "Si no lo ves, revisa la carpeta de spam.", error: message(state.errors.code), isReadOnly: isPending, extraClass: "text-center text-2xl font-semibold tracking-[0.4em] text-brand-ink" })}
+          ${alertBox(state.alert)}
+          ${submitButton("Verificar código", "Verificando…", isPending)}
+        </form>
+        <div class="mt-4 flex flex-col gap-1 text-center text-sm text-brand-gray">
+          <p>¿No te llegó? <button type="button" id="resend-button" data-action="resend" ${isResendBlocked() ? "disabled" : ""} class="${TEXT_LINK_CLASS} disabled:cursor-default disabled:text-brand-gray">${resendLabel()}</button></p>
+          ${resendFeedback()}
+          <p id="resend-ready" class="sr-only" role="status"></p>
+        </div>`,
+      footer: signInFooter(),
+    }));
+  }
+
+  /* ---------- Pantalla 3: la contraseña ---------- */
+  function renderPassword() {
+    const isPending = state.status === "pending";
+    return authShell(authCard({
+      title: "Crea tu contraseña",
+      description: `Con ella entrarás a WizyDoc como <b class="break-all font-semibold text-brand-ink">${escapeHtml(state.email)}</b>.`,
+      body: `<form id="password-form" novalidate class="flex flex-col gap-4">
+        <input type="email" name="username" autocomplete="username" value="${escapeHtml(state.email)}" class="hidden" tabindex="-1" aria-hidden="true" readonly>
+        ${passwordField({ id: "password", label: "Contraseña", value: state.password, autocomplete: "new-password", placeholder: "Mínimo 8 caracteres", error: message(state.errors.password), isVisible: state.isPasswordVisible })}
+        ${alertBox(state.alert)}
+        ${submitButton("Crear cuenta", "Creando tu cuenta…", isPending)}
+      </form>`,
+    }));
+  }
+
+  function renderExpired() {
+    return authShell(authCard({
+      iconName: "xCircle",
+      tone: "danger",
+      title: "Tu verificación venció",
+      description: "Vuelve a pedir el código.",
+      body: `<a href="#" data-action="restart-email" class="${buttonClass("mt-6 w-full")}">Pedir un código nuevo</a>`,
+    }));
+  }
+
+  /* ---------- Login (existente) con el aviso del 204 ---------- */
+  function renderLogin() {
+    const hasNotice = state.screen === "login-created";
+    return authShell(authCard({
+      title: "Hola de nuevo",
+      description: "Ingresa a tu cuenta para continuar",
+      body: `<div role="status">${hasNotice ? `<p class="mb-5 ${NOTICE_CLASS}">${icon("circleCheck", "mt-0.5 h-[18px] w-[18px] shrink-0")}<span>${MESSAGES.accountCreated}</span></p>` : ""}</div>
+        <form id="login-form" novalidate class="flex flex-col gap-4">
+          ${textField({ id: "login-email", type: "email", label: "Correo electrónico", value: "", placeholder: "ana@consultorio.com", autocomplete: "email" })}
+          ${passwordField({ id: "login-password", label: "Contraseña", value: "", autocomplete: "current-password", placeholder: "Tu contraseña", isVisible: false })}
+          <div class="-mt-2 flex justify-end"><a href="#" data-action="note" data-note="«¿Olvidaste tu contraseña?» no cambia." class="${TEXT_LINK_CLASS}">¿Olvidaste tu contraseña?</a></div>
+          <button type="submit" class="${buttonClass("mt-2 w-full")}">Iniciar sesión</button>
+        </form>`,
+      footer: `¿No tienes cuenta? <a href="#" data-action="go-email" class="${TEXT_LINK_CLASS}">Regístrate gratis</a>`,
+    }));
+  }
+
+  function renderNext() {
+    return authShell(authCard({
+      title: "Tu consultorio",
+      description: "Es el último paso. Tus pacientes verán estos datos al reservar.",
+      body: `<p class="rounded-lg border border-dashed border-gray-300 bg-gray-50 px-3 py-3 text-sm text-brand-gray">
+        Prototipo: la cuenta ya existe y la sesión de Cognito quedó en cookies HttpOnly. Aquí sigue el onboarding, que define WIZ-77
+        (nombre, apellido, teléfono y el consultorio). Hasta que la app acepte esa sesión, <code>/onboarding</code> lleva a <code>/login</code>.
+      </p>`,
+    }));
+  }
+
+  /* ---------- Referencia: los correos de la spec de WIZ-75 ---------- */
+  function renderMail() {
+    const isCodeMail = state.screen === "mail-code";
+    const mailButton = (label) => `<span class="inline-block rounded bg-brand-teal px-6 py-2.5 text-sm text-white">${label}</span>`;
+    const subject = isCodeMail ? "Tu código para crear tu cuenta en WizyDoc" : "Intentaron crear una cuenta con tu correo";
+    const content = isCodeMail
+      ? `<p>Hola,</p>
+         <p>Tu código para crear tu cuenta en WizyDoc es:</p>
+         <p class="text-3xl font-bold tracking-[0.3em]">${CORRECT_CODE}</p>
+         <p>Vence en 10 minutos. Si no pediste crear una cuenta, ignora este correo.</p>`
+      : `<p>Hola,</p>
+         <p>Alguien intentó crear una cuenta en WizyDoc con este correo. Ya tienes una cuenta con él.</p>
+         <p>Si fuiste tú, inicia sesión:</p>
+         <p>${mailButton("Iniciar sesión")}</p>
+         <p>Si no fuiste tú, te recomendamos cambiar tu contraseña:</p>
+         <p>${mailButton("Cambiar contraseña")}</p>`;
+    return `<div class="min-h-screen bg-[#f4f4f4]">
+      <div class="border-b border-gray-200 bg-white px-4 py-3 text-sm">
+        <p class="text-base font-semibold text-brand-ink">${subject}</p>
+        <p class="mt-1 break-all text-brand-gray">WizyDoc &lt;no-reply@wizydoc.app&gt; · para ${escapeHtml(state.email)}</p>
+      </div>
+      <div class="px-3 py-5">
+        <div class="mx-auto max-w-[600px] space-y-4 bg-white px-6 py-8 text-[15px] leading-relaxed text-black">${content}</div>
+      </div>
+      <p class="px-4 pb-6 text-center text-xs text-brand-gray">Referencia: el texto es el de la spec de WIZ-75 y el diseño, el de las plantillas de SES. No cambia en este ticket.</p>
+    </div>`;
+  }
+
+  const SCREENS = {
+    email: renderEmail,
+    code: renderCode,
+    password: renderPassword,
+    expired: renderExpired,
+    login: renderLogin,
+    "login-created": renderLogin,
+    next: renderNext,
+    "mail-code": renderMail,
+    "mail-exists": renderMail,
+  };
+
+  function render() {
+    if (state.screen === "code") state.secondsLeft = secondsUntilResend();
+    document.getElementById("root").innerHTML = SCREENS[state.screen]();
+  }
+
+  /* ---------- Comportamiento ---------- */
+  function toast(text) {
+    const box = document.getElementById("toasts");
+    const item = document.createElement("div");
+    item.setAttribute("role", "status");
+    item.className = "pointer-events-auto rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm text-brand-ink shadow-lg";
+    item.textContent = `Prototipo: ${text}`;
+    box.appendChild(item);
+    setTimeout(() => item.remove(), 3500);
+  }
+
+  function focusElement(element) {
+    if (element) element.focus({ preventScroll: true });
+  }
+
+  function focusFirstInvalid() {
+    focusElement(document.querySelector('[aria-invalid="true"]'));
+  }
+
+  // Como en la app: autoFocus en el código y en la contraseña, el título en la tarjeta vencida; el correo y el login no mueven el foco.
+  const FOCUS_TARGET_BY_SCREEN = { code: "#code", password: "#password", expired: "h1" };
+
+  function focusAfterNavigation() {
+    const selector = FOCUS_TARGET_BY_SCREEN[state.screen];
+    if (selector) focusElement(document.querySelector(selector));
+  }
+
+  function goTo(screen, overrides) {
+    Object.assign(state, { screen, status: "idle", errors: {}, alert: "" }, overrides || {});
+    render();
+    focusAfterNavigation();
+    if (screen === "code") startCountdown();
+  }
+
+  let countdownTimer = null;
+
+  function updateResendButton() {
+    const button = document.getElementById("resend-button");
+    if (!button) return;
+    button.innerHTML = resendLabel();
+    button.disabled = isResendBlocked();
+  }
+
+  function startCountdown() {
+    clearInterval(countdownTimer);
+    if (!state.codeRequestedAt) return;
+    countdownTimer = setInterval(() => {
+      if (state.screen !== "code") {
+        clearInterval(countdownTimer);
+        return;
+      }
+      const secondsLeft = secondsUntilResend();
+      if (secondsLeft === state.secondsLeft) return;
+      state.secondsLeft = secondsLeft;
+      updateResendButton();
+      if (secondsLeft === 0) {
+        clearInterval(countdownTimer);
+        document.getElementById("resend-ready").textContent = MESSAGES.resendReady;
+      }
+    }, COUNTDOWN_TICK_MS);
+  }
+
+  function readValues() {
+    const emailInput = document.querySelector("#email-form #email");
+    if (emailInput) state.emailDraft = emailInput.value;
+    const codeInput = document.getElementById("code");
+    if (codeInput) state.code = codeInput.value;
+    const passwordInput = document.getElementById("password");
+    if (passwordInput) state.password = passwordInput.value;
+  }
+
+  function isValidEmail(email) {
+    const [localPart] = email.split("@");
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+      && email.length <= SMTP_MAX_ADDRESS_LENGTH
+      && localPart.length <= SMTP_MAX_LOCAL_PART_LENGTH;
+  }
+
+  function showFailure(key) {
+    state.status = "idle";
+    state.alert = key;
+    render();
+  }
+
+  function submitEmail() {
+    const email = state.emailDraft.trim().toLowerCase();
+    if (!isValidEmail(email)) {
+      state.errors = { email: "invalidEmail" };
+      state.alert = "";
+      render();
+      focusFirstInvalid();
+      return;
+    }
+    // D-4: el mismo correo dentro del minuto no pide otro código; el anterior sigue sirviendo.
+    const isSameEmailWaiting = email === state.email && state.codeRequestedAt && secondsUntilResend() > 0;
+    if (isSameEmailWaiting) {
+      goTo("code", { code: "", resend: "idle" });
+      return;
+    }
+    state.errors = {};
+    state.alert = "";
+    state.status = "pending";
+    render();
+    setTimeout(() => {
+      if (email.startsWith("limite")) return showFailure("tooManyAttempts");
+      if (email.startsWith("falla")) return showFailure("codeFailed");
+      goTo("code", { email, code: "", resend: "idle", codeRequestedAt: Date.now() });
+    }, NETWORK_DELAY_MS);
+  }
+
+  function submitCode() {
+    const code = state.code;
+    if (code.length < CODE_LENGTH) {
+      state.errors = { code: "incompleteCode" };
+      state.alert = "";
+      render();
+      focusFirstInvalid();
+      return;
+    }
+    state.errors = {};
+    state.alert = "";
+    state.status = "pending";
+    render();
+    setTimeout(() => {
+      if (code === CORRECT_CODE) {
+        goTo("password", { password: "" });
+        return;
+      }
+      if (code === RATE_LIMITED_CODE) return showFailure("tooManyAttempts");
+      state.status = "idle";
+      state.errors = { code: "wrongCode" };
+      render();
+      const input = document.getElementById("code");
+      focusElement(input);
+      input.select();
+    }, NETWORK_DELAY_MS);
+  }
+
+  function resendCode() {
+    state.secondsLeft = secondsUntilResend();
+    if (isResendBlocked()) return;
+    readValues();
+    state.resend = "pending";
+    render();
+    setTimeout(() => {
+      Object.assign(state, { codeRequestedAt: Date.now(), resend: "sent", code: "", errors: {}, alert: "" });
+      render();
+      focusElement(document.getElementById("code"));
+      startCountdown();
+    }, NETWORK_DELAY_MS);
+  }
+
+  function passwordError() {
+    if ([...state.password].length < MIN_PASSWORD_LENGTH) return "passwordTooShort";
+    if (state.password.length > MAX_PASSWORD_LENGTH) return "passwordTooLong";
+    if (!PASSWORD_ACCEPTED_BY_COGNITO.test(state.password)) return "passwordEdges";
+    return "";
+  }
+
+  function submitPassword() {
+    const error = passwordError();
+    state.errors = error ? { password: error } : {};
+    state.alert = "";
+    if (error) {
+      render();
+      focusFirstInvalid();
+      return;
+    }
+    state.status = "pending";
+    render();
+    setTimeout(() => {
+      if (confirmOutcome === "ok") return goTo("next");
+      if (confirmOutcome === "no-session") return goTo("login-created");
+      if (confirmOutcome === "expired") return goTo("expired");
+      showFailure("signUpFailed");
+    }, NETWORK_DELAY_MS);
+  }
+
+  function togglePasswordVisibility(toggle) {
+    const input = toggle.parentElement.querySelector("input");
+    const willShow = input.type === "password";
+    const fieldName = toggle.getAttribute("aria-label").replace(/^(Mostrar|Ocultar) /, "");
+    input.type = willShow ? "text" : "password";
+    toggle.textContent = willShow ? "Ocultar" : "Mostrar";
+    toggle.setAttribute("aria-label", `${toggle.textContent} ${fieldName}`);
+    if (input.id === "password") state.isPasswordVisible = willShow;
+  }
+
+  const SUBMITS = {
+    "email-form": submitEmail,
+    "code-form": submitCode,
+    "password-form": submitPassword,
+    "login-form": () => toast("el inicio de sesión no es parte de este prototipo."),
+  };
+
+  document.addEventListener("submit", (event) => {
+    event.preventDefault();
+    if (state.status === "pending") return;
+    readValues();
+    SUBMITS[event.target.id]();
+  });
+
+  document.addEventListener("input", (event) => {
+    if (event.target.id !== "code") return;
+    const digits = event.target.value.replace(/\D/g, "").slice(0, CODE_LENGTH);
+    event.target.value = digits;
+    state.code = digits;
+    if (digits.length === CODE_LENGTH && state.status !== "pending") event.target.form.requestSubmit();
+  });
+
+  document.addEventListener("click", (event) => {
+    const target = event.target.closest("[data-action]");
+    if (!target) return;
+    event.preventDefault();
+    const action = target.dataset.action;
+
+    if (action === "note") return toast(target.dataset.note);
+    if (action === "toggle-password") return togglePasswordVisibility(target);
+    if (action === "go-login") return goTo("login");
+    if (action === "go-email") return goTo("email", { emailDraft: "" });
+    if (action === "change-email") {
+      readValues();
+      return goTo("email", { emailDraft: state.email });
+    }
+    if (action === "restart-email") return goTo("email", { emailDraft: state.email });
+    if (action === "resend") return resendCode();
+  });
+
+  if (CONFIG.autoHeight) {
+    const reportHeight = () => parent.postMessage({ type: "mock-height", frameId: CONFIG.frameId, height: document.body.offsetHeight }, "*");
+    new ResizeObserver(reportHeight).observe(document.body);
+  }
+
+  // En la vista navegable, la espera arranca con la pantalla; en la galería, cada estado queda quieto hasta que lo toques.
+  if (isLive && state.screen === "code") {
+    state.codeRequestedAt = Date.now() - ((RESEND_COOLDOWN_SECONDS - state.secondsLeft) * 1000) / CLOCK_SPEED;
+  }
+  render();
+  if (isLive) {
+    focusAfterNavigation();
+    startCountdown();
+  }
+})();
+</script>
+</template>
+
+<script>
+(function () {
+  "use strict";
+
+  const headTemplate = document.getElementById("app-head").innerHTML;
+  const bodyTemplate = document.getElementById("app-body").innerHTML;
+  const CLOSE_SCRIPT = "<\/script>";
+  const GALLERY_FRAME_START_HEIGHT = 720;
+  const DESKTOP_FRAME_START_HEIGHT = 760;
+
+  const controls = { screen: "email", view: "mobile", longEmail: false, fastClock: false, confirmOutcome: "ok" };
+
+  const LIVE_SCREENS = {
+    email: { caption: "1. Crea tu cuenta (/sign-up)", config: { screen: "email" } },
+    code: { caption: "2. Revisa tu correo (/sign-up/code)", config: { screen: "code", secondsLeft: 60 } },
+    password: { caption: "3. Crea tu contraseña (/sign-up/password)", config: { screen: "password" } },
+    expired: { caption: "Tu verificación venció (/sign-up/password)", config: { screen: "expired" } },
+    "login-created": { caption: "Login después de un 204 (/login?registered=ok)", config: { screen: "login-created" } },
+    "mail-code": { caption: "Referencia: el correo con el código", config: { screen: "mail-code" } },
+    "mail-exists": { caption: "Referencia: el correo a una cuenta que ya existe", config: { screen: "mail-exists" } },
+  };
+
+  const TYPED_EMAIL = "lucia.paredes@gmail.com";
+  const STRONG_PASSWORD = "Consulta-Miraflores-2026";
+
+  const GALLERY = [
+    { title: "1. Correo: normal", caption: "La entrada, a la que también lleva /register con AUTH_BACKEND=serverless. Sin foco automático; el pie lleva al login.", config: { screen: "email" } },
+    { title: "2. Correo: enviando", caption: "Botón deshabilitado con el spinner y «Enviando código…». El campo queda de solo lectura.", config: { screen: "email", status: "pending", emailDraft: TYPED_EMAIL } },
+    { title: "3. Correo: inválido", caption: "El mensaje de la spec debajo del campo, con el foco ahí. No se llama al backend.", config: { screen: "email", emailDraft: "lucia.paredes@gmail", errors: { email: "invalidEmail" } } },
+    { title: "4. Correo: demasiados intentos (429)", caption: "Más de 3 envíos en 10 minutos desde la misma IP. El texto es constante: nunca el «Too Many Requests» del gateway.", config: { screen: "email", emailDraft: TYPED_EMAIL, alert: "tooManyAttempts" } },
+    { title: "5. Correo: no se pudo enviar", caption: "500 de la Lambda, 403 del gateway o sin conexión: el mismo mensaje del paso.", config: { screen: "email", emailDraft: TYPED_EMAIL, alert: "codeFailed" } },
+    { title: "6. Código: recién enviado", caption: "El foco en el campo. «Reenviar en 60 s» cuenta hacia atrás, deshabilitado. El correo, con «Cambiar». Un reenvío dentro del minuto se ve igual: la cuenta sigue, sin aviso.", config: { screen: "code", secondsLeft: 60 } },
+    { title: "7. Código: verificando", caption: "Se envió solo al escribir el sexto dígito. «Verificando…» y el campo de solo lectura.", config: { screen: "code", code: "482913", status: "pending", secondsLeft: 48 } },
+    { title: "8. Código: faltan dígitos", caption: "Pulsó «Verificar código» con 4 dígitos. Mensaje de platform, sin llamar al backend.", config: { screen: "code", code: "4829", errors: { code: "incompleteCode" }, secondsLeft: 41 } },
+    { title: "9. Código: no sirve", caption: "Incorrecto, vencido, agotado o reemplazado: siempre el mismo mensaje de la spec. El texto queda seleccionado.", config: { screen: "code", code: "482931", errors: { code: "wrongCode" }, secondsLeft: 35 } },
+    { title: "10. Código: demasiados intentos (429)", caption: "Más de 10 verificaciones en 10 minutos desde la misma IP.", config: { screen: "code", code: "482931", alert: "tooManyAttempts", secondsLeft: 12 } },
+    { title: "11. Código: no se pudo comprobar", caption: "500 o sin conexión. El código no se gastó: puede volver a pulsar.", config: { screen: "code", code: "482913", alert: "verifyFailed", secondsLeft: 20 } },
+    { title: "12. Código: ya puede reenviar", caption: "Pasó el minuto: «Reenviar código» con el color de los enlaces. El lector de pantalla oye «Ya puedes pedir otro código.».", config: { screen: "code", secondsLeft: 0 } },
+    { title: "13. Código: reenviando", caption: "El enlace con el spinner, deshabilitado.", config: { screen: "code", secondsLeft: 0, resend: "pending" } },
+    { title: "14. Código: código nuevo enviado", caption: "«Te enviamos un código nuevo.» y otra vez 60 s. El anterior ya no sirve.", config: { screen: "code", secondsLeft: 60, resend: "sent" } },
+    { title: "15. Código: reenvío con 429", caption: "El tercer envío ya pasó en esta IP. Un 400, un 429 o cualquier fallo del reenvío va bajo el enlace, que sigue disponible: aquí no hay campo del correo.", config: { screen: "code", secondsLeft: 0, resend: "limit" } },
+    { title: "16. Contraseña: normal", caption: "El foco en el campo. Sin la casilla de los términos: vuelve cuando se publique la política de privacidad.", config: { screen: "password" } },
+    { title: "17. Contraseña: creando la cuenta", caption: "«Creando tu cuenta…». Con 200 va al onboarding; con 204, al login.", config: { screen: "password", password: STRONG_PASSWORD, status: "pending" } },
+    { title: "18. Contraseña: demasiado corta", caption: "El error bajo el campo, con el foco ahí. Sin llamar al backend.", config: { screen: "password", password: "lucia26", errors: { password: "passwordTooShort" } } },
+    { title: "19. Contraseña: espacio al principio", caption: "La regla de Cognito, con el mensaje de la spec.", config: { screen: "password", password: " Consulta2026", errors: { password: "passwordEdges" } } },
+    { title: "20. Contraseña: no se pudo crear", caption: "500 o sin conexión. La contraseña se conserva, y el token sigue sirviendo 15 minutos.", config: { screen: "password", password: STRONG_PASSWORD, alert: "signUpFailed" } },
+    { title: "21. Tu verificación venció", caption: "El token vence a los 15 minutos y lo dice el backend al pulsar «Crear cuenta». La cookie dura una hora, así que el correo sigue ahí: el botón vuelve al correo, ya escrito. El foco en el título.", config: { screen: "expired" } },
+    { title: "22. Login después de un 204", caption: "La cuenta se creó, pero Cognito no dio la sesión. El mismo aviso teal que tras recuperar la contraseña.", config: { screen: "login-created" } },
+    { title: "23. Código con un correo largo", caption: "El correo se corta con break-all. Sin desplazamiento horizontal a 375 px.", config: { screen: "code", longEmail: true, secondsLeft: 60 } },
+    { title: "24. Contraseña con un correo largo", caption: "Lo mismo en la descripción.", config: { screen: "password", longEmail: true } },
+    { title: "Referencia: correo con el código", caption: "Lo que recibe un correo sin cuenta (spec de WIZ-75). No cambia en este ticket.", config: { screen: "mail-code" } },
+    { title: "Referencia: correo a una cuenta que ya existe", caption: "Lo que recibe un correo con cuenta. En pantalla se ve lo mismo que en 6.", config: { screen: "mail-exists" } },
+    { notApplicable: true, title: "Vacío, 403, 402, roles y el killswitch", body: "<strong>Vacío no aplica:</strong> no hay listas.<br><br><strong>403 no aplica:</strong> las tres pantallas son públicas y no hay membership. El 403 del gateway (la clave no sirve) se ve como el fallo de cada paso (5, 11 y 20).<br><br><strong>402 no aplica:</strong> registrarse es igual en todos los planes, y la cuenta todavía no tiene plan.<br><br><strong>Roles:</strong> ADMIN, DOCTOR y USER todavía no existen para quien se registra. El invitado crea su contraseña en <code>/invite/accept</code>.<br><br><strong>Con <code>AUTH_BACKEND=better-auth</code>:</strong> estas pantallas responden 404 y <code>/register</code> muestra el formulario de hoy, sin cambios." },
+    { wide: true, title: "25. Escritorio: el correo", caption: "La misma tarjeta, centrada, con el relleno de 32 px de AuthCard.", config: { screen: "email" } },
+    { wide: true, title: "26. Escritorio: el código", caption: "Igual que en el celular.", config: { screen: "code", secondsLeft: 37 } },
+    { wide: true, title: "27. Escritorio: la contraseña", caption: "Igual que en el celular.", config: { screen: "password" } },
+  ];
+
+  const frames = new Map();
+
+  function buildSrcdoc(config) {
+    return [
+      '<!doctype html><html lang="es-PE"><head><meta charset="utf-8">',
+      '<meta name="viewport" content="width=device-width, initial-scale=1">',
+      headTemplate,
+      '<script type="application/json" id="mock-config">',
+      JSON.stringify(config).replace(/</g, "\\u003c"),
+      CLOSE_SCRIPT,
+      '</head><body class="bg-background font-sans text-foreground antialiased">',
+      bodyTemplate,
+    ].join("");
+  }
+
+  function loadFrame(frameId) {
+    const entry = frames.get(frameId);
+    entry.loaded = true;
+    entry.frame.srcdoc = buildSrcdoc(Object.assign({ frameId, longEmail: controls.longEmail, fastClock: controls.fastClock, confirmOutcome: controls.confirmOutcome }, entry.config));
+  }
+
+  /* ---------- Vista navegable ---------- */
+  const liveFrame = document.getElementById("live-frame");
+  const liveDevice = document.getElementById("live-device");
+  const liveCaption = document.getElementById("live-caption");
+
+  function viewLabel() {
+    return controls.view === "mobile" ? "Celular 375 px" : "Escritorio 1024 px";
+  }
+
+  function updateCaption() {
+    liveCaption.textContent = `${viewLabel()} · ${LIVE_SCREENS[controls.screen].caption}`;
+  }
+
+  function renderLive() {
+    frames.set("live", { frame: liveFrame, config: Object.assign({ live: true, autoHeight: false }, LIVE_SCREENS[controls.screen].config), loaded: false });
+    loadFrame("live");
+    updateCaption();
+  }
+
+  document.querySelectorAll('input[name="screen"]').forEach((input) => {
+    input.addEventListener("change", () => {
+      controls.screen = input.value;
+      renderLive();
+    });
+  });
+
+  document.querySelectorAll('input[name="outcome"]').forEach((input) => {
+    input.addEventListener("change", () => {
+      controls.confirmOutcome = input.value;
+      renderLive();
+    });
+  });
+
+  document.getElementById("long-email").addEventListener("change", (event) => {
+    controls.longEmail = event.target.checked;
+    renderLive();
+  });
+
+  document.getElementById("fast-clock").addEventListener("change", (event) => {
+    controls.fastClock = event.target.checked;
+    renderLive();
+  });
+
+  document.querySelectorAll("[data-view]").forEach((button) => {
+    button.addEventListener("click", () => {
+      controls.view = button.dataset.view;
+      document.querySelectorAll("[data-view]").forEach((other) => other.setAttribute("aria-pressed", String(other === button)));
+      liveDevice.classList.toggle("mobile", controls.view === "mobile");
+      liveDevice.classList.toggle("desktop", controls.view === "desktop");
+      updateCaption();
+    });
+  });
+
+  document.getElementById("restart").addEventListener("click", renderLive);
+
+  /* ---------- Galería ---------- */
+  const gallery = document.getElementById("gallery");
+  const frameIdByElement = new Map();
+  const lazyLoader = new IntersectionObserver((entries) => {
+    entries.forEach((entry) => {
+      if (!entry.isIntersecting) return;
+      lazyLoader.unobserve(entry.target);
+      loadFrame(frameIdByElement.get(entry.target));
+    });
+  }, { rootMargin: "800px 0px" });
+
+  GALLERY.forEach((shot, index) => {
+    const figure = document.createElement("figure");
+    figure.className = shot.wide ? "shot wide" : "shot";
+    const heading = document.createElement("h3");
+    heading.textContent = shot.title;
+    figure.appendChild(heading);
+
+    if (shot.notApplicable) {
+      const box = document.createElement("div");
+      box.className = "not-applicable";
+      box.innerHTML = shot.body;
+      figure.appendChild(box);
+      gallery.appendChild(figure);
+      return;
+    }
+
+    const caption = document.createElement("p");
+    caption.textContent = shot.caption;
+    figure.appendChild(caption);
+
+    const scroller = document.createElement("div");
+    scroller.className = "scroll";
+    const device = document.createElement("div");
+    device.className = shot.wide ? "device desktop" : "device mobile";
+    const frame = document.createElement("iframe");
+    const frameId = `shot-${index}`;
+    const startHeight = shot.wide ? DESKTOP_FRAME_START_HEIGHT : GALLERY_FRAME_START_HEIGHT;
+    frame.title = shot.title;
+    frame.style.height = `${startHeight}px`;
+    device.appendChild(frame);
+    scroller.appendChild(device);
+    figure.appendChild(scroller);
+    gallery.appendChild(figure);
+
+    // La galería no lleva el correo largo del panel: cada estado fija el suyo.
+    frames.set(frameId, { frame, startHeight, config: Object.assign({ autoHeight: true, longEmail: false }, shot.config), loaded: false });
+    frameIdByElement.set(frame, frameId);
+    lazyLoader.observe(frame);
+  });
+
+  // Lavish aísla el prototipo en un sandbox sin origen: la página y cada vista sólo se hablan por mensajes.
+  window.addEventListener("message", (event) => {
+    const message = event.data;
+    if (!message || message.type !== "mock-height") return;
+    const entry = frames.get(message.frameId);
+    if (entry && entry.config.autoHeight) {
+      entry.frame.style.height = `${Math.max(message.height, entry.startHeight)}px`;
+    }
+  });
+
+  renderLive();
+})();
+</script>
+</body>
+</html>
