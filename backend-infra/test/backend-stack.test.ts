@@ -73,6 +73,28 @@ test("las tres rutas son POST y exigen la clave de platform", () => {
   });
 });
 
+test("GET /health es la única ruta GET, exige la clave de platform y no hay ruta comodín", () => {
+  const template = synthesizeBackend();
+
+  const getMethods = Object.values(
+    template.findResources("AWS::ApiGateway::Method", {
+      Properties: { HttpMethod: "GET" },
+    }),
+  );
+  const pathParts = Object.values(
+    template.findResources("AWS::ApiGateway::Resource"),
+  ).map((resource) => resource.Properties.PathPart);
+  const httpMethods = Object.values(
+    template.findResources("AWS::ApiGateway::Method"),
+  ).map((method) => method.Properties.HttpMethod);
+
+  assert.equal(getMethods.length, 1);
+  assert.equal(getMethods[0].Properties.ApiKeyRequired, true);
+  assert.ok(pathParts.includes("health"));
+  assert.equal(pathParts.includes("{proxy+}"), false);
+  assert.equal(httpMethods.includes("ANY"), false);
+});
+
 const accessByAction = (template: Template, functionName: string) => {
   const statements: {
     Action: string | string[];

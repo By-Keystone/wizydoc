@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { App, Stack } from "aws-cdk-lib";
+import * as apigateway from "aws-cdk-lib/aws-apigateway";
 import { Template } from "aws-cdk-lib/assertions";
-import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as route53 from "aws-cdk-lib/aws-route53";
 import { ApiGateway } from "../lib/api-gateway";
 
@@ -10,22 +10,19 @@ function synthesizeApiGateway() {
   const stack = new Stack(new App(), "ApiGatewayTest", {
     env: { account: "111111111111", region: "us-east-2" },
   });
-  const handler = new lambda.Function(stack, "Handler", {
-    runtime: lambda.Runtime.NODEJS_22_X,
-    handler: "index.handler",
-    code: lambda.Code.fromInline("exports.handler = async () => ({});"),
-  });
   const hostedZone = route53.HostedZone.fromHostedZoneAttributes(
     stack,
     "HostedZone",
     { hostedZoneId: "Z0000000000000000000", zoneName: "wizydoc.app" },
   );
 
-  new ApiGateway(stack, "ApiGateway", {
-    handler,
+  const apiGateway = new ApiGateway(stack, "ApiGateway", {
     hostedZone,
     domainName: "api.wizydoc.app",
   });
+  apiGateway.api.root
+    .addResource("example")
+    .addMethod("GET", new apigateway.MockIntegration());
 
   return Template.fromStack(stack);
 }
@@ -41,6 +38,30 @@ test("todo método exige la clave de platform", () => {
   for (const method of methods) {
     assert.equal(method.Properties.ApiKeyRequired, true);
   }
+});
+
+test("no hay una ruta comodín: sólo responden las rutas declaradas", () => {
+  const template = synthesizeApiGateway();
+
+  const pathParts = Object.values(
+    template.findResources("AWS::ApiGateway::Resource"),
+  ).map((resource) => resource.Properties.PathPart);
+  const httpMethods = Object.values(
+    template.findResources("AWS::ApiGateway::Method"),
+  ).map((method) => method.Properties.HttpMethod);
+
+  assert.deepEqual(pathParts, ["example"]);
+  assert.deepEqual(httpMethods, ["GET"]);
+});
+
+test("una ruta que no existe responde 404", () => {
+  synthesizeApiGateway().hasResourceProperties(
+    "AWS::ApiGateway::GatewayResponse",
+    {
+      ResponseType: "MISSING_AUTHENTICATION_TOKEN",
+      StatusCode: "404",
+    },
+  );
 });
 
 test("la URL execute-api queda apagada y sólo responde el dominio propio", () => {
