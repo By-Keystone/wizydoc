@@ -1,10 +1,8 @@
 import {
   type DynamoDBDocumentClient,
-  PutCommand,
   QueryCommand,
   TransactWriteCommand,
 } from "@aws-sdk/lib-dynamodb";
-import type { ConfirmationToken } from "../../../domain/confirmation-token.entity";
 import type {
   IUserRepository,
   VerificationToCommit,
@@ -13,18 +11,13 @@ import type { TermsAcceptance } from "../../../domain/terms-acceptance.entity";
 import type { User } from "../../../domain/user.entity";
 import type { EmailVO } from "../../../domain/value-objects/email.vo";
 import { isLostRace } from "./lost-race";
-import { fromConfirmationTokenToDynamo } from "./confirmation-token.mappers";
 import {
   signUpVerificationTokenPk,
   signUpVerificationTokenSk,
 } from "./sign-up-verification-token.schema";
 import { fromTermsAcceptanceToDynamo } from "./terms-acceptance.mappers";
-import { fromDomainToDynamo, fromDynamoToDomain } from "./user.mappers";
-import {
-  gsi1pk,
-  USER_ITEM_TYPE,
-  type UsersDynamoDBSchema,
-} from "./user.schema";
+import { fromDomainToDynamo } from "./user.mappers";
+import { gsi1pk, USER_ITEM_TYPE } from "./user.schema";
 
 const ONLY_IF_NEW = "attribute_not_exists(PK)";
 const ONLY_IF_VERIFICATION_IS_VALID =
@@ -36,32 +29,6 @@ export class UserRepository implements IUserRepository {
     private readonly tableName: string,
     private readonly nowInMilliseconds: () => number = Date.now,
   ) {}
-
-  async create(
-    user: User,
-    confirmationToken: ConfirmationToken,
-    termsAcceptance?: TermsAcceptance,
-  ): Promise<void> {
-    const recordsToCreate = [
-      fromDomainToDynamo(user),
-      fromConfirmationTokenToDynamo(confirmationToken),
-      ...(termsAcceptance
-        ? [fromTermsAcceptanceToDynamo(termsAcceptance)]
-        : []),
-    ];
-
-    await this.client.send(
-      new TransactWriteCommand({
-        TransactItems: recordsToCreate.map((record) => ({
-          Put: {
-            TableName: this.tableName,
-            Item: record,
-            ConditionExpression: ONLY_IF_NEW,
-          },
-        })),
-      }),
-    );
-  }
 
   async createConfirmed(
     user: User,
@@ -110,18 +77,6 @@ export class UserRepository implements IUserRepository {
     }
   }
 
-  async saveConfirmationToken(
-    confirmationToken: ConfirmationToken,
-  ): Promise<void> {
-    await this.client.send(
-      new PutCommand({
-        TableName: this.tableName,
-        Item: fromConfirmationTokenToDynamo(confirmationToken),
-        ConditionExpression: ONLY_IF_NEW,
-      }),
-    );
-  }
-
   async existsByEmail(email: EmailVO): Promise<boolean> {
     const { Items } = await this.client.send(
       new QueryCommand({
@@ -139,28 +94,5 @@ export class UserRepository implements IUserRepository {
     );
 
     return Items?.[0]?.ItemType === USER_ITEM_TYPE;
-  }
-
-  async findByEmail(email: EmailVO): Promise<User | undefined> {
-    const { Items } = await this.client.send(
-      new QueryCommand({
-        TableName: this.tableName,
-        IndexName: "GSI1",
-        KeyConditionExpression: "#GSI1PK = :gsi1pk",
-        ExpressionAttributeValues: {
-          ":gsi1pk": gsi1pk(email),
-        },
-        ExpressionAttributeNames: {
-          "#GSI1PK": "GSI1PK",
-        },
-        Limit: 1,
-      }),
-    );
-
-    const [userRecord] = Items ?? [];
-
-    return userRecord?.ItemType === USER_ITEM_TYPE
-      ? fromDynamoToDomain(userRecord as UsersDynamoDBSchema)
-      : undefined;
   }
 }

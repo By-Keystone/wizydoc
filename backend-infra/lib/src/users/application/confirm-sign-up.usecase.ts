@@ -1,6 +1,10 @@
 import { z } from "zod";
 import { errorName } from "../../shared/errors";
 import { INVALID_REQUEST } from "../../shared/messages";
+import {
+  CURRENT_PRIVACY_POLICY_VERSION,
+  CURRENT_TERMS_VERSION,
+} from "../domain/legal-documents";
 import type { ISignUpVerificationTokenRepository } from "../domain/repository/sign-up-verification-token.repository";
 import type { IUserRepository } from "../domain/repository/user.repository";
 import { hashSignUpVerificationToken } from "../domain/sign-up-verification-token.entity";
@@ -10,7 +14,19 @@ import { emailSchema } from "../domain/value-objects/email.vo";
 import { passwordSchema } from "../domain/value-objects/password.vo";
 import type { IIdentityProvider } from "./ports/identity-provider.port";
 import type { ISessionProvider, Session } from "./ports/session-provider.port";
-import { termsAcceptanceInputShape } from "./terms-acceptance-input";
+
+const TERMS_NOT_ACCEPTED =
+  "Para crear tu cuenta, acepta los Términos y condiciones.";
+const OUTDATED_TERMS =
+  "Actualizamos los términos. Recarga la página para verlos.";
+
+const termsAcceptanceInputShape = {
+  acceptedTerms: z.literal(true, { error: TERMS_NOT_ACCEPTED }),
+  termsVersion: z.literal(CURRENT_TERMS_VERSION, { error: OUTDATED_TERMS }),
+  privacyPolicyVersion: z.literal(CURRENT_PRIVACY_POLICY_VERSION, {
+    error: OUTDATED_TERMS,
+  }),
+};
 
 const VERIFICATION_TOKEN_FORMAT = /^[A-Za-z0-9_-]{43}$/;
 

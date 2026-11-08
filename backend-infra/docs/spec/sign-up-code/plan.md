@@ -15,7 +15,7 @@ pruebas ni docs).
 | 2 | `POST /api/auth/sign-up/code/verify`: límite por IP, intentos, gasto del código y token de verificación. | ~380 líneas netas (unas 435 brutas, con el renombre del límite por IP y los permisos por acción) |
 | 3a | Los cimientos de la sesión, sin ruta nueva: el app client `session` (`adminUserPassword`, con secreto, `preventUserExistenceErrors`, `writeAttributes` `email`, `given_name` y `family_name`, el pool recreado con `email` inmutable, `enableTokenRevocation`, refresh token de 30 días), lo mismo en el `ApiClient`, `name`, `lastName` y `phone` opcionales, y el adaptador que inicia la sesión con `AdminInitiateAuth`. | ~110 líneas |
 | 3b | `POST /api/auth/sign-up/confirm`: lee y gasta el token de verificación, crea la cuenta sin nombre, apellido ni teléfono e inicia la sesión con el adaptador de 3a. Mueve la contraseña, la constancia de términos y la detección de carreras perdidas a módulos compartidos. | ~415 líneas netas (unas 480 brutas; unas 65 son código movido) |
-| 4 | Quita `POST /api/auth/sign-up/email`, `POST /api/auth/sign-up/resend-confirmation`, los correos «Confirma tu correo» y «Confirma tu cuenta» y lo que sólo usaban ellos. | Sólo borra (neto negativo) |
+| 4 | Quita `POST /api/auth/sign-up/email`, `POST /api/auth/sign-up/resend-confirmation`, los correos «Confirma tu correo» y «Confirma tu cuenta» y lo que sólo usaban ellos. | Sólo borra (neto negativo: unas 765 líneas de producción menos, plantillas incluidas, y unas 975 de pruebas) |
 
 - La parte 3 se dividió en 3a y 3b porque, con las decisiones de más abajo, no
   cabía en ~400 líneas. 3a no agrega rutas ni Lambdas: se puede mergear sola.
@@ -97,7 +97,7 @@ Igualarlo exigiría escrituras de relleno.
   día se activan. `authentication.test.ts` lo comprueba en cada
   `AWS::Cognito::UserPoolClient`, junto con `enableTokenRevocation: true`
   explícito y que `email` sea inmutable en el pool.
-- **`ApiClient`:** nada en `backend-infra` usa su `USER_PASSWORD_AUTH` hoy; lo
+- **`ApiClient` (quitado en la parte 4):** nada en `backend-infra` usaba su `USER_PASSWORD_AUTH`; lo
   usaría el inicio de sesión, que es otro subticket de WIZ-71. Se deja con sus
   flujos y sólo gana `writeAttributes`. Propuesta: si el inicio de sesión usa el
   cliente de platform o uno propio, quitarlo.
@@ -130,7 +130,7 @@ Igualarlo exigiría escrituras de relleno.
   del cliente en el entorno.
 - **Usuarios sin nombre:** `name`, `lastName` y `phone` son opcionales en
   `User`, `CreateUserInput`, el ítem y los mappers. Los correos viejos con
-  saludo por nombre mandan el nombre vacío si falta (se van en la parte 4).
+  saludo por nombre mandan el nombre vacío si falta (la parte 4 quita los correos y estos campos).
 - **Pregunta para el humano:** hoy la sesión de Better Auth dura 7 días y se
   renueva con el uso; el refresh token de Cognito dura 30 días fijos desde el
   inicio de sesión y no se renueva con el uso. ¿Se deja en 30 o se acorta?
@@ -166,13 +166,52 @@ Igualarlo exigiría escrituras de relleno.
   podrían enumerar cuentas fuera del gateway.
 - **(3a, hecho) Datos opcionales:** `name`, `lastName` y `phone` pasan a ser opcionales en
   `User`, `CreateUserInput`, el esquema y los mappers, sin romper las rutas
-  viejas.
+  viejas (la parte 4 los borra).
 - **Correo duplicado:** si Cognito responde `UsernameExistsException`, se
   responde 400 como un token que no sirve, sin borrar nada. Cualquier
   deshacer va por el `sub` recién creado, nunca por correo.
 - **Condición del `Delete` del token** dentro de la transacción:
   `attribute_exists(PK) AND Email = :email AND DeleteAfter > :now`.
 - **Tamaño:** dividida en 3a y 3b (ver «Partes»).
+
+**Parte 4: quitar el registro viejo (hecho)**
+- **Rutas y Lambdas:** `POST /api/auth/sign-up/email` y
+  `POST /api/auth/sign-up/resend-confirmation`, con `SignUpFunction`,
+  `ResendConfirmationFunction`, sus handlers, casos de uso (`SignUpUseCase`,
+  `ResendConfirmationUseCase`) y pruebas. Se quitan también sus permisos de
+  Cognito (`AdminCreateUser`, `AdminSetUserPassword`, `AdminDeleteUser`) y el
+  prefijo `EMAIL_CONFIRMATION#*`.
+- **Correos:** las plantillas `confirm-email` y `pending-confirmation` (HTML,
+  texto, recursos de SES, variables `CONFIRM_EMAIL_TEMPLATE` y
+  `PENDING_CONFIRMATION_TEMPLATE`), y con ellas `sendConfirmation`,
+  `sendPendingConfirmation`, `namePlaceholders` y `escapeHtml`. Quedan
+  `sign-up-code` y `account-exists`.
+- **Datos:** `EMAIL_CONFIRMATION` (`ConfirmationToken`, sus mappers y su
+  esquema), `IUserRepository.create` y `saveConfirmationToken`. También
+  `findByEmail` y `fromDynamoToDomain`, que ya nadie usa (el inicio de sesión
+  los volverá a escribir a su medida), y `phone.vo.ts` (el teléfono vuelve con
+  el onboarding).
+- **`ApiClient`:** se quita. Nadie lo usa, el inicio de sesión va a usar
+  `wizydoc-platform`, y su secreto lo podría leer cualquier Lambda con
+  `DescribeUserPoolClient`. Queda un solo app client.
+- **Pruebas:** `sign-up-input.test.ts` pasó a `confirm-sign-up-input.test.ts`
+  (las reglas de contraseña y términos ahora son las de la confirmación).
+- **Desactualizado en el plan del registro viejo** (`../sign-up/plan.md`, que no
+  se edita): casi todo, salvo el límite por IP, el ítem de la constancia de
+  términos y las plantillas de SES como mecanismo. Ya no existen el flujo, el
+  reenvío, el ítem `EMAIL_CONFIRMATION`, los permisos de ese plan ni las
+  plantillas de confirmación.
+- **Campos del usuario:** `User` queda con `id`, `email`, `confirmed`,
+  `onboardingCompleted` y `cognitoSub`. Se borran `name`, `lastName`, `phone`,
+  `treatment` y `accountId` (en la entidad, el esquema y los mappers), y con
+  ellos `treatment.vo.ts`: nadie los escribe. El onboarding (WIZ-77) los
+  agrega con su propia spec.
+- **Movidos a quien los usa:** los campos de términos van dentro de
+  `confirm-sign-up.usecase.ts` y la construcción de `SesSignUpEmails` dentro del
+  handler del pedido del código.
+
+**Después de desplegar la parte 4:** limpiar a mano las cuentas de prueba que
+creó el registro viejo, como dice la spec («Fuera de alcance»).
 
 **Orden de despliegue:** antes de que platform apunte al registro de
 `backend-infra` se exigen tres cosas:
@@ -190,7 +229,8 @@ al restablecer la contraseña. Y el stage del gateway sigue sin
 `dataTraceEnabled`. Todo app client que emita tokens a usuarios lleva la misma
 restricción de `writeAttributes`, y `authentication.test.ts` la comprueba para
 cada `AWS::Cognito::UserPoolClient`. El cierre de sesión llama a `RevokeToken`
-desde el backend.
+desde el backend. El inicio de sesión rechaza a los usuarios con
+`confirmed = false` aunque Cognito acepte la contraseña.
 
 ## Flujo de la parte 1: pedir el código
 
@@ -373,6 +413,7 @@ Prueba en `test/`. Entre paréntesis, la parte que cubre cada criterio.
 | Si falla DynamoDB, el usuario se borra de Cognito y responde 500 | 3b | `users/confirm-sign-up.test.ts` |
 | Si Cognito no entrega los tokens, la cuenta queda y responde 204 | 3a (el adaptador falla sin filtrar valores) y 3b (el 204) | `users/cognito-session.test.ts` y `users/confirm-sign-up.test.ts` |
 | Ni el código, ni el token, ni sus hashes, ni la contraseña, ni los tokens aparecen en los logs | 1 (código y hash), 2 (también el token de verificación y su hash) y 3b (el resto) | `users/request-sign-up-code.test.ts`, `users/verify-sign-up-code.test.ts` y sus equivalentes |
+| Ninguna Lambda ni plantilla del registro viejo sigue desplegada, y queda un solo app client | 4 | `backend-stack.test.ts` y `authentication.test.ts` |
 | Las tres rutas exigen la clave de platform y cada Lambda sólo tiene los permisos que usa | 1 (la ruta y la Lambda del código), 2 (la verificación, y el mapa exacto de permisos de las cuatro Lambdas) y 3b (la confirmación, y el mapa de las cinco) | `backend-stack.test.ts` |
 
 ## Verificado contra AWS

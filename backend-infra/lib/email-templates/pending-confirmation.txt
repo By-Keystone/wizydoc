@@ -1,9 +1,0 @@
-Hola {{name}},
-
-Alguien intentó crear una cuenta en WizyDoc con este correo. Tu cuenta todavía no está confirmada.
-
-Si fuiste tú, confírmala con este botón:
-
-{{confirmUrl}}
-
-El enlace vence en {{linkLifetimeHours}} horas. Si no fuiste tú, ignora este correo: la cuenta no se activa sin tu confirmación.

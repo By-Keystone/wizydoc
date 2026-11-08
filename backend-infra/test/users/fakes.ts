@@ -20,7 +20,6 @@ import {
   type SignUpCode,
 } from "../../lib/src/users/domain/sign-up-code.entity";
 import type { SignUpVerificationToken } from "../../lib/src/users/domain/sign-up-verification-token.entity";
-import type { ConfirmationToken } from "../../lib/src/users/domain/confirmation-token.entity";
 import type { IUserRepository } from "../../lib/src/users/domain/repository/user.repository";
 import type { TermsAcceptance } from "../../lib/src/users/domain/terms-acceptance.entity";
 import type { User } from "../../lib/src/users/domain/user.entity";
@@ -34,8 +33,6 @@ export const COGNITO_SUB = "4b1c7a2e-0000-4000-8000-000000000001";
 export const FROM_ADDRESS = "WizyDoc <no-reply@wizydoc.app>";
 export const TEMPLATES_STACK_NAME = "Test";
 export const TEMPLATE_NAMES = {
-  confirmEmail: `${TEMPLATES_STACK_NAME}-confirm-email`,
-  pendingConfirmation: `${TEMPLATES_STACK_NAME}-pending-confirmation`,
   accountExists: `${TEMPLATES_STACK_NAME}-account-exists`,
   signUpCode: `${TEMPLATES_STACK_NAME}-sign-up-code`,
 };
@@ -84,7 +81,6 @@ export class RecordingSessions implements ISessionProvider {
 export class InMemoryUsers implements IUserRepository {
   readonly users: User[];
   readonly createdUsers: User[] = [];
-  readonly savedTokens: ConfirmationToken[] = [];
   readonly termsAcceptances: TermsAcceptance[] = [];
   failOnCreate = false;
 
@@ -110,28 +106,6 @@ export class InMemoryUsers implements IUserRepository {
 
   async existsByEmail(email: EmailVO): Promise<boolean> {
     return this.users.some((user) => user.email === email);
-  }
-
-  async findByEmail(email: EmailVO): Promise<User | undefined> {
-    return this.users.find((user) => user.email === email);
-  }
-
-  async create(
-    user: User,
-    confirmationToken: ConfirmationToken,
-    termsAcceptance?: TermsAcceptance,
-  ): Promise<void> {
-    if (this.failOnCreate) throw new Error("DynamoDB no disponible");
-    this.users.push(user);
-    this.createdUsers.push(user);
-    this.savedTokens.push(confirmationToken);
-    if (termsAcceptance) this.termsAcceptances.push(termsAcceptance);
-  }
-
-  async saveConfirmationToken(
-    confirmationToken: ConfirmationToken,
-  ): Promise<void> {
-    this.savedTokens.push(confirmationToken);
   }
 }
 
@@ -224,39 +198,14 @@ export class InMemoryIdentityProvider implements IIdentityProvider {
 }
 
 export interface SentEmail {
-  kind:
-    | "confirmation"
-    | "pending-confirmation"
-    | "sign-up-code"
-    | "account-exists";
+  kind: "sign-up-code" | "account-exists";
   to: string;
-  confirmationToken?: ConfirmationToken;
   code?: string;
 }
 
 export class RecordingEmails implements ISignUpEmails {
   readonly sent: SentEmail[] = [];
   failOnSend = false;
-
-  async sendConfirmation(
-    user: User,
-    confirmationToken: ConfirmationToken,
-  ): Promise<void> {
-    if (this.failOnSend) throw new Error("SES no disponible");
-    this.sent.push({ kind: "confirmation", to: user.email, confirmationToken });
-  }
-
-  async sendPendingConfirmation(
-    user: User,
-    confirmationToken: ConfirmationToken,
-  ): Promise<void> {
-    if (this.failOnSend) throw new Error("SES no disponible");
-    this.sent.push({
-      kind: "pending-confirmation",
-      to: user.email,
-      confirmationToken,
-    });
-  }
 
   async sendSignUpCode({ email, code }: SignUpCode): Promise<void> {
     if (this.failOnSend) throw new Error("SES no disponible");
@@ -317,9 +266,6 @@ export class CountingIpRateLimit implements IIpRateLimit {
 export const buildUser = (overrides: Partial<User> = {}): User => ({
   id: "01M6MSQWFCK15Q3X04AQEQ0S8Q",
   email: emailSchema.parse("ana@clinica.pe"),
-  name: "Ana",
-  lastName: "Pérez",
-  phone: "+51987654321",
   confirmed: true,
   onboardingCompleted: true,
   cognitoSub: COGNITO_SUB,

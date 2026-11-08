@@ -15,22 +15,12 @@ export interface SignUpEmailTemplate {
 }
 
 export class SignUpEmailTemplates extends Construct {
-  readonly confirmEmail: SignUpEmailTemplate;
-  readonly pendingConfirmation: SignUpEmailTemplate;
   readonly accountExists: SignUpEmailTemplate;
   readonly signUpCode: SignUpEmailTemplate;
 
   constructor(scope: Construct, id: string) {
     super(scope, id);
 
-    this.confirmEmail = this.template(
-      "confirm-email",
-      "Confirma tu correo en WizyDoc",
-    );
-    this.pendingConfirmation = this.template(
-      "pending-confirmation",
-      "Confirma tu cuenta en WizyDoc",
-    );
     this.accountExists = this.template(
       "account-exists",
       "Intentaron crear una cuenta con tu correo",

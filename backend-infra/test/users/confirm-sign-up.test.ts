@@ -119,9 +119,13 @@ test("crear la cuenta con un token de verificación vigente crea el usuario conf
   assert.equal(user.confirmed, true);
   assert.equal(user.onboardingCompleted, false);
   assert.equal(user.cognitoSub, COGNITO_SUB);
-  assert.equal(user.name, undefined);
-  assert.equal(user.lastName, undefined);
-  assert.equal(user.phone, undefined);
+  assert.deepEqual(Object.keys(user).sort(), [
+    "cognitoSub",
+    "confirmed",
+    "email",
+    "id",
+    "onboardingCompleted",
+  ]);
   assert.deepEqual(flow.identityProvider.createdEmails, ["ana@clinica.pe"]);
   assert.deepEqual(flow.identityProvider.passwords, [PASSWORD]);
   assert.deepEqual(flow.sessions.started, [

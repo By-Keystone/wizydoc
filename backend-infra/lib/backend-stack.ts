@@ -40,19 +40,9 @@ type TableAccess = Partial<
   >
 >;
 
-const EMAIL_SEND_ATTEMPTS_KEYS = "EMAIL_SEND_ATTEMPTS#*";
-
-const SIGN_UP_ACCESS: TableAccess = {
-  "dynamodb:PutItem": ["USER#*", "EMAIL_CONFIRMATION#*"],
-  "dynamodb:UpdateItem": [EMAIL_SEND_ATTEMPTS_KEYS],
-};
-const RESEND_CONFIRMATION_ACCESS: TableAccess = {
-  "dynamodb:PutItem": ["EMAIL_CONFIRMATION#*"],
-  "dynamodb:UpdateItem": [EMAIL_SEND_ATTEMPTS_KEYS],
-};
 const REQUEST_SIGN_UP_CODE_ACCESS: TableAccess = {
   "dynamodb:PutItem": ["SIGN_UP_CODE#*", "SIGN_UP_NOTICE#*"],
-  "dynamodb:UpdateItem": [EMAIL_SEND_ATTEMPTS_KEYS],
+  "dynamodb:UpdateItem": ["EMAIL_SEND_ATTEMPTS#*"],
 };
 const CONFIRM_SIGN_UP_ACCESS: TableAccess = {
   "dynamodb:GetItem": ["SIGN_UP_VERIFICATION#*"],
@@ -104,15 +94,6 @@ export class BackendStack extends Stack {
       "SignUpEmailTemplates",
     );
 
-    const sharedEnvironment = {
-      TABLE_NAME: database.table.tableName,
-      FRONTEND_URL: props.frontendUrl,
-      EMAIL_FROM: props.emailFrom,
-      CONFIRM_EMAIL_TEMPLATE: emailTemplates.confirmEmail.name,
-      PENDING_CONFIRMATION_TEMPLATE: emailTemplates.pendingConfirmation.name,
-      ACCOUNT_EXISTS_TEMPLATE: emailTemplates.accountExists.name,
-      SIGN_UP_CODE_TEMPLATE: emailTemplates.signUpCode.name,
-    };
     // SES autoriza el envío con plantilla como `ses:SendTemplatedEmail`, y en el
     // sandbox también sobre la identidad del destinatario: por eso
     // `identity/*`, y la condición acota el remitente.
@@ -130,48 +111,16 @@ export class BackendStack extends Stack {
         },
       });
 
-    const signUpFunction = this.usersFunction("SignUpFunction", "sign-up", {
-      ...sharedEnvironment,
-      USER_POOL_ID: authentication.userPool.userPoolId,
-      TERMS_ACCEPTANCE_REQUIRED: String(props.termsAcceptanceRequired),
-    });
-    grantTableAccess(signUpFunction, database.table, SIGN_UP_ACCESS);
-    grantUserEmailLookup(signUpFunction, database.table);
-    authentication.userPool.grant(
-      signUpFunction,
-      "cognito-idp:AdminCreateUser",
-      "cognito-idp:AdminSetUserPassword",
-      "cognito-idp:AdminDeleteUser",
-    );
-    signUpFunction.addToRolePolicy(
-      sendEmailWithTemplates([
-        emailTemplates.confirmEmail,
-        emailTemplates.pendingConfirmation,
-        emailTemplates.accountExists,
-      ]),
-    );
-    signUpFunction.node.addDependency(emailTemplates);
-
-    const resendConfirmationFunction = this.usersFunction(
-      "ResendConfirmationFunction",
-      "resend-confirmation",
-      sharedEnvironment,
-    );
-    grantTableAccess(
-      resendConfirmationFunction,
-      database.table,
-      RESEND_CONFIRMATION_ACCESS,
-    );
-    grantUserEmailLookup(resendConfirmationFunction, database.table);
-    resendConfirmationFunction.addToRolePolicy(
-      sendEmailWithTemplates([emailTemplates.confirmEmail]),
-    );
-    resendConfirmationFunction.node.addDependency(emailTemplates);
-
     const requestSignUpCodeFunction = this.usersFunction(
       "RequestSignUpCodeFunction",
       "request-sign-up-code",
-      sharedEnvironment,
+      {
+        TABLE_NAME: database.table.tableName,
+        FRONTEND_URL: props.frontendUrl,
+        EMAIL_FROM: props.emailFrom,
+        ACCOUNT_EXISTS_TEMPLATE: emailTemplates.accountExists.name,
+        SIGN_UP_CODE_TEMPLATE: emailTemplates.signUpCode.name,
+      },
     );
     grantTableAccess(
       requestSignUpCodeFunction,
@@ -225,9 +174,6 @@ export class BackendStack extends Stack {
 
     const signUpResource =
       apiGateway.api.root.resourceForPath("api/auth/sign-up");
-    signUpResource
-      .addResource("email")
-      .addMethod("POST", new apigateway.LambdaIntegration(signUpFunction));
     const signUpCodeResource = signUpResource.addResource("code");
     signUpCodeResource.addMethod(
       "POST",
@@ -244,12 +190,6 @@ export class BackendStack extends Stack {
       .addMethod(
         "POST",
         new apigateway.LambdaIntegration(confirmSignUpFunction),
-      );
-    signUpResource
-      .addResource("resend-confirmation")
-      .addMethod(
-        "POST",
-        new apigateway.LambdaIntegration(resendConfirmationFunction),
       );
   }
 
@@ -279,9 +219,9 @@ export class BackendStack extends Stack {
 const grantTableAccess = (
   usersFunction: NodejsFunction,
   table: ITableV2,
-  writes: TableAccess,
+  access: TableAccess,
 ) => {
-  for (const [action, keyPrefixes] of Object.entries(writes)) {
+  for (const [action, keyPrefixes] of Object.entries(access)) {
     usersFunction.addToRolePolicy(
       new iam.PolicyStatement({
         actions: [action],

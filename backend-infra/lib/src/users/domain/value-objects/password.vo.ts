@@ -21,5 +21,3 @@ export const passwordSchema = z
     error: PASSWORD_WITH_SPACES_AT_THE_EDGES,
   })
   .brand<"PasswordVO">();
-
-export type PasswordVO = z.output<typeof passwordSchema>;

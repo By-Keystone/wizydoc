@@ -49,7 +49,7 @@ const policyFor = (template: Template, functionName: string) => {
   return JSON.stringify(policy.Properties.PolicyDocument);
 };
 
-test("las cinco rutas son POST y exigen la clave de platform", () => {
+test("las tres rutas son POST y exigen la clave de platform", () => {
   const template = synthesizeBackend();
 
   const postMethods = Object.values(
@@ -58,16 +58,10 @@ test("las cinco rutas son POST y exigen la clave de platform", () => {
     }),
   );
 
-  assert.equal(postMethods.length, 5);
+  assert.equal(postMethods.length, 3);
   for (const method of postMethods) {
     assert.equal(method.Properties.ApiKeyRequired, true);
   }
-  template.hasResourceProperties("AWS::ApiGateway::Resource", {
-    PathPart: "email",
-  });
-  template.hasResourceProperties("AWS::ApiGateway::Resource", {
-    PathPart: "resend-confirmation",
-  });
   template.hasResourceProperties("AWS::ApiGateway::Resource", {
     PathPart: "code",
   });
@@ -97,14 +91,6 @@ const accessByAction = (template: Template, functionName: string) => {
 test("cada Lambda usa en DynamoDB sólo las acciones y los prefijos que usa", () => {
   const template = synthesizeBackend();
 
-  assert.deepEqual(accessByAction(template, "SignUpFunction"), {
-    "dynamodb:PutItem": ["USER#*", "EMAIL_CONFIRMATION#*"],
-    "dynamodb:UpdateItem": ["EMAIL_SEND_ATTEMPTS#*"],
-  });
-  assert.deepEqual(accessByAction(template, "ResendConfirmationFunction"), {
-    "dynamodb:PutItem": ["EMAIL_CONFIRMATION#*"],
-    "dynamodb:UpdateItem": ["EMAIL_SEND_ATTEMPTS#*"],
-  });
   assert.deepEqual(accessByAction(template, "RequestSignUpCodeFunction"), {
     "dynamodb:PutItem": ["SIGN_UP_CODE#*", "SIGN_UP_NOTICE#*"],
     "dynamodb:UpdateItem": ["EMAIL_SEND_ATTEMPTS#*"],
@@ -166,8 +152,6 @@ test("sólo la confirmación puede iniciar sesiones y leer el secreto del client
   const template = synthesizeBackend();
 
   for (const functionName of [
-    "SignUpFunction",
-    "ResendConfirmationFunction",
     "RequestSignUpCodeFunction",
     "VerifySignUpCodeFunction",
   ]) {
@@ -190,7 +174,6 @@ test("la verificación del código no envía correos, no toca Cognito ni usuario
     "dynamodb:Query",
     "/index/",
     "USER#*",
-    "EMAIL_CONFIRMATION#*",
     "EMAIL_SEND_ATTEMPTS#*",
   ]) {
     assert.equal(policy.includes(forbidden), false, forbidden);
@@ -227,51 +210,12 @@ test("el pedido del código escribe sólo sus prefijos, consulta sólo el índic
   ]) {
     assert.ok(policy.includes(expected), expected);
   }
-  for (const forbidden of [
-    "cognito-idp",
-    "USER#*",
-    "EMAIL_CONFIRMATION#*",
-    "/index/*",
-    "BackendTest-confirm-email",
-    "BackendTest-pending-confirmation",
-  ]) {
+  for (const forbidden of ["cognito-idp", "USER#*", "/index/*"]) {
     assert.equal(policy.includes(forbidden), false, forbidden);
   }
 });
 
-test("el registro crea y borra usuarios en Cognito, escribe sólo sus prefijos, consulta sólo el índice por correo y envía correos", () => {
-  const policy = policyFor(synthesizeBackend(), "SignUpFunction");
-
-  for (const expected of [
-    "cognito-idp:AdminCreateUser",
-    "cognito-idp:AdminSetUserPassword",
-    "cognito-idp:AdminDeleteUser",
-    "dynamodb:PutItem",
-    "dynamodb:UpdateItem",
-    "dynamodb:LeadingKeys",
-    "USER#*",
-    "EMAIL_CONFIRMATION#*",
-    "EMAIL_SEND_ATTEMPTS#*",
-    "dynamodb:Query",
-    "/index/GSI1",
-    "ses:SendTemplatedEmail",
-    ":identity/*",
-  ]) {
-    assert.ok(policy.includes(expected), expected);
-  }
-  assert.equal(policy.includes("/index/*"), false);
-});
-
-test("el reenvío no toca Cognito ni escribe usuarios", () => {
-  const policy = policyFor(synthesizeBackend(), "ResendConfirmationFunction");
-
-  assert.equal(policy.includes("cognito-idp"), false);
-  assert.equal(policy.includes("USER#*"), false);
-  assert.ok(policy.includes("EMAIL_CONFIRMATION#*"));
-  assert.ok(policy.includes("ses:SendTemplatedEmail"));
-});
-
-test("las tres Lambdas reciben los nombres de las cuatro plantillas del stack y se crean después de ellas", () => {
+test("la Lambda del pedido del código recibe los nombres de sus dos plantillas y se crea después de ellas", () => {
   const template = synthesizeBackend();
   const sesTemplates = template.findResources("AWS::SES::Template");
 
@@ -279,80 +223,34 @@ test("las tres Lambdas reciben los nombres de las cuatro plantillas del stack y 
     Object.values(sesTemplates)
       .map((resource) => resource.Properties.Template.TemplateName)
       .sort(),
-    [
-      "BackendTest-account-exists",
-      "BackendTest-confirm-email",
-      "BackendTest-pending-confirmation",
-      "BackendTest-sign-up-code",
-    ],
+    ["BackendTest-account-exists", "BackendTest-sign-up-code"],
   );
-  for (const functionName of [
-    "SignUpFunction",
-    "ResendConfirmationFunction",
+  const { Variables } = functionProperties(
+    template,
     "RequestSignUpCodeFunction",
-  ]) {
-    const {
-      CONFIRM_EMAIL_TEMPLATE,
-      PENDING_CONFIRMATION_TEMPLATE,
-      ACCOUNT_EXISTS_TEMPLATE,
-      SIGN_UP_CODE_TEMPLATE,
-    } = functionProperties(template, functionName).Environment.Variables;
-    assert.deepEqual(
-      {
-        CONFIRM_EMAIL_TEMPLATE,
-        PENDING_CONFIRMATION_TEMPLATE,
-        ACCOUNT_EXISTS_TEMPLATE,
-        SIGN_UP_CODE_TEMPLATE,
-      },
-      {
-        CONFIRM_EMAIL_TEMPLATE: "BackendTest-confirm-email",
-        PENDING_CONFIRMATION_TEMPLATE: "BackendTest-pending-confirmation",
-        ACCOUNT_EXISTS_TEMPLATE: "BackendTest-account-exists",
-        SIGN_UP_CODE_TEMPLATE: "BackendTest-sign-up-code",
-      },
-      functionName,
-    );
-
-    const { DependsOn } = template.findResources("AWS::Lambda::Function")[
-      functionLogicalId(template, functionName)
-    ];
-    for (const sesTemplateId of Object.keys(sesTemplates)) {
-      assert.ok(DependsOn.includes(sesTemplateId), functionName);
-    }
+  ).Environment;
+  assert.equal(Variables.ACCOUNT_EXISTS_TEMPLATE, "BackendTest-account-exists");
+  assert.equal(Variables.SIGN_UP_CODE_TEMPLATE, "BackendTest-sign-up-code");
+  const { DependsOn } = template.findResources("AWS::Lambda::Function")[
+    functionLogicalId(template, "RequestSignUpCodeFunction")
+  ];
+  for (const sesTemplateId of Object.keys(sesTemplates)) {
+    assert.ok(DependsOn.includes(sesTemplateId));
   }
 });
 
-test("el registro puede enviar con sus tres plantillas, y el reenvío sólo con la de confirmación", () => {
+test("el pedido del código puede enviar sus dos plantillas", () => {
   const template = synthesizeBackend();
-  const signUpPolicy = policyFor(template, "SignUpFunction");
-  const resendPolicy = policyFor(template, "ResendConfirmationFunction");
+  const policy = policyFor(template, "RequestSignUpCodeFunction");
 
-  for (const templateName of [
-    "confirm-email",
-    "pending-confirmation",
-    "account-exists",
-  ]) {
-    assert.ok(
-      signUpPolicy.includes(`:template/BackendTest-${templateName}`),
-      templateName,
-    );
-  }
-  assert.ok(resendPolicy.includes(":template/BackendTest-confirm-email"));
-  assert.equal(
-    resendPolicy.includes("BackendTest-pending-confirmation"),
-    false,
-  );
-  assert.equal(resendPolicy.includes("BackendTest-account-exists"), false);
-  assert.equal(signUpPolicy.includes("BackendTest-sign-up-code"), false);
-  assert.equal(resendPolicy.includes("BackendTest-sign-up-code"), false);
+  assert.ok(policy.includes(":template/BackendTest-sign-up-code"));
+  assert.ok(policy.includes(":template/BackendTest-account-exists"));
 });
 
-test("las cinco Lambdas tienen 15 segundos, 512 MB y logs que se conservan un mes", () => {
+test("las tres Lambdas tienen 15 segundos, 512 MB y logs que se conservan un mes", () => {
   const template = synthesizeBackend();
 
   for (const functionName of [
-    "SignUpFunction",
-    "ResendConfirmationFunction",
     "RequestSignUpCodeFunction",
     "VerifySignUpCodeFunction",
     "ConfirmSignUpFunction",
@@ -369,14 +267,14 @@ test("las cinco Lambdas tienen 15 segundos, 512 MB y logs que se conservan un me
   assert.equal(
     Object.values(template.findResources("AWS::Logs::LogGroup")).filter(
       (logGroup) => logGroup.Properties.RetentionInDays === 30,
-    ).length >= 5,
+    ).length >= 3,
     true,
   );
 });
 
-test("el flag de los términos llega apagado a la Lambda del registro salvo que se encienda", () => {
+test("el flag de los términos llega apagado a la Lambda de la confirmación salvo que se encienda", () => {
   const flagOf = (template: Template) =>
-    functionProperties(template, "SignUpFunction").Environment.Variables
+    functionProperties(template, "ConfirmSignUpFunction").Environment.Variables
       .TERMS_ACCEPTANCE_REQUIRED;
 
   assert.equal(
@@ -394,28 +292,19 @@ test("las Lambdas pueden enviar a cualquier identidad, como el destinatario en e
     emailFrom: "WizyDoc <no-reply@support.wizydoc.app>",
   });
 
-  for (const functionName of [
-    "SignUpFunction",
-    "ResendConfirmationFunction",
-    "RequestSignUpCodeFunction",
-  ]) {
-    const sendEmailStatement = JSON.parse(
-      policyFor(template, functionName),
-    ).Statement.find(
-      (statement: { Action: string | string[] }) =>
-        JSON.stringify(statement.Action) === '"ses:SendTemplatedEmail"',
-    );
-    assert.ok(sendEmailStatement, functionName);
-    assert.ok(
-      JSON.stringify(sendEmailStatement.Resource).includes(":identity/*"),
-      functionName,
-    );
-    assert.deepEqual(
-      sendEmailStatement.Condition,
-      { StringEquals: { "ses:FromAddress": "no-reply@support.wizydoc.app" } },
-      functionName,
-    );
-  }
+  const sendEmailStatement = JSON.parse(
+    policyFor(template, "RequestSignUpCodeFunction"),
+  ).Statement.find(
+    (statement: { Action: string | string[] }) =>
+      JSON.stringify(statement.Action) === '"ses:SendTemplatedEmail"',
+  );
+  assert.ok(sendEmailStatement);
+  assert.ok(
+    JSON.stringify(sendEmailStatement.Resource).includes(":identity/*"),
+  );
+  assert.deepEqual(sendEmailStatement.Condition, {
+    StringEquals: { "ses:FromAddress": "no-reply@support.wizydoc.app" },
+  });
 });
 
 test("la tabla borra con TTL los ítems con DeleteAfter", () => {
@@ -427,7 +316,7 @@ test("la tabla borra con TTL los ítems con DeleteAfter", () => {
   });
 });
 
-test("el stack tiene un solo user pool, con sus dos clientes, y el registro recibe su id", () => {
+test("el stack tiene un solo user pool, con el cliente de platform, y la confirmación recibe su id", () => {
   const template = synthesizeBackend();
   const [poolLogicalId] = Object.keys(
     template.findResources("AWS::Cognito::UserPool"),
@@ -440,12 +329,12 @@ test("el stack tiene un solo user pool, con sus dos clientes, y el registro reci
   const clients = Object.values(
     template.findResources("AWS::Cognito::UserPoolClient"),
   );
-  assert.equal(clients.length, 2);
+  assert.equal(clients.length, 1);
   for (const client of clients) {
     assert.deepEqual(client.Properties.UserPoolId, { Ref: poolLogicalId });
   }
   assert.deepEqual(
-    functionProperties(template, "SignUpFunction").Environment.Variables
+    functionProperties(template, "ConfirmSignUpFunction").Environment.Variables
       .USER_POOL_ID,
     { Ref: poolLogicalId },
   );
