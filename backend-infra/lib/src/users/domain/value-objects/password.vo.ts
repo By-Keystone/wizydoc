@@ -19,4 +19,7 @@ export const passwordSchema = z
   })
   .regex(PASSWORD_ACCEPTED_BY_COGNITO, {
     error: PASSWORD_WITH_SPACES_AT_THE_EDGES,
-  });
+  })
+  .brand<"PasswordVO">();
+
+export type PasswordVO = z.output<typeof passwordSchema>;

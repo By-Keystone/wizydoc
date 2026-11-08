@@ -146,7 +146,7 @@ Igualarlo exigiría escrituras de relleno.
   `UsernameExistsException` responde 400 sin tocar nada, y no adopta ni repara
   usuarios huérfanos de Cognito. Puede haber varios tokens vigentes para el
   mismo correo.
-- **IAM de confirm:** `grantTableWrites` gana `GetItem` con
+- **IAM de confirm:** `grantTableAccess` gana `GetItem` con
   `dynamodb:LeadingKeys`, sólo sobre `SIGN_UP_VERIFICATION#*` y sólo para la
   Lambda de confirm. Esa Lambda tiene además `DeleteItem` sobre
   `SIGN_UP_VERIFICATION#*` y `PutItem` sobre `USER#*`. La de verificación sigue
@@ -336,7 +336,7 @@ por lo que tarda la respuesta.
     entorno, sin SES, Cognito, `Query` ni índices. `PutItem` sobre
     `SIGN_UP_VERIFICATION#*`; `UpdateItem` sobre `SIGN_UP_CODE#*` y
     `SIGN_UP_VERIFY_ATTEMPTS#*`; `DeleteItem` sobre `SIGN_UP_CODE#*`.
-  - **Permisos por acción y prefijo:** `grantTableWrites` recibe, por Lambda,
+  - **Permisos por acción y prefijo:** `grantTableAccess` recibe, por Lambda,
     qué acciones y con qué prefijos de `dynamodb:LeadingKeys`. Las tres Lambdas
     anteriores quedan con menos que antes (ya no tienen `UpdateItem` sobre
     sus propios ítems ni `PutItem` sobre `EMAIL_SEND_ATTEMPTS#*`, que el límite

@@ -79,7 +79,7 @@ test("las cinco rutas son POST y exigen la clave de platform", () => {
   });
 });
 
-const writesByAction = (template: Template, functionName: string) => {
+const accessByAction = (template: Template, functionName: string) => {
   const statements: {
     Action: string | string[];
     Condition?: Record<string, Record<string, string[]>>;
@@ -97,24 +97,24 @@ const writesByAction = (template: Template, functionName: string) => {
 test("cada Lambda usa en DynamoDB sólo las acciones y los prefijos que usa", () => {
   const template = synthesizeBackend();
 
-  assert.deepEqual(writesByAction(template, "SignUpFunction"), {
+  assert.deepEqual(accessByAction(template, "SignUpFunction"), {
     "dynamodb:PutItem": ["USER#*", "EMAIL_CONFIRMATION#*"],
     "dynamodb:UpdateItem": ["EMAIL_SEND_ATTEMPTS#*"],
   });
-  assert.deepEqual(writesByAction(template, "ResendConfirmationFunction"), {
+  assert.deepEqual(accessByAction(template, "ResendConfirmationFunction"), {
     "dynamodb:PutItem": ["EMAIL_CONFIRMATION#*"],
     "dynamodb:UpdateItem": ["EMAIL_SEND_ATTEMPTS#*"],
   });
-  assert.deepEqual(writesByAction(template, "RequestSignUpCodeFunction"), {
+  assert.deepEqual(accessByAction(template, "RequestSignUpCodeFunction"), {
     "dynamodb:PutItem": ["SIGN_UP_CODE#*", "SIGN_UP_NOTICE#*"],
     "dynamodb:UpdateItem": ["EMAIL_SEND_ATTEMPTS#*"],
   });
-  assert.deepEqual(writesByAction(template, "ConfirmSignUpFunction"), {
+  assert.deepEqual(accessByAction(template, "ConfirmSignUpFunction"), {
     "dynamodb:GetItem": ["SIGN_UP_VERIFICATION#*"],
     "dynamodb:PutItem": ["USER#*"],
     "dynamodb:DeleteItem": ["SIGN_UP_VERIFICATION#*"],
   });
-  assert.deepEqual(writesByAction(template, "VerifySignUpCodeFunction"), {
+  assert.deepEqual(accessByAction(template, "VerifySignUpCodeFunction"), {
     "dynamodb:PutItem": ["SIGN_UP_VERIFICATION#*"],
     "dynamodb:UpdateItem": ["SIGN_UP_CODE#*", "SIGN_UP_VERIFY_ATTEMPTS#*"],
     "dynamodb:DeleteItem": ["SIGN_UP_CODE#*"],
@@ -125,15 +125,18 @@ test("la confirmación crea y borra usuarios en Cognito, inicia la sesión, cons
   const template = synthesizeBackend();
   const policy = policyFor(template, "ConfirmSignUpFunction");
 
-  for (const expected of [
+  const cognitoActions = JSON.parse(policy)
+    .Statement.flatMap(({ Action }: { Action: string | string[] }) => Action)
+    .filter((action: string) => action.startsWith("cognito-idp:"))
+    .sort();
+  assert.deepEqual(cognitoActions, [
     "cognito-idp:AdminCreateUser",
-    "cognito-idp:AdminSetUserPassword",
     "cognito-idp:AdminDeleteUser",
     "cognito-idp:AdminInitiateAuth",
+    "cognito-idp:AdminSetUserPassword",
     "cognito-idp:DescribeUserPoolClient",
-    "dynamodb:Query",
-    "/index/GSI1",
-  ]) {
+  ]);
+  for (const expected of ["dynamodb:Query", "/index/GSI1"]) {
     assert.ok(policy.includes(expected), expected);
   }
   for (const forbidden of [

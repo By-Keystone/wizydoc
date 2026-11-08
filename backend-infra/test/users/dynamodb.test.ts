@@ -571,6 +571,7 @@ test("crear la cuenta confirmada guarda el usuario y su constancia y gasta el to
   const wasCreated = await new UserRepository(
     client,
     TABLE_NAME,
+    () => TEN_PAST_NOON,
   ).createConfirmed(
     user,
     { email: user.email, tokenHash: "hash-del-token" },
@@ -593,10 +594,10 @@ test("crear la cuenta confirmada guarda el usuario y su constancia y gasta el to
     tokenDelete.Delete?.ConditionExpression,
     "attribute_exists(PK) AND Email = :email AND DeleteAfter > :now",
   );
-  assert.equal(
-    tokenDelete.Delete?.ExpressionAttributeValues?.[":email"],
-    user.email,
-  );
+  assert.deepEqual(tokenDelete.Delete?.ExpressionAttributeValues, {
+    ":email": user.email,
+    ":now": TEN_PAST_NOON / 1000,
+  });
 });
 
 test("si otra confirmación gastó el token antes, la transacción cancelada informa que no se creó, y cualquier otro error sube", async () => {

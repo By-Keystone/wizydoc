@@ -66,6 +66,3 @@ export const readIpAddress = (event: ApiGatewayEvent): string | undefined => {
   const ipAddress = readHeader(event, "x-real-ip")?.trim();
   return ipAddress && isIP(ipAddress) ? ipAddress : undefined;
 };
-
-export const errorName = (error: unknown): string =>
-  error instanceof Error ? error.name : "UnknownError";

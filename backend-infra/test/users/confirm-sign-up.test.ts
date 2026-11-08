@@ -180,7 +180,8 @@ test("un correo que ya tiene cuenta responde 400 como un token que no sirve, sin
   assertNothingCreated(flow);
 });
 
-test("si el correo ya existe en Cognito responde 400 como un token que no sirve y no borra nada", async () => {
+test("si el correo ya existe en Cognito responde 400 como un token que no sirve, no borra nada y deja un aviso sin datos personales", async (context) => {
+  const consoleWarn = context.mock.method(console, "warn", () => {});
   const flow = confirmationFlow({ emailExistsInCognito: true });
   const { token } = verified(flow);
 
@@ -192,6 +193,10 @@ test("si el correo ya existe en Cognito responde 400 como un token que no sirve 
   });
   assert.deepEqual(flow.identityProvider.deletedSubs, []);
   assert.deepEqual(flow.users.createdUsers, []);
+  assert.deepEqual(
+    consoleWarn.mock.calls.map((call) => call.arguments),
+    [["[confirm-sign-up] el correo existe en Cognito pero no en DynamoDB"]],
+  );
 });
 
 test("con el flag de los términos encendido, la constancia se guarda con el usuario y sin aceptar responde 400; apagado, se ignora", async () => {
@@ -223,7 +228,7 @@ test("con el flag de los términos encendido, la constancia se guarda con el usu
   assert.deepEqual(withoutFlag.users.termsAcceptances, []);
 });
 
-test("de dos confirmaciones a la vez con el mismo token, sólo una crea la cuenta y la otra borra su usuario de Cognito", async () => {
+test("de dos confirmaciones a la vez con el mismo token, sólo una crea la cuenta y la otra responde 400 sin borrar nada", async () => {
   const flow = confirmationFlow();
   const { token } = verified(flow);
 
@@ -237,7 +242,27 @@ test("de dos confirmaciones a la vez con el mismo token, sólo una crea la cuent
     [200, 400],
   );
   assert.equal(flow.users.createdUsers.length, 1);
+  assert.deepEqual(flow.identityProvider.deletedSubs, []);
+});
+
+test("si el token se gasta entre su lectura y la transacción, responde 400 y borra de Cognito su propio usuario por su sub", async () => {
+  const flow = confirmationFlow();
+  const { token } = verified(flow);
+  flow.verificationTokens.isValidFor = async () => true;
+  const spent = confirmationFlow();
+  flow.verificationTokens.consume = spent.verificationTokens.consume.bind(
+    spent.verificationTokens,
+  );
+
+  const response = await confirm(flow, token);
+
+  assert.equal(response.statusCode, 400);
+  assert.deepEqual(JSON.parse(response.body), {
+    message: VERIFICATION_EXPIRED,
+  });
+  assert.deepEqual(flow.users.createdUsers, []);
   assert.deepEqual(flow.identityProvider.deletedSubs, [COGNITO_SUB]);
+  assert.deepEqual(flow.sessions.started, []);
 });
 
 test("si falla la escritura en DynamoDB, el usuario se borra de Cognito por su sub y responde 500", async () => {

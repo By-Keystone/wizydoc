@@ -42,24 +42,24 @@ type TableAccess = Partial<
 
 const EMAIL_SEND_ATTEMPTS_KEYS = "EMAIL_SEND_ATTEMPTS#*";
 
-const SIGN_UP_WRITES: TableAccess = {
+const SIGN_UP_ACCESS: TableAccess = {
   "dynamodb:PutItem": ["USER#*", "EMAIL_CONFIRMATION#*"],
   "dynamodb:UpdateItem": [EMAIL_SEND_ATTEMPTS_KEYS],
 };
-const RESEND_CONFIRMATION_WRITES: TableAccess = {
+const RESEND_CONFIRMATION_ACCESS: TableAccess = {
   "dynamodb:PutItem": ["EMAIL_CONFIRMATION#*"],
   "dynamodb:UpdateItem": [EMAIL_SEND_ATTEMPTS_KEYS],
 };
-const REQUEST_SIGN_UP_CODE_WRITES: TableAccess = {
+const REQUEST_SIGN_UP_CODE_ACCESS: TableAccess = {
   "dynamodb:PutItem": ["SIGN_UP_CODE#*", "SIGN_UP_NOTICE#*"],
   "dynamodb:UpdateItem": [EMAIL_SEND_ATTEMPTS_KEYS],
 };
-const CONFIRM_SIGN_UP_WRITES: TableAccess = {
+const CONFIRM_SIGN_UP_ACCESS: TableAccess = {
   "dynamodb:GetItem": ["SIGN_UP_VERIFICATION#*"],
   "dynamodb:PutItem": ["USER#*"],
   "dynamodb:DeleteItem": ["SIGN_UP_VERIFICATION#*"],
 };
-const VERIFY_SIGN_UP_CODE_WRITES: TableAccess = {
+const VERIFY_SIGN_UP_CODE_ACCESS: TableAccess = {
   "dynamodb:PutItem": ["SIGN_UP_VERIFICATION#*"],
   "dynamodb:UpdateItem": ["SIGN_UP_CODE#*", "SIGN_UP_VERIFY_ATTEMPTS#*"],
   "dynamodb:DeleteItem": ["SIGN_UP_CODE#*"],
@@ -135,7 +135,7 @@ export class BackendStack extends Stack {
       USER_POOL_ID: authentication.userPool.userPoolId,
       TERMS_ACCEPTANCE_REQUIRED: String(props.termsAcceptanceRequired),
     });
-    grantTableAccess(signUpFunction, database.table, SIGN_UP_WRITES);
+    grantTableAccess(signUpFunction, database.table, SIGN_UP_ACCESS);
     grantUserEmailLookup(signUpFunction, database.table);
     authentication.userPool.grant(
       signUpFunction,
@@ -160,7 +160,7 @@ export class BackendStack extends Stack {
     grantTableAccess(
       resendConfirmationFunction,
       database.table,
-      RESEND_CONFIRMATION_WRITES,
+      RESEND_CONFIRMATION_ACCESS,
     );
     grantUserEmailLookup(resendConfirmationFunction, database.table);
     resendConfirmationFunction.addToRolePolicy(
@@ -176,7 +176,7 @@ export class BackendStack extends Stack {
     grantTableAccess(
       requestSignUpCodeFunction,
       database.table,
-      REQUEST_SIGN_UP_CODE_WRITES,
+      REQUEST_SIGN_UP_CODE_ACCESS,
     );
     grantUserEmailLookup(requestSignUpCodeFunction, database.table);
     requestSignUpCodeFunction.addToRolePolicy(
@@ -195,7 +195,7 @@ export class BackendStack extends Stack {
     grantTableAccess(
       verifySignUpCodeFunction,
       database.table,
-      VERIFY_SIGN_UP_CODE_WRITES,
+      VERIFY_SIGN_UP_CODE_ACCESS,
     );
 
     const confirmSignUpFunction = this.usersFunction(
@@ -211,7 +211,7 @@ export class BackendStack extends Stack {
     grantTableAccess(
       confirmSignUpFunction,
       database.table,
-      CONFIRM_SIGN_UP_WRITES,
+      CONFIRM_SIGN_UP_ACCESS,
     );
     grantUserEmailLookup(confirmSignUpFunction, database.table);
     authentication.userPool.grant(

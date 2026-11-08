@@ -207,10 +207,14 @@ export class InMemoryIdentityProvider implements IIdentityProvider {
   async createUserIfAbsent(
     input: CreateUserIfAbsentInput,
   ): Promise<string | undefined> {
-    if (this.emailExists) return undefined;
+    if (this.emailExists || this.createdEmails.includes(input.email)) {
+      return undefined;
+    }
     this.createdEmails.push(input.email);
     this.passwords.push(input.password);
-    return COGNITO_SUB;
+    return this.createdEmails.length === 1
+      ? COGNITO_SUB
+      : `${COGNITO_SUB.slice(0, -1)}${this.createdEmails.length}`;
   }
 
   async deleteUser(cognitoSub: string): Promise<void> {

@@ -1,7 +1,7 @@
+import { errorName } from "../../shared/errors";
 import {
   type ApiGatewayEvent,
   type ApiGatewayResult,
-  errorName,
   HTTP_STATUS,
   messageResponse,
   noStoreJsonResponse,

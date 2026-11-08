@@ -34,6 +34,7 @@ export class UserRepository implements IUserRepository {
   constructor(
     private readonly client: DynamoDBDocumentClient,
     private readonly tableName: string,
+    private readonly nowInMilliseconds: () => number = Date.now,
   ) {}
 
   async create(
@@ -95,7 +96,7 @@ export class UserRepository implements IUserRepository {
                 ConditionExpression: ONLY_IF_VERIFICATION_IS_VALID,
                 ExpressionAttributeValues: {
                   ":email": email,
-                  ":now": Math.floor(Date.now() / 1000),
+                  ":now": Math.floor(this.nowInMilliseconds() / 1000),
                 },
               },
             },

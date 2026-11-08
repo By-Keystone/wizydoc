@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { errorName } from "../../shared/http/api-gateway";
+import { errorName } from "../../shared/errors";
 import { INVALID_REQUEST } from "../../shared/messages";
 import type { ISignUpVerificationTokenRepository } from "../domain/repository/sign-up-verification-token.repository";
 import type { IUserRepository } from "../domain/repository/user.repository";
@@ -82,7 +82,12 @@ export class ConfirmSignUpUseCase {
       email,
       password,
     });
-    if (!cognitoSub) return VERIFICATION_REJECTED;
+    if (!cognitoSub) {
+      console.warn(
+        "[confirm-sign-up] el correo existe en Cognito pero no en DynamoDB",
+      );
+      return VERIFICATION_REJECTED;
+    }
 
     const user = createUser({
       email,
