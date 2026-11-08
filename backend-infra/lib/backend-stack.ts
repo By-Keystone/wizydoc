@@ -75,8 +75,7 @@ export class BackendStack extends Stack {
     );
 
     const healthFunction = new lambda.Function(this, "HealthFunction", {
-      description:
-        'GET /health: responde {"status":"ok"} para comprobar que el gateway responde.',
+      description: "Answers the health check, confirming the API is up.",
       runtime: lambda.Runtime.NODEJS_22_X,
       architecture: lambda.Architecture.ARM_64,
       handler: "index.handler",
@@ -115,7 +114,7 @@ export class BackendStack extends Stack {
     const requestSignUpCodeFunction = this.usersFunction(
       "RequestSignUpCodeFunction",
       "request-sign-up-code",
-      "POST /api/auth/sign-up/code: envía el código de 6 dígitos del registro, o el aviso de que el correo ya tiene cuenta.",
+      "Sends the 6-digit sign-up code, or a notice when the email already has an account.",
       {
         TABLE_NAME: database.table.tableName,
         FRONTEND_URL: props.frontendUrl,
@@ -141,7 +140,7 @@ export class BackendStack extends Stack {
     const verifySignUpCodeFunction = this.usersFunction(
       "VerifySignUpCodeFunction",
       "verify-sign-up-code",
-      "POST /api/auth/sign-up/code/verify: verifica el código del registro y devuelve el token de verificación.",
+      "Verifies the sign-up code and returns a verification token.",
       { TABLE_NAME: database.table.tableName },
     );
     grantTableAccess(
@@ -153,7 +152,7 @@ export class BackendStack extends Stack {
     const confirmSignUpFunction = this.usersFunction(
       "ConfirmSignUpFunction",
       "confirm-sign-up",
-      "POST /api/auth/sign-up/confirm: crea la cuenta con el token de verificación y la contraseña, e inicia la sesión en Cognito.",
+      "Creates the account from the verification token and password, and signs the user in.",
       {
         TABLE_NAME: database.table.tableName,
         USER_POOL_ID: authentication.userPool.userPoolId,
