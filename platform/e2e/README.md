@@ -46,6 +46,9 @@ Playwright arranca el api en `:4100` y platform en `:3100` (nunca reutiliza el
   el título (`CA-3: …`); los criterios están al final de cada
   `docs/features/<slug>/plan.md`. Lo que cubre la suite lo dicen los nombres
   de los specs y sus títulos: este README no lleva la lista.
+- Las pruebas con `BACKEND=serverless` van en `e2e/serverless/` y corren
+  contra un segundo platform (`:3101`) y un falso backend (`:4101`,
+  `support/fake-backend.mjs`).
 - Revisa los helpers de `support/` antes de escribir uno nuevo.
 - Importa `test`/`expect` de `support/test.ts`, no de `@playwright/test`: su
   fixture cierra al terminar cada prueba los `APIRequestContext` de

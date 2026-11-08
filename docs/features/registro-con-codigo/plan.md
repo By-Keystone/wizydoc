@@ -11,7 +11,9 @@
 - **Revisado por el humano el 8 de noviembre de 2026:**
   - un killswitch para toda la autenticación, sin período con los dos
     registros;
-  - no hay vuelta a `better-auth` ni migración de cuentas hacia Postgres;
+  - el 8 de noviembre de 2026, el killswitch pasa a ser de todo el backend, no
+    sólo de la autenticación (D-1);
+  - no hay vuelta a Better Auth ni migración de cuentas hacia Postgres;
   - se rehace la página `/register`: los tres pasos van en ella, sin rutas
     nuevas ni redirect;
   - staging sigue con Better Auth por ahora;
@@ -25,9 +27,9 @@ o el plan de WIZ-75; **[inferencia]** es deducción que el engineer comprueba.
 Que el médico cree su cuenta desde el celular en tres pasos (correo, código de
 6 dígitos y contraseña), todos en `/register`, contra el registro de
 `backend-infra`, y termine con la sesión de Cognito guardada en cookies
-HttpOnly. El killswitch `AUTH_BACKEND` decide en cada entorno qué muestra
-`/register`, el formulario de hoy o el flujo nuevo, y hace el cambio de una vez
-cuando la infraestructura esté lista.
+HttpOnly. El killswitch `BACKEND` decide en cada entorno qué backend usa
+platform; en este plan, qué muestra `/register`, el formulario de hoy o el flujo
+nuevo. Hace el cambio de una vez cuando la infraestructura esté lista.
 
 ## Recorrido
 
@@ -47,7 +49,7 @@ Todo pasa en `/register`. El servidor elige el paso según la cookie
    lleva a `/onboarding`. Con 204 lleva a `/login` con el aviso «Tu cuenta quedó
    creada…».
 
-Con `AUTH_BACKEND=better-auth`, el valor por defecto, `/register` muestra el
+Con `BACKEND=api`, el valor por defecto, `/register` muestra el
 formulario de hoy.
 
 ## Estado de hoy
@@ -71,7 +73,7 @@ formulario de hoy.
     y el app client de Cognito para platform, `wizydoc-platform` (#142), con
     `ADMIN_USER_PASSWORD_AUTH` y el refresh token a 30 días
     (`REFRESH_TOKEN_VALIDITY` en `backend-infra/lib/authentication.ts`);
-  - faltan `/confirm` y quitar `sign-up/email` (parte 4).
+  - `/confirm` llegó en #144, y #145 quitó `sign-up/email`.
 - **[código]** El gateway exige la clave (`apiKeyRequired: true` sin
   `apiKeySource`, o sea en la cabecera `x-api-key`), y la Lambda lee la IP de
   `x-real-ip` (`readIpAddress`).
@@ -80,19 +82,27 @@ formulario de hoy.
 
 ## Decisiones
 
-**D-1. Un killswitch para toda la autenticación: `AUTH_BACKEND`.** Lo decidió el
-humano.
+**D-1. Un killswitch para todo el backend: `BACKEND`.** Lo decidió el humano,
+primero para la autenticación y, el 8 de noviembre de 2026, para todo el
+backend.
 - **Para qué sirve:** para hacer el cambio de una vez, cuando la
-  infraestructura esté lista. No es para volver atrás: no habrá vuelta a
-  `better-auth` ni migración de cuentas de Cognito hacia Postgres.
-- **Los valores:** `better-auth`, el de por defecto, y `serverless`. Cualquier
-  valor que no sea `serverless`, también vacío o mal escrito, cuenta como
-  `better-auth`. Así, una variable que falta deja el registro de hoy, y no un
-  registro nuevo a medias.
-- **El helper:** `isServerlessAuth()` en `lib/auth/auth-backend.ts`, con
+  infraestructura esté lista. No es para volver atrás: no habrá vuelta al api
+  de hoy ni migración de cuentas de Cognito hacia Postgres.
+- **Cambia todo platform, no sólo la autenticación:** con `serverless`, platform
+  usa `backend-infra` para el registro, el login, la sesión y los endpoints de
+  dominio (citas, sedes, organizaciones, disponibilidad, pacientes, booking,
+  invitaciones y suscripciones).
+  No hay un switch por módulo: la sesión de Cognito sólo la acepta
+  `backend-infra`, y el api de hoy sólo acepta la de Better Auth, así que en un
+  mismo entorno no pueden convivir.
+- **Los valores:** `api`, el de por defecto (el api de hoy, en `API_URL`), y
+  `serverless`. Cualquier valor que no sea `serverless`, también vacío o mal
+  escrito, cuenta como `api`. Así, una variable que falta deja el registro de
+  hoy, y no un registro nuevo a medias.
+- **El helper:** `isServerlessBackend()` en `lib/backend.ts`, con
   `server-only`. Sin `NEXT_PUBLIC_`: sólo lo lee el servidor. Lo reutilizarán el
-  login y la sesión, que son otros tickets.
-- **Con `better-auth`:**
+  login, la sesión y los endpoints de dominio, que son otros tickets.
+- **Con `api`:**
   - `/register` muestra el formulario de hoy, aunque el navegador tenga una
     cookie `sign_up_progress`;
   - las server actions del registro nuevo lo comprueban antes que nada, porque
@@ -109,12 +119,12 @@ humano.
     navegador.
 - **Nunca conviven.** En cada entorno, `/register` muestra un registro o el
   otro.
-- **El cambio llega con un despliegue** [inferencia]: con `better-auth`, Next
+- **El cambio llega con un despliegue** [inferencia]: con `api`, Next
   puede construir `/register` y `/confirm-email` como páginas estáticas, y la
   variable se lee al construir. Cambiarla no basta sin un build nuevo. El
   engineer lo comprueba con `next build`.
 - **Dónde está encendido:** sólo en local y en los e2e. Producción y staging
-  siguen en `better-auth`. Más adelante, staging podría pasar a `serverless`,
+  siguen en `api`. Más adelante, staging podría pasar a `serverless`,
   para probar con el `backend-infra` de staging y correos reales. No es parte de
   este plan.
 - **El formulario viejo se borra en la parte 5,** en cuanto producción y
@@ -124,7 +134,7 @@ humano.
 Lo decidió el humano: los pasos dependen del anterior, y una URL por paso no
 agrega nada.
 - **`register/page.tsx` pasa a ser un server component:**
-  - con `better-auth`, renderiza `RegisterForm`, el formulario de hoy, movido
+  - con `api`, renderiza `RegisterForm`, el formulario de hoy, movido
     sin cambios a `register/register-form.tsx`;
   - con `serverless`, lee `sign_up_progress` (D-4) y renderiza un paso:
 
@@ -261,7 +271,7 @@ todavía.**
   - La respuesta se valida con Zod. Si no trae los cuatro campos, se actúa
     como con 204.
 - **Los nombres** van en `COOKIE_NAMES` (`lib/auth/cookies.ts`). El ticket de
-  la sesión los lee de ahí cuando `AUTH_BACKEND` es `serverless`. Este plan no
+  la sesión los lee de ahí cuando `BACKEND` es `serverless`. Este plan no
   los lee en ninguna parte.
 - **Hasta ese ticket,** `/onboarding` no encuentra la sesión de Better Auth y
   lleva a `/login`. En local y en los e2e, el flujo termina ahí. Por eso
@@ -285,7 +295,7 @@ todavía.**
   - correo: `z.email()`, recortado y en minúsculas, con hasta 64 caracteres
     antes de la `@` y 254 en total;
   - código: 6 dígitos;
-  - contraseña: como `backend-infra/lib/src/users/application/sign-up.usecase.ts`,
+  - contraseña: como `backend-infra/lib/src/users/domain/value-objects/password.vo.ts`,
     el mínimo de 8 en caracteres reales (`[...password].length`), el máximo de
     256 en `length` y el patrón `/^\S(?:.*\S)?$/`.
 
@@ -333,16 +343,18 @@ todavía.**
   contraseña la casilla (texto de la spec de WIZ-72) y, a `/confirm`,
   `acceptedTerms`, `termsVersion` y `privacyPolicyVersion`. Se despliega a la
   vez que se enciende `TERMS_ACCEPTANCE_REQUIRED` en `backend-infra`.
-- **El login y la sesión con Cognito,** que también respetarán `AUTH_BACKEND`
+- **El login y la sesión con Cognito,** que también respetarán `BACKEND`
   (otros subtickets de WIZ-71).
+- **Los endpoints de dominio en `backend-infra`,** que también respetarán
+  `BACKEND` (prerrequisito 12).
 - **El onboarding** con nombre, apellido y teléfono (WIZ-77).
 - **Pasar staging a `serverless`.**
 - **Migrar cuentas entre Postgres y Cognito,** en cualquier sentido.
 
 ## Antes de pasar producción a `serverless`
 
-Es el orden de despliegue: el killswitch cambia toda la autenticación de una
-vez y no se vuelve atrás, así que todo esto tiene que estar listo antes.
+Es el orden de despliegue: el killswitch cambia todo el backend de una vez y
+no se vuelve atrás, así que todo esto tiene que estar listo antes.
 
 1. **WIZ-75 completo y desplegado en producción, también su parte 4.** Mientras
    exista `POST /api/auth/sign-up/email` en `backend-infra`, se puede
@@ -350,7 +362,7 @@ vez y no se vuelve atrás, así que todo esto tiene que estar listo antes.
 2. **La sesión de Cognito** (otro ticket): con `serverless`, el middleware,
    `getSession` y `getMe` leen las cookies de D-6. Sin eso, quien crea su
    cuenta termina en `/login`.
-3. **El login contra Cognito,** también detrás de `AUTH_BACKEND` (otro
+3. **El login contra Cognito,** también detrás de `BACKEND` (otro
    subticket de WIZ-71). Con 204, y cada vez que vuelva, la persona entra por
    `/login`.
 4. **El onboarding funciona con esa sesión y pide nombre, apellido y teléfono**
@@ -367,8 +379,21 @@ vez y no se vuelve atrás, así que todo esto tiene que estar listo antes.
 8. **`TERMS_ACCEPTANCE_REQUIRED` sigue apagado** en `backend-infra` mientras la
    casilla esté fuera (ver «Fuera de alcance»). Encendido, todo registro
    respondería 400 «Para crear tu cuenta, acepta los Términos y condiciones.».
-9. **`AUTH_BACKEND=serverless`, `BACKEND_API_URL` y `BACKEND_API_KEY` en el
+9. **`BACKEND=serverless`, `BACKEND_API_URL` y `BACKEND_API_KEY` en el
    platform de producción.** Las pone el humano.
+10. **Platform escribe `x-real-ip` él mismo,** a partir de la IP del borde, en el
+    middleware y pisando la del cliente, si la P1 no confirma que Railway la
+    pisa. Hoy se reenvía tal cual, así que el límite por IP del backend depende
+    de eso.
+11. **Un límite de pedidos por ruta en el usage plan de `backend-infra`** para
+    `POST /api/auth/sign-up/code` (`apiStages[].throttle`, del orden de unidades
+    por segundo). Hoy el formulario público comparte el límite de 100 rps de la
+    clave de platform, y un ataque podría dejar sin servicio el resto, incluido
+    el login futuro.
+12. **Todos los endpoints que usa platform existen en `backend-infra`:** citas,
+    sedes, organizaciones, disponibilidad, pacientes, booking, invitaciones y
+    suscripciones, cada uno con su ticket. El killswitch los cambia todos a la
+    vez (D-1).
 
 ## Cambios por capa
 
@@ -393,8 +418,8 @@ Ninguno. El contrato ya está en la spec de WIZ-75, y el app client
 
 | Archivo | Parte | Cambio |
 | --- | --- | --- |
-| `platform/.env.example` | 2 | `AUTH_BACKEND=better-auth`, `BACKEND_API_URL=` y `BACKEND_API_KEY=`, con una línea que diga para qué es cada una y los dos valores del killswitch. |
-| `platform/src/lib/auth/auth-backend.ts` (nuevo) | 2 | `server-only`. `isServerlessAuth()` (D-1). |
+| `platform/.env.example` | 2 | `BACKEND=api`, `BACKEND_API_URL=` y `BACKEND_API_KEY=`, con una línea que diga para qué es cada una y los dos valores del killswitch. |
+| `platform/src/lib/backend.ts` (nuevo) | 2 | `server-only`. `isServerlessBackend()` (D-1). |
 | `platform/src/lib/api/sign-up/index.ts` (nuevo) | 2, 3 y 4 | `server-only`. `signUpApi.requestCode(email)` (parte 2), `verifyCode(email, code)` (parte 3) y `confirm(input)` (parte 4). Una función privada del módulo hace el `fetch` con las cabeceras de D-3 y lanza `ApiError(status, message)` si la respuesta no es 2xx. No registra nada del cuerpo. |
 | `platform/src/lib/api/sign-up/types.ts` (nuevo) | 4 | `ConfirmSignUpInput` (`email`, `password`, `verificationToken`) y `CognitoTokens` (`idToken`, `accessToken`, `refreshToken`, `expiresIn`). |
 | `platform/src/lib/auth/sign-up-validation.ts` (nuevo) | 2, 3 y 4 | Esquemas de Zod y mensajes de D-7, que usan a la vez los formularios y las actions: correo (parte 2), código (parte 3) y contraseña (parte 4). No toca `form-validation.ts`, que siguen usando el login y la recuperación con las reglas de Better Auth. |
@@ -405,12 +430,12 @@ Ninguno. El contrato ya está en la spec de WIZ-75, y el app client
 | `platform/src/lib/actions/sign-up/resend-sign-up-code.action.ts` (nuevo) | 3 | Killswitch, correo de la cookie, D-5 y `requestCode`. Devuelve `{ status: "success", data: { wasCodeSent, secondsUntilResend } }` o un error. Sin avance, `revalidatePath("/register")`: la página vuelve al correo. |
 | `platform/src/lib/actions/sign-up/verify-sign-up-code.action.ts` (nuevo) | 3 | Killswitch, correo de la cookie, validación del código, `verifyCode`, el token en la cookie y `revalidatePath("/register")`. Sin avance, lo mismo: la página vuelve al correo. |
 | `platform/src/lib/actions/sign-up/confirm-sign-up.action.ts` (nuevo) | 4 | Killswitch, correo y token de la cookie, validación, `confirm`, `saveCognitoSession` o el 204, y `redirect`. Con la verificación vencida devuelve un error con `code: "VERIFICATION_EXPIRED"`, sin tocar la cookie (ver «Contrato»). |
-| `platform/src/app/(auth)/register/page.tsx` | 2, 3 y 4 | Pasa a ser un server component, con `metadata` («Crea tu cuenta»). Con `better-auth`, `RegisterForm`. Con `serverless`, el paso de la tabla de D-2: el correo (parte 2), el código (parte 3) y la contraseña (parte 4). |
+| `platform/src/app/(auth)/register/page.tsx` | 2, 3 y 4 | Pasa a ser un server component, con `metadata` («Crea tu cuenta»). Con `api`, `RegisterForm`. Con `serverless`, el paso de la tabla de D-2: el correo (parte 2), el código (parte 3) y la contraseña (parte 4). |
 | `platform/src/app/(auth)/register/register-form.tsx` (nuevo) | 2 | El `page.tsx` de hoy, movido sin cambios y exportado como `RegisterForm`. Git lo ve como un renombre. |
 | `platform/src/app/(auth)/register/sign-up-email-step.tsx` (nuevo) | 2 | Cliente. El paso del correo (ver «UI»). |
 | `platform/src/app/(auth)/register/sign-up-code-step.tsx` (nuevo) | 3 | Cliente. El paso del código, con la cuenta atrás y «Cambiar». |
 | `platform/src/app/(auth)/register/sign-up-password-step.tsx` (nuevo) | 4 | Cliente. El paso de la contraseña, la tarjeta «Tu verificación venció» y «Pedir un código nuevo». |
-| `platform/src/app/(auth)/confirm-email/page.tsx` | 4 | Con `serverless`, `redirect("/register")` (D-1). Con `better-auth`, como hoy. |
+| `platform/src/app/(auth)/confirm-email/page.tsx` | 4 | Con `serverless`, `redirect("/register")` (D-1). Con `api`, como hoy. |
 | `platform/src/app/(auth)/login/page.tsx` y `login-form.tsx` | 4 | Leer `registered=ok` y mostrar el aviso de D-7 con el mismo bloque que el de `reset=ok`. |
 
 No cambian `middleware.ts` (`/register` y `/confirm-email` ya son públicas),
@@ -436,11 +461,11 @@ killswitch vale para todo el proceso, cada valor necesita su propio platform.
     gateway y 204 en `confirm`. Los elige el engineer.
   - Cada parte agrega su ruta.
 - **`platform/playwright.config.ts`:**
-  - el platform de hoy (`:3100`) recibe en código `AUTH_BACKEND=better-auth`,
+  - el platform de hoy (`:3100`) recibe en código `BACKEND=api`,
     encima de `platform/.env.e2e`, y sigue corriendo todas las pruebas de hoy;
   - un `webServer` nuevo, el falso backend;
   - otro `webServer` nuevo, un segundo platform (`:3101`, con su propio
-    `NEXT_DIST_DIR`) con `AUTH_BACKEND=serverless`, `BACKEND_API_URL` (el falso)
+    `NEXT_DIST_DIR`) con `BACKEND=serverless`, `BACKEND_API_URL` (el falso)
     y `BACKEND_API_KEY` (la de prueba), también en código. Así un e2e nunca
     llama al `backend-infra` real, aunque `.env.e2e` lo tuviera;
   - un proyecto `serverless` con `testDir: "./e2e/serverless"` y ese
@@ -448,20 +473,20 @@ killswitch vale para todo el proceso, cada valor necesita su propio platform.
 - **`platform/e2e/serverless/sign-up-email.spec.ts`, `sign-up-code.spec.ts` y
   `sign-up-password.spec.ts` (nuevos)**, uno por parte.
 - **`platform/e2e/ui/auth/register-killswitch.spec.ts` (nuevo, parte 2),** en
-  el platform de hoy: con `better-auth` y una cookie `sign_up_progress` con
+  el platform de hoy: con `api` y una cookie `sign_up_progress` con
   token puesta por la prueba, `/register` muestra el formulario de hoy.
 - **`platform/e2e/README.md`:** una línea que diga que las pruebas con
-  `AUTH_BACKEND=serverless` van en `e2e/serverless/` y corren contra el segundo
+  `BACKEND=serverless` van en `e2e/serverless/` y corren contra el segundo
   platform y el falso backend. Cambia cómo se escribe una prueba, así que la
   regla de `AGENTS.md` lo permite. Los comandos para correrlas no cambian.
 - Las pruebas del registro de hoy no cambian hasta la parte 5: con
-  `better-auth`, `/register` es el mismo formulario.
+  `api`, `/register` es el mismo formulario.
 
 ## Contrato con backend-infra
 
 Lo que platform manda y lo que hace con cada respuesta. Todas las peticiones
 salen del servidor de platform, con las cabeceras de D-3, y sólo con
-`AUTH_BACKEND=serverless`.
+`BACKEND=serverless`.
 
 ### 1. Pedir el código
 
@@ -561,7 +586,7 @@ apagado, la Lambda no las pide [spec] (ver «Fuera de alcance»).
 | Gastar el cupo de la IP sin querer | D-5: el mismo correo dentro del minuto no llama al backend, y validar antes de llamar evita los pedidos inválidos. | Más de 3 envíos en 10 minutos desde una misma IP (una clínica) responden 429, como dice la spec. |
 | CSRF contra las actions | Next compara `Origin` y `Host` en cada server action. Las cookies son `lax`. | — |
 | Contraseña, código o token en los logs de platform | Las actions no hacen `console.*` del cuerpo ni del error del backend: como mucho la ruta y el código de respuesta. Una prueba e2e busca la contraseña, el código y el token en el log de platform. | — |
-| El registro nuevo abierto en producción antes de tiempo | El killswitch (D-1), en la página y en cada action, con `better-auth` por defecto. Con `better-auth`, la página ignora `sign_up_progress`. | — |
+| El registro nuevo abierto en producción antes de tiempo | El killswitch (D-1), en la página y en cada action, con `api` por defecto. Con `api`, la página ignora `sign_up_progress`. | — |
 
 ## Riesgos y casos límite
 
@@ -612,7 +637,7 @@ apagado, la Lambda no las pide [spec] (ver «Fuera de alcance»).
 Ninguna.
 
 **Lo que sólo puede hacer el humano** (no son decisiones):
-- Si quiere probar en local con correos reales: `AUTH_BACKEND=serverless`,
+- Si quiere probar en local con correos reales: `BACKEND=serverless`,
   `BACKEND_API_URL` y `BACKEND_API_KEY` del gateway de staging de
   `backend-infra` en su `platform/.env`. La clave sale del output
   `PlatformApiKeyId` del stack. Si no, en local se usa el falso backend de los
@@ -637,7 +662,7 @@ de las cookies que escribe este plan. En todas las pruebas del registro nuevo,
 la URL sigue siendo `/register` hasta el final.
 
 **Parte 2, el killswitch y el correo:**
-- En el platform de hoy (`better-auth`), con una cookie `sign_up_progress` con
+- En el platform de hoy (`api`), con una cookie `sign_up_progress` con
   token puesta por la prueba, `/register` muestra el formulario de hoy.
 - Con `X-Real-IP: 203.0.113.40` en las cabeceras del navegador
   (`extraHTTPHeaders`), el falso backend recibe esa `x-real-ip`, el `user-agent`
@@ -702,7 +727,7 @@ la URL sigue siendo `/register` hasta el final.
 
 ### Manual, en local
 
-- **Con `better-auth`** (sin `AUTH_BACKEND`): `pnpm dev`, y `/register` y
+- **Con `api`** (sin `BACKEND`): `pnpm dev`, y `/register` y
   `/confirm-email` se ven como hoy. Revisar en el diff que las cuatro actions
   consultan el killswitch antes de llamar al backend.
 - **Con `serverless`:** `pnpm dev` con el falso backend
@@ -711,7 +736,7 @@ la URL sigue siendo `/register` hasta el final.
   compararlos con el mockup. El botón atrás del navegador, desde cualquier
   paso, sale de `/register`.
 - **El killswitch se lee al construir:** `next build` con `serverless` y
-  después con `better-auth`. `/register` muestra el flujo nuevo y
+  después con `api`. `/register` muestra el flujo nuevo y
   `/confirm-email` redirige sólo con el primero.
 - **Mockup:** `npx -y lavish-axi docs/features/registro-con-codigo/mockup.html`.
 
@@ -728,8 +753,8 @@ de plan.
 
 | Ruta | Qué muestra |
 | --- | --- |
-| `/register` | Con `better-auth`, el formulario de hoy. Con `serverless`, «Crea tu cuenta», «Revisa tu correo» o «Crea tu contraseña», según la cookie, o la tarjeta «Tu verificación venció» |
-| `/confirm-email` | Con `better-auth`, como hoy. Con `serverless`, 307 hacia `/register` |
+| `/register` | Con `api`, el formulario de hoy. Con `serverless`, «Crea tu cuenta», «Revisa tu correo» o «Crea tu contraseña», según la cookie, o la tarjeta «Tu verificación venció» |
+| `/confirm-email` | Con `api`, como hoy. Con `serverless`, 307 hacia `/register` |
 | `/login?registered=ok` | Login actual con el aviso del 204 |
 
 No lleva `loading.tsx` ni `error.tsx`: no lee datos del api, sólo la cookie, y
@@ -920,16 +945,16 @@ contraseña en `/invite/accept`.
 ## Partes
 
 Cada parte se puede mergear sola sin romper `main`: producción y staging siguen
-en `better-auth`, y con ese valor `/register` muestra el formulario de hoy. Los
+en `api`, y con ese valor `/register` muestra el formulario de hoy. Los
 tamaños son de código de producción, sin pruebas ni docs.
 
 | Parte | Qué incluye | Depende de | Cómo se verifica sola | Tamaño |
 | --- | --- | --- | --- | --- |
 | 1. Docs | `docs/features/registro-con-codigo/plan.md` y `mockup.html`, y después los criterios del product-manager. | — | Revisión del humano. El mockup con Lavish. | 0 |
-| 2. El killswitch y el correo | `.env.example`; `auth-backend.ts`; `lib/api/sign-up/index.ts` con `requestCode`; `sign-up-validation.ts` (correo); `sign-up-progress.ts` (sin token); `COOKIE_NAMES.signUpProgress`; `request-sign-up-code.action.ts`; `register/page.tsx` (killswitch y el correo), `register-form.tsx` (movido) y `sign-up-email-step.tsx`. En pruebas: el falso backend con `/code`, el segundo platform, el proyecto `serverless`, `sign-up-email.spec.ts`, `register-killswitch.spec.ts` y la línea del README. | 1 | `typecheck`, `check` y la suite e2e. Las pruebas del registro de hoy siguen pasando sin cambios. Después de «Continuar», la página sigue en el correo: el e2e comprueba la petición, las cabeceras y la cookie. | ~300 líneas, sin contar el formulario movido |
+| 2. El killswitch y el correo | `.env.example`; `backend.ts`; `lib/api/sign-up/index.ts` con `requestCode`; `sign-up-validation.ts` (correo); `sign-up-progress.ts` (sin token); `COOKIE_NAMES.signUpProgress`; `request-sign-up-code.action.ts`; `register/page.tsx` (killswitch y el correo), `register-form.tsx` (movido) y `sign-up-email-step.tsx`. En pruebas: el falso backend con `/code`, el segundo platform, el proyecto `serverless`, `sign-up-email.spec.ts`, `register-killswitch.spec.ts` y la línea del README. | 1 | `typecheck`, `check` y la suite e2e. Las pruebas del registro de hoy siguen pasando sin cambios. Después de «Continuar», la página sigue en el correo: el e2e comprueba la petición, las cabeceras y la cookie. | ~300 líneas, sin contar el formulario movido |
 | 3. El código | `sign-up-code-step.tsx` (con «Cambiar»); el código en `register/page.tsx`; `verify-sign-up-code.action.ts` y `resend-sign-up-code.action.ts`; `verifyCode` en el cliente; el token en `sign-up-progress.ts`; el código en `sign-up-validation.ts`; `onCodeRequested` en `sign-up-email-step.tsx`. En pruebas: `/code/verify` en el falso backend y `sign-up-code.spec.ts`. | 2 | `typecheck`, `check` y la suite e2e. Un código correcto guarda el token, y la página sigue en el código. | ~360 líneas |
 | 4. La contraseña, la sesión y `/confirm-email` | `sign-up-password-step.tsx`; la contraseña en `register/page.tsx`; `confirm-sign-up.action.ts`; `confirm` y `types.ts` en el cliente; `cognito-session.ts`; las cookies de la sesión en `COOKIE_NAMES`; la contraseña en `sign-up-validation.ts`; el aviso del login; el `redirect` de `confirm-email/page.tsx`. En pruebas: `/confirm` en el falso backend y `sign-up-password.spec.ts`. | 3 | `typecheck`, `check` y la suite e2e. Con `serverless`, el registro completo en `/register` contra el falso backend. | ~330 líneas |
-| 5. Borrar el formulario viejo | En cuanto producción y staging estén en `serverless`: como no hay vuelta a `better-auth`, el formulario viejo ya no lo usa nadie. Se borran `register/register-form.tsx` y `confirm-email/page.tsx`, que sólo abría el registro viejo. `register/page.tsx` muestra siempre el flujo nuevo. Se quitan la consulta al killswitch en las cuatro actions, y `auth-backend.ts` si el login y la sesión ya no lo usan. En pruebas: se borran `register.spec.ts`, `register-form.spec.ts`, `register-killswitch.spec.ts`, `registerViaUi` y `confirmEmailViaLink`, y el segundo platform se junta con el primero. | 4, y producción y staging en `serverless` | `typecheck`, `check` y la suite e2e completa. | Sobre todo borra (neto negativo) |
+| 5. Borrar el formulario viejo | En cuanto producción y staging estén en `serverless`: como no hay vuelta atrás, el formulario viejo ya no lo usa nadie. Se borran `register/register-form.tsx` y `confirm-email/page.tsx`, que sólo abría el registro viejo. `register/page.tsx` muestra siempre el flujo nuevo. Se quitan la consulta al killswitch en las cuatro actions, y `backend.ts` si nadie más lo usa. En pruebas: se borran `register.spec.ts`, `register-form.spec.ts`, `register-killswitch.spec.ts`, `registerViaUi` y `confirmEmailViaLink`, y el segundo platform se junta con el primero. | 4, y producción y staging en `serverless` | `typecheck`, `check` y la suite e2e completa. | Sobre todo borra (neto negativo) |
 
 - **Pasar producción a `serverless` no es una parte:** es cambiar la variable
   y desplegar, cuando se cumpla «Antes de pasar producción a `serverless`». No
@@ -957,7 +982,7 @@ y del mockup aprobados y de la spec de WIZ-75. Ajustados el 8 de noviembre de
   estos criterios.
 
 Convenciones:
-- «El platform de hoy» es el de `:3100`, con `AUTH_BACKEND=better-auth`. «El
+- «El platform de hoy» es el de `:3100`, con `BACKEND=api`. «El
   segundo platform» es el de `:3101`, con `serverless`.
 - «El falso backend recibe» quiere decir que el pedido aparece en su
   `GET /__requests`.
@@ -978,17 +1003,17 @@ Convenciones:
   completa el registro hasta `/onboarding` contra el falso backend, sin que la
   URL cambie antes del final.
 - **[manual]** (partes 2, 3 y 4) Cada una de las cuatro server actions comprueba
-  el killswitch antes que nada. Con `better-auth` termina sin llamar al backend
+  el killswitch antes que nada. Con `api` termina sin llamar al backend
   ni escribir cookies.
 - **[manual]** (parte 2) Sólo el valor exacto `serverless` enciende el registro
   nuevo. Sin la variable, vacía o con otro texto (`Serverless`, `serverles`),
   `/register` muestra el formulario de hoy.
 - **[manual]** (parte 4) El cambio necesita un build. Con `next build` y
   `serverless`, `/register` muestra el flujo nuevo y `/confirm-email` redirige
-  a `/register`. Con `next build` y `better-auth`, las dos se ven como hoy.
-- **[manual]** (parte 2) `.env.example` trae `AUTH_BACKEND=better-auth`,
+  a `/register`. Con `next build` y `api`, las dos se ven como hoy.
+- **[manual]** (parte 2) `.env.example` trae `BACKEND=api`,
   `BACKEND_API_URL=` y `BACKEND_API_KEY=`, cada una con una línea que dice para
-  qué sirve. La de `AUTH_BACKEND` nombra los dos valores.
+  qué sirve. La de `BACKEND` nombra los dos valores.
 
 ### Pantalla 1: el correo
 
@@ -1132,7 +1157,7 @@ Convenciones:
   se reenvían cookies ni ninguna otra cabecera.
 - **[manual]** (partes 2 y 4) `lib/api/sign-up/index.ts`, `sign-up-progress.ts`
   y `cognito-session.ts` empiezan con `import "server-only"`, y
-  `AUTH_BACKEND`, `BACKEND_API_URL` y `BACKEND_API_KEY` no llevan
+  `BACKEND`, `BACKEND_API_URL` y `BACKEND_API_KEY` no llevan
   `NEXT_PUBLIC_`. Las llamadas al backend salen sólo de las cuatro server
   actions: no hay route handler ni rewrite nuevo hacia `backend-infra`.
 - **[manual]** (partes 2 y 4) `sign_up_progress` y las tres cookies de la sesión

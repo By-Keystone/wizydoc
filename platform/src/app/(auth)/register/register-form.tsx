@@ -53,7 +53,7 @@ function validateRegistration(registration: Registration): FieldErrors {
   };
 }
 
-export default function RegisterPage() {
+export function RegisterForm() {
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
