@@ -176,6 +176,8 @@ export class ApiGateway extends Construct {
       this,
       "RedeployStaleStageFunction",
       {
+        description:
+          "Al terminar cada actualización del stack, vuelve a publicar la etapa del API si todavía publica rutas quitadas.",
         runtime: lambda.Runtime.NODEJS_22_X,
         architecture: lambda.Architecture.ARM_64,
         handler: "index.handler",

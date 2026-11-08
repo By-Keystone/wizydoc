@@ -75,6 +75,8 @@ export class BackendStack extends Stack {
     );
 
     const healthFunction = new lambda.Function(this, "HealthFunction", {
+      description:
+        'GET /health: responde {"status":"ok"} para comprobar que el gateway responde.',
       runtime: lambda.Runtime.NODEJS_22_X,
       architecture: lambda.Architecture.ARM_64,
       handler: "index.handler",
@@ -113,6 +115,7 @@ export class BackendStack extends Stack {
     const requestSignUpCodeFunction = this.usersFunction(
       "RequestSignUpCodeFunction",
       "request-sign-up-code",
+      "POST /api/auth/sign-up/code: envía el código de 6 dígitos del registro, o el aviso de que el correo ya tiene cuenta.",
       {
         TABLE_NAME: database.table.tableName,
         FRONTEND_URL: props.frontendUrl,
@@ -138,6 +141,7 @@ export class BackendStack extends Stack {
     const verifySignUpCodeFunction = this.usersFunction(
       "VerifySignUpCodeFunction",
       "verify-sign-up-code",
+      "POST /api/auth/sign-up/code/verify: verifica el código del registro y devuelve el token de verificación.",
       { TABLE_NAME: database.table.tableName },
     );
     grantTableAccess(
@@ -149,6 +153,7 @@ export class BackendStack extends Stack {
     const confirmSignUpFunction = this.usersFunction(
       "ConfirmSignUpFunction",
       "confirm-sign-up",
+      "POST /api/auth/sign-up/confirm: crea la cuenta con el token de verificación y la contraseña, e inicia la sesión en Cognito.",
       {
         TABLE_NAME: database.table.tableName,
         USER_POOL_ID: authentication.userPool.userPoolId,
@@ -198,9 +203,11 @@ export class BackendStack extends Stack {
   private usersFunction(
     id: string,
     handlerName: string,
+    description: string,
     environment: Record<string, string>,
   ): NodejsFunction {
     return new NodejsFunction(this, id, {
+      description,
       entry: path.join(USERS_HANDLERS_DIRECTORY, `${handlerName}.handler.ts`),
       runtime: lambda.Runtime.NODEJS_22_X,
       architecture: lambda.Architecture.ARM_64,
