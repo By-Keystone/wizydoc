@@ -19,10 +19,11 @@ const clientProperties = (template: Template) =>
     ({ Properties }) => Properties,
   );
 
-test("hay un cliente para el api y otro para la sesión, ambos con secreto, sin OAuth y sin revelar si el usuario existe", () => {
+test("hay un solo cliente, el de platform, con secreto, sin OAuth y sin revelar si el usuario existe", () => {
   const clients = clientProperties(synthesizeAuthentication());
 
-  assert.equal(clients.length, 2);
+  assert.equal(clients.length, 1);
+  assert.equal(clients[0].ClientName, PLATFORM_CLIENT_NAME);
   for (const client of clients) {
     assert.equal(client.GenerateSecret, true);
     assert.equal(client.PreventUserExistenceErrors, "ENABLED");
@@ -42,17 +43,6 @@ test("el cliente de platform sólo admite ADMIN_USER_PASSWORD_AUTH y el refresco
   ]);
   assert.equal(session.RefreshTokenValidity, 30 * 24 * 60);
   assert.equal(session.TokenValidityUnits.RefreshToken, "minutes");
-});
-
-test("el cliente del api conserva USER_PASSWORD_AUTH", () => {
-  const [api] = clientProperties(synthesizeAuthentication()).filter(
-    ({ ClientName }) => ClientName !== PLATFORM_CLIENT_NAME,
-  );
-
-  assert.deepEqual(api.ExplicitAuthFlows, [
-    "ALLOW_USER_PASSWORD_AUTH",
-    "ALLOW_REFRESH_TOKEN_AUTH",
-  ]);
 });
 
 test("cada cliente escribe sólo email, given_name y family_name, y revoca tokens", () => {

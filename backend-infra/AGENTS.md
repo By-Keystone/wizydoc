@@ -44,7 +44,7 @@ intacto hasta el corte. Las reglas del `AGENTS.md` de la raíz siguen valiendo.
 - Las claves llevan el prefijo de su entidad (`USER#<ulid>`,
   `USER_EMAIL#<correo>`, `COGNITO#<sub>`). Un ítem sin otra clave de orden usa
   `SK = "!"`.
-- Todo ítem lleva `ItemType` con su tipo (`USER`, `EMAIL_CONFIRMATION`…), y
+- Todo ítem lleva `ItemType` con su tipo (`USER`, `SIGN_UP_CODE`…), y
   quien lee de un índice genérico revisa `ItemType` antes de mapear.
 - Los ids son ULID.
 

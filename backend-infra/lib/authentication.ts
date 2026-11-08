@@ -35,15 +35,6 @@ export class Authentication extends Construct {
       accountRecovery: cognito.AccountRecovery.NONE,
     });
 
-    this.userPool.addClient("ApiClient", {
-      generateSecret: true,
-      authFlows: { userPassword: true },
-      disableOAuth: true,
-      preventUserExistenceErrors: true,
-      enableTokenRevocation: true,
-      writeAttributes: writableAttributes,
-    });
-
     this.platformClient = this.userPool.addClient("PlatformClient", {
       userPoolClientName: PLATFORM_CLIENT_NAME,
       generateSecret: true,

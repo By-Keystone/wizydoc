@@ -3,10 +3,6 @@ import { test } from "node:test";
 import { App, Stack } from "aws-cdk-lib";
 import { Template } from "aws-cdk-lib/assertions";
 import { SignUpEmailTemplates } from "../lib/sign-up-email-templates";
-import {
-  type ConfirmationToken,
-  createConfirmationToken,
-} from "../lib/src/users/domain/confirmation-token.entity";
 import { createSignUpCode } from "../lib/src/users/domain/sign-up-code.entity";
 import type { User } from "../lib/src/users/domain/user.entity";
 import type { SesSignUpEmails } from "../lib/src/users/infrastructure/email/ses/sign-up-emails";
@@ -25,20 +21,10 @@ interface SesTemplate {
   TextPart: string;
 }
 
-type SendEmail = (
-  emails: SesSignUpEmails,
-  user: User,
-  confirmationToken: ConfirmationToken,
-) => Promise<void>;
+type SendEmail = (emails: SesSignUpEmails, user: User) => Promise<void>;
 
 const PLACEHOLDER = /{{\s*(\w+)\s*}}/g;
-const NAME_WITH_HTML = "Ñandú & <b>";
-const ESCAPED_NAME_WITH_HTML = "Ñandú &amp; &lt;b&gt;";
 
-const sendConfirmation: SendEmail = (emails, user, confirmationToken) =>
-  emails.sendConfirmation(user, confirmationToken);
-const sendPendingConfirmation: SendEmail = (emails, user, confirmationToken) =>
-  emails.sendPendingConfirmation(user, confirmationToken);
 const sendAccountExists: SendEmail = (emails, user) =>
   emails.sendAccountExists(user.email);
 const sendSignUpCode: SendEmail = (emails, user) =>
@@ -88,10 +74,9 @@ const buttonsOf = (html: string) =>
 
 const sendAndRender = async (sendEmail: SendEmail) => {
   const { sesClient, inputs } = capturingSes();
-  const user = buildUser({ name: NAME_WITH_HTML, confirmed: false });
-  const confirmationToken = createConfirmationToken(user.id);
+  const user = buildUser();
 
-  await sendEmail(emailsFor(sesClient), user, confirmationToken);
+  await sendEmail(emailsFor(sesClient), user);
 
   const [sent] = inputs;
   const sesTemplate = SES_TEMPLATES.get(
@@ -102,7 +87,6 @@ const sendAndRender = async (sendEmail: SendEmail) => {
   return {
     sesTemplate,
     templateData,
-    confirmUrl: `https://app.wizydoc.app/verify-email#token=${confirmationToken.token}`,
     html: fillPlaceholders(sesTemplate.HtmlPart, templateData),
     text: fillPlaceholders(sesTemplate.TextPart, templateData),
   };
@@ -120,36 +104,7 @@ const assertSaysInBothParts = (
   }
 };
 
-test("la confirmación dice el texto de la spec, con el botón «Confirmar correo» al enlace con el token y el plazo de 24 horas", async () => {
-  const email = await sendAndRender(sendConfirmation);
-
-  assert.equal(email.sesTemplate.SubjectPart, "Confirma tu correo en WizyDoc");
-  assertSaysInBothParts(email, [
-    "Gracias por registrarte en WizyDoc. Para activar tu cuenta, confirma tu correo haciendo clic en el botón:",
-    "El enlace vence en 24 horas. Si no creaste esta cuenta, puedes ignorar este correo.",
-  ]);
-  assert.deepEqual(buttonsOf(email.html), [
-    { label: "Confirmar correo", href: email.confirmUrl },
-  ]);
-  assert.ok(email.text.includes(email.confirmUrl));
-});
-
-test("el aviso a una cuenta sin confirmar dice el texto de la spec, con el botón «Confirmar cuenta» al enlace con el token y el plazo de 24 horas", async () => {
-  const email = await sendAndRender(sendPendingConfirmation);
-
-  assert.equal(email.sesTemplate.SubjectPart, "Confirma tu cuenta en WizyDoc");
-  assertSaysInBothParts(email, [
-    "Alguien intentó crear una cuenta en WizyDoc con este correo. Tu cuenta todavía no está confirmada.",
-    "Si fuiste tú, confírmala con este botón:",
-    "El enlace vence en 24 horas. Si no fuiste tú, ignora este correo: la cuenta no se activa sin tu confirmación.",
-  ]);
-  assert.deepEqual(buttonsOf(email.html), [
-    { label: "Confirmar cuenta", href: email.confirmUrl },
-  ]);
-  assert.ok(email.text.includes(email.confirmUrl));
-});
-
-test("el aviso a una cuenta confirmada dice el texto de la spec, con los botones para iniciar sesión y cambiar la contraseña", async () => {
+test("el aviso a un correo con cuenta dice el texto de la spec, con los botones para iniciar sesión y cambiar la contraseña", async () => {
   const email = await sendAndRender(sendAccountExists);
 
   assert.equal(
@@ -189,30 +144,7 @@ test("el correo del código dice el texto de la spec, con el código y el plazo 
   assert.deepEqual(buttonsOf(email.html), []);
 });
 
-test("cada plantilla usa exactamente los datos que manda el adaptador: las confirmaciones, el HTML con el nombre escapado y el texto con el nombre tal cual", async () => {
-  for (const sendEmail of [sendConfirmation, sendPendingConfirmation]) {
-    const { sesTemplate, templateData, html, text } =
-      await sendAndRender(sendEmail);
-    const sentKeys = Object.keys(templateData);
-    const templateName = sesTemplate.TemplateName;
-
-    assert.deepEqual(
-      placeholdersOf(sesTemplate.HtmlPart),
-      sentKeys.filter((key) => key !== "name").sort(),
-      templateName,
-    );
-    assert.deepEqual(
-      placeholdersOf(sesTemplate.TextPart),
-      sentKeys.filter((key) => key !== "escapedName").sort(),
-      templateName,
-    );
-    assert.ok(html.includes(`Hola ${ESCAPED_NAME_WITH_HTML},`), templateName);
-    assert.equal(html.includes("<b>"), false, templateName);
-    assert.ok(text.startsWith(`Hola ${NAME_WITH_HTML},`), templateName);
-  }
-});
-
-test("las plantillas sin nombre usan exactamente los datos que manda el adaptador, en el HTML y en el texto", async () => {
+test("cada plantilla usa exactamente los datos que manda el adaptador, en el HTML y en el texto", async () => {
   for (const sendEmail of [sendAccountExists, sendSignUpCode]) {
     const { sesTemplate, templateData, html, text } =
       await sendAndRender(sendEmail);

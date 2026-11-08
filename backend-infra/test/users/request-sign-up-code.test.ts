@@ -136,7 +136,6 @@ test("un usuario sin confirmar cuenta como un correo con cuenta: no se guarda ni
 
   assert.deepEqual(flow.signUpCodes.saved, []);
   assert.deepEqual(flow.users.createdUsers, []);
-  assert.deepEqual(flow.users.savedTokens, []);
   assert.deepEqual(
     flow.emails.sent.map(({ kind }) => kind),
     ["account-exists"],

@@ -12,7 +12,6 @@ import type {
   TransactWriteCommandInput,
   UpdateCommandInput,
 } from "@aws-sdk/lib-dynamodb";
-import { createConfirmationToken } from "../../lib/src/users/domain/confirmation-token.entity";
 import {
   CURRENT_CHECKBOX_TEXT_VERSION,
   CURRENT_PRIVACY_POLICY_VERSION,
@@ -29,10 +28,6 @@ import {
 } from "../../lib/src/users/infrastructure/persistence/dynamodb/ip-rate-limit";
 import { SignUpVerificationTokenRepository } from "../../lib/src/users/infrastructure/persistence/dynamodb/sign-up-verification-token.repository";
 import { SignUpCodeRepository } from "../../lib/src/users/infrastructure/persistence/dynamodb/sign-up-code.repository";
-import {
-  fromDomainToDynamo,
-  fromDynamoToDomain,
-} from "../../lib/src/users/infrastructure/persistence/dynamodb/user.mappers";
 import { UserRepository } from "../../lib/src/users/infrastructure/persistence/dynamodb/user.repository";
 import { emailSchema } from "../../lib/src/users/domain/value-objects/email.vo";
 import { buildUser } from "./fakes";
@@ -58,107 +53,6 @@ const capturingClient = ({
   } as unknown as DynamoDBDocumentClient;
   return { client, inputs };
 };
-
-test("crea el usuario sin confirmar, su token y su constancia en una sola transacción, cada uno con su tipo y sin pisar ítems existentes", async () => {
-  const { client, inputs } = capturingClient();
-  const user = buildUser({ confirmed: false, onboardingCompleted: false });
-  const confirmationToken = createConfirmationToken(user.id);
-  const acceptedAt = new Date(TEN_PAST_NOON);
-  const termsAcceptance = createTermsAcceptance(
-    {
-      userId: user.id,
-      email: user.email,
-      ipAddress: "190.42.10.7",
-      userAgent: "Mozilla/5.0",
-    },
-    acceptedAt,
-  );
-
-  await new UserRepository(client, TABLE_NAME).create(
-    user,
-    confirmationToken,
-    termsAcceptance,
-  );
-
-  const [transaction] = inputs as TransactWriteCommandInput[];
-  const puts =
-    transaction.TransactItems?.map((operation) => operation.Put) ?? [];
-  assert.equal(puts.length, 3);
-  for (const put of puts) {
-    assert.equal(put?.TableName, TABLE_NAME);
-    assert.equal(put?.ConditionExpression, "attribute_not_exists(PK)");
-  }
-  const [userRecord, tokenRecord, termsRecord] = puts.map((put) => put?.Item);
-  assert.equal(userRecord?.PK, `USER#${user.id}`);
-  assert.equal(userRecord?.ItemType, "USER");
-  assert.equal(userRecord?.GSI1PK, "USER_EMAIL#ana@clinica.pe");
-  assert.equal(userRecord?.Confirmed, false);
-  assert.equal(userRecord?.OnboardingCompleted, false);
-  assert.equal(
-    tokenRecord?.PK,
-    `EMAIL_CONFIRMATION#${confirmationToken.tokenHash}`,
-  );
-  assert.equal(tokenRecord?.ItemType, "EMAIL_CONFIRMATION");
-  assert.deepEqual(termsRecord, {
-    PK: `USER#${user.id}`,
-    SK: `TERMS_ACCEPTANCE#${acceptedAt.toISOString()}`,
-    ItemType: "TERMS_ACCEPTANCE",
-    Email: "ana@clinica.pe",
-    TermsVersion: CURRENT_TERMS_VERSION,
-    PrivacyPolicyVersion: CURRENT_PRIVACY_POLICY_VERSION,
-    CheckboxTextVersion: CURRENT_CHECKBOX_TEXT_VERSION,
-    AcceptedAt: "2026-11-06T12:10:30.000Z",
-    IpAddress: "190.42.10.7",
-    UserAgent: "Mozilla/5.0",
-    Source: "sign-up",
-  });
-});
-
-test("el ítem del token guarda sólo su hash y vence con TTL", async () => {
-  const { client, inputs } = capturingClient();
-  const user = buildUser();
-  const confirmationToken = createConfirmationToken(user.id);
-
-  await new UserRepository(client, TABLE_NAME).create(user, confirmationToken);
-
-  assert.equal(JSON.stringify(inputs).includes(confirmationToken.token), false);
-  const [transaction] = inputs as TransactWriteCommandInput[];
-  assert.equal(transaction.TransactItems?.length, 2);
-  const tokenRecord = transaction.TransactItems?.[1]?.Put?.Item;
-  const expiresAt = Math.floor(confirmationToken.expiresAt.getTime() / 1000);
-  assert.equal(tokenRecord?.ExpiresAt, expiresAt);
-  assert.equal(tokenRecord?.DeleteAfter, expiresAt);
-});
-
-test("findByEmail busca por el índice del correo y devuelve sólo ítems de tipo usuario", async () => {
-  const user = buildUser();
-  const userRecord = fromDomainToDynamo(user);
-  const withUser = capturingClient({ response: { Items: [userRecord] } });
-  const withOtherType = capturingClient({
-    response: { Items: [{ ...userRecord, ItemType: "PATIENT" }] },
-  });
-
-  const found = await new UserRepository(
-    withUser.client,
-    TABLE_NAME,
-  ).findByEmail(user.email);
-  const notFound = await new UserRepository(
-    withOtherType.client,
-    TABLE_NAME,
-  ).findByEmail(user.email);
-
-  assert.equal(found?.id, user.id);
-  assert.equal(notFound, undefined);
-  const [query] = withUser.inputs as {
-    IndexName?: string;
-    ExpressionAttributeValues?: Record<string, unknown>;
-  }[];
-  assert.equal(query.IndexName, "GSI1");
-  assert.equal(
-    query.ExpressionAttributeValues?.[":gsi1pk"],
-    "USER_EMAIL#ana@clinica.pe",
-  );
-});
 
 test("existsByEmail consulta el índice del correo con una proyección mínima y revisa el tipo, sin leer el usuario entero", async () => {
   const email = emailSchema.parse("ana@clinica.pe");
@@ -541,32 +435,19 @@ test("el límite de verificaciones usa su propio prefijo y su máximo de 10, apa
   });
 });
 
-test("un usuario sin nombre, apellido ni teléfono se guarda y se lee sin esos datos", () => {
-  const user = buildUser({
-    name: undefined,
-    lastName: undefined,
-    phone: undefined,
-  });
-
-  const record = fromDomainToDynamo(user);
-  const restored = fromDynamoToDomain(record);
-
-  assert.equal(record.Name, undefined);
-  assert.equal(record.LastName, undefined);
-  assert.equal(record.Phone, undefined);
-  assert.equal(restored.name, undefined);
-  assert.equal(restored.lastName, undefined);
-  assert.equal(restored.phone, undefined);
-  assert.equal(restored.email, user.email);
-});
-
 test("crear la cuenta confirmada guarda el usuario y su constancia y gasta el token en una transacción, con el token sólo si es del correo y no venció", async () => {
   const { client, inputs } = capturingClient();
   const user = buildUser({ confirmed: true, onboardingCompleted: false });
-  const termsAcceptance = createTermsAcceptance({
-    userId: user.id,
-    email: user.email,
-  });
+  const acceptedAt = new Date(TEN_PAST_NOON);
+  const termsAcceptance = createTermsAcceptance(
+    {
+      userId: user.id,
+      email: user.email,
+      ipAddress: "190.42.10.7",
+      userAgent: "Mozilla/5.0",
+    },
+    acceptedAt,
+  );
 
   const wasCreated = await new UserRepository(
     client,
@@ -585,7 +466,19 @@ test("crear la cuenta confirmada guarda el usuario y su constancia y gasta el to
   assert.equal(userPut.Put?.Item?.PK, `USER#${user.id}`);
   assert.equal(userPut.Put?.Item?.Confirmed, true);
   assert.equal(userPut.Put?.ConditionExpression, "attribute_not_exists(PK)");
-  assert.equal(termsPut.Put?.Item?.ItemType, "TERMS_ACCEPTANCE");
+  assert.deepEqual(termsPut.Put?.Item, {
+    PK: `USER#${user.id}`,
+    SK: `TERMS_ACCEPTANCE#${acceptedAt.toISOString()}`,
+    ItemType: "TERMS_ACCEPTANCE",
+    Email: "ana@clinica.pe",
+    TermsVersion: CURRENT_TERMS_VERSION,
+    PrivacyPolicyVersion: CURRENT_PRIVACY_POLICY_VERSION,
+    CheckboxTextVersion: CURRENT_CHECKBOX_TEXT_VERSION,
+    AcceptedAt: "2026-11-06T12:10:30.000Z",
+    IpAddress: "190.42.10.7",
+    UserAgent: "Mozilla/5.0",
+    Source: "sign-up",
+  });
   assert.deepEqual(tokenDelete.Delete?.Key, {
     PK: "SIGN_UP_VERIFICATION#hash-del-token",
     SK: "!",

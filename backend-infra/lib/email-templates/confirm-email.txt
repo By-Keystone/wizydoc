@@ -1,7 +1,0 @@
-Hola {{name}},
-
-Gracias por registrarte en WizyDoc. Para activar tu cuenta, confirma tu correo haciendo clic en el botón:
-
-{{confirmUrl}}
-
-El enlace vence en {{linkLifetimeHours}} horas. Si no creaste esta cuenta, puedes ignorar este correo.
