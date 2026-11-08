@@ -64,6 +64,25 @@ export class UserRepository implements IUserRepository {
     );
   }
 
+  async existsByEmail(email: EmailVO): Promise<boolean> {
+    const { Items } = await this.client.send(
+      new QueryCommand({
+        TableName: this.tableName,
+        IndexName: "GSI1",
+        KeyConditionExpression: "#GSI1PK = :gsi1pk",
+        ProjectionExpression: "#ItemType",
+        ExpressionAttributeValues: { ":gsi1pk": gsi1pk(email) },
+        ExpressionAttributeNames: {
+          "#GSI1PK": "GSI1PK",
+          "#ItemType": "ItemType",
+        },
+        Limit: 1,
+      }),
+    );
+
+    return Items?.[0]?.ItemType === USER_ITEM_TYPE;
+  }
+
   async findByEmail(email: EmailVO): Promise<User | undefined> {
     const { Items } = await this.client.send(
       new QueryCommand({

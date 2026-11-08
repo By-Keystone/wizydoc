@@ -140,7 +140,7 @@ export class SignUpUseCase {
 
   private async notifyExistingUser(user: User): Promise<void> {
     if (user.confirmed) {
-      await this.emails.sendAccountExists(user);
+      await this.emails.sendAccountExists(user.email);
       return;
     }
 

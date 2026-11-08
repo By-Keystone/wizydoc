@@ -1,10 +1,13 @@
 import type { SendEmailCommandInput, SESv2Client } from "@aws-sdk/client-sesv2";
+import type { IAccountExistsNotices } from "../../lib/src/users/application/ports/account-exists-notices.port";
 import type { IEmailSendAttempts } from "../../lib/src/users/application/ports/email-send-attempts.port";
 import type {
   CreateUserIfAbsentInput,
   IIdentityProvider,
 } from "../../lib/src/users/application/ports/identity-provider.port";
 import type { ISignUpEmails } from "../../lib/src/users/application/ports/sign-up-emails.port";
+import type { ISignUpCodeRepository } from "../../lib/src/users/domain/repository/sign-up-code.repository";
+import type { SignUpCode } from "../../lib/src/users/domain/sign-up-code.entity";
 import type { ConfirmationToken } from "../../lib/src/users/domain/confirmation-token.entity";
 import type { IUserRepository } from "../../lib/src/users/domain/repository/user.repository";
 import type { TermsAcceptance } from "../../lib/src/users/domain/terms-acceptance.entity";
@@ -22,6 +25,7 @@ export const TEMPLATE_NAMES = {
   confirmEmail: `${TEMPLATES_STACK_NAME}-confirm-email`,
   pendingConfirmation: `${TEMPLATES_STACK_NAME}-pending-confirmation`,
   accountExists: `${TEMPLATES_STACK_NAME}-account-exists`,
+  signUpCode: `${TEMPLATES_STACK_NAME}-sign-up-code`,
 };
 
 export class InMemoryUsers implements IUserRepository {
@@ -33,6 +37,10 @@ export class InMemoryUsers implements IUserRepository {
 
   constructor(existingUsers: User[] = []) {
     this.users = [...existingUsers];
+  }
+
+  async existsByEmail(email: EmailVO): Promise<boolean> {
+    return this.users.some((user) => user.email === email);
   }
 
   async findByEmail(email: EmailVO): Promise<User | undefined> {
@@ -55,6 +63,30 @@ export class InMemoryUsers implements IUserRepository {
     confirmationToken: ConfirmationToken,
   ): Promise<void> {
     this.savedTokens.push(confirmationToken);
+  }
+}
+
+export class InMemorySignUpCodes implements ISignUpCodeRepository {
+  readonly saved: SignUpCode[] = [];
+
+  constructor(private readonly isOnCooldown = false) {}
+
+  async saveUnlessRequestedRecently(signUpCode: SignUpCode): Promise<boolean> {
+    if (this.isOnCooldown) return false;
+    this.saved.push(signUpCode);
+    return true;
+  }
+}
+
+export class InMemoryAccountExistsNotices implements IAccountExistsNotices {
+  readonly registered: string[] = [];
+
+  constructor(private readonly isOnCooldown = false) {}
+
+  async tryRegister(email: EmailVO): Promise<boolean> {
+    if (this.isOnCooldown) return false;
+    this.registered.push(email);
+    return true;
   }
 }
 
@@ -82,9 +114,14 @@ export class InMemoryIdentityProvider implements IIdentityProvider {
 }
 
 export interface SentEmail {
-  kind: "confirmation" | "pending-confirmation" | "account-exists";
+  kind:
+    | "confirmation"
+    | "pending-confirmation"
+    | "sign-up-code"
+    | "account-exists";
   to: string;
   confirmationToken?: ConfirmationToken;
+  code?: string;
 }
 
 export class RecordingEmails implements ISignUpEmails {
@@ -111,9 +148,14 @@ export class RecordingEmails implements ISignUpEmails {
     });
   }
 
-  async sendAccountExists(user: User): Promise<void> {
+  async sendSignUpCode({ email, code }: SignUpCode): Promise<void> {
     if (this.failOnSend) throw new Error("SES no disponible");
-    this.sent.push({ kind: "account-exists", to: user.email });
+    this.sent.push({ kind: "sign-up-code", to: email, code });
+  }
+
+  async sendAccountExists(email: EmailVO): Promise<void> {
+    if (this.failOnSend) throw new Error("SES no disponible");
+    this.sent.push({ kind: "account-exists", to: email });
   }
 }
 

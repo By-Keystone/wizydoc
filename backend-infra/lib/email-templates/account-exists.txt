@@ -1,4 +1,4 @@
-Hola {{name}},
+Hola,
 
 Alguien intentó crear una cuenta en WizyDoc con este correo. Ya tienes una cuenta con él.
 

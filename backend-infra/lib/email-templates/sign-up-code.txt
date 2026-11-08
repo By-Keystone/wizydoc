@@ -1,0 +1,7 @@
+Hola,
+
+Tu código para crear tu cuenta en WizyDoc es:
+
+{{code}}
+
+Vence en {{codeLifetimeMinutes}} minutos. Si no pediste crear una cuenta, ignora este correo.

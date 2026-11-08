@@ -10,5 +10,6 @@ export const signUpEmailsFromEnvironment = (): SesSignUpEmails =>
       confirmEmail: requireEnv("CONFIRM_EMAIL_TEMPLATE"),
       pendingConfirmation: requireEnv("PENDING_CONFIRMATION_TEMPLATE"),
       accountExists: requireEnv("ACCOUNT_EXISTS_TEMPLATE"),
+      signUpCode: requireEnv("SIGN_UP_CODE_TEMPLATE"),
     },
   });

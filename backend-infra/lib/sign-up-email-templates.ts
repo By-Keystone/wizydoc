@@ -18,6 +18,7 @@ export class SignUpEmailTemplates extends Construct {
   readonly confirmEmail: SignUpEmailTemplate;
   readonly pendingConfirmation: SignUpEmailTemplate;
   readonly accountExists: SignUpEmailTemplate;
+  readonly signUpCode: SignUpEmailTemplate;
 
   constructor(scope: Construct, id: string) {
     super(scope, id);
@@ -33,6 +34,10 @@ export class SignUpEmailTemplates extends Construct {
     this.accountExists = this.template(
       "account-exists",
       "Intentaron crear una cuenta con tu correo",
+    );
+    this.signUpCode = this.template(
+      "sign-up-code",
+      "Tu código para crear tu cuenta en WizyDoc",
     );
   }
 

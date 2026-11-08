@@ -7,6 +7,7 @@ import {
   type ConfirmationToken,
   createConfirmationToken,
 } from "../lib/src/users/domain/confirmation-token.entity";
+import { createSignUpCode } from "../lib/src/users/domain/sign-up-code.entity";
 import type { User } from "../lib/src/users/domain/user.entity";
 import type { SesSignUpEmails } from "../lib/src/users/infrastructure/email/ses/sign-up-emails";
 import {
@@ -39,7 +40,9 @@ const sendConfirmation: SendEmail = (emails, user, confirmationToken) =>
 const sendPendingConfirmation: SendEmail = (emails, user, confirmationToken) =>
   emails.sendPendingConfirmation(user, confirmationToken);
 const sendAccountExists: SendEmail = (emails, user) =>
-  emails.sendAccountExists(user);
+  emails.sendAccountExists(user.email);
+const sendSignUpCode: SendEmail = (emails, user) =>
+  emails.sendSignUpCode(createSignUpCode(user.email));
 
 const synthesizedTemplates = (): Map<string, SesTemplate> => {
   const stack = new Stack(new App(), TEMPLATES_STACK_NAME);
@@ -169,12 +172,25 @@ test("el aviso a una cuenta confirmada dice el texto de la spec, con los botones
   assert.ok(email.text.includes("https://app.wizydoc.app/forgot-password"));
 });
 
-test("cada plantilla usa exactamente los datos que manda el adaptador: el HTML con el nombre escapado y el texto con el nombre tal cual", async () => {
-  for (const sendEmail of [
-    sendConfirmation,
-    sendPendingConfirmation,
-    sendAccountExists,
-  ]) {
+test("el correo del código dice el texto de la spec, con el código y el plazo de 10 minutos, sin botones", async () => {
+  const email = await sendAndRender(sendSignUpCode);
+
+  assert.equal(
+    email.sesTemplate.SubjectPart,
+    "Tu código para crear tu cuenta en WizyDoc",
+  );
+  assertSaysInBothParts(email, [
+    "Hola,",
+    "Tu código para crear tu cuenta en WizyDoc es:",
+    email.templateData.code,
+    "Vence en 10 minutos. Si no pediste crear una cuenta, ignora este correo.",
+  ]);
+  assert.match(email.templateData.code, /^\d{6}$/);
+  assert.deepEqual(buttonsOf(email.html), []);
+});
+
+test("cada plantilla usa exactamente los datos que manda el adaptador: las confirmaciones, el HTML con el nombre escapado y el texto con el nombre tal cual", async () => {
+  for (const sendEmail of [sendConfirmation, sendPendingConfirmation]) {
     const { sesTemplate, templateData, html, text } =
       await sendAndRender(sendEmail);
     const sentKeys = Object.keys(templateData);
@@ -193,5 +209,27 @@ test("cada plantilla usa exactamente los datos que manda el adaptador: el HTML c
     assert.ok(html.includes(`Hola ${ESCAPED_NAME_WITH_HTML},`), templateName);
     assert.equal(html.includes("<b>"), false, templateName);
     assert.ok(text.startsWith(`Hola ${NAME_WITH_HTML},`), templateName);
+  }
+});
+
+test("las plantillas sin nombre usan exactamente los datos que manda el adaptador, en el HTML y en el texto", async () => {
+  for (const sendEmail of [sendAccountExists, sendSignUpCode]) {
+    const { sesTemplate, templateData, html, text } =
+      await sendAndRender(sendEmail);
+    const sentKeys = Object.keys(templateData).sort();
+    const templateName = sesTemplate.TemplateName;
+
+    assert.deepEqual(
+      placeholdersOf(sesTemplate.HtmlPart),
+      sentKeys,
+      templateName,
+    );
+    assert.deepEqual(
+      placeholdersOf(sesTemplate.TextPart),
+      sentKeys,
+      templateName,
+    );
+    assert.ok(visibleText(html).startsWith("Hola,"), templateName);
+    assert.ok(text.startsWith("Hola,"), templateName);
   }
 });

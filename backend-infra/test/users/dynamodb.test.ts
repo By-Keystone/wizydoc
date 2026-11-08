@@ -3,6 +3,7 @@ import { test } from "node:test";
 import { ConditionalCheckFailedException } from "@aws-sdk/client-dynamodb";
 import type {
   DynamoDBDocumentClient,
+  PutCommandInput,
   TransactWriteCommandInput,
   UpdateCommandInput,
 } from "@aws-sdk/lib-dynamodb";
@@ -12,10 +13,14 @@ import {
   CURRENT_PRIVACY_POLICY_VERSION,
   CURRENT_TERMS_VERSION,
 } from "../../lib/src/users/domain/legal-documents";
+import { createSignUpCode } from "../../lib/src/users/domain/sign-up-code.entity";
 import { createTermsAcceptance } from "../../lib/src/users/domain/terms-acceptance.entity";
+import { DynamoDBAccountExistsNotices } from "../../lib/src/users/infrastructure/persistence/dynamodb/account-exists-notices";
 import { DynamoDBEmailSendAttempts } from "../../lib/src/users/infrastructure/persistence/dynamodb/email-send-attempts";
+import { SignUpCodeRepository } from "../../lib/src/users/infrastructure/persistence/dynamodb/sign-up-code.repository";
 import { fromDomainToDynamo } from "../../lib/src/users/infrastructure/persistence/dynamodb/user.mappers";
 import { UserRepository } from "../../lib/src/users/infrastructure/persistence/dynamodb/user.repository";
+import { emailSchema } from "../../lib/src/users/domain/value-objects/email.vo";
 import { buildUser } from "./fakes";
 
 const TABLE_NAME = "MainTable";
@@ -141,6 +146,45 @@ test("findByEmail busca por el índice del correo y devuelve sólo ítems de tip
   );
 });
 
+test("existsByEmail consulta el índice del correo con una proyección mínima y revisa el tipo, sin leer el usuario entero", async () => {
+  const email = emailSchema.parse("ana@clinica.pe");
+  const withUser = capturingClient({
+    response: { Items: [{ ItemType: "USER" }] },
+  });
+  const withOtherType = capturingClient({
+    response: { Items: [{ ItemType: "PATIENT" }] },
+  });
+  const withNothing = capturingClient({ response: { Items: [] } });
+
+  assert.equal(
+    await new UserRepository(withUser.client, TABLE_NAME).existsByEmail(email),
+    true,
+  );
+  assert.equal(
+    await new UserRepository(withOtherType.client, TABLE_NAME).existsByEmail(
+      email,
+    ),
+    false,
+  );
+  assert.equal(
+    await new UserRepository(withNothing.client, TABLE_NAME).existsByEmail(
+      email,
+    ),
+    false,
+  );
+  const [query] = withUser.inputs as {
+    IndexName?: string;
+    ProjectionExpression?: string;
+    ExpressionAttributeValues?: Record<string, unknown>;
+  }[];
+  assert.equal(query.IndexName, "GSI1");
+  assert.equal(query.ProjectionExpression, "#ItemType");
+  assert.equal(
+    query.ExpressionAttributeValues?.[":gsi1pk"],
+    "USER_EMAIL#ana@clinica.pe",
+  );
+});
+
 test("cuenta los envíos por IP en ventanas fijas de 10 minutos, y rechaza desde el cuarto", async () => {
   const { client, inputs } = capturingClient();
   const attempts = new DynamoDBEmailSendAttempts(
@@ -208,4 +252,131 @@ test("superado el máximo, el intento no se registra", async () => {
   ).tryRegister("190.42.10.7");
 
   assert.equal(isAllowed, false);
+});
+
+test("el ítem del código guarda sólo su hash, sin copiar el correo ni el vencimiento, con los intentos en cero y el vencimiento como TTL", async () => {
+  const { client, inputs } = capturingClient();
+  const email = emailSchema.parse("ana@clinica.pe");
+  const signUpCode = createSignUpCode(email, new Date(TEN_PAST_NOON));
+
+  await new SignUpCodeRepository(
+    client,
+    TABLE_NAME,
+  ).saveUnlessRequestedRecently(signUpCode);
+
+  const [put] = inputs as PutCommandInput[];
+  const expiresAt = (TEN_PAST_NOON + 10 * 60 * 1000) / 1000;
+  assert.equal(put.TableName, TABLE_NAME);
+  assert.deepEqual(put.Item, {
+    PK: "SIGN_UP_CODE#ana@clinica.pe",
+    SK: "!",
+    ItemType: "SIGN_UP_CODE",
+    CodeHash: signUpCode.codeHash,
+    Attempts: 0,
+    DeleteAfter: expiresAt,
+  });
+});
+
+test("pedir otro código lo guarda con los intentos en cero, sólo si el anterior se pidió hace un minuto o más", async () => {
+  const { client, inputs } = capturingClient();
+  const email = emailSchema.parse("ana@clinica.pe");
+  const signUpCode = createSignUpCode(email, new Date(TEN_PAST_NOON));
+
+  const wasSaved = await new SignUpCodeRepository(
+    client,
+    TABLE_NAME,
+  ).saveUnlessRequestedRecently(signUpCode);
+
+  const [put] = inputs as PutCommandInput[];
+  assert.equal(wasSaved, true);
+  assert.equal(put.Item?.PK, "SIGN_UP_CODE#ana@clinica.pe");
+  assert.equal(put.Item?.Attempts, 0);
+  assert.equal(
+    put.ConditionExpression,
+    "attribute_not_exists(PK) OR DeleteAfter <= :latestReplaceableExpiry",
+  );
+  assert.deepEqual(put.ExpressionAttributeValues, {
+    ":latestReplaceableExpiry": (TEN_PAST_NOON + 9 * 60 * 1000) / 1000,
+  });
+});
+
+test("si el anterior se pidió hace menos de un minuto, el repositorio informa que no guardó, y cualquier otro error sube", async () => {
+  const email = emailSchema.parse("ana@clinica.pe");
+  const recentlyRequested = capturingClient({
+    failure: new ConditionalCheckFailedException({
+      message: "enfriamiento",
+      $metadata: {},
+    }),
+  });
+  const unavailable = capturingClient({
+    failure: new Error("DynamoDB no disponible"),
+  });
+
+  const wasSaved = await new SignUpCodeRepository(
+    recentlyRequested.client,
+    TABLE_NAME,
+  ).saveUnlessRequestedRecently(createSignUpCode(email));
+
+  assert.equal(wasSaved, false);
+  await assert.rejects(
+    new SignUpCodeRepository(
+      unavailable.client,
+      TABLE_NAME,
+    ).saveUnlessRequestedRecently(createSignUpCode(email)),
+    { message: "DynamoDB no disponible" },
+  );
+});
+
+test("el aviso a un correo con cuenta se guarda con un minuto de vida, sólo si el anterior ya pasó", async () => {
+  const { client, inputs } = capturingClient();
+  const email = emailSchema.parse("ana@clinica.pe");
+  const nowInSeconds = TEN_PAST_NOON / 1000;
+
+  const wasRegistered = await new DynamoDBAccountExistsNotices(
+    client,
+    TABLE_NAME,
+    () => TEN_PAST_NOON,
+  ).tryRegister(email);
+
+  const [put] = inputs as PutCommandInput[];
+  assert.equal(wasRegistered, true);
+  assert.deepEqual(put.Item, {
+    PK: "SIGN_UP_NOTICE#ana@clinica.pe",
+    SK: "!",
+    ItemType: "SIGN_UP_NOTICE",
+    DeleteAfter: nowInSeconds + 60,
+  });
+  assert.equal(
+    put.ConditionExpression,
+    "attribute_not_exists(PK) OR DeleteAfter <= :now",
+  );
+  assert.deepEqual(put.ExpressionAttributeValues, { ":now": nowInSeconds });
+});
+
+test("si el aviso anterior salió hace menos de un minuto, informa que no se registró, y cualquier otro error sube", async () => {
+  const email = emailSchema.parse("ana@clinica.pe");
+  const recentlySent = capturingClient({
+    failure: new ConditionalCheckFailedException({
+      message: "enfriamiento",
+      $metadata: {},
+    }),
+  });
+  const unavailable = capturingClient({
+    failure: new Error("DynamoDB no disponible"),
+  });
+
+  assert.equal(
+    await new DynamoDBAccountExistsNotices(
+      recentlySent.client,
+      TABLE_NAME,
+    ).tryRegister(email),
+    false,
+  );
+  await assert.rejects(
+    new DynamoDBAccountExistsNotices(
+      unavailable.client,
+      TABLE_NAME,
+    ).tryRegister(email),
+    { message: "DynamoDB no disponible" },
+  );
 });
