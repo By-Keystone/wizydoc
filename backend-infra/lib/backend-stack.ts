@@ -75,6 +75,7 @@ export class BackendStack extends Stack {
     );
 
     const healthFunction = new lambda.Function(this, "HealthFunction", {
+      description: "Answers the health check, confirming the API is up.",
       runtime: lambda.Runtime.NODEJS_22_X,
       architecture: lambda.Architecture.ARM_64,
       handler: "index.handler",
@@ -113,6 +114,7 @@ export class BackendStack extends Stack {
     const requestSignUpCodeFunction = this.usersFunction(
       "RequestSignUpCodeFunction",
       "request-sign-up-code",
+      "Sends the 6-digit sign-up code, or a notice when the email already has an account.",
       {
         TABLE_NAME: database.table.tableName,
         FRONTEND_URL: props.frontendUrl,
@@ -138,6 +140,7 @@ export class BackendStack extends Stack {
     const verifySignUpCodeFunction = this.usersFunction(
       "VerifySignUpCodeFunction",
       "verify-sign-up-code",
+      "Verifies the sign-up code and returns a verification token.",
       { TABLE_NAME: database.table.tableName },
     );
     grantTableAccess(
@@ -149,6 +152,7 @@ export class BackendStack extends Stack {
     const confirmSignUpFunction = this.usersFunction(
       "ConfirmSignUpFunction",
       "confirm-sign-up",
+      "Creates the account from the verification token and password, and signs the user in.",
       {
         TABLE_NAME: database.table.tableName,
         USER_POOL_ID: authentication.userPool.userPoolId,
@@ -198,9 +202,11 @@ export class BackendStack extends Stack {
   private usersFunction(
     id: string,
     handlerName: string,
+    description: string,
     environment: Record<string, string>,
   ): NodejsFunction {
     return new NodejsFunction(this, id, {
+      description,
       entry: path.join(USERS_HANDLERS_DIRECTORY, `${handlerName}.handler.ts`),
       runtime: lambda.Runtime.NODEJS_22_X,
       architecture: lambda.Architecture.ARM_64,

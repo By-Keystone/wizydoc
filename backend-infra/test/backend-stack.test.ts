@@ -361,3 +361,22 @@ test("el stack tiene un solo user pool, con el cliente de platform, y la confirm
     { Ref: poolLogicalId },
   );
 });
+
+const LAMBDA_DESCRIPTION_MAX_LENGTH = 256;
+
+test("toda Lambda del stack dice en su descripción qué hace", () => {
+  const functions = Object.entries(
+    synthesizeBackend().findResources("AWS::Lambda::Function"),
+  );
+
+  assert.ok(functions.length > 0);
+  for (const [logicalId, lambdaFunction] of functions) {
+    const description: string | undefined =
+      lambdaFunction.Properties.Description;
+    assert.ok(description, `${logicalId} no tiene descripción`);
+    assert.ok(
+      description.length <= LAMBDA_DESCRIPTION_MAX_LENGTH,
+      `la descripción de ${logicalId} pasa de ${LAMBDA_DESCRIPTION_MAX_LENGTH} caracteres`,
+    );
+  }
+});
