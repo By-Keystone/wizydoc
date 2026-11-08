@@ -48,12 +48,13 @@
   .stage { display: flex; align-items: flex-start; padding: 28px 16px 40px; overflow-x: auto; min-width: 0; }
   .stage > div { margin: 0 auto; }
   .frame-caption { text-align: center; font-size: 12.5px; color: var(--gray); margin: 0 0 10px; }
-  .device { background: #fff; box-shadow: 0 10px 30px rgba(0, 0, 0, .12); overflow: hidden; box-sizing: content-box; }
+  .device { background: #fff; box-shadow: 0 10px 30px rgba(0, 0, 0, .12); overflow: hidden; box-sizing: content-box; display: flex; flex-direction: column; }
   .device.mobile { width: 375px; border: 8px solid #1f2937; border-radius: 28px; }
   .device.desktop { width: 1024px; border: 1px solid #cbd5e1; border-radius: 10px; }
   .device iframe { display: block; width: 100%; border: 0; }
+  .urlbar { flex-shrink: 0; padding: 6px 12px; background: #f3f4f6; border-bottom: 1px solid #e5e7eb; font: 12px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--gray); text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   #live-device { height: 780px; }
-  #live-device iframe { height: 100%; }
+  #live-device iframe { flex: 1; min-height: 0; }
 
   /* ---------- Galería de estados ---------- */
   .gallery { padding: 32px 24px 72px; border-top: 1px solid #d1d5db; background: #f3f4f6; }
@@ -79,9 +80,8 @@
   <aside class="proto-panel" aria-label="Controles del prototipo">
     <h1>Registro con código</h1>
     <p class="lead">
-      Las tres pantallas de <code>/sign-up</code>: el correo, el código y la contraseña, con sus errores, la carga y el reenvío.
-      Sólo existen con <code>AUTH_BACKEND=serverless</code>, y entonces <code>/register</code> lleva aquí.
-      Datos ficticios. Lo que está en esta barra no es parte de la app. Plan: <code>plan.md</code> en esta carpeta.
+      Los tres pasos de <code>/register</code> con <code>AUTH_BACKEND=serverless</code>: el correo, el código y la contraseña, con sus errores, la carga y el reenvío.
+      La URL no cambia entre pasos. Datos ficticios. Lo que está en esta barra no es parte de la app. Plan: <code>plan.md</code> en esta carpeta.
     </p>
 
     <h2>Vista</h2>
@@ -93,9 +93,9 @@
     <h2>Empezar en</h2>
     <fieldset>
       <legend class="sr-only">Pantalla de inicio</legend>
-      <label><input type="radio" name="screen" value="email" checked> 1. Crea tu cuenta (correo)</label>
-      <label><input type="radio" name="screen" value="code"> 2. Revisa tu correo (código)</label>
-      <label><input type="radio" name="screen" value="password"> 3. Crea tu contraseña</label>
+      <label><input type="radio" name="screen" value="email" checked> Paso 1: el correo (sin cookie)</label>
+      <label><input type="radio" name="screen" value="code"> Paso 2: el código (cookie con el correo)</label>
+      <label><input type="radio" name="screen" value="password"> Paso 3: la contraseña (cookie con el token)</label>
       <label><input type="radio" name="screen" value="expired"> Tu verificación venció</label>
       <label><input type="radio" name="screen" value="login-created"> Login después de un 204</label>
       <label><input type="radio" name="screen" value="mail-code"> Referencia: correo con el código</label>
@@ -123,14 +123,16 @@
         <li>Escribe un correo y pulsa «Continuar». Si empieza con <code>limite</code>, sale el 429; si empieza con <code>falla</code>, el error del envío.</li>
         <li>Escribe <code>482913</code>: al sexto dígito se envía solo. Cualquier otro código da el mensaje único; <code>000000</code> da el 429; con menos de 6, pulsa «Verificar código».</li>
         <li>Espera la cuenta (o enciende el reloj rápido) y pulsa «Reenviar código».</li>
-        <li>«Cambiar» vuelve al correo. Con el mismo correo dentro del minuto, «Continuar» va directo al código sin pedir otro.</li>
+        <li>«Cambiar» vuelve al correo en la misma tarjeta. Con el mismo correo dentro del minuto, «Continuar» vuelve al código sin pedir otro.</li>
         <li>Escribe la contraseña y pulsa «Crear cuenta», con el resultado elegido arriba.</li>
       </ol>
     </div>
     <div class="note">
       <strong>Qué propone</strong>
       <ul>
-        <li>Nunca conviven dos registros: el killswitch <code>AUTH_BACKEND</code> elige uno por entorno. Con <code>better-auth</code>, el de por defecto, estas pantallas responden 404.</li>
+        <li>Los tres pasos viven en <code>/register</code>. El servidor elige el paso según la cookie <code>sign_up_progress</code>: recargar no lo pierde, y el botón atrás del navegador sale del registro.</li>
+        <li>Nunca conviven dos registros: el killswitch <code>AUTH_BACKEND</code> elige uno por entorno. Con <code>better-auth</code>, el de por defecto, <code>/register</code> muestra el formulario de hoy.</li>
+        <li>«Cambiar» y «Pedir un código nuevo» vuelven al correo en la misma tarjeta, con el correo escrito y el foco en el campo.</li>
         <li>Tenga o no cuenta el correo, se ve lo mismo. A quien ya tiene cuenta le llega otro correo, y el pie «¿Ya tienes cuenta?» lo lleva al login.</li>
         <li>Un solo campo para el código, que se envía solo con el sexto dígito.</li>
         <li>«Reenviar en N s» lo calcula el servidor, así que sigue contando aunque recargues. Un reenvío dentro del minuto no envía nada: la cuenta sigue, sin aviso.</li>
@@ -146,6 +148,7 @@
     <div>
       <p class="frame-caption" id="live-caption"></p>
       <div id="live-device" class="device mobile">
+        <div class="urlbar" id="live-url" aria-label="Dirección de la página"></div>
         <iframe id="live-frame" title="Registro con código, prototipo navegable"></iframe>
       </div>
     </div>
@@ -156,6 +159,7 @@
   <h2 id="gallery-title">Estados</h2>
   <p>
     Cada vista es un celular de 375 px real, con los breakpoints de la app, salvo las tres últimas, que son de escritorio.
+    La barra de arriba de cada vista muestra la URL: los tres pasos son <code>/register</code>.
     Todas se pueden tocar: los formularios responden igual que en la vista navegable.
   </p>
   <div class="gallery-grid" id="gallery"></div>
@@ -237,7 +241,7 @@
   const ALERT_CLASS = "rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700";
   const NOTICE_CLASS = "flex items-start gap-2 rounded-lg bg-brand-teal/10 px-3 py-2 text-sm text-brand-teal-dark";
 
-  /* ---------- Reglas y textos de la spec de WIZ-75 y del plan (D-6) ---------- */
+  /* ---------- Reglas y textos de la spec de WIZ-75 y del plan (D-7) ---------- */
   const EMAIL = "lucia.paredes@gmail.com";
   const LONG_EMAIL = "consultorio.dermatologico.lucia.paredes.quispe@clinicasanborja.com.pe";
   const CORRECT_CODE = "482913";
@@ -269,6 +273,19 @@
     accountCreated: "Tu cuenta quedó creada. Inicia sesión con tu correo y tu contraseña.",
   };
   const message = (key) => (key ? MESSAGES[key] || key : "");
+
+  // Los tres pasos y la tarjeta vencida son la misma página: la URL no cambia entre ellos.
+  const SCREEN_URLS = {
+    email: "/register",
+    code: "/register",
+    password: "/register",
+    expired: "/register",
+    login: "/login",
+    "login-created": "/login?registered=ok",
+    next: "/onboarding",
+    "mail-code": "Bandeja de entrada",
+    "mail-exists": "Bandeja de entrada",
+  };
 
   const isLive = Boolean(CONFIG.live);
   const confirmOutcome = CONFIG.confirmOutcome || "ok";
@@ -366,7 +383,7 @@
   const signInFooter = () =>
     `¿Ya tienes cuenta? <a href="#" data-action="go-login" class="${TEXT_LINK_CLASS}">Inicia sesión</a>`;
 
-  /* ---------- Pantalla 1: el correo ---------- */
+  /* ---------- Paso 1: el correo ---------- */
   function renderEmail() {
     const isPending = state.status === "pending";
     return authShell(authCard({
@@ -381,7 +398,7 @@
     }));
   }
 
-  /* ---------- Pantalla 2: el código ---------- */
+  /* ---------- Paso 2: el código ---------- */
   function secondsUntilResend() {
     if (!state.codeRequestedAt) return state.secondsLeft;
     const elapsedSeconds = Math.floor(((Date.now() - state.codeRequestedAt) * CLOCK_SPEED) / 1000);
@@ -428,7 +445,7 @@
     }));
   }
 
-  /* ---------- Pantalla 3: la contraseña ---------- */
+  /* ---------- Paso 3: la contraseña ---------- */
   function renderPassword() {
     const isPending = state.status === "pending";
     return authShell(authCard({
@@ -524,6 +541,7 @@
   function render() {
     if (state.screen === "code") state.secondsLeft = secondsUntilResend();
     document.getElementById("root").innerHTML = SCREENS[state.screen]();
+    parent.postMessage({ type: "mock-url", frameId: CONFIG.frameId, url: SCREEN_URLS[state.screen] }, "*");
   }
 
   /* ---------- Comportamiento ---------- */
@@ -545,10 +563,10 @@
     focusElement(document.querySelector('[aria-invalid="true"]'));
   }
 
-  // Como en la app: autoFocus en el código y en la contraseña, el título en la tarjeta vencida; el correo y el login no mueven el foco.
+  // Como en la app: autoFocus en el código y en la contraseña, el título en la tarjeta vencida; el correo sólo recibe el foco cuando se vuelve a él.
   const FOCUS_TARGET_BY_SCREEN = { code: "#code", password: "#password", expired: "h1" };
 
-  function focusAfterNavigation() {
+  function focusAfterStepChange() {
     const selector = FOCUS_TARGET_BY_SCREEN[state.screen];
     if (selector) focusElement(document.querySelector(selector));
   }
@@ -556,8 +574,14 @@
   function goTo(screen, overrides) {
     Object.assign(state, { screen, status: "idle", errors: {}, alert: "" }, overrides || {});
     render();
-    focusAfterNavigation();
+    focusAfterStepChange();
     if (screen === "code") startCountdown();
+  }
+
+  function backToEmail() {
+    readValues();
+    goTo("email", { emailDraft: state.email });
+    focusElement(document.getElementById("email"));
   }
 
   let countdownTimer = null;
@@ -619,7 +643,7 @@
       focusFirstInvalid();
       return;
     }
-    // D-4: el mismo correo dentro del minuto no pide otro código; el anterior sigue sirviendo.
+    // D-5: el mismo correo dentro del minuto no pide otro código; el anterior sigue sirviendo.
     const isSameEmailWaiting = email === state.email && state.codeRequestedAt && secondsUntilResend() > 0;
     if (isSameEmailWaiting) {
       goTo("code", { code: "", resend: "idle" });
@@ -746,11 +770,7 @@
     if (action === "toggle-password") return togglePasswordVisibility(target);
     if (action === "go-login") return goTo("login");
     if (action === "go-email") return goTo("email", { emailDraft: "" });
-    if (action === "change-email") {
-      readValues();
-      return goTo("email", { emailDraft: state.email });
-    }
-    if (action === "restart-email") return goTo("email", { emailDraft: state.email });
+    if (action === "change-email" || action === "restart-email") return backToEmail();
     if (action === "resend") return resendCode();
   });
 
@@ -765,7 +785,7 @@
   }
   render();
   if (isLive) {
-    focusAfterNavigation();
+    focusAfterStepChange();
     startCountdown();
   }
 })();
@@ -785,11 +805,11 @@
   const controls = { screen: "email", view: "mobile", longEmail: false, fastClock: false, confirmOutcome: "ok" };
 
   const LIVE_SCREENS = {
-    email: { caption: "1. Crea tu cuenta (/sign-up)", config: { screen: "email" } },
-    code: { caption: "2. Revisa tu correo (/sign-up/code)", config: { screen: "code", secondsLeft: 60 } },
-    password: { caption: "3. Crea tu contraseña (/sign-up/password)", config: { screen: "password" } },
-    expired: { caption: "Tu verificación venció (/sign-up/password)", config: { screen: "expired" } },
-    "login-created": { caption: "Login después de un 204 (/login?registered=ok)", config: { screen: "login-created" } },
+    email: { caption: "Paso 1: el correo", config: { screen: "email" } },
+    code: { caption: "Paso 2: el código", config: { screen: "code", secondsLeft: 60 } },
+    password: { caption: "Paso 3: la contraseña", config: { screen: "password" } },
+    expired: { caption: "Tu verificación venció", config: { screen: "expired" } },
+    "login-created": { caption: "Login después de un 204", config: { screen: "login-created" } },
     "mail-code": { caption: "Referencia: el correo con el código", config: { screen: "mail-code" } },
     "mail-exists": { caption: "Referencia: el correo a una cuenta que ya existe", config: { screen: "mail-exists" } },
   };
@@ -798,12 +818,12 @@
   const STRONG_PASSWORD = "Consulta-Miraflores-2026";
 
   const GALLERY = [
-    { title: "1. Correo: normal", caption: "La entrada, a la que también lleva /register con AUTH_BACKEND=serverless. Sin foco automático; el pie lleva al login.", config: { screen: "email" } },
+    { title: "1. Correo: normal", caption: "/register con AUTH_BACKEND=serverless y sin cookie. Sin foco automático al abrir; el pie lleva al login.", config: { screen: "email" } },
     { title: "2. Correo: enviando", caption: "Botón deshabilitado con el spinner y «Enviando código…». El campo queda de solo lectura.", config: { screen: "email", status: "pending", emailDraft: TYPED_EMAIL } },
     { title: "3. Correo: inválido", caption: "El mensaje de la spec debajo del campo, con el foco ahí. No se llama al backend.", config: { screen: "email", emailDraft: "lucia.paredes@gmail", errors: { email: "invalidEmail" } } },
     { title: "4. Correo: demasiados intentos (429)", caption: "Más de 3 envíos en 10 minutos desde la misma IP. El texto es constante: nunca el «Too Many Requests» del gateway.", config: { screen: "email", emailDraft: TYPED_EMAIL, alert: "tooManyAttempts" } },
     { title: "5. Correo: no se pudo enviar", caption: "500 de la Lambda, 403 del gateway o sin conexión: el mismo mensaje del paso.", config: { screen: "email", emailDraft: TYPED_EMAIL, alert: "codeFailed" } },
-    { title: "6. Código: recién enviado", caption: "El foco en el campo. «Reenviar en 60 s» cuenta hacia atrás, deshabilitado. El correo, con «Cambiar». Un reenvío dentro del minuto se ve igual: la cuenta sigue, sin aviso.", config: { screen: "code", secondsLeft: 60 } },
+    { title: "6. Código: recién enviado", caption: "Misma URL, /register: la cookie ya tiene el correo. El foco en el campo y «Reenviar en 60 s». «Cambiar» vuelve al correo en esta misma tarjeta. Un reenvío dentro del minuto se ve igual: la cuenta sigue, sin aviso.", config: { screen: "code", secondsLeft: 60 } },
     { title: "7. Código: verificando", caption: "Se envió solo al escribir el sexto dígito. «Verificando…» y el campo de solo lectura.", config: { screen: "code", code: "482913", status: "pending", secondsLeft: 48 } },
     { title: "8. Código: faltan dígitos", caption: "Pulsó «Verificar código» con 4 dígitos. Mensaje de platform, sin llamar al backend.", config: { screen: "code", code: "4829", errors: { code: "incompleteCode" }, secondsLeft: 41 } },
     { title: "9. Código: no sirve", caption: "Incorrecto, vencido, agotado o reemplazado: siempre el mismo mensaje de la spec. El texto queda seleccionado.", config: { screen: "code", code: "482931", errors: { code: "wrongCode" }, secondsLeft: 35 } },
@@ -813,18 +833,18 @@
     { title: "13. Código: reenviando", caption: "El enlace con el spinner, deshabilitado.", config: { screen: "code", secondsLeft: 0, resend: "pending" } },
     { title: "14. Código: código nuevo enviado", caption: "«Te enviamos un código nuevo.» y otra vez 60 s. El anterior ya no sirve.", config: { screen: "code", secondsLeft: 60, resend: "sent" } },
     { title: "15. Código: reenvío con 429", caption: "El tercer envío ya pasó en esta IP. Un 400, un 429 o cualquier fallo del reenvío va bajo el enlace, que sigue disponible: aquí no hay campo del correo.", config: { screen: "code", secondsLeft: 0, resend: "limit" } },
-    { title: "16. Contraseña: normal", caption: "El foco en el campo. Sin la casilla de los términos: vuelve cuando se publique la política de privacidad.", config: { screen: "password" } },
+    { title: "16. Contraseña: normal", caption: "Misma URL: la cookie ya tiene el token. El foco en el campo. Sin la casilla de los términos: vuelve cuando se publique la política de privacidad.", config: { screen: "password" } },
     { title: "17. Contraseña: creando la cuenta", caption: "«Creando tu cuenta…». Con 200 va al onboarding; con 204, al login.", config: { screen: "password", password: STRONG_PASSWORD, status: "pending" } },
     { title: "18. Contraseña: demasiado corta", caption: "El error bajo el campo, con el foco ahí. Sin llamar al backend.", config: { screen: "password", password: "lucia26", errors: { password: "passwordTooShort" } } },
     { title: "19. Contraseña: espacio al principio", caption: "La regla de Cognito, con el mensaje de la spec.", config: { screen: "password", password: " Consulta2026", errors: { password: "passwordEdges" } } },
     { title: "20. Contraseña: no se pudo crear", caption: "500 o sin conexión. La contraseña se conserva, y el token sigue sirviendo 15 minutos.", config: { screen: "password", password: STRONG_PASSWORD, alert: "signUpFailed" } },
-    { title: "21. Tu verificación venció", caption: "El token vence a los 15 minutos y lo dice el backend al pulsar «Crear cuenta». La cookie dura una hora, así que el correo sigue ahí: el botón vuelve al correo, ya escrito. El foco en el título.", config: { screen: "expired" } },
+    { title: "21. Tu verificación venció", caption: "El token vence a los 15 minutos y lo dice el backend al pulsar «Crear cuenta». El foco en el título. «Pedir un código nuevo» vuelve al correo en esta misma tarjeta, con el correo escrito y el foco en el campo.", config: { screen: "expired" } },
     { title: "22. Login después de un 204", caption: "La cuenta se creó, pero Cognito no dio la sesión. El mismo aviso teal que tras recuperar la contraseña.", config: { screen: "login-created" } },
     { title: "23. Código con un correo largo", caption: "El correo se corta con break-all. Sin desplazamiento horizontal a 375 px.", config: { screen: "code", longEmail: true, secondsLeft: 60 } },
     { title: "24. Contraseña con un correo largo", caption: "Lo mismo en la descripción.", config: { screen: "password", longEmail: true } },
     { title: "Referencia: correo con el código", caption: "Lo que recibe un correo sin cuenta (spec de WIZ-75). No cambia en este ticket.", config: { screen: "mail-code" } },
     { title: "Referencia: correo a una cuenta que ya existe", caption: "Lo que recibe un correo con cuenta. En pantalla se ve lo mismo que en 6.", config: { screen: "mail-exists" } },
-    { notApplicable: true, title: "Vacío, 403, 402, roles y el killswitch", body: "<strong>Vacío no aplica:</strong> no hay listas.<br><br><strong>403 no aplica:</strong> las tres pantallas son públicas y no hay membership. El 403 del gateway (la clave no sirve) se ve como el fallo de cada paso (5, 11 y 20).<br><br><strong>402 no aplica:</strong> registrarse es igual en todos los planes, y la cuenta todavía no tiene plan.<br><br><strong>Roles:</strong> ADMIN, DOCTOR y USER todavía no existen para quien se registra. El invitado crea su contraseña en <code>/invite/accept</code>.<br><br><strong>Con <code>AUTH_BACKEND=better-auth</code>:</strong> estas pantallas responden 404 y <code>/register</code> muestra el formulario de hoy, sin cambios." },
+    { notApplicable: true, title: "Vacío, 403, 402, roles y el killswitch", body: "<strong>Vacío no aplica:</strong> no hay listas.<br><br><strong>403 no aplica:</strong> los tres pasos son públicos y no hay membership. El 403 del gateway (la clave no sirve) se ve como el fallo de cada paso (5, 11 y 20).<br><br><strong>402 no aplica:</strong> registrarse es igual en todos los planes, y la cuenta todavía no tiene plan.<br><br><strong>Roles:</strong> ADMIN, DOCTOR y USER todavía no existen para quien se registra. El invitado crea su contraseña en <code>/invite/accept</code>.<br><br><strong>Con <code>AUTH_BACKEND=better-auth</code>:</strong> <code>/register</code> muestra el formulario de hoy, sin cambios, aunque haya una cookie <code>sign_up_progress</code>. Con <code>serverless</code>, <code>/confirm-email</code> lleva a <code>/register</code>." },
     { wide: true, title: "25. Escritorio: el correo", caption: "La misma tarjeta, centrada, con el relleno de 32 px de AuthCard.", config: { screen: "email" } },
     { wide: true, title: "26. Escritorio: el código", caption: "Igual que en el celular.", config: { screen: "code", secondsLeft: 37 } },
     { wide: true, title: "27. Escritorio: la contraseña", caption: "Igual que en el celular.", config: { screen: "password" } },
@@ -855,6 +875,7 @@
   const liveFrame = document.getElementById("live-frame");
   const liveDevice = document.getElementById("live-device");
   const liveCaption = document.getElementById("live-caption");
+  const liveUrl = document.getElementById("live-url");
 
   function viewLabel() {
     return controls.view === "mobile" ? "Celular 375 px" : "Escritorio 1024 px";
@@ -865,7 +886,7 @@
   }
 
   function renderLive() {
-    frames.set("live", { frame: liveFrame, config: Object.assign({ live: true, autoHeight: false }, LIVE_SCREENS[controls.screen].config), loaded: false });
+    frames.set("live", { frame: liveFrame, urlBar: liveUrl, config: Object.assign({ live: true, autoHeight: false }, LIVE_SCREENS[controls.screen].config), loaded: false });
     loadFrame("live");
     updateCaption();
   }
@@ -941,18 +962,22 @@
     scroller.className = "scroll";
     const device = document.createElement("div");
     device.className = shot.wide ? "device desktop" : "device mobile";
+    const urlBar = document.createElement("div");
+    urlBar.className = "urlbar";
+    urlBar.setAttribute("aria-label", "Dirección de la página");
     const frame = document.createElement("iframe");
     const frameId = `shot-${index}`;
     const startHeight = shot.wide ? DESKTOP_FRAME_START_HEIGHT : GALLERY_FRAME_START_HEIGHT;
     frame.title = shot.title;
     frame.style.height = `${startHeight}px`;
+    device.appendChild(urlBar);
     device.appendChild(frame);
     scroller.appendChild(device);
     figure.appendChild(scroller);
     gallery.appendChild(figure);
 
     // La galería no lleva el correo largo del panel: cada estado fija el suyo.
-    frames.set(frameId, { frame, startHeight, config: Object.assign({ autoHeight: true, longEmail: false }, shot.config), loaded: false });
+    frames.set(frameId, { frame, urlBar, startHeight, config: Object.assign({ autoHeight: true, longEmail: false }, shot.config), loaded: false });
     frameIdByElement.set(frame, frameId);
     lazyLoader.observe(frame);
   });
@@ -960,9 +985,14 @@
   // Lavish aísla el prototipo en un sandbox sin origen: la página y cada vista sólo se hablan por mensajes.
   window.addEventListener("message", (event) => {
     const message = event.data;
-    if (!message || message.type !== "mock-height") return;
+    if (!message) return;
     const entry = frames.get(message.frameId);
-    if (entry && entry.config.autoHeight) {
+    if (!entry) return;
+    if (message.type === "mock-url") {
+      entry.urlBar.textContent = message.url;
+      return;
+    }
+    if (message.type === "mock-height" && entry.config.autoHeight) {
       entry.frame.style.height = `${Math.max(message.height, entry.startHeight)}px`;
     }
   });
