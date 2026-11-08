@@ -5,9 +5,9 @@ import type { TreatmentVO } from "./value-objects/treatment.vo";
 export interface User {
   id: ULID;
   email: EmailVO;
-  name: string;
-  lastName: string;
-  phone: string;
+  name?: string;
+  lastName?: string;
+  phone?: string;
   confirmed: boolean;
   treatment?: TreatmentVO;
   accountId?: ULID;
@@ -17,9 +17,9 @@ export interface User {
 
 export interface CreateUserInput {
   email: EmailVO;
-  name: string;
-  lastName: string;
-  phone: string;
+  name?: string;
+  lastName?: string;
+  phone?: string;
   cognitoSub: string;
   confirmed: boolean;
   onboardingCompleted: boolean;

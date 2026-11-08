@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { App, Stack } from "aws-cdk-lib";
 import { Template } from "aws-cdk-lib/assertions";
-import { Authentication } from "../lib/authentication";
+import { Authentication, PLATFORM_CLIENT_NAME } from "../lib/authentication";
 
 function synthesizeAuthentication() {
   const stack = new Stack(new App(), "AuthenticationTest", {
@@ -14,21 +14,85 @@ function synthesizeAuthentication() {
   return Template.fromStack(stack);
 }
 
-test("sólo el api puede usar el cliente y no hay flujos OAuth", () => {
-  const template = synthesizeAuthentication();
-
-  const [client] = Object.values(
-    template.findResources("AWS::Cognito::UserPoolClient"),
+const clientProperties = (template: Template) =>
+  Object.values(template.findResources("AWS::Cognito::UserPoolClient")).map(
+    ({ Properties }) => Properties,
   );
 
-  assert.equal(client.Properties.GenerateSecret, true);
-  assert.equal(client.Properties.PreventUserExistenceErrors, "ENABLED");
-  assert.equal(client.Properties.AllowedOAuthFlows, undefined);
-  assert.equal(client.Properties.CallbackURLs, undefined);
-  assert.deepEqual(client.Properties.ExplicitAuthFlows, [
+test("hay un cliente para el api y otro para la sesión, ambos con secreto, sin OAuth y sin revelar si el usuario existe", () => {
+  const clients = clientProperties(synthesizeAuthentication());
+
+  assert.equal(clients.length, 2);
+  for (const client of clients) {
+    assert.equal(client.GenerateSecret, true);
+    assert.equal(client.PreventUserExistenceErrors, "ENABLED");
+    assert.equal(client.AllowedOAuthFlows, undefined);
+    assert.equal(client.CallbackURLs, undefined);
+  }
+});
+
+test("el cliente de platform sólo admite ADMIN_USER_PASSWORD_AUTH y el refresco, y su refresh token dura 30 días", () => {
+  const [session] = clientProperties(synthesizeAuthentication()).filter(
+    ({ ClientName }) => ClientName === PLATFORM_CLIENT_NAME,
+  );
+
+  assert.deepEqual(session.ExplicitAuthFlows, [
+    "ALLOW_ADMIN_USER_PASSWORD_AUTH",
+    "ALLOW_REFRESH_TOKEN_AUTH",
+  ]);
+  assert.equal(session.RefreshTokenValidity, 30 * 24 * 60);
+  assert.equal(session.TokenValidityUnits.RefreshToken, "minutes");
+});
+
+test("el cliente del api conserva USER_PASSWORD_AUTH", () => {
+  const [api] = clientProperties(synthesizeAuthentication()).filter(
+    ({ ClientName }) => ClientName !== PLATFORM_CLIENT_NAME,
+  );
+
+  assert.deepEqual(api.ExplicitAuthFlows, [
     "ALLOW_USER_PASSWORD_AUTH",
     "ALLOW_REFRESH_TOKEN_AUTH",
   ]);
+});
+
+test("cada cliente escribe sólo email, given_name y family_name, y revoca tokens", () => {
+  for (const client of clientProperties(synthesizeAuthentication())) {
+    assert.deepEqual([...client.WriteAttributes].sort(), [
+      "email",
+      "family_name",
+      "given_name",
+    ]);
+    assert.equal(client.EnableTokenRevocation, true);
+  }
+});
+
+test("el correo es obligatorio e inmutable, así nadie lo cambia con su access token", () => {
+  const template = synthesizeAuthentication();
+  const [userPool] = Object.values(
+    template.findResources("AWS::Cognito::UserPool"),
+  );
+
+  assert.deepEqual(
+    userPool.Properties.Schema.filter(
+      ({ Name }: { Name: string }) => Name === "email",
+    ),
+    [{ Name: "email", Required: true, Mutable: false }],
+  );
+});
+
+test("hay un solo user pool y sus dos clientes apuntan a él", () => {
+  const template = synthesizeAuthentication();
+  const [poolId] = Object.keys(
+    template.findResources("AWS::Cognito::UserPool"),
+  );
+
+  assert.equal(
+    Object.keys(template.findResources("AWS::Cognito::UserPool")).length,
+    1,
+  );
+  for (const client of clientProperties(template)) {
+    assert.deepEqual(client.UserPoolId, { Ref: poolId });
+  }
 });
 
 test("se inicia sesión con el correo, sin distinguir mayúsculas", () => {

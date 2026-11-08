@@ -357,3 +357,27 @@ test("la tabla borra con TTL los ítems con DeleteAfter", () => {
     ]),
   });
 });
+
+test("el stack tiene un solo user pool, con sus dos clientes, y el registro recibe su id", () => {
+  const template = synthesizeBackend();
+  const [poolLogicalId] = Object.keys(
+    template.findResources("AWS::Cognito::UserPool"),
+  );
+
+  assert.equal(
+    Object.keys(template.findResources("AWS::Cognito::UserPool")).length,
+    1,
+  );
+  const clients = Object.values(
+    template.findResources("AWS::Cognito::UserPoolClient"),
+  );
+  assert.equal(clients.length, 2);
+  for (const client of clients) {
+    assert.deepEqual(client.Properties.UserPoolId, { Ref: poolLogicalId });
+  }
+  assert.deepEqual(
+    functionProperties(template, "SignUpFunction").Environment.Variables
+      .USER_POOL_ID,
+    { Ref: poolLogicalId },
+  );
+});

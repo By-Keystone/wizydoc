@@ -1,38 +1,15 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
-  type CognitoIdentityProviderClient,
   InvalidPasswordException,
   UsernameExistsException,
 } from "@aws-sdk/client-cognito-identity-provider";
 import { emailSchema } from "../../lib/src/users/domain/value-objects/email.vo";
 import { CognitoIdentityProvider } from "../../lib/src/users/infrastructure/identity-provider/cognito/cognito";
-import { COGNITO_SUB } from "./fakes";
+import { COGNITO_SUB, cognitoClient } from "./fakes";
 
 const USER_POOL_ID = "us-east-2_ejemplo";
 const email = emailSchema.parse("ana@clinica.pe");
-
-interface SentCommand {
-  name: string;
-  input: Record<string, unknown>;
-}
-
-const cognitoClient = (responses: Record<string, unknown>) => {
-  const sent: SentCommand[] = [];
-  const client = {
-    send: async (command: {
-      constructor: { name: string };
-      input: Record<string, unknown>;
-    }) => {
-      const name = command.constructor.name;
-      sent.push({ name, input: command.input });
-      const response = responses[name];
-      if (response instanceof Error) throw response;
-      return response ?? {};
-    },
-  } as unknown as CognitoIdentityProviderClient;
-  return { client, sent };
-};
 
 const createdUserResponse = {
   User: { Attributes: [{ Name: "sub", Value: COGNITO_SUB }] },

@@ -102,3 +102,16 @@ test("las confirmaciones mandan el nombre escapado para el HTML, porque SES no e
     "&lt;img src=x onerror=&quot;alert(1)&quot;&gt;",
   );
 });
+
+test("la confirmación de un usuario sin nombre no falla: manda el nombre vacío", async () => {
+  const { sesClient, inputs } = capturingSes();
+
+  await emailsFor(sesClient).sendConfirmation(
+    buildUser({ name: undefined, confirmed: false }),
+    createConfirmationToken(buildUser().id),
+  );
+
+  const templateData = templateDataOf(inputs[0]);
+  assert.equal(templateData.name, "");
+  assert.equal(templateData.escapedName, "");
+});
