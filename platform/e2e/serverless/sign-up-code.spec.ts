@@ -1,4 +1,5 @@
 import type { APIRequestContext, BrowserContext, Page } from "@playwright/test";
+import { withoutDevCookieEcho } from "../support/dev-cookie-echo";
 import { FAKE_BACKEND_API_KEY, FAKE_BACKEND_URL } from "../support/env";
 import { expect, test } from "../support/test";
 import { uniqueEmail } from "../support/users";
@@ -277,7 +278,11 @@ test("el token de verificación y la clave no llegan al navegador ni a ninguna U
         receivedByBrowser.push(
           JSON.stringify({ ...visibleHeaders, "set-cookie": otherCookies }),
         );
-        receivedByBrowser.push(await response.text().catch(() => ""));
+        receivedByBrowser.push(
+          withoutDevCookieEcho(await response.text().catch(() => ""), [
+            SIGN_UP_PROGRESS_COOKIE,
+          ]),
+        );
       })(),
     );
   });
