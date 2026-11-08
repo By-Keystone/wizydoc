@@ -87,8 +87,9 @@ export class BackendStack extends Stack {
       PENDING_CONFIRMATION_TEMPLATE: emailTemplates.pendingConfirmation.name,
       ACCOUNT_EXISTS_TEMPLATE: emailTemplates.accountExists.name,
     };
-    // En el sandbox, SES también revisa el permiso sobre la identidad del
-    // destinatario: por eso `identity/*`, y la condición acota el remitente.
+    // SES autoriza el envío con plantilla como `ses:SendTemplatedEmail`, y en el
+    // sandbox también sobre la identidad del destinatario: por eso
+    // `identity/*`, y la condición acota el remitente.
     const anyIdentity = this.formatArn({
       service: "ses",
       resource: "identity",
@@ -96,7 +97,7 @@ export class BackendStack extends Stack {
     });
     const sendEmailWithTemplates = (templates: SignUpEmailTemplate[]) =>
       new iam.PolicyStatement({
-        actions: ["ses:SendEmail"],
+        actions: ["ses:SendTemplatedEmail"],
         resources: [anyIdentity, ...templates.map(({ arn }) => arn)],
         conditions: {
           StringEquals: { "ses:FromAddress": senderAddressOf(props.emailFrom) },

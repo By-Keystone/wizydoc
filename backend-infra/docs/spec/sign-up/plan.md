@@ -153,15 +153,15 @@ si no, no hace nada. Siempre responde 202.
       `AdminDeleteUser` sobre el user pool. Cognito no permite acotarlos a un
       usuario, así que la Lambda del registro puede cambiar la contraseña de
       cualquiera;
-    - `ses:SendEmail` sobre cualquier identidad de la cuenta (`identity/*`) y
-      sobre sus tres plantillas, y el reenvío sólo sobre la de confirmación,
-      con la condición `ses:FromAddress` igual a la dirección de `EMAIL_FROM`
-      (`lib/sender-address.ts`). Es `identity/*` porque, con la cuenta en el
-      sandbox, SES también revisa el permiso sobre la identidad del
-      destinatario: con sólo la del remitente, el envío fallaba con
-      `AccessDeniedException`. La condición sigue acotando el remitente. Eso
-      acota las plantillas guardadas, pero el permiso igual permite enviar un
-      correo armado en la llamada, desde esa misma dirección;
+    - `ses:SendTemplatedEmail` sobre cualquier identidad de la cuenta
+      (`identity/*`) y sobre sus tres plantillas, y el reenvío sólo sobre la de
+      confirmación, con la condición `ses:FromAddress` igual a la dirección de
+      `EMAIL_FROM` (`lib/sender-address.ts`). SES v2 autoriza el `SendEmail`
+      con plantilla como `ses:SendTemplatedEmail`, y con la cuenta en el
+      sandbox también lo revisa sobre la identidad del destinatario: con
+      `ses:SendEmail`, o con sólo la identidad del remitente, el envío falla
+      con `AccessDeniedException`. La condición sigue acotando el remitente.
+      El permiso no deja enviar sin plantilla;
   - **permisos del reenvío:** los mismos de DynamoDB, sin `USER#`, y los de SES,
     sin Cognito;
   - registra `POST /api/auth/sign-up/email` y
@@ -175,16 +175,15 @@ si no, no hace nada. Siempre responde 202.
   adaptador arma los enlaces con él y SES no los escapa: `URL` acepta comillas
   en el host, y unas comillas cerrarían el `href` de los botones.
 
+**Verificado contra AWS** el 7 de noviembre de 2026, con un rol que tenía la
+misma política: la plantilla que crea `AWS::SES::Template` sirve para el
+`SendEmail` de SES v2, el envío pasa en el sandbox con `ses:SendTemplatedEmail`
+sobre `identity/*` y la plantilla, y `ses:FromAddress` es la dirección sola,
+aunque `EMAIL_FROM` lleve el nombre visible.
+
 **Sin verificar contra AWS:** que `dynamodb:LeadingKeys` se aplique a cada
 `Put` de la transacción, y los tiempos reales de cada camino. De las
 plantillas (WIZ-73):
-- que `AWS::SES::Template` sirva para el `SendEmail` de SES v2, porque
-  CloudFormation lo documenta para el envío con la API v1;
-- que `ses:SendEmail` sobre `template/<nombre>` sea el permiso que pide SES v2
-  al enviar con una plantilla;
-- que con `identity/*` y la condición el envío pase en el sandbox, y que
-  `ses:FromAddress` sea sólo la dirección, sin el nombre visible (SES tiene
-  otra clave para el nombre, `ses:FromDisplayName`);
 - que SES no escape lo que va entre `{{ }}`, como dice su documentación, y
   que respete las tildes y la ñ.
 
