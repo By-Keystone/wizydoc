@@ -4,10 +4,6 @@ import {
   type ConfirmationToken,
   createConfirmationToken,
 } from "../domain/confirmation-token.entity";
-import {
-  CURRENT_PRIVACY_POLICY_VERSION,
-  CURRENT_TERMS_VERSION,
-} from "../domain/legal-documents";
 import type { IUserRepository } from "../domain/repository/user.repository";
 import {
   createTermsAcceptance,
@@ -15,23 +11,13 @@ import {
 } from "../domain/terms-acceptance.entity";
 import { createUser, type User } from "../domain/user.entity";
 import { emailSchema } from "../domain/value-objects/email.vo";
+import { passwordSchema } from "../domain/value-objects/password.vo";
 import { phoneSchema } from "../domain/value-objects/phone.vo";
+import { termsAcceptanceInputShape } from "./terms-acceptance-input";
 import type { IIdentityProvider } from "./ports/identity-provider.port";
 import type { ISignUpEmails } from "./ports/sign-up-emails.port";
 
-const MINIMUM_PASSWORD_LENGTH = 8;
-const MAXIMUM_PASSWORD_LENGTH = 256;
 const MAXIMUM_NAME_LENGTH = 100;
-const PASSWORD_ACCEPTED_BY_COGNITO = /^\S(?:.*\S)?$/;
-const PASSWORD_TOO_SHORT = `La contraseña debe tener al menos ${MINIMUM_PASSWORD_LENGTH} caracteres`;
-const PASSWORD_WITH_SPACES_AT_THE_EDGES =
-  "La contraseña no puede empezar ni terminar con un espacio, ni tener saltos de línea";
-const TERMS_NOT_ACCEPTED =
-  "Para crear tu cuenta, acepta los Términos y condiciones.";
-const OUTDATED_TERMS =
-  "Actualizamos los términos. Recarga la página para verlos.";
-
-const countCharacters = (text: string): number => [...text].length;
 
 const nameField = (missingMessage: string, tooLongMessage: string) =>
   z
@@ -52,29 +38,14 @@ export const signUpInputSchema = z.object(
       `Escribe tu apellido en ${MAXIMUM_NAME_LENGTH} caracteres o menos`,
     ),
     phone: phoneSchema,
-    password: z
-      .string({ error: PASSWORD_TOO_SHORT })
-      .refine(
-        (password) => countCharacters(password) >= MINIMUM_PASSWORD_LENGTH,
-        { error: PASSWORD_TOO_SHORT },
-      )
-      .max(MAXIMUM_PASSWORD_LENGTH, {
-        error: `La contraseña puede tener hasta ${MAXIMUM_PASSWORD_LENGTH} caracteres`,
-      })
-      .regex(PASSWORD_ACCEPTED_BY_COGNITO, {
-        error: PASSWORD_WITH_SPACES_AT_THE_EDGES,
-      }),
+    password: passwordSchema,
   },
   { error: INVALID_REQUEST },
 );
 
-const signUpWithTermsInputSchema = signUpInputSchema.extend({
-  acceptedTerms: z.literal(true, { error: TERMS_NOT_ACCEPTED }),
-  termsVersion: z.literal(CURRENT_TERMS_VERSION, { error: OUTDATED_TERMS }),
-  privacyPolicyVersion: z.literal(CURRENT_PRIVACY_POLICY_VERSION, {
-    error: OUTDATED_TERMS,
-  }),
-});
+const signUpWithTermsInputSchema = signUpInputSchema.extend(
+  termsAcceptanceInputShape,
+);
 
 export type SignUpInput = z.output<typeof signUpInputSchema>;
 

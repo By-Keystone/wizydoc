@@ -14,7 +14,7 @@ pruebas ni docs).
 | 1 | `POST /api/auth/sign-up/code`: dominio e ítem del código (con el enfriamiento de un minuto por correo), caso de uso, handler, plantilla de SES, Lambda y permisos. «Intentaron crear una cuenta con tu correo» pasa a «Hola,» y tiene el mismo minuto de espera. | ~385 líneas |
 | 2 | `POST /api/auth/sign-up/code/verify`: límite por IP, intentos, gasto del código y token de verificación. | ~380 líneas netas (unas 435 brutas, con el renombre del límite por IP y los permisos por acción) |
 | 3a | Los cimientos de la sesión, sin ruta nueva: el app client `session` (`adminUserPassword`, con secreto, `preventUserExistenceErrors`, `writeAttributes` `email`, `given_name` y `family_name`, el pool recreado con `email` inmutable, `enableTokenRevocation`, refresh token de 30 días), lo mismo en el `ApiClient`, `name`, `lastName` y `phone` opcionales, y el adaptador que inicia la sesión con `AdminInitiateAuth`. | ~110 líneas |
-| 3b | `POST /api/auth/sign-up/confirm`: lee y gasta el token de verificación, crea la cuenta sin nombre, apellido ni teléfono e inicia la sesión con el adaptador de 3a. | ~300 líneas |
+| 3b | `POST /api/auth/sign-up/confirm`: lee y gasta el token de verificación, crea la cuenta sin nombre, apellido ni teléfono e inicia la sesión con el adaptador de 3a. Mueve la contraseña, la constancia de términos y la detección de carreras perdidas a módulos compartidos. | ~415 líneas netas (unas 480 brutas; unas 65 son código movido) |
 | 4 | Quita `POST /api/auth/sign-up/email`, `POST /api/auth/sign-up/resend-confirmation`, los correos «Confirma tu correo» y «Confirma tu cuenta» y lo que sólo usaban ellos. | Sólo borra (neto negativo) |
 
 - La parte 3 se dividió en 3a y 3b porque, con las decisiones de más abajo, no
@@ -367,13 +367,13 @@ Prueba en `test/`. Entre paréntesis, la parte que cubre cada criterio.
 | N verificaciones incorrectas en paralelo evalúan 5 como mucho | 2 | `users/verify-sign-up-code.test.ts` y `users/dynamodb.test.ts` |
 | De dos verificaciones a la vez, sólo una recibe el token | 2 | `users/verify-sign-up-code.test.ts` y `users/dynamodb.test.ts` (la condición de la transacción y la carrera perdida) |
 | Crear la cuenta con un token vigente crea el usuario, lo confirma, gasta el token y responde 200 con los tokens | 3a (el adaptador y el cliente) y 3b | `users/confirm-sign-up.test.ts`, `users/cognito-session.test.ts` y `authentication.test.ts` |
-| Crear la cuenta sin token, vencido, usado o de otro correo responde 400 y no crea nada | 3 | `users/confirm-sign-up.test.ts` |
-| Con el flag encendido, la constancia va en la misma transacción; sin aceptar, 400 | 3 | `users/confirm-sign-up.test.ts` y `users/dynamodb.test.ts` |
-| De dos pedidos con el mismo token, sólo uno crea la cuenta | 3 | `users/dynamodb.test.ts` |
-| Si falla DynamoDB, el usuario se borra de Cognito y responde 500 | 3 | `users/confirm-sign-up.test.ts` |
+| Crear la cuenta sin token, vencido, usado o de otro correo responde 400 y no crea nada | 3b | `users/confirm-sign-up.test.ts` y `users/dynamodb.test.ts` (la lectura consistente y las condiciones del token) |
+| Con el flag encendido, la constancia va en la misma transacción; sin aceptar, 400 | 3b | `users/confirm-sign-up.test.ts` y `users/dynamodb.test.ts` |
+| De dos pedidos con el mismo token, sólo uno crea la cuenta | 3b | `users/confirm-sign-up.test.ts` y `users/dynamodb.test.ts` (la condición y la carrera perdida) |
+| Si falla DynamoDB, el usuario se borra de Cognito y responde 500 | 3b | `users/confirm-sign-up.test.ts` |
 | Si Cognito no entrega los tokens, la cuenta queda y responde 204 | 3a (el adaptador falla sin filtrar valores) y 3b (el 204) | `users/cognito-session.test.ts` y `users/confirm-sign-up.test.ts` |
-| Ni el código, ni el token, ni sus hashes, ni la contraseña, ni los tokens aparecen en los logs | 1 (código y hash), 2 (también el token de verificación y su hash) y 3 (el resto) | `users/request-sign-up-code.test.ts`, `users/verify-sign-up-code.test.ts` y sus equivalentes |
-| Las tres rutas exigen la clave de platform y cada Lambda sólo tiene los permisos que usa | 1 (la ruta y la Lambda del código), 2 (la verificación, y el mapa exacto de permisos de las cuatro Lambdas) y 3 | `backend-stack.test.ts` |
+| Ni el código, ni el token, ni sus hashes, ni la contraseña, ni los tokens aparecen en los logs | 1 (código y hash), 2 (también el token de verificación y su hash) y 3b (el resto) | `users/request-sign-up-code.test.ts`, `users/verify-sign-up-code.test.ts` y sus equivalentes |
+| Las tres rutas exigen la clave de platform y cada Lambda sólo tiene los permisos que usa | 1 (la ruta y la Lambda del código), 2 (la verificación, y el mapa exacto de permisos de las cuatro Lambdas) y 3b (la confirmación, y el mapa de las cinco) | `backend-stack.test.ts` |
 
 ## Verificado contra AWS
 
@@ -396,6 +396,12 @@ configurado como el de la parte 3a y borrado después:
   unauthorized attribute»).
 
 ## Sin verificar contra AWS
+
+- **Parte 3b:** que `dynamodb:LeadingKeys` con `SIGN_UP_VERIFICATION#*` permita
+  el `GetItem` y el `DeleteItem` reales (en la transacción) y `USER#*` el
+  `PutItem`, que la lectura consistente del token vea el ítem recién escrito
+  por la verificación, y la sesión completa contra el pool real
+  (`AdminCreateUser`, `AdminSetUserPassword`, `AdminInitiateAuth`).
 
 - Que `dynamodb:LeadingKeys` con `SIGN_UP_CODE#*`, `SIGN_UP_NOTICE#*` y
   `EMAIL_SEND_ATTEMPTS#*` permita el `PutItem` y el `UpdateItem` reales.

@@ -1,8 +1,4 @@
-import {
-  ConditionalCheckFailedException,
-  TransactionCanceledException,
-  TransactionConflictException,
-} from "@aws-sdk/client-dynamodb";
+import { ConditionalCheckFailedException } from "@aws-sdk/client-dynamodb";
 import {
   type DynamoDBDocumentClient,
   PutCommand,
@@ -18,28 +14,13 @@ import {
 import type { SignUpVerificationToken } from "../../../domain/sign-up-verification-token.entity";
 import type { EmailVO } from "../../../domain/value-objects/email.vo";
 import { toEpochSeconds } from "./epoch-seconds";
+import { isLostRace } from "./lost-race";
 import { fromSignUpCodeToDynamo } from "./sign-up-code.mappers";
 import { signUpCodePk, signUpCodeSk } from "./sign-up-code.schema";
 import { fromSignUpVerificationTokenToDynamo } from "./sign-up-verification-token.mappers";
 
 const ONLY_IF_NOT_REQUESTED_RECENTLY =
   "attribute_not_exists(PK) OR DeleteAfter <= :latestReplaceableExpiry";
-
-const LOST_RACE_REASONS = [
-  "ConditionalCheckFailed",
-  "TransactionConflict",
-  "None",
-];
-
-const isOnlyLostRaceReasons = (reasons: { Code?: string }[]): boolean =>
-  reasons.length > 0 &&
-  reasons.every(({ Code }) => LOST_RACE_REASONS.includes(Code ?? "None"));
-
-const isLostRace = (error: unknown): boolean =>
-  error instanceof ConditionalCheckFailedException ||
-  error instanceof TransactionConflictException ||
-  (error instanceof TransactionCanceledException &&
-    isOnlyLostRaceReasons(error.CancellationReasons ?? []));
 
 export class SignUpCodeRepository implements ISignUpCodeRepository {
   constructor(

@@ -7,6 +7,7 @@ import {
 } from "@aws-sdk/client-dynamodb";
 import type {
   DynamoDBDocumentClient,
+  GetCommandInput,
   PutCommandInput,
   TransactWriteCommandInput,
   UpdateCommandInput,
@@ -26,6 +27,7 @@ import {
   EMAIL_SEND_RATE_LIMIT,
   SIGN_UP_VERIFY_RATE_LIMIT,
 } from "../../lib/src/users/infrastructure/persistence/dynamodb/ip-rate-limit";
+import { SignUpVerificationTokenRepository } from "../../lib/src/users/infrastructure/persistence/dynamodb/sign-up-verification-token.repository";
 import { SignUpCodeRepository } from "../../lib/src/users/infrastructure/persistence/dynamodb/sign-up-code.repository";
 import {
   fromDomainToDynamo,
@@ -556,4 +558,104 @@ test("un usuario sin nombre, apellido ni teléfono se guarda y se lee sin esos d
   assert.equal(restored.lastName, undefined);
   assert.equal(restored.phone, undefined);
   assert.equal(restored.email, user.email);
+});
+
+test("crear la cuenta confirmada guarda el usuario y su constancia y gasta el token en una transacción, con el token sólo si es del correo y no venció", async () => {
+  const { client, inputs } = capturingClient();
+  const user = buildUser({ confirmed: true, onboardingCompleted: false });
+  const termsAcceptance = createTermsAcceptance({
+    userId: user.id,
+    email: user.email,
+  });
+
+  const wasCreated = await new UserRepository(
+    client,
+    TABLE_NAME,
+  ).createConfirmed(
+    user,
+    { email: user.email, tokenHash: "hash-del-token" },
+    termsAcceptance,
+  );
+
+  const [transaction] = inputs as TransactWriteCommandInput[];
+  const [userPut, termsPut, tokenDelete] = transaction.TransactItems ?? [];
+  assert.equal(wasCreated, true);
+  assert.equal(transaction.TransactItems?.length, 3);
+  assert.equal(userPut.Put?.Item?.PK, `USER#${user.id}`);
+  assert.equal(userPut.Put?.Item?.Confirmed, true);
+  assert.equal(userPut.Put?.ConditionExpression, "attribute_not_exists(PK)");
+  assert.equal(termsPut.Put?.Item?.ItemType, "TERMS_ACCEPTANCE");
+  assert.deepEqual(tokenDelete.Delete?.Key, {
+    PK: "SIGN_UP_VERIFICATION#hash-del-token",
+    SK: "!",
+  });
+  assert.equal(
+    tokenDelete.Delete?.ConditionExpression,
+    "attribute_exists(PK) AND Email = :email AND DeleteAfter > :now",
+  );
+  assert.equal(
+    tokenDelete.Delete?.ExpressionAttributeValues?.[":email"],
+    user.email,
+  );
+});
+
+test("si otra confirmación gastó el token antes, la transacción cancelada informa que no se creó, y cualquier otro error sube", async () => {
+  const user = buildUser();
+  const createWith = (failure: Error) =>
+    new UserRepository(
+      capturingClient({ failure }).client,
+      TABLE_NAME,
+    ).createConfirmed(user, { email: user.email, tokenHash: "hash" });
+
+  assert.equal(
+    await createWith(
+      new TransactionCanceledException({
+        message: "cancelada",
+        $metadata: {},
+        CancellationReasons: [
+          { Code: "None" },
+          { Code: "ConditionalCheckFailed" },
+        ],
+      }),
+    ),
+    false,
+  );
+  await assert.rejects(createWith(new Error("DynamoDB no disponible")), {
+    message: "DynamoDB no disponible",
+  });
+});
+
+test("el token de verificación se lee con lectura consistente y sólo vale si es del correo, del tipo esperado y no venció", async () => {
+  const email = emailSchema.parse("ana@clinica.pe");
+  const validRecord = {
+    ItemType: "SIGN_UP_VERIFICATION",
+    Email: "ana@clinica.pe",
+    DeleteAfter: TEN_PAST_NOON / 1000 + 1,
+  };
+  const isValidWith = async (record: Record<string, unknown> | undefined) => {
+    const { client, inputs } = capturingClient({ response: { Item: record } });
+    const isValid = await new SignUpVerificationTokenRepository(
+      client,
+      TABLE_NAME,
+      () => TEN_PAST_NOON,
+    ).isValidFor(email, "hash-del-token");
+    return { isValid, input: inputs[0] as GetCommandInput };
+  };
+
+  const valid = await isValidWith(validRecord);
+
+  assert.equal(valid.isValid, true);
+  assert.equal(valid.input.ConsistentRead, true);
+  assert.deepEqual(valid.input.Key, {
+    PK: "SIGN_UP_VERIFICATION#hash-del-token",
+    SK: "!",
+  });
+  for (const record of [
+    undefined,
+    { ...validRecord, Email: "beto@clinica.pe" },
+    { ...validRecord, ItemType: "SIGN_UP_CODE" },
+    { ...validRecord, DeleteAfter: TEN_PAST_NOON / 1000 },
+  ]) {
+    assert.equal((await isValidWith(record)).isValid, false);
+  }
 });
