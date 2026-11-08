@@ -49,7 +49,7 @@ const policyFor = (template: Template, functionName: string) => {
   return JSON.stringify(policy.Properties.PolicyDocument);
 };
 
-test("las cuatro rutas son POST y exigen la clave de platform", () => {
+test("las cinco rutas son POST y exigen la clave de platform", () => {
   const template = synthesizeBackend();
 
   const postMethods = Object.values(
@@ -58,7 +58,7 @@ test("las cuatro rutas son POST y exigen la clave de platform", () => {
     }),
   );
 
-  assert.equal(postMethods.length, 4);
+  assert.equal(postMethods.length, 5);
   for (const method of postMethods) {
     assert.equal(method.Properties.ApiKeyRequired, true);
   }
@@ -74,9 +74,12 @@ test("las cuatro rutas son POST y exigen la clave de platform", () => {
   template.hasResourceProperties("AWS::ApiGateway::Resource", {
     PathPart: "verify",
   });
+  template.hasResourceProperties("AWS::ApiGateway::Resource", {
+    PathPart: "confirm",
+  });
 });
 
-const writesByAction = (template: Template, functionName: string) => {
+const accessByAction = (template: Template, functionName: string) => {
   const statements: {
     Action: string | string[];
     Condition?: Record<string, Record<string, string[]>>;
@@ -91,26 +94,91 @@ const writesByAction = (template: Template, functionName: string) => {
   );
 };
 
-test("cada Lambda escribe en DynamoDB sólo las acciones y los prefijos que usa", () => {
+test("cada Lambda usa en DynamoDB sólo las acciones y los prefijos que usa", () => {
   const template = synthesizeBackend();
 
-  assert.deepEqual(writesByAction(template, "SignUpFunction"), {
+  assert.deepEqual(accessByAction(template, "SignUpFunction"), {
     "dynamodb:PutItem": ["USER#*", "EMAIL_CONFIRMATION#*"],
     "dynamodb:UpdateItem": ["EMAIL_SEND_ATTEMPTS#*"],
   });
-  assert.deepEqual(writesByAction(template, "ResendConfirmationFunction"), {
+  assert.deepEqual(accessByAction(template, "ResendConfirmationFunction"), {
     "dynamodb:PutItem": ["EMAIL_CONFIRMATION#*"],
     "dynamodb:UpdateItem": ["EMAIL_SEND_ATTEMPTS#*"],
   });
-  assert.deepEqual(writesByAction(template, "RequestSignUpCodeFunction"), {
+  assert.deepEqual(accessByAction(template, "RequestSignUpCodeFunction"), {
     "dynamodb:PutItem": ["SIGN_UP_CODE#*", "SIGN_UP_NOTICE#*"],
     "dynamodb:UpdateItem": ["EMAIL_SEND_ATTEMPTS#*"],
   });
-  assert.deepEqual(writesByAction(template, "VerifySignUpCodeFunction"), {
+  assert.deepEqual(accessByAction(template, "ConfirmSignUpFunction"), {
+    "dynamodb:GetItem": ["SIGN_UP_VERIFICATION#*"],
+    "dynamodb:PutItem": ["USER#*"],
+    "dynamodb:DeleteItem": ["SIGN_UP_VERIFICATION#*"],
+  });
+  assert.deepEqual(accessByAction(template, "VerifySignUpCodeFunction"), {
     "dynamodb:PutItem": ["SIGN_UP_VERIFICATION#*"],
     "dynamodb:UpdateItem": ["SIGN_UP_CODE#*", "SIGN_UP_VERIFY_ATTEMPTS#*"],
     "dynamodb:DeleteItem": ["SIGN_UP_CODE#*"],
   });
+});
+
+test("la confirmación crea y borra usuarios en Cognito, inicia la sesión, consulta sólo el índice por correo y no envía correos", () => {
+  const template = synthesizeBackend();
+  const policy = policyFor(template, "ConfirmSignUpFunction");
+
+  const cognitoActions = JSON.parse(policy)
+    .Statement.flatMap(({ Action }: { Action: string | string[] }) => Action)
+    .filter((action: string) => action.startsWith("cognito-idp:"))
+    .sort();
+  assert.deepEqual(cognitoActions, [
+    "cognito-idp:AdminCreateUser",
+    "cognito-idp:AdminDeleteUser",
+    "cognito-idp:AdminInitiateAuth",
+    "cognito-idp:AdminSetUserPassword",
+    "cognito-idp:DescribeUserPoolClient",
+  ]);
+  for (const expected of ["dynamodb:Query", "/index/GSI1"]) {
+    assert.ok(policy.includes(expected), expected);
+  }
+  for (const forbidden of [
+    "ses:",
+    "/index/*",
+    "EMAIL_SEND_ATTEMPTS#*",
+    "SIGN_UP_CODE#*",
+  ]) {
+    assert.equal(policy.includes(forbidden), false, forbidden);
+  }
+  assert.deepEqual(
+    Object.keys(
+      functionProperties(template, "ConfirmSignUpFunction").Environment
+        .Variables,
+    ).sort(),
+    [
+      "NODE_OPTIONS",
+      "PLATFORM_CLIENT_ID",
+      "TABLE_NAME",
+      "TERMS_ACCEPTANCE_REQUIRED",
+      "USER_POOL_ID",
+    ],
+  );
+});
+
+test("sólo la confirmación puede iniciar sesiones y leer el secreto del cliente", () => {
+  const template = synthesizeBackend();
+
+  for (const functionName of [
+    "SignUpFunction",
+    "ResendConfirmationFunction",
+    "RequestSignUpCodeFunction",
+    "VerifySignUpCodeFunction",
+  ]) {
+    const policy = policyFor(template, functionName);
+    assert.equal(policy.includes("AdminInitiateAuth"), false, functionName);
+    assert.equal(
+      policy.includes("DescribeUserPoolClient"),
+      false,
+      functionName,
+    );
+  }
 });
 
 test("la verificación del código no envía correos, no toca Cognito ni usuarios y no consulta índices", () => {
@@ -279,7 +347,7 @@ test("el registro puede enviar con sus tres plantillas, y el reenvío sólo con 
   assert.equal(resendPolicy.includes("BackendTest-sign-up-code"), false);
 });
 
-test("las cuatro Lambdas tienen 15 segundos, 512 MB y logs que se conservan un mes", () => {
+test("las cinco Lambdas tienen 15 segundos, 512 MB y logs que se conservan un mes", () => {
   const template = synthesizeBackend();
 
   for (const functionName of [
@@ -287,6 +355,7 @@ test("las cuatro Lambdas tienen 15 segundos, 512 MB y logs que se conservan un m
     "ResendConfirmationFunction",
     "RequestSignUpCodeFunction",
     "VerifySignUpCodeFunction",
+    "ConfirmSignUpFunction",
   ]) {
     const properties = functionProperties(template, functionName);
     assert.equal(properties.Timeout, 15, functionName);
@@ -300,7 +369,7 @@ test("las cuatro Lambdas tienen 15 segundos, 512 MB y logs que se conservan un m
   assert.equal(
     Object.values(template.findResources("AWS::Logs::LogGroup")).filter(
       (logGroup) => logGroup.Properties.RetentionInDays === 30,
-    ).length >= 4,
+    ).length >= 5,
     true,
   );
 });

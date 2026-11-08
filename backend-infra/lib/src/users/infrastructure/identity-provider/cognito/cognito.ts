@@ -75,7 +75,12 @@ export class CognitoIdentityProvider implements IIdentityProvider {
         }),
       );
     } catch (error) {
-      await this.deleteUser(cognitoSub);
+      await this.deleteUser(cognitoSub).catch(() => {
+        console.error(
+          "[cognito] quedó en Cognito un usuario sin contraseña:",
+          cognitoSub,
+        );
+      });
       throw error;
     }
   }

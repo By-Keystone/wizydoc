@@ -1,6 +1,13 @@
 import type { CognitoIdentityProviderClient } from "@aws-sdk/client-cognito-identity-provider";
 import type { SendEmailCommandInput, SESv2Client } from "@aws-sdk/client-sesv2";
 import type { IAccountExistsNotices } from "../../lib/src/users/application/ports/account-exists-notices.port";
+import type {
+  ISessionProvider,
+  Session,
+  StartSessionInput,
+} from "../../lib/src/users/application/ports/session-provider.port";
+import type { ISignUpVerificationTokenRepository } from "../../lib/src/users/domain/repository/sign-up-verification-token.repository";
+import type { VerificationToCommit } from "../../lib/src/users/domain/repository/user.repository";
 import type { IIpRateLimit } from "../../lib/src/users/application/ports/ip-rate-limit.port";
 import type {
   CreateUserIfAbsentInput,
@@ -33,6 +40,47 @@ export const TEMPLATE_NAMES = {
   signUpCode: `${TEMPLATES_STACK_NAME}-sign-up-code`,
 };
 
+export class InMemorySignUpVerificationTokens
+  implements ISignUpVerificationTokenRepository
+{
+  private readonly tokens = new Map<string, SignUpVerificationToken>();
+
+  add(verificationToken: SignUpVerificationToken): void {
+    this.tokens.set(verificationToken.tokenHash, verificationToken);
+  }
+
+  async isValidFor(email: EmailVO, tokenHash: string): Promise<boolean> {
+    return this.isUsable(email, tokenHash);
+  }
+
+  consume(email: EmailVO, tokenHash: string): boolean {
+    if (!this.isUsable(email, tokenHash)) return false;
+    this.tokens.delete(tokenHash);
+    return true;
+  }
+
+  private isUsable(email: EmailVO, tokenHash: string): boolean {
+    const stored = this.tokens.get(tokenHash);
+    return stored?.email === email && stored.expiresAt.getTime() > Date.now();
+  }
+}
+
+export class RecordingSessions implements ISessionProvider {
+  readonly started: StartSessionInput[] = [];
+  failure?: Error;
+
+  async start(input: StartSessionInput): Promise<Session> {
+    this.started.push(input);
+    if (this.failure) throw this.failure;
+    return {
+      idToken: "id-token",
+      accessToken: "access-token",
+      refreshToken: "refresh-token",
+      expiresIn: 3600,
+    };
+  }
+}
+
 export class InMemoryUsers implements IUserRepository {
   readonly users: User[];
   readonly createdUsers: User[] = [];
@@ -40,8 +88,24 @@ export class InMemoryUsers implements IUserRepository {
   readonly termsAcceptances: TermsAcceptance[] = [];
   failOnCreate = false;
 
-  constructor(existingUsers: User[] = []) {
+  constructor(
+    existingUsers: User[] = [],
+    private readonly verificationTokens?: InMemorySignUpVerificationTokens,
+  ) {
     this.users = [...existingUsers];
+  }
+
+  async createConfirmed(
+    user: User,
+    { email, tokenHash }: VerificationToCommit,
+    termsAcceptance?: TermsAcceptance,
+  ): Promise<boolean> {
+    if (this.failOnCreate) throw new Error("DynamoDB no disponible");
+    if (!this.verificationTokens?.consume(email, tokenHash)) return false;
+    this.users.push(user);
+    this.createdUsers.push(user);
+    if (termsAcceptance) this.termsAcceptances.push(termsAcceptance);
+    return true;
   }
 
   async existsByEmail(email: EmailVO): Promise<boolean> {
@@ -143,10 +207,14 @@ export class InMemoryIdentityProvider implements IIdentityProvider {
   async createUserIfAbsent(
     input: CreateUserIfAbsentInput,
   ): Promise<string | undefined> {
-    if (this.emailExists) return undefined;
+    if (this.emailExists || this.createdEmails.includes(input.email)) {
+      return undefined;
+    }
     this.createdEmails.push(input.email);
     this.passwords.push(input.password);
-    return COGNITO_SUB;
+    return this.createdEmails.length === 1
+      ? COGNITO_SUB
+      : `${COGNITO_SUB.slice(0, -1)}${this.createdEmails.length}`;
   }
 
   async deleteUser(cognitoSub: string): Promise<void> {

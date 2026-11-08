@@ -2,6 +2,7 @@ import { isIP } from "node:net";
 
 export const HTTP_STATUS = {
   OK: 200,
+  NO_CONTENT: 204,
   ACCEPTED: 202,
   BAD_REQUEST: 400,
   TOO_MANY_REQUESTS: 429,
@@ -28,6 +29,11 @@ export const noStoreJsonResponse = (body: object): ApiGatewayResult => ({
   statusCode: HTTP_STATUS.OK,
   headers: { "content-type": "application/json", "cache-control": "no-store" },
   body: JSON.stringify(body),
+});
+
+export const noContentResponse = (): ApiGatewayResult => ({
+  statusCode: HTTP_STATUS.NO_CONTENT,
+  body: "",
 });
 
 export const messageResponse = (
@@ -60,6 +66,3 @@ export const readIpAddress = (event: ApiGatewayEvent): string | undefined => {
   const ipAddress = readHeader(event, "x-real-ip")?.trim();
   return ipAddress && isIP(ipAddress) ? ipAddress : undefined;
 };
-
-export const errorName = (error: unknown): string =>
-  error instanceof Error ? error.name : "UnknownError";

@@ -30,28 +30,36 @@ const USERS_FUNCTION_TIMEOUT = Duration.seconds(15);
 const USERS_FUNCTION_MEMORY_MB = 512;
 const USER_EMAIL_INDEX = "GSI1";
 
-type TableWrites = Partial<
+type TableAccess = Partial<
   Record<
-    "dynamodb:PutItem" | "dynamodb:UpdateItem" | "dynamodb:DeleteItem",
+    | "dynamodb:GetItem"
+    | "dynamodb:PutItem"
+    | "dynamodb:UpdateItem"
+    | "dynamodb:DeleteItem",
     string[]
   >
 >;
 
 const EMAIL_SEND_ATTEMPTS_KEYS = "EMAIL_SEND_ATTEMPTS#*";
 
-const SIGN_UP_WRITES: TableWrites = {
+const SIGN_UP_ACCESS: TableAccess = {
   "dynamodb:PutItem": ["USER#*", "EMAIL_CONFIRMATION#*"],
   "dynamodb:UpdateItem": [EMAIL_SEND_ATTEMPTS_KEYS],
 };
-const RESEND_CONFIRMATION_WRITES: TableWrites = {
+const RESEND_CONFIRMATION_ACCESS: TableAccess = {
   "dynamodb:PutItem": ["EMAIL_CONFIRMATION#*"],
   "dynamodb:UpdateItem": [EMAIL_SEND_ATTEMPTS_KEYS],
 };
-const REQUEST_SIGN_UP_CODE_WRITES: TableWrites = {
+const REQUEST_SIGN_UP_CODE_ACCESS: TableAccess = {
   "dynamodb:PutItem": ["SIGN_UP_CODE#*", "SIGN_UP_NOTICE#*"],
   "dynamodb:UpdateItem": [EMAIL_SEND_ATTEMPTS_KEYS],
 };
-const VERIFY_SIGN_UP_CODE_WRITES: TableWrites = {
+const CONFIRM_SIGN_UP_ACCESS: TableAccess = {
+  "dynamodb:GetItem": ["SIGN_UP_VERIFICATION#*"],
+  "dynamodb:PutItem": ["USER#*"],
+  "dynamodb:DeleteItem": ["SIGN_UP_VERIFICATION#*"],
+};
+const VERIFY_SIGN_UP_CODE_ACCESS: TableAccess = {
   "dynamodb:PutItem": ["SIGN_UP_VERIFICATION#*"],
   "dynamodb:UpdateItem": ["SIGN_UP_CODE#*", "SIGN_UP_VERIFY_ATTEMPTS#*"],
   "dynamodb:DeleteItem": ["SIGN_UP_CODE#*"],
@@ -127,7 +135,7 @@ export class BackendStack extends Stack {
       USER_POOL_ID: authentication.userPool.userPoolId,
       TERMS_ACCEPTANCE_REQUIRED: String(props.termsAcceptanceRequired),
     });
-    grantTableWrites(signUpFunction, database.table, SIGN_UP_WRITES);
+    grantTableAccess(signUpFunction, database.table, SIGN_UP_ACCESS);
     grantUserEmailLookup(signUpFunction, database.table);
     authentication.userPool.grant(
       signUpFunction,
@@ -149,10 +157,10 @@ export class BackendStack extends Stack {
       "resend-confirmation",
       sharedEnvironment,
     );
-    grantTableWrites(
+    grantTableAccess(
       resendConfirmationFunction,
       database.table,
-      RESEND_CONFIRMATION_WRITES,
+      RESEND_CONFIRMATION_ACCESS,
     );
     grantUserEmailLookup(resendConfirmationFunction, database.table);
     resendConfirmationFunction.addToRolePolicy(
@@ -165,10 +173,10 @@ export class BackendStack extends Stack {
       "request-sign-up-code",
       sharedEnvironment,
     );
-    grantTableWrites(
+    grantTableAccess(
       requestSignUpCodeFunction,
       database.table,
-      REQUEST_SIGN_UP_CODE_WRITES,
+      REQUEST_SIGN_UP_CODE_ACCESS,
     );
     grantUserEmailLookup(requestSignUpCodeFunction, database.table);
     requestSignUpCodeFunction.addToRolePolicy(
@@ -184,10 +192,35 @@ export class BackendStack extends Stack {
       "verify-sign-up-code",
       { TABLE_NAME: database.table.tableName },
     );
-    grantTableWrites(
+    grantTableAccess(
       verifySignUpCodeFunction,
       database.table,
-      VERIFY_SIGN_UP_CODE_WRITES,
+      VERIFY_SIGN_UP_CODE_ACCESS,
+    );
+
+    const confirmSignUpFunction = this.usersFunction(
+      "ConfirmSignUpFunction",
+      "confirm-sign-up",
+      {
+        TABLE_NAME: database.table.tableName,
+        USER_POOL_ID: authentication.userPool.userPoolId,
+        PLATFORM_CLIENT_ID: authentication.platformClient.userPoolClientId,
+        TERMS_ACCEPTANCE_REQUIRED: String(props.termsAcceptanceRequired),
+      },
+    );
+    grantTableAccess(
+      confirmSignUpFunction,
+      database.table,
+      CONFIRM_SIGN_UP_ACCESS,
+    );
+    grantUserEmailLookup(confirmSignUpFunction, database.table);
+    authentication.userPool.grant(
+      confirmSignUpFunction,
+      "cognito-idp:AdminCreateUser",
+      "cognito-idp:AdminSetUserPassword",
+      "cognito-idp:AdminDeleteUser",
+      "cognito-idp:AdminInitiateAuth",
+      "cognito-idp:DescribeUserPoolClient",
     );
 
     const signUpResource =
@@ -205,6 +238,12 @@ export class BackendStack extends Stack {
       .addMethod(
         "POST",
         new apigateway.LambdaIntegration(verifySignUpCodeFunction),
+      );
+    signUpResource
+      .addResource("confirm")
+      .addMethod(
+        "POST",
+        new apigateway.LambdaIntegration(confirmSignUpFunction),
       );
     signUpResource
       .addResource("resend-confirmation")
@@ -237,10 +276,10 @@ export class BackendStack extends Stack {
   }
 }
 
-const grantTableWrites = (
+const grantTableAccess = (
   usersFunction: NodejsFunction,
   table: ITableV2,
-  writes: TableWrites,
+  writes: TableAccess,
 ) => {
   for (const [action, keyPrefixes] of Object.entries(writes)) {
     usersFunction.addToRolePolicy(
