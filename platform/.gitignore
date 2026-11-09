@@ -5,6 +5,7 @@ node_modules
 .env
 .env.e2e
 .next-e2e/
+.next-e2e-serverless/
 e2e/.artifacts/
 test-results/
 playwright-report/

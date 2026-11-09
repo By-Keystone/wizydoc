@@ -80,7 +80,7 @@
   <aside class="proto-panel" aria-label="Controles del prototipo">
     <h1>Registro con código</h1>
     <p class="lead">
-      Los tres pasos de <code>/register</code> con <code>AUTH_BACKEND=serverless</code>: el correo, el código y la contraseña, con sus errores, la carga y el reenvío.
+      Los tres pasos de <code>/register</code> con <code>BACKEND=serverless</code>: el correo, el código y la contraseña, con sus errores, la carga y el reenvío.
       La URL no cambia entre pasos. Datos ficticios. Lo que está en esta barra no es parte de la app. Plan: <code>plan.md</code> en esta carpeta.
     </p>
 
@@ -131,7 +131,7 @@
       <strong>Qué propone</strong>
       <ul>
         <li>Los tres pasos viven en <code>/register</code>. El servidor elige el paso según la cookie <code>sign_up_progress</code>: recargar no lo pierde, y el botón atrás del navegador sale del registro.</li>
-        <li>Nunca conviven dos registros: el killswitch <code>AUTH_BACKEND</code> elige uno por entorno. Con <code>better-auth</code>, el de por defecto, <code>/register</code> muestra el formulario de hoy.</li>
+        <li>Nunca conviven dos registros: el killswitch <code>BACKEND</code> elige uno por entorno. Con <code>api</code>, el de por defecto, <code>/register</code> muestra el formulario de hoy.</li>
         <li>«Cambiar» y «Pedir un código nuevo» vuelven al correo en la misma tarjeta, con el correo escrito y el foco en el campo.</li>
         <li>Tenga o no cuenta el correo, se ve lo mismo. A quien ya tiene cuenta le llega otro correo, y el pie «¿Ya tienes cuenta?» lo lleva al login.</li>
         <li>Un solo campo para el código, que se envía solo con el sexto dígito.</li>
@@ -818,7 +818,7 @@
   const STRONG_PASSWORD = "Consulta-Miraflores-2026";
 
   const GALLERY = [
-    { title: "1. Correo: normal", caption: "/register con AUTH_BACKEND=serverless y sin cookie. Sin foco automático al abrir; el pie lleva al login.", config: { screen: "email" } },
+    { title: "1. Correo: normal", caption: "/register con BACKEND=serverless y sin cookie. Sin foco automático al abrir; el pie lleva al login.", config: { screen: "email" } },
     { title: "2. Correo: enviando", caption: "Botón deshabilitado con el spinner y «Enviando código…». El campo queda de solo lectura.", config: { screen: "email", status: "pending", emailDraft: TYPED_EMAIL } },
     { title: "3. Correo: inválido", caption: "El mensaje de la spec debajo del campo, con el foco ahí. No se llama al backend.", config: { screen: "email", emailDraft: "lucia.paredes@gmail", errors: { email: "invalidEmail" } } },
     { title: "4. Correo: demasiados intentos (429)", caption: "Más de 3 envíos en 10 minutos desde la misma IP. El texto es constante: nunca el «Too Many Requests» del gateway.", config: { screen: "email", emailDraft: TYPED_EMAIL, alert: "tooManyAttempts" } },
@@ -844,7 +844,7 @@
     { title: "24. Contraseña con un correo largo", caption: "Lo mismo en la descripción.", config: { screen: "password", longEmail: true } },
     { title: "Referencia: correo con el código", caption: "Lo que recibe un correo sin cuenta (spec de WIZ-75). No cambia en este ticket.", config: { screen: "mail-code" } },
     { title: "Referencia: correo a una cuenta que ya existe", caption: "Lo que recibe un correo con cuenta. En pantalla se ve lo mismo que en 6.", config: { screen: "mail-exists" } },
-    { notApplicable: true, title: "Vacío, 403, 402, roles y el killswitch", body: "<strong>Vacío no aplica:</strong> no hay listas.<br><br><strong>403 no aplica:</strong> los tres pasos son públicos y no hay membership. El 403 del gateway (la clave no sirve) se ve como el fallo de cada paso (5, 11 y 20).<br><br><strong>402 no aplica:</strong> registrarse es igual en todos los planes, y la cuenta todavía no tiene plan.<br><br><strong>Roles:</strong> ADMIN, DOCTOR y USER todavía no existen para quien se registra. El invitado crea su contraseña en <code>/invite/accept</code>.<br><br><strong>Con <code>AUTH_BACKEND=better-auth</code>:</strong> <code>/register</code> muestra el formulario de hoy, sin cambios, aunque haya una cookie <code>sign_up_progress</code>. Con <code>serverless</code>, <code>/confirm-email</code> lleva a <code>/register</code>." },
+    { notApplicable: true, title: "Vacío, 403, 402, roles y el killswitch", body: "<strong>Vacío no aplica:</strong> no hay listas.<br><br><strong>403 no aplica:</strong> los tres pasos son públicos y no hay membership. El 403 del gateway (la clave no sirve) se ve como el fallo de cada paso (5, 11 y 20).<br><br><strong>402 no aplica:</strong> registrarse es igual en todos los planes, y la cuenta todavía no tiene plan.<br><br><strong>Roles:</strong> ADMIN, DOCTOR y USER todavía no existen para quien se registra. El invitado crea su contraseña en <code>/invite/accept</code>.<br><br><strong>Con <code>BACKEND=api</code>:</strong> <code>/register</code> muestra el formulario de hoy, sin cambios, aunque haya una cookie <code>sign_up_progress</code>. Con <code>serverless</code>, <code>/confirm-email</code> lleva a <code>/register</code>." },
     { wide: true, title: "25. Escritorio: el correo", caption: "La misma tarjeta, centrada, con el relleno de 32 px de AuthCard.", config: { screen: "email" } },
     { wide: true, title: "26. Escritorio: el código", caption: "Igual que en el celular.", config: { screen: "code", secondsLeft: 37 } },
     { wide: true, title: "27. Escritorio: la contraseña", caption: "Igual que en el celular.", config: { screen: "password" } },

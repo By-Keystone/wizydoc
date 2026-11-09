@@ -5,4 +5,5 @@
 export const COOKIE_NAMES = {
   resourceId: "resource_id",
   resourceType: "resource_type",
+  signUpProgress: "sign_up_progress",
 } as const;

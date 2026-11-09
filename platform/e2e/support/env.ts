@@ -27,6 +27,17 @@ export const EMAIL_CAPTURE_PATH = resolve(API_DIR, apiEnv.EMAIL_CAPTURE_FILE);
 const ARTIFACTS_DIR = join(PLATFORM_DIR, "e2e/.artifacts");
 export const API_LOG_PATH = join(ARTIFACTS_DIR, "api.log");
 export const PLATFORM_LOG_PATH = join(ARTIFACTS_DIR, "platform.log");
+export const SERVERLESS_PLATFORM_LOG_PATH = join(
+  ARTIFACTS_DIR,
+  "platform-serverless.log",
+);
+
+export const FAKE_BACKEND_PORT = 4101;
+export const SERVERLESS_PLATFORM_PORT = 3101;
+export const FAKE_BACKEND_URL = `http://127.0.0.1:${FAKE_BACKEND_PORT}`;
+export const FAKE_BACKEND_API_KEY = "e2e-fake-gateway-key-7f3a91c2";
+export const SERVERLESS_PLATFORM_BASE_URL = `http://localhost:${SERVERLESS_PLATFORM_PORT}`;
+export const SERVERLESS_PLATFORM_DIST_DIR = `${platformEnv.NEXT_DIST_DIR}-serverless`;
 
 const TEST_DB_PORT = "5433";
 const TEST_DB_PATH = "/wizydoc_test";
