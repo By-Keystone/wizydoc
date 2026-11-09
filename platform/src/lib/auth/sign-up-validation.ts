@@ -21,3 +21,14 @@ export const signUpEmailSchema = z
   .string({ error: INVALID_EMAIL_ERROR })
   .trim()
   .pipe(validEmail.toLowerCase());
+
+export const CODE_LENGTH = 6;
+export const INCOMPLETE_CODE_ERROR = "Escribe los 6 dígitos del código.";
+export const VERIFY_CODE_ERROR =
+  "No pudimos comprobar el código. Intenta de nuevo.";
+
+export const signUpCodeSchema = z
+  .string({ error: INCOMPLETE_CODE_ERROR })
+  .regex(new RegExp(`^\\d{${CODE_LENGTH}}$`), {
+    error: INCOMPLETE_CODE_ERROR,
+  });

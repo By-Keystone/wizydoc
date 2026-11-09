@@ -18,7 +18,12 @@ interface FieldErrors {
   email?: string;
 }
 
-export function SignUpEmailStep() {
+interface Props {
+  defaultEmail?: string;
+  onCodeRequested?: (secondsUntilResend: number) => void;
+}
+
+export function SignUpEmailStep({ defaultEmail, onCodeRequested }: Props) {
   const formRef = useRef<HTMLFormElement>(null);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>();
   const [submitError, setSubmitError] = useState<string>();
@@ -41,7 +46,10 @@ export function SignUpEmailStep() {
     startTransition(async () => {
       try {
         const state = await requestSignUpCodeAction(formData);
-        if (state.status === "success") return;
+        if (state.status === "success") {
+          onCodeRequested?.(state.data.secondsUntilResend);
+          return;
+        }
         if (state.status !== "error") {
           setSubmitError(REQUEST_CODE_ERROR);
           return;
@@ -81,6 +89,8 @@ export function SignUpEmailStep() {
           label="Correo electrónico"
           autoComplete="email"
           placeholder="ana@consultorio.com"
+          value={defaultEmail}
+          autoFocus={Boolean(defaultEmail)}
           hint="Te enviaremos un código para confirmarlo."
           readOnly={isPending}
           error={fieldErrors?.email}

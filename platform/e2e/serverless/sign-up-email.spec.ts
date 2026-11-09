@@ -32,7 +32,7 @@ async function requestsFor(
   return response.json();
 }
 
-test("«Continuar» pide el código una sola vez, con el correo en minúsculas, y la página sigue en el correo", async ({
+test("«Continuar» pide el código una sola vez, con el correo en minúsculas, y la página pasa al código", async ({
   page,
   request,
 }) => {
@@ -45,12 +45,11 @@ test("«Continuar» pide el código una sola vez, con el correo en minúsculas, 
   await expect
     .poll(async () => (await requestsFor(request, email)).length)
     .toBe(1);
-  await expect(continueButton(page)).toBeEnabled();
+  await expect(
+    page.getByRole("heading", { name: "Revisa tu correo" }),
+  ).toBeVisible();
   expect(await requestsFor(request, email)).toHaveLength(1);
   expect(new URL(page.url()).pathname).toBe("/register");
-  await expect(
-    page.getByRole("heading", { name: "Crea tu cuenta" }),
-  ).toBeVisible();
 });
 
 test("la cookie de avance es HttpOnly, de /register, Lax y vence a la hora", async ({

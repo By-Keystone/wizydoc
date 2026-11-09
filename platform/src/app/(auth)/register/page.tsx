@@ -1,6 +1,11 @@
 import { isServerlessBackend } from "@/lib/backend";
+import {
+  readSignUpProgress,
+  secondsUntilResend,
+} from "@/lib/auth/sign-up-progress";
 import type { Metadata } from "next";
 import { RegisterForm } from "./register-form";
+import { SignUpCodeStep } from "./sign-up-code-step";
 import { SignUpEmailStep } from "./sign-up-email-step";
 
 export const metadata: Metadata = {
@@ -8,6 +13,16 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-export default function RegisterPage() {
-  return isServerlessBackend() ? <SignUpEmailStep /> : <RegisterForm />;
+export default async function RegisterPage() {
+  if (!isServerlessBackend()) return <RegisterForm />;
+
+  const progress = await readSignUpProgress();
+  if (!progress) return <SignUpEmailStep />;
+
+  return (
+    <SignUpCodeStep
+      email={progress.email}
+      secondsUntilResend={secondsUntilResend(progress, Date.now())}
+    />
+  );
 }

@@ -238,7 +238,7 @@ servidor.**
   código. Con el paso del código, la página calcula `secondsUntilResend` (60
   menos los segundos que pasaron) y se lo pasa al componente, que cuenta hacia
   atrás. No depende del reloj del celular, y la cuenta sigue al recargar.
-- **La action del reenvío responde siempre con los segundos que faltan:**
+- **Al reenviar, `requestSignUpCodeAction` responde siempre con los segundos que faltan:**
   `{ status: "success", data: { wasCodeSent, secondsUntilResend } }`
   (`DataActionState`).
   - Si pasó el minuto, llama al backend. Con 202 devuelve `wasCodeSent: true` y
@@ -313,10 +313,13 @@ todavía.**
   todos los casos [spec].
 
 **D-8. El código va en un solo campo, y se envía solo.**
-- Un `Input` con `inputMode="numeric"`, `autoComplete="one-time-code"`,
-  `maxLength={6}` y letra grande. Sin seis casillas: un solo campo funciona al
-  pegar, con el autocompletado de iOS y Android y con lector de pantalla, y no
-  hace falta un componente nuevo.
+- Un `Input` con `inputMode="numeric"`, `autoComplete="one-time-code"` y letra
+  grande. Sin seis casillas: un solo campo funciona al pegar, con el
+  autocompletado de iOS y Android y con lector de pantalla, y no hace falta un
+  componente nuevo.
+- **Sin `maxLength`:** el navegador recortaría «123 456» a «123 45» antes de
+  quitar el espacio. El `onChange` deja sólo los dígitos y corta a 6, así que
+  escribir y pegar van por el mismo camino.
 - Al escribir, se quita lo que no es un dígito: pegar «123 456» deja «123456».
 - Con el sexto dígito, el formulario se envía solo. El botón «Verificar código»
   sigue para quien prefiera pulsarlo.
@@ -426,8 +429,7 @@ Ninguno. El contrato ya está en la spec de WIZ-75, y el app client
 | `platform/src/lib/auth/sign-up-progress.ts` (nuevo) | 2 y 3 | `server-only`. `readSignUpProgress()` (valida el JSON con Zod; si no sirve, no hay avance), `saveSignUpProgress(progress)`, `clearSignUpProgress()` y `secondsUntilResend(progress, now)`, con `path: "/register"`, `RESEND_COOLDOWN_SECONDS = 60` y `SIGN_UP_PROGRESS_MAX_AGE_SECONDS = 3600` (D-4). La parte 3 agrega el token. |
 | `platform/src/lib/auth/cognito-session.ts` (nuevo) | 4 | `server-only`. `saveCognitoSession(tokens)` (D-6), con `REFRESH_TOKEN_LIFETIME_DAYS = 30`. |
 | `platform/src/lib/auth/cookies.ts` | 2 y 4 | `signUpProgress` (parte 2) y los tres nombres de la sesión (parte 4). El comentario deja de decir que sólo Better Auth guarda la sesión. |
-| `platform/src/lib/actions/sign-up/request-sign-up-code.action.ts` (nuevo) | 2 | Killswitch, validación del correo, D-5 y `requestCode`. Si pidió un código, escribe la cookie y llama a `revalidatePath("/register")`. Devuelve `{ status: "success", data: { secondsUntilResend } }` o un error. |
-| `platform/src/lib/actions/sign-up/resend-sign-up-code.action.ts` (nuevo) | 3 | Killswitch, correo de la cookie, D-5 y `requestCode`. Devuelve `{ status: "success", data: { wasCodeSent, secondsUntilResend } }` o un error. Sin avance, `revalidatePath("/register")`: la página vuelve al correo. |
+| `platform/src/lib/actions/sign-up/request-sign-up-code.action.ts` (nuevo) | 2 | Killswitch, validación del correo, D-5 y `requestCode`. Si pidió un código, escribe la cookie y llama a `revalidatePath("/register")`. Devuelve `{ status: "success", data: { wasCodeSent, secondsUntilResend } }` o un error; en la rama del enfriamiento (`wasCodeSent: false`) también llama a `revalidatePath("/register")`. La parte 3 la usa también para reenviar. |
 | `platform/src/lib/actions/sign-up/verify-sign-up-code.action.ts` (nuevo) | 3 | Killswitch, correo de la cookie, validación del código, `verifyCode`, el token en la cookie y `revalidatePath("/register")`. Sin avance, lo mismo: la página vuelve al correo. |
 | `platform/src/lib/actions/sign-up/confirm-sign-up.action.ts` (nuevo) | 4 | Killswitch, correo y token de la cookie, validación, `confirm`, `saveCognitoSession` o el 204, y `redirect`. Con la verificación vencida devuelve un error con `code: "VERIFICATION_EXPIRED"`, sin tocar la cookie (ver «Contrato»). |
 | `platform/src/app/(auth)/register/page.tsx` | 2, 3 y 4 | Pasa a ser un server component, con `metadata` («Crea tu cuenta»). Con `api`, `RegisterForm`. Con `serverless`, el paso de la tabla de D-2: el correo (parte 2), el código (parte 3) y la contraseña (parte 4). |
@@ -490,8 +492,8 @@ salen del servidor de platform, con las cabeceras de D-3, y sólo con
 
 ### 1. Pedir el código
 
-`requestSignUpCodeAction` (paso del correo) y `resendSignUpCodeAction` (paso
-del código) mandan `POST ${BACKEND_API_URL}/api/auth/sign-up/code`:
+`requestSignUpCodeAction` manda, desde el paso del correo y desde «Reenviar» en
+el paso del código (con un `FormData` con el correo del paso), `POST ${BACKEND_API_URL}/api/auth/sign-up/code`:
 
 ```json
 { "email": "lucia.paredes@gmail.com" }
@@ -728,7 +730,7 @@ la URL sigue siendo `/register` hasta el final.
 ### Manual, en local
 
 - **Con `api`** (sin `BACKEND`): `pnpm dev`, y `/register` y
-  `/confirm-email` se ven como hoy. Revisar en el diff que las cuatro actions
+  `/confirm-email` se ven como hoy. Revisar en el diff que las tres actions
   consultan el killswitch antes de llamar al backend.
 - **Con `serverless`:** `pnpm dev` con el falso backend
   (`node e2e/support/fake-backend.mjs`) o con el gateway de staging (ver «Lo
@@ -796,7 +798,7 @@ cada fallo del backend se muestra en la tarjeta.
 - La tarjeta «Tu verificación venció» copia el marcado de «Este enlace ya no
   sirve» de `reset-password-form.tsx`, con otro texto y otra acción.
 - **El código usa `Input` sin cambiarlo:** `inputMode`, `autoComplete`,
-  `maxLength` y `onChange` pasan por `...rest`. La letra grande va en
+  y `onChange` pasan por `...rest`. La letra grande va en
   `className`. `Input` concatena las clases sin `cn`, pero `text-2xl` le gana a
   `text-sm` porque Tailwind la genera después.
 - **`PasswordInput` no cambia.** Sin `hint`: las reglas van en el `placeholder`
@@ -816,7 +818,7 @@ cada fallo del backend se muestra en la tarjeta.
 | Correo escrito al volver con «Cambiar» o «Pedir un código nuevo» | `email`, la prop del paso que vuelve |
 | Correo en el código y en la contraseña | `email` de la cookie |
 | «Reenviar en N s» | `secondsUntilResend`, calculado por `register/page.tsx` desde `codeRequestedAt`, y después por las actions (D-5) |
-| «Te enviamos un código nuevo.» | `wasCodeSent: true` de `resendSignUpCodeAction` |
+| «Te enviamos un código nuevo.» | `wasCodeSent: true` de `requestSignUpCodeAction` |
 | Errores y avisos | El `ActionState` de cada action (D-7) |
 | Tarjeta «Tu verificación venció» | `code: "VERIFICATION_EXPIRED"` de `confirmSignUpAction` |
 | Aviso del login | `?registered=ok` |
@@ -878,7 +880,8 @@ nada que no se vea con cualquier correo.
   backend. Si no, llama a `verifySignUpCodeAction`. Con 200, la página pasa a la
   contraseña.
 - **«Reenviar código»:** sólo se puede pulsar con la cuenta en 0. Llama a
-  `resendSignUpCodeAction`.
+  `requestSignUpCodeAction` con el correo del paso. Si la cookie venció, pide un
+  código nuevo y crea un avance nuevo.
   - Con `wasCodeSent: true`, muestra «Te enviamos un código nuevo.», vacía el
     campo, le devuelve el foco y reinicia la cuenta en 60.
   - Con `wasCodeSent: false`, sigue la cuenta desde los segundos que devolvió,
@@ -952,9 +955,9 @@ tamaños son de código de producción, sin pruebas ni docs.
 | --- | --- | --- | --- | --- |
 | 1. Docs | `docs/features/registro-con-codigo/plan.md` y `mockup.html`, y después los criterios del product-manager. | — | Revisión del humano. El mockup con Lavish. | 0 |
 | 2. El killswitch y el correo | `.env.example`; `backend.ts`; `lib/api/sign-up/index.ts` con `requestCode`; `sign-up-validation.ts` (correo); `sign-up-progress.ts` (sin token); `COOKIE_NAMES.signUpProgress`; `request-sign-up-code.action.ts`; `register/page.tsx` (killswitch y el correo), `register-form.tsx` (movido) y `sign-up-email-step.tsx`. En pruebas: el falso backend con `/code`, el segundo platform, el proyecto `serverless`, `sign-up-email.spec.ts`, `register-killswitch.spec.ts` y la línea del README. | 1 | `typecheck`, `check` y la suite e2e. Las pruebas del registro de hoy siguen pasando sin cambios. Después de «Continuar», la página sigue en el correo: el e2e comprueba la petición, las cabeceras y la cookie. | ~300 líneas, sin contar el formulario movido |
-| 3. El código | `sign-up-code-step.tsx` (con «Cambiar»); el código en `register/page.tsx`; `verify-sign-up-code.action.ts` y `resend-sign-up-code.action.ts`; `verifyCode` en el cliente; el token en `sign-up-progress.ts`; el código en `sign-up-validation.ts`; `onCodeRequested` en `sign-up-email-step.tsx`. En pruebas: `/code/verify` en el falso backend y `sign-up-code.spec.ts`. | 2 | `typecheck`, `check` y la suite e2e. Un código correcto guarda el token, y la página sigue en el código. | ~360 líneas |
+| 3. El código | `sign-up-code-step.tsx` (con «Cambiar»); el código en `register/page.tsx`; `verify-sign-up-code.action.ts`; `wasCodeSent` en `request-sign-up-code.action.ts`, que también atiende el reenvío; `verifyCode` en el cliente; el token en `sign-up-progress.ts`; el código en `sign-up-validation.ts`; `onCodeRequested` en `sign-up-email-step.tsx`. En pruebas: `/code/verify` en el falso backend y `sign-up-code.spec.ts`. | 2 | `typecheck`, `check` y la suite e2e. Un código correcto guarda el token, y la página sigue en el código. | ~360 líneas |
 | 4. La contraseña, la sesión y `/confirm-email` | `sign-up-password-step.tsx`; la contraseña en `register/page.tsx`; `confirm-sign-up.action.ts`; `confirm` y `types.ts` en el cliente; `cognito-session.ts`; las cookies de la sesión en `COOKIE_NAMES`; la contraseña en `sign-up-validation.ts`; el aviso del login; el `redirect` de `confirm-email/page.tsx`. En pruebas: `/confirm` en el falso backend y `sign-up-password.spec.ts`. | 3 | `typecheck`, `check` y la suite e2e. Con `serverless`, el registro completo en `/register` contra el falso backend. | ~330 líneas |
-| 5. Borrar el formulario viejo | En cuanto producción y staging estén en `serverless`: como no hay vuelta atrás, el formulario viejo ya no lo usa nadie. Se borran `register/register-form.tsx` y `confirm-email/page.tsx`, que sólo abría el registro viejo. `register/page.tsx` muestra siempre el flujo nuevo. Se quitan la consulta al killswitch en las cuatro actions, y `backend.ts` si nadie más lo usa. En pruebas: se borran `register.spec.ts`, `register-form.spec.ts`, `register-killswitch.spec.ts`, `registerViaUi` y `confirmEmailViaLink`, y el segundo platform se junta con el primero. | 4, y producción y staging en `serverless` | `typecheck`, `check` y la suite e2e completa. | Sobre todo borra (neto negativo) |
+| 5. Borrar el formulario viejo | En cuanto producción y staging estén en `serverless`: como no hay vuelta atrás, el formulario viejo ya no lo usa nadie. Se borran `register/register-form.tsx` y `confirm-email/page.tsx`, que sólo abría el registro viejo. `register/page.tsx` muestra siempre el flujo nuevo. Se quitan la consulta al killswitch en las tres actions, y `backend.ts` si nadie más lo usa. En pruebas: se borran `register.spec.ts`, `register-form.spec.ts`, `register-killswitch.spec.ts`, `registerViaUi` y `confirmEmailViaLink`, y el segundo platform se junta con el primero. | 4, y producción y staging en `serverless` | `typecheck`, `check` y la suite e2e completa. | Sobre todo borra (neto negativo) |
 
 - **Pasar producción a `serverless` no es una parte:** es cambiar la variable
   y desplegar, cuando se cumpla «Antes de pasar producción a `serverless`». No
@@ -1002,7 +1005,7 @@ Convenciones:
   correo, `/confirm-email` responde 307 hacia `/register`, y en `/register` se
   completa el registro hasta `/onboarding` contra el falso backend, sin que la
   URL cambie antes del final.
-- **[manual]** (partes 2, 3 y 4) Cada una de las cuatro server actions comprueba
+- **[manual]** (partes 2, 3 y 4) Cada una de las tres server actions comprueba
   el killswitch antes que nada. Con `api` termina sin llamar al backend
   ni escribir cookies.
 - **[manual]** (parte 2) Sólo el valor exacto `serverless` enciende el registro
@@ -1064,8 +1067,8 @@ Convenciones:
 - **[manual]** (parte 3) La cuenta sigue al recargar: si se recarga a los 20 s,
   se ve «Reenviar en 40 s» o un segundo menos. Cambiar la hora del celular no la
   cambia.
-- **[manual]** (parte 3) La action del reenvío, llamada dentro del minuto, no
-  llama al backend y devuelve los segundos que faltan. La pantalla sigue
+- **[manual]** (parte 3) Al reenviar dentro del minuto, `requestSignUpCodeAction`
+  no llama al backend y devuelve los segundos que faltan. La pantalla sigue
   contando desde ahí y no dice «Te enviamos un código nuevo.».
 - **[manual]** (parte 3) Con menos de 6 dígitos, «Verificar código» muestra
   «Escribe los 6 dígitos del código.» sin llamar al backend. El campo descarta lo
@@ -1084,7 +1087,7 @@ Convenciones:
 - **[manual]** (parte 3) La pantalla coincide con «Textos», «Estados»,
   «Accesibilidad» y el mockup:
   - el foco en el campo al llegar, con `inputMode="numeric"`,
-    `autoComplete="one-time-code"` y `maxLength={6}`;
+    `autoComplete="one-time-code"`;
   - «Cambiar» se anuncia «Cambiar correo»;
   - la cuenta atrás no se anuncia cada segundo y, al llegar a 0, una región
     oculta dice «Ya puedes pedir otro código.»;
@@ -1158,7 +1161,7 @@ Convenciones:
 - **[manual]** (partes 2 y 4) `lib/api/sign-up/index.ts`, `sign-up-progress.ts`
   y `cognito-session.ts` empiezan con `import "server-only"`, y
   `BACKEND`, `BACKEND_API_URL` y `BACKEND_API_KEY` no llevan
-  `NEXT_PUBLIC_`. Las llamadas al backend salen sólo de las cuatro server
+  `NEXT_PUBLIC_`. Las llamadas al backend salen sólo de las tres server
   actions: no hay route handler ni rewrite nuevo hacia `backend-infra`.
 - **[manual]** (partes 2 y 4) `sign_up_progress` y las tres cookies de la sesión
   llevan `secure` en producción.

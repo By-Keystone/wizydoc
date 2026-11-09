@@ -2,6 +2,7 @@ import "server-only";
 
 import { ApiError } from "@/lib/api/errors";
 import { headers } from "next/headers";
+import z from "zod";
 
 const FORWARDED_HEADERS = ["x-real-ip", "user-agent"];
 
@@ -15,7 +16,7 @@ async function forwardedHeaders(): Promise<Record<string, string>> {
   return forwarded;
 }
 
-async function post(path: string, body: object): Promise<void> {
+async function post(path: string, body: object): Promise<Response> {
   const response = await fetch(`${process.env.BACKEND_API_URL}${path}`, {
     method: "POST",
     cache: "no-store",
@@ -32,8 +33,19 @@ async function post(path: string, body: object): Promise<void> {
     const message = typeof payload?.message === "string" ? payload.message : "";
     throw new ApiError(response.status, message);
   }
+  return response;
 }
+
+const verifyCodeResponseSchema = z.object({ verificationToken: z.string() });
 
 export const signUpApi = {
   requestCode: (email: string) => post("/api/auth/sign-up/code", { email }),
+  verifyCode: async (email: string, code: string): Promise<string> => {
+    const response = await post("/api/auth/sign-up/code/verify", {
+      email,
+      code,
+    });
+    return verifyCodeResponseSchema.parse(await response.json())
+      .verificationToken;
+  },
 };

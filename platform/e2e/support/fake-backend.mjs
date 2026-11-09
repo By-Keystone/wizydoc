@@ -1,7 +1,11 @@
+import { randomBytes } from "node:crypto";
 import { createServer } from "node:http";
 
 const apiKey = process.env.FAKE_BACKEND_API_KEY;
 const port = Number(process.env.FAKE_BACKEND_PORT);
+
+const CORRECT_CODE = "482913";
+const VERIFICATION_TOKEN_BYTES = 32;
 
 const requests = [];
 
@@ -87,6 +91,38 @@ const server = createServer(async (request, response) => {
 
     response.writeHead(202);
     return response.end();
+  }
+
+  if (
+    request.method === "POST" &&
+    url.pathname === "/api/auth/sign-up/code/verify"
+  ) {
+    const { email = "", code = "" } = await readBody(request);
+    const forcedStatus = forcedStatusFor(email);
+    const isCorrectCode = code === CORRECT_CODE;
+    const verificationToken = randomBytes(VERIFICATION_TOKEN_BYTES).toString(
+      "base64url",
+    );
+    requests.push({
+      path: url.pathname,
+      email,
+      code,
+      realIp: request.headers["x-real-ip"],
+      userAgent: request.headers["user-agent"],
+      verificationToken:
+        isCorrectCode && !forcedStatus ? verificationToken : undefined,
+    });
+
+    if (forcedStatus && forcedStatus !== 400) {
+      return rejectForced(response, forcedStatus);
+    }
+    if (!isCorrectCode) {
+      return sendJson(response, 400, {
+        message:
+          "El código no es correcto o ya venció. Pide uno nuevo si lo necesitas.",
+      });
+    }
+    return sendJson(response, 200, { verificationToken });
   }
 
   return sendJson(response, 404, { message: "Not found" });
