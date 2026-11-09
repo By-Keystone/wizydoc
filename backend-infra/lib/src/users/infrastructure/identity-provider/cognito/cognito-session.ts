@@ -4,11 +4,14 @@ import {
   AdminInitiateAuthCommand,
   type CognitoIdentityProviderClient,
   DescribeUserPoolClientCommand,
+  GetTokensFromRefreshTokenCommand,
   NotAuthorizedException,
   RevokeTokenCommand,
+  UnsupportedTokenTypeException,
 } from "@aws-sdk/client-cognito-identity-provider";
 import type {
   ISessionProvider,
+  RefreshedSession,
   Session,
   SignInAttempt,
   SignInCredentials,
@@ -25,6 +28,8 @@ const REJECTION_MESSAGES = [
   "Incorrect username or password.",
   "User is disabled.",
 ];
+
+const COGNITO_TOKEN_PATTERN = /^[A-Za-z0-9\-_=.]+$/;
 
 const idTokenPayloadSchema = z.object({ sub: z.string().min(1) });
 
@@ -67,14 +72,46 @@ export class CognitoSessionProvider implements ISessionProvider {
     }
   }
 
+  async refresh(refreshToken: string): Promise<RefreshedSession | undefined> {
+    if (!COGNITO_TOKEN_PATTERN.test(refreshToken)) return undefined;
+    const clientSecret = await this.readClientSecret();
+    try {
+      const { AuthenticationResult } = await this.cognitoClient.send(
+        new GetTokensFromRefreshTokenCommand({
+          ClientId: this.settings.clientId,
+          ClientSecret: clientSecret,
+          RefreshToken: refreshToken,
+        }),
+      );
+      const { IdToken, AccessToken, ExpiresIn } = AuthenticationResult ?? {};
+      if (!IdToken || !AccessToken || !ExpiresIn) {
+        throw new Error("Cognito no devolvió los tokens de la sesión.");
+      }
+      return {
+        idToken: IdToken,
+        accessToken: AccessToken,
+        expiresIn: ExpiresIn,
+      };
+    } catch (error) {
+      if (error instanceof NotAuthorizedException) return undefined;
+      throw error;
+    }
+  }
+
   async revoke(refreshToken: string): Promise<void> {
-    await this.cognitoClient.send(
-      new RevokeTokenCommand({
-        ClientId: this.settings.clientId,
-        ClientSecret: await this.readClientSecret(),
-        Token: refreshToken,
-      }),
-    );
+    if (!COGNITO_TOKEN_PATTERN.test(refreshToken)) return;
+    const clientSecret = await this.readClientSecret();
+    try {
+      await this.cognitoClient.send(
+        new RevokeTokenCommand({
+          ClientId: this.settings.clientId,
+          ClientSecret: clientSecret,
+          Token: refreshToken,
+        }),
+      );
+    } catch (error) {
+      if (!(error instanceof UnsupportedTokenTypeException)) throw error;
+    }
   }
 
   private async authenticate(

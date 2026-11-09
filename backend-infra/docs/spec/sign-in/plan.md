@@ -557,6 +557,13 @@ configurado como el real, ya borrado.
 - Renovar después de revocar da `NotAuthorizedException` «Refresh Token has
   been revoked»; con un token inventado, «Invalid Refresh Token».
 - `RevokeToken` con un token ya revocado o inventado no da error.
+- `RevokeToken` con un access token, y también con un ID token, da
+  `UnsupportedTokenTypeException: Unsupported token type`: mapearla a 204 es
+  correcto.
+- `RevokeToken` con un texto que cumple el patrón y no es un token responde OK.
+- Revocar el access token no afecta al refresh token, que sigue renovando.
+- `GetTokensFromRefreshToken` con un access token da
+  `NotAuthorizedException: Invalid Refresh Token`.
 
 ## Sin verificar contra AWS
 
@@ -569,13 +576,13 @@ Lo comprueba el despliegue a staging.
 - CloudFormation actualiza el app client sin reemplazarlo.
 
 **Parte 3**
-- `GetTokensFromRefreshToken` con un refresh token vencido responde
-  `NotAuthorizedException`. Se prueba con un cliente temporal de refresh token
-  de 60 minutos, el mínimo.
-- `RevokeToken` con un refresh token vencido, y con un access token
-  (`UnsupportedTokenTypeException`). Si alguno responde un error, se agrega al
-  mapeo de 204.
+- El refresh token **vencido**, con renovar (`NotAuthorizedException`) y con
+  revocar: necesitaría esperar al menos 60 minutos. Si alguno responde otro
+  error, se agrega al mapeo.
 - Las dos Lambdas funcionan con sólo `DescribeUserPoolClient`.
+- El SDK que trae el runtime de Lambda `nodejs22.x` incluye
+  `GetTokensFromRefreshTokenCommand`, porque `NodejsFunction` deja
+  `@aws-sdk/*` fuera del paquete.
 
 ## Riesgos aceptados del plan
 
@@ -618,6 +625,12 @@ Lo comprueba el despliegue a staging.
   responde 401 desde el día 15, que es lo que pide la spec.
 - **Platform reenvía `x-real-ip`** (prerrequisito 10 de ese plan): sin ella,
   todos los inicios de sesión comparten un cupo de 5 por minuto.
+
+- **Tokens falsos con el formato correcto llegan a `readClientSecret`.** Una
+  ráfaga abre muchas instancias de Lambda que piden el secreto contra la cuota
+  fija de 5 por segundo por pool de `DescribeUserPoolClient`. Se vuelve
+  explotable cuando platform renueve según una cookie que controla el usuario:
+  lo tienen en cuenta el PR de platform de WIZ-78 y el prerrequisito 11.
 
 ## Preguntas para el humano
 

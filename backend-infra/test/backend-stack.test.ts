@@ -49,22 +49,23 @@ const policyFor = (template: Template, functionName: string) => {
   return JSON.stringify(policy.Properties.PolicyDocument);
 };
 
-const routePaths = (template: Template) => {
-  const resources = template.findResources("AWS::ApiGateway::Resource");
-  const pathOf = (logicalId: string): string => {
-    const { PathPart, ParentId } = resources[logicalId].Properties;
-    return ParentId.Ref
-      ? `${pathOf(ParentId.Ref)}/${PathPart}`
-      : `/${PathPart}`;
-  };
-  return Object.values(
+const resourcePath = (template: Template, logicalId: string): string => {
+  const { PathPart, ParentId } = template.findResources(
+    "AWS::ApiGateway::Resource",
+  )[logicalId].Properties;
+  return ParentId.Ref
+    ? `${resourcePath(template, ParentId.Ref)}/${PathPart}`
+    : `/${PathPart}`;
+};
+
+const routePaths = (template: Template) =>
+  Object.values(
     template.findResources("AWS::ApiGateway::Method", {
       Properties: { HttpMethod: "POST" },
     }),
   )
-    .map(({ Properties }) => pathOf(Properties.ResourceId.Ref))
+    .map(({ Properties }) => resourcePath(template, Properties.ResourceId.Ref))
     .sort();
-};
 
 test("las tres rutas de la sesión son POST y exigen la clave de platform", () => {
   const template = synthesizeBackend();
@@ -77,10 +78,30 @@ test("las tres rutas de la sesión son POST y exigen la clave de platform", () =
 
   assert.deepEqual(routePaths(template), [
     "/api/auth/sign-in",
+    "/api/auth/sign-out",
     "/api/auth/sign-up/code",
     "/api/auth/sign-up/code/verify",
     "/api/auth/sign-up/confirm",
+    "/api/auth/token/refresh",
   ]);
+  const lambdaByPath: Record<string, string> = {
+    "/api/auth/sign-in": "SignInFunction",
+    "/api/auth/sign-out": "SignOutFunction",
+    "/api/auth/sign-up/code": "RequestSignUpCodeFunction",
+    "/api/auth/sign-up/code/verify": "VerifySignUpCodeFunction",
+    "/api/auth/sign-up/confirm": "ConfirmSignUpFunction",
+    "/api/auth/token/refresh": "RefreshSessionFunction",
+  };
+  for (const { Properties } of postMethods) {
+    const functionName =
+      lambdaByPath[resourcePath(template, Properties.ResourceId.Ref)];
+    assert.ok(
+      JSON.stringify(Properties.Integration.Uri).includes(
+        functionLogicalId(template, functionName),
+      ),
+      functionName,
+    );
+  }
   for (const method of postMethods) {
     assert.equal(method.Properties.ApiKeyRequired, true);
   }
@@ -143,6 +164,8 @@ test("cada Lambda sólo tiene los permisos que usa", () => {
   assert.deepEqual(accessByAction(template, "SignInFunction"), {
     "dynamodb:UpdateItem": ["SIGN_IN_ATTEMPTS#*"],
   });
+  assert.deepEqual(accessByAction(template, "RefreshSessionFunction"), {});
+  assert.deepEqual(accessByAction(template, "SignOutFunction"), {});
 });
 
 test("la confirmación crea y borra usuarios en Cognito, inicia la sesión, consulta sólo el índice por correo y no envía correos", () => {
@@ -186,7 +209,7 @@ test("la confirmación crea y borra usuarios en Cognito, inicia la sesión, cons
   );
 });
 
-test("sólo la confirmación y el inicio de sesión inician sesiones y leen el secreto del cliente", () => {
+test("sólo la confirmación y el inicio de sesión inician sesiones, y sólo las cuatro Lambdas de la sesión leen el secreto del cliente", () => {
   const template = synthesizeBackend();
 
   for (const functionName of [
@@ -198,6 +221,28 @@ test("sólo la confirmación y el inicio de sesión inician sesiones y leen el s
     assert.equal(
       policy.includes("DescribeUserPoolClient"),
       false,
+      functionName,
+    );
+  }
+});
+
+test("renovar y cerrar la sesión sólo leen el secreto del cliente, sin tabla, correos ni más permisos de Cognito", () => {
+  const template = synthesizeBackend();
+
+  for (const functionName of ["RefreshSessionFunction", "SignOutFunction"]) {
+    const statements: { Action: string | string[] }[] = JSON.parse(
+      policyFor(template, functionName),
+    ).Statement;
+    assert.deepEqual(
+      statements.flatMap(({ Action }) => Action),
+      ["cognito-idp:DescribeUserPoolClient"],
+      functionName,
+    );
+    assert.deepEqual(
+      Object.keys(
+        functionProperties(template, functionName).Environment.Variables,
+      ).sort(),
+      ["NODE_OPTIONS", "PLATFORM_CLIENT_ID", "USER_POOL_ID"],
       functionName,
     );
   }
@@ -340,6 +385,8 @@ test("las Lambdas de los usuarios tienen 15 segundos, 512 MB y logs que se conse
     "VerifySignUpCodeFunction",
     "ConfirmSignUpFunction",
     "SignInFunction",
+    "RefreshSessionFunction",
+    "SignOutFunction",
   ]) {
     const properties = functionProperties(template, functionName);
     assert.equal(properties.Timeout, 15, functionName);
@@ -353,7 +400,7 @@ test("las Lambdas de los usuarios tienen 15 segundos, 512 MB y logs que se conse
   assert.equal(
     Object.values(template.findResources("AWS::Logs::LogGroup")).filter(
       (logGroup) => logGroup.Properties.RetentionInDays === 30,
-    ).length >= 4,
+    ).length >= 6,
     true,
   );
 });

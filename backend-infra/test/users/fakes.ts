@@ -3,6 +3,7 @@ import type { SendEmailCommandInput, SESv2Client } from "@aws-sdk/client-sesv2";
 import type { IAccountExistsNotices } from "../../lib/src/users/application/ports/account-exists-notices.port";
 import type {
   ISessionProvider,
+  RefreshedSession,
   Session,
   SignInAttempt,
   SignInCredentials,
@@ -144,24 +145,31 @@ interface CognitoAccount {
 const SESSION_EXPIRES_IN_SECONDS = 900;
 
 export class InMemoryCognitoSessions
-  implements Pick<ISessionProvider, "signIn" | "revoke">
+  implements Pick<ISessionProvider, "signIn" | "refresh" | "revoke">
 {
   readonly usernames: string[] = [];
   readonly issuedRefreshTokens: string[] = [];
   readonly revokedRefreshTokens: string[] = [];
   failOnSignIn?: Error;
+  readonly refreshedWith: string[] = [];
   failOnRevoke?: Error;
+  failOnRefresh?: Error;
   unknownEmailLatency = 120;
   wrongPasswordLatency = 300;
   acceptedLatency = 500;
   revokeLatency = 200;
   private readonly accounts = new Map<string, CognitoAccount>();
   private readonly lockedOutEmails = new Set<string>();
+  private readonly expiredRefreshTokens = new Set<string>();
 
   constructor(private readonly clock: FakeClock = new FakeClock()) {}
 
   addAccount(email: string, password: string, cognitoSub = COGNITO_SUB): void {
     this.accounts.set(email, { cognitoSub, password });
+  }
+
+  expire(refreshToken: string): void {
+    this.expiredRefreshTokens.add(refreshToken);
   }
 
   lockOut(email: string): void {
@@ -195,6 +203,21 @@ export class InMemoryCognitoSessions
         refreshToken,
         expiresIn: SESSION_EXPIRES_IN_SECONDS,
       },
+    };
+  }
+
+  async refresh(refreshToken: string): Promise<RefreshedSession | undefined> {
+    this.refreshedWith.push(refreshToken);
+    if (this.failOnRefresh) throw this.failOnRefresh;
+    const isValid =
+      this.issuedRefreshTokens.includes(refreshToken) &&
+      !this.revokedRefreshTokens.includes(refreshToken) &&
+      !this.expiredRefreshTokens.has(refreshToken);
+    if (!isValid) return undefined;
+    return {
+      idToken: "id-token-renovado",
+      accessToken: "access-token-renovado",
+      expiresIn: SESSION_EXPIRES_IN_SECONDS,
     };
   }
 

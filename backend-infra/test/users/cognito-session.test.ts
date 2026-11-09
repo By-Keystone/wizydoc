@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import { createHmac } from "node:crypto";
 import { test } from "node:test";
-import { NotAuthorizedException } from "@aws-sdk/client-cognito-identity-provider";
+import {
+  InvalidParameterException,
+  NotAuthorizedException,
+  UnsupportedTokenTypeException,
+} from "@aws-sdk/client-cognito-identity-provider";
 import { CognitoSessionProvider } from "../../lib/src/users/infrastructure/identity-provider/cognito/cognito-session";
 import { emailSchema } from "../../lib/src/users/domain/value-objects/email.vo";
 import { COGNITO_SUB, cognitoClient, idTokenFor } from "./fakes";
@@ -232,32 +236,152 @@ test("al iniciar sesión, un desafío, tokens incompletos, un ID token sin sub o
   }
 });
 
-test("revoca con RevokeToken y el secreto del cliente, y deja subir cualquier error", async () => {
-  const revoking = cognitoClient({
+test("revoca con RevokeToken y el secreto del cliente", async () => {
+  const { client, sent } = cognitoClient({
     DescribeUserPoolClientCommand: describedClient,
-  });
-  const failing = cognitoClient({
-    DescribeUserPoolClientCommand: describedClient,
-    RevokeTokenCommand: new Error("InternalErrorException"),
   });
 
-  await new CognitoSessionProvider(revoking.client, settings).revoke(
-    "refresh-token",
-  );
+  await new CognitoSessionProvider(client, settings).revoke("refresh-token");
 
   assert.deepEqual(
-    revoking.sent.find(({ name }) => name === "RevokeTokenCommand")?.input,
+    sent.find(({ name }) => name === "RevokeTokenCommand")?.input,
     {
       ClientId: settings.clientId,
       ClientSecret: CLIENT_SECRET,
       Token: "refresh-token",
     },
   );
+});
+
+test("cualquier otro error de RevokeToken sube", async () => {
+  const { client } = cognitoClient({
+    DescribeUserPoolClientCommand: describedClient,
+    RevokeTokenCommand: new Error("InternalErrorException"),
+  });
+
   await assert.rejects(
-    new CognitoSessionProvider(failing.client, settings).revoke(
+    new CognitoSessionProvider(client, settings).revoke("refresh-token"),
+    { message: "InternalErrorException" },
+  );
+});
+
+test("al revocar, UnsupportedTokenTypeException y un token fuera del patrón de Cognito no son errores", async () => {
+  const unsupported = cognitoClient({
+    DescribeUserPoolClientCommand: describedClient,
+    RevokeTokenCommand: new UnsupportedTokenTypeException({
+      message: "access token",
+      $metadata: {},
+    }),
+  });
+  const outsidePattern = cognitoClient({
+    DescribeUserPoolClientCommand: describedClient,
+  });
+
+  await new CognitoSessionProvider(unsupported.client, settings).revoke(
+    "access-token",
+  );
+  await new CognitoSessionProvider(outsidePattern.client, settings).revoke(
+    "token con espacios",
+  );
+
+  assert.deepEqual(outsidePattern.sent, []);
+});
+
+const refreshedResult = {
+  AuthenticationResult: {
+    IdToken: "id-token-nuevo",
+    AccessToken: "access-token-nuevo",
+    ExpiresIn: 900,
+  },
+};
+
+test("renueva con GetTokensFromRefreshToken y el secreto del cliente, sin SECRET_HASH ni usuario", async () => {
+  const { client, sent } = cognitoClient({
+    DescribeUserPoolClientCommand: describedClient,
+    GetTokensFromRefreshTokenCommand: {
+      AuthenticationResult: {
+        ...refreshedResult.AuthenticationResult,
+        RefreshToken: "refresh-token-rotado",
+      },
+    },
+  });
+
+  const refreshed = await new CognitoSessionProvider(client, settings).refresh(
+    "refresh-token",
+  );
+
+  assert.deepEqual(refreshed, {
+    idToken: "id-token-nuevo",
+    accessToken: "access-token-nuevo",
+    expiresIn: 900,
+  });
+  assert.deepEqual(
+    sent.find(({ name }) => name === "GetTokensFromRefreshTokenCommand")?.input,
+    {
+      ClientId: settings.clientId,
+      ClientSecret: CLIENT_SECRET,
+      RefreshToken: "refresh-token",
+    },
+  );
+});
+
+test("al renovar, NotAuthorizedException es un token que no sirve, y un token fuera del patrón de Cognito no llega a Cognito", async () => {
+  const notAuthorized = cognitoClient({
+    DescribeUserPoolClientCommand: describedClient,
+    GetTokensFromRefreshTokenCommand: rejection(
+      "Refresh Token has been revoked",
+    ),
+  });
+  const outsidePattern = cognitoClient({
+    DescribeUserPoolClientCommand: describedClient,
+  });
+
+  assert.equal(
+    await new CognitoSessionProvider(notAuthorized.client, settings).refresh(
       "refresh-token",
     ),
-    { message: "InternalErrorException" },
+    undefined,
+  );
+  assert.equal(
+    await new CognitoSessionProvider(outsidePattern.client, settings).refresh(
+      "token con espacios",
+    ),
+    undefined,
+  );
+  assert.deepEqual(outsidePattern.sent, []);
+});
+
+test("al renovar, tokens incompletos, un error de configuración o la lectura fallida del secreto suben sin valores", async () => {
+  const failures = [
+    { AuthenticationResult: { IdToken: "id-token-nuevo" } },
+    new InvalidParameterException({
+      message: "mala configuración",
+      $metadata: {},
+    }),
+    new Error("TooManyRequestsException"),
+  ];
+
+  for (const failure of failures) {
+    const { client } = cognitoClient({
+      DescribeUserPoolClientCommand: describedClient,
+      GetTokensFromRefreshTokenCommand: failure,
+    });
+
+    await assert.rejects(
+      new CognitoSessionProvider(client, settings).refresh("refresh-token"),
+      (error: Error) =>
+        !error.message.includes("id-token-nuevo") &&
+        !error.message.includes("refresh-token"),
+    );
+  }
+  const secretFailure = cognitoClient({
+    DescribeUserPoolClientCommand: rejection("Not authorized to describe"),
+  });
+  await assert.rejects(
+    new CognitoSessionProvider(secretFailure.client, settings).refresh(
+      "refresh-token",
+    ),
+    NotAuthorizedException,
   );
 });
 

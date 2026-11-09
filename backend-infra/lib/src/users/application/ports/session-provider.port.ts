@@ -17,6 +17,8 @@ export interface Session {
   expiresIn: number;
 }
 
+export type RefreshedSession = Omit<Session, "refreshToken">;
+
 export type SignInAttempt =
   | { kind: "accepted"; cognitoSub: string; session: Session }
   | { kind: "rejected" }
@@ -25,5 +27,6 @@ export type SignInAttempt =
 export interface ISessionProvider {
   start(input: StartSessionInput): Promise<Session>;
   signIn(credentials: SignInCredentials): Promise<SignInAttempt>;
+  refresh(refreshToken: string): Promise<RefreshedSession | undefined>;
   revoke(refreshToken: string): Promise<void>;
 }
