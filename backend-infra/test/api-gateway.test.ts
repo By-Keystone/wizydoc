@@ -94,6 +94,20 @@ test("el log de acceso no guarda la ruta, que lleva tokens", () => {
   assert.doesNotMatch(accessLogFormat, /\$context\.path/);
 });
 
+test("la etapa no registra los cuerpos de los pedidos ni de las respuestas", () => {
+  const template = synthesizeApiGateway();
+
+  const [stage] = Object.values(
+    template.findResources("AWS::ApiGateway::Stage"),
+  );
+  const methodSettings: { DataTraceEnabled?: boolean }[] =
+    stage.Properties.MethodSettings ?? [];
+
+  for (const { DataTraceEnabled } of methodSettings) {
+    assert.notEqual(DataTraceEnabled, true);
+  }
+});
+
 const REDEPLOY_FUNCTION = "ApiGatewayRedeployStaleStageFunction";
 const REST_API_ID = "api0000000";
 const STAGE_NAME = "prod";

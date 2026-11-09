@@ -49,7 +49,24 @@ const policyFor = (template: Template, functionName: string) => {
   return JSON.stringify(policy.Properties.PolicyDocument);
 };
 
-test("las tres rutas son POST y exigen la clave de platform", () => {
+const routePaths = (template: Template) => {
+  const resources = template.findResources("AWS::ApiGateway::Resource");
+  const pathOf = (logicalId: string): string => {
+    const { PathPart, ParentId } = resources[logicalId].Properties;
+    return ParentId.Ref
+      ? `${pathOf(ParentId.Ref)}/${PathPart}`
+      : `/${PathPart}`;
+  };
+  return Object.values(
+    template.findResources("AWS::ApiGateway::Method", {
+      Properties: { HttpMethod: "POST" },
+    }),
+  )
+    .map(({ Properties }) => pathOf(Properties.ResourceId.Ref))
+    .sort();
+};
+
+test("las tres rutas de la sesión son POST y exigen la clave de platform", () => {
   const template = synthesizeBackend();
 
   const postMethods = Object.values(
@@ -58,19 +75,15 @@ test("las tres rutas son POST y exigen la clave de platform", () => {
     }),
   );
 
-  assert.equal(postMethods.length, 3);
+  assert.deepEqual(routePaths(template), [
+    "/api/auth/sign-in",
+    "/api/auth/sign-up/code",
+    "/api/auth/sign-up/code/verify",
+    "/api/auth/sign-up/confirm",
+  ]);
   for (const method of postMethods) {
     assert.equal(method.Properties.ApiKeyRequired, true);
   }
-  template.hasResourceProperties("AWS::ApiGateway::Resource", {
-    PathPart: "code",
-  });
-  template.hasResourceProperties("AWS::ApiGateway::Resource", {
-    PathPart: "verify",
-  });
-  template.hasResourceProperties("AWS::ApiGateway::Resource", {
-    PathPart: "confirm",
-  });
 });
 
 test("GET /health es la única ruta GET, exige la clave de platform y no hay ruta comodín", () => {
@@ -110,7 +123,7 @@ const accessByAction = (template: Template, functionName: string) => {
   );
 };
 
-test("cada Lambda usa en DynamoDB sólo las acciones y los prefijos que usa", () => {
+test("cada Lambda sólo tiene los permisos que usa", () => {
   const template = synthesizeBackend();
 
   assert.deepEqual(accessByAction(template, "RequestSignUpCodeFunction"), {
@@ -126,6 +139,9 @@ test("cada Lambda usa en DynamoDB sólo las acciones y los prefijos que usa", ()
     "dynamodb:PutItem": ["SIGN_UP_VERIFICATION#*"],
     "dynamodb:UpdateItem": ["SIGN_UP_CODE#*", "SIGN_UP_VERIFY_ATTEMPTS#*"],
     "dynamodb:DeleteItem": ["SIGN_UP_CODE#*"],
+  });
+  assert.deepEqual(accessByAction(template, "SignInFunction"), {
+    "dynamodb:UpdateItem": ["SIGN_IN_ATTEMPTS#*"],
   });
 });
 
@@ -170,7 +186,7 @@ test("la confirmación crea y borra usuarios en Cognito, inicia la sesión, cons
   );
 });
 
-test("sólo la confirmación puede iniciar sesiones y leer el secreto del cliente", () => {
+test("sólo la confirmación y el inicio de sesión inician sesiones y leen el secreto del cliente", () => {
   const template = synthesizeBackend();
 
   for (const functionName of [
@@ -184,6 +200,53 @@ test("sólo la confirmación puede iniciar sesiones y leer el secreto del client
       false,
       functionName,
     );
+  }
+});
+
+test("el inicio de sesión sólo inicia sesiones, lee el secreto del cliente, cuenta intentos y consulta el índice por sub", () => {
+  const template = synthesizeBackend();
+  const policy = policyFor(template, "SignInFunction");
+
+  const cognitoActions = JSON.parse(policy)
+    .Statement.flatMap(({ Action }: { Action: string | string[] }) => Action)
+    .filter((action: string) => action.startsWith("cognito-idp:"))
+    .sort();
+  assert.deepEqual(cognitoActions, [
+    "cognito-idp:AdminInitiateAuth",
+    "cognito-idp:DescribeUserPoolClient",
+  ]);
+  for (const expected of ["dynamodb:Query", "/index/GSI2"]) {
+    assert.ok(policy.includes(expected), expected);
+  }
+  for (const forbidden of [
+    "ses:",
+    "/index/GSI1",
+    "/index/*",
+    "dynamodb:GetItem",
+    "dynamodb:PutItem",
+    "dynamodb:DeleteItem",
+    "USER#*",
+  ]) {
+    assert.equal(policy.includes(forbidden), false, forbidden);
+  }
+  assert.deepEqual(
+    Object.keys(
+      functionProperties(template, "SignInFunction").Environment.Variables,
+    ).sort(),
+    ["NODE_OPTIONS", "PLATFORM_CLIENT_ID", "TABLE_NAME", "USER_POOL_ID"],
+  );
+});
+
+test("el inicio de sesión no cambia lo que consultan las Lambdas del registro", () => {
+  const template = synthesizeBackend();
+
+  for (const functionName of [
+    "RequestSignUpCodeFunction",
+    "ConfirmSignUpFunction",
+  ]) {
+    const policy = policyFor(template, functionName);
+    assert.ok(policy.includes("/index/GSI1"), functionName);
+    assert.equal(policy.includes("/index/GSI2"), false, functionName);
   }
 });
 
@@ -269,13 +332,14 @@ test("el pedido del código puede enviar sus dos plantillas", () => {
   assert.ok(policy.includes(":template/BackendTest-account-exists"));
 });
 
-test("las tres Lambdas tienen 15 segundos, 512 MB y logs que se conservan un mes", () => {
+test("las Lambdas de los usuarios tienen 15 segundos, 512 MB y logs que se conservan un mes", () => {
   const template = synthesizeBackend();
 
   for (const functionName of [
     "RequestSignUpCodeFunction",
     "VerifySignUpCodeFunction",
     "ConfirmSignUpFunction",
+    "SignInFunction",
   ]) {
     const properties = functionProperties(template, functionName);
     assert.equal(properties.Timeout, 15, functionName);
@@ -289,7 +353,7 @@ test("las tres Lambdas tienen 15 segundos, 512 MB y logs que se conservan un mes
   assert.equal(
     Object.values(template.findResources("AWS::Logs::LogGroup")).filter(
       (logGroup) => logGroup.Properties.RetentionInDays === 30,
-    ).length >= 3,
+    ).length >= 4,
     true,
   );
 });
@@ -374,6 +438,7 @@ test("toda Lambda del stack dice en su descripción qué hace", () => {
     const description: string | undefined =
       lambdaFunction.Properties.Description;
     assert.ok(description, `${logicalId} no tiene descripción`);
+    assert.doesNotMatch(description, /\/api\/|\b(GET|POST)\b/, logicalId);
     assert.ok(
       description.length <= LAMBDA_DESCRIPTION_MAX_LENGTH,
       `la descripción de ${logicalId} pasa de ${LAMBDA_DESCRIPTION_MAX_LENGTH} caracteres`,

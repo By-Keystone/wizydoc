@@ -17,7 +17,7 @@ import {
 } from "./sign-up-verification-token.schema";
 import { fromTermsAcceptanceToDynamo } from "./terms-acceptance.mappers";
 import { fromDomainToDynamo } from "./user.mappers";
-import { gsi1pk, USER_ITEM_TYPE } from "./user.schema";
+import { gsi1pk, gsi2pk, USER_ITEM_TYPE } from "./user.schema";
 
 const ONLY_IF_NEW = "attribute_not_exists(PK)";
 const ONLY_IF_VERIFICATION_IS_VALID =
@@ -94,5 +94,27 @@ export class UserRepository implements IUserRepository {
     );
 
     return Items?.[0]?.ItemType === USER_ITEM_TYPE;
+  }
+
+  async isConfirmed(cognitoSub: string): Promise<boolean> {
+    const { Items } = await this.client.send(
+      new QueryCommand({
+        TableName: this.tableName,
+        IndexName: "GSI2",
+        KeyConditionExpression: "#GSI2PK = :gsi2pk",
+        ProjectionExpression: "#ItemType, #Confirmed",
+        ExpressionAttributeValues: { ":gsi2pk": gsi2pk(cognitoSub) },
+        ExpressionAttributeNames: {
+          "#GSI2PK": "GSI2PK",
+          "#ItemType": "ItemType",
+          "#Confirmed": "Confirmed",
+        },
+        Limit: 1,
+      }),
+    );
+
+    return (
+      Items?.[0]?.ItemType === USER_ITEM_TYPE && Items[0].Confirmed === true
+    );
   }
 }

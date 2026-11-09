@@ -29,6 +29,7 @@ const USERS_HANDLERS_DIRECTORY = path.join(__dirname, "src/users/handlers");
 const USERS_FUNCTION_TIMEOUT = Duration.seconds(15);
 const USERS_FUNCTION_MEMORY_MB = 512;
 const USER_EMAIL_INDEX = "GSI1";
+const USER_COGNITO_SUB_INDEX = "GSI2";
 
 type TableAccess = Partial<
   Record<
@@ -48,6 +49,9 @@ const CONFIRM_SIGN_UP_ACCESS: TableAccess = {
   "dynamodb:GetItem": ["SIGN_UP_VERIFICATION#*"],
   "dynamodb:PutItem": ["USER#*"],
   "dynamodb:DeleteItem": ["SIGN_UP_VERIFICATION#*"],
+};
+const SIGN_IN_ACCESS: TableAccess = {
+  "dynamodb:UpdateItem": ["SIGN_IN_ATTEMPTS#*"],
 };
 const VERIFY_SIGN_UP_CODE_ACCESS: TableAccess = {
   "dynamodb:PutItem": ["SIGN_UP_VERIFICATION#*"],
@@ -128,7 +132,11 @@ export class BackendStack extends Stack {
       database.table,
       REQUEST_SIGN_UP_CODE_ACCESS,
     );
-    grantUserEmailLookup(requestSignUpCodeFunction, database.table);
+    grantIndexQuery(
+      requestSignUpCodeFunction,
+      database.table,
+      USER_EMAIL_INDEX,
+    );
     requestSignUpCodeFunction.addToRolePolicy(
       sendEmailWithTemplates([
         emailTemplates.signUpCode,
@@ -165,12 +173,30 @@ export class BackendStack extends Stack {
       database.table,
       CONFIRM_SIGN_UP_ACCESS,
     );
-    grantUserEmailLookup(confirmSignUpFunction, database.table);
+    grantIndexQuery(confirmSignUpFunction, database.table, USER_EMAIL_INDEX);
     authentication.userPool.grant(
       confirmSignUpFunction,
       "cognito-idp:AdminCreateUser",
       "cognito-idp:AdminSetUserPassword",
       "cognito-idp:AdminDeleteUser",
+      "cognito-idp:AdminInitiateAuth",
+      "cognito-idp:DescribeUserPoolClient",
+    );
+
+    const signInFunction = this.usersFunction(
+      "SignInFunction",
+      "sign-in",
+      "Signs a confirmed user in with email and password, and returns the Cognito tokens.",
+      {
+        TABLE_NAME: database.table.tableName,
+        USER_POOL_ID: authentication.userPool.userPoolId,
+        PLATFORM_CLIENT_ID: authentication.platformClient.userPoolClientId,
+      },
+    );
+    grantTableAccess(signInFunction, database.table, SIGN_IN_ACCESS);
+    grantIndexQuery(signInFunction, database.table, USER_COGNITO_SUB_INDEX);
+    authentication.userPool.grant(
+      signInFunction,
       "cognito-idp:AdminInitiateAuth",
       "cognito-idp:DescribeUserPoolClient",
     );
@@ -194,6 +220,9 @@ export class BackendStack extends Stack {
         "POST",
         new apigateway.LambdaIntegration(confirmSignUpFunction),
       );
+    apiGateway.api.root
+      .resourceForPath("api/auth/sign-in")
+      .addMethod("POST", new apigateway.LambdaIntegration(signInFunction));
     apiGateway.api.root
       .addResource("health")
       .addMethod("GET", new apigateway.LambdaIntegration(healthFunction));
@@ -242,10 +271,14 @@ const grantTableAccess = (
   }
 };
 
-const grantUserEmailLookup = (usersFunction: NodejsFunction, table: ITableV2) =>
+const grantIndexQuery = (
+  usersFunction: NodejsFunction,
+  table: ITableV2,
+  indexName: string,
+) =>
   usersFunction.addToRolePolicy(
     new iam.PolicyStatement({
       actions: ["dynamodb:Query"],
-      resources: [`${table.tableArn}/index/${USER_EMAIL_INDEX}`],
+      resources: [`${table.tableArn}/index/${indexName}`],
     }),
   );

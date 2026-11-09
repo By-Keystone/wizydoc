@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 const MINIMUM_PASSWORD_LENGTH = 8;
-const MAXIMUM_PASSWORD_LENGTH = 256;
+export const MAXIMUM_PASSWORD_LENGTH = 256;
 const PASSWORD_ACCEPTED_BY_COGNITO = /^\S(?:.*\S)?$/;
 const PASSWORD_TOO_SHORT = `La contraseña debe tener al menos ${MINIMUM_PASSWORD_LENGTH} caracteres`;
 const PASSWORD_WITH_SPACES_AT_THE_EDGES =

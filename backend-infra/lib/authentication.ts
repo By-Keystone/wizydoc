@@ -3,7 +3,8 @@ import * as cognito from "aws-cdk-lib/aws-cognito";
 import { Construct } from "constructs";
 
 const MINIMUM_PASSWORD_LENGTH = 8;
-const REFRESH_TOKEN_VALIDITY = Duration.days(30);
+const TOKEN_VALIDITY = Duration.minutes(15);
+const REFRESH_TOKEN_VALIDITY = Duration.days(15);
 export const PLATFORM_CLIENT_NAME = "wizydoc-platform";
 
 const writableAttributes =
@@ -43,6 +44,8 @@ export class Authentication extends Construct {
       preventUserExistenceErrors: true,
       enableTokenRevocation: true,
       writeAttributes: writableAttributes,
+      idTokenValidity: TOKEN_VALIDITY,
+      accessTokenValidity: TOKEN_VALIDITY,
       refreshTokenValidity: REFRESH_TOKEN_VALIDITY,
     });
   }
