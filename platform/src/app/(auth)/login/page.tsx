@@ -7,9 +7,13 @@ import { LoginForm } from "./login-form";
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ callbackUrl?: string; reset?: string }>;
+  searchParams: Promise<{
+    callbackUrl?: string;
+    reset?: string;
+    registered?: string;
+  }>;
 }) {
-  const { callbackUrl, reset } = await searchParams;
+  const { callbackUrl, reset, registered } = await searchParams;
   const callback = safeInternalPath(callbackUrl);
 
   const session = await getSession();
@@ -33,5 +37,11 @@ export default async function LoginPage({
     redirect(`/account/${accountId}/select`);
   }
 
-  return <LoginForm callbackUrl={callbackUrl} passwordReset={reset === "ok"} />;
+  return (
+    <LoginForm
+      callbackUrl={callbackUrl}
+      passwordReset={reset === "ok"}
+      accountCreated={registered === "ok"}
+    />
+  );
 }

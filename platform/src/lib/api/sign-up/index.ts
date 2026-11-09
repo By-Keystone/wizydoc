@@ -3,6 +3,7 @@ import "server-only";
 import { ApiError } from "@/lib/api/errors";
 import { headers } from "next/headers";
 import z from "zod";
+import type { CognitoTokens, ConfirmSignUpInput } from "./types";
 
 const FORWARDED_HEADERS = ["x-real-ip", "user-agent"];
 
@@ -36,6 +37,13 @@ async function post(path: string, body: object): Promise<Response> {
   return response;
 }
 
+const cognitoTokensSchema = z.object({
+  idToken: z.string(),
+  accessToken: z.string(),
+  refreshToken: z.string(),
+  expiresIn: z.number().positive(),
+});
+
 const verifyCodeResponseSchema = z.object({ verificationToken: z.string() });
 
 export const signUpApi = {
@@ -47,5 +55,11 @@ export const signUpApi = {
     });
     return verifyCodeResponseSchema.parse(await response.json())
       .verificationToken;
+  },
+  confirm: async (input: ConfirmSignUpInput): Promise<CognitoTokens | null> => {
+    const response = await post("/api/auth/sign-up/confirm", input);
+    const payload = await response.json().catch(() => null);
+    const tokens = cognitoTokensSchema.safeParse(payload);
+    return tokens.success ? tokens.data : null;
   },
 };

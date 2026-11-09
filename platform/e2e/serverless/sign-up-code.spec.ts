@@ -86,7 +86,7 @@ test("tras «Continuar» la página muestra «Revisa tu correo» con el foco en 
   await expect(codeHeading(page)).toBeVisible();
 });
 
-test("al escribir el sexto dígito se envía solo, el backend recibe la verificación una vez y la cookie guarda el token", async ({
+test("al escribir el sexto dígito se envía solo, el backend recibe la verificación una vez, la cookie guarda el token y la página pasa a la contraseña", async ({
   page,
   request,
   context,
@@ -108,7 +108,9 @@ test("al escribir el sexto dígito se envía solo, el backend recibe la verifica
     )
     .toBe(verification.verificationToken);
   expect(new URL(page.url()).pathname).toBe("/register");
-  await expect(codeHeading(page)).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Crea tu contraseña" }),
+  ).toBeVisible();
 });
 
 test("pegar «482 913» deja los 6 dígitos y se envía solo", async ({

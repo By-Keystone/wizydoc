@@ -32,3 +32,28 @@ export const signUpCodeSchema = z
   .regex(new RegExp(`^\\d{${CODE_LENGTH}}$`), {
     error: INCOMPLETE_CODE_ERROR,
   });
+
+const MIN_PASSWORD_LENGTH = 8;
+const MAX_PASSWORD_LENGTH = 256;
+const PASSWORD_ACCEPTED_BY_COGNITO = /^\S(?:.*\S)?$/;
+const PASSWORD_TOO_SHORT_ERROR = `La contraseña debe tener al menos ${MIN_PASSWORD_LENGTH} caracteres`;
+const PASSWORD_WITH_EDGE_SPACES_ERROR =
+  "La contraseña no puede empezar ni terminar con un espacio, ni tener saltos de línea";
+
+export const CONFIRM_SIGN_UP_ERROR =
+  "No pudimos crear tu cuenta. Intenta de nuevo.";
+export const VERIFICATION_EXPIRED_MESSAGE =
+  "Tu verificación venció. Vuelve a pedir el código.";
+export const VERIFICATION_EXPIRED_CODE = "VERIFICATION_EXPIRED";
+
+export const signUpPasswordSchema = z
+  .string({ error: PASSWORD_TOO_SHORT_ERROR })
+  .refine((password) => [...password].length >= MIN_PASSWORD_LENGTH, {
+    error: PASSWORD_TOO_SHORT_ERROR,
+  })
+  .max(MAX_PASSWORD_LENGTH, {
+    error: `La contraseña puede tener hasta ${MAX_PASSWORD_LENGTH} caracteres`,
+  })
+  .regex(PASSWORD_ACCEPTED_BY_COGNITO, {
+    error: PASSWORD_WITH_EDGE_SPACES_ERROR,
+  });

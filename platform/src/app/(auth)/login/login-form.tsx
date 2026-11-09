@@ -19,6 +19,10 @@ const UNVERIFIED_EMAIL_ERROR =
   "Primero confirma tu correo con el enlace que te enviamos al registrarte.";
 const TOO_MANY_ATTEMPTS_ERROR =
   "Hiciste varios intentos seguidos. Espera un minuto y vuelve a intentarlo.";
+const PASSWORD_RESET_NOTICE =
+  "Listo, ya puedes iniciar sesión con tu contraseña nueva.";
+const ACCOUNT_CREATED_NOTICE =
+  "Tu cuenta quedó creada. Inicia sesión con tu correo y tu contraseña.";
 const GENERIC_ERROR =
   "No pudimos iniciar sesión. Revisa tu conexión y vuelve a intentarlo.";
 
@@ -27,6 +31,8 @@ interface Props {
   callbackUrl?: string;
   /** Llegó de crear su contraseña nueva (`?reset=ok`). */
   passwordReset?: boolean;
+  /** Llegó de crear su cuenta sin sesión (`?registered=ok`). */
+  accountCreated?: boolean;
 }
 
 interface FieldErrors {
@@ -49,21 +55,26 @@ function signInErrorMessage(error: { code?: string; status: number }) {
   return GENERIC_ERROR;
 }
 
-export function LoginForm({ callbackUrl, passwordReset }: Props) {
+export function LoginForm({
+  callbackUrl,
+  passwordReset,
+  accountCreated,
+}: Props) {
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [submitError, setSubmitError] = useState<string>();
   const [pending, setPending] = useState(false);
-  const [showResetNotice, setShowResetNotice] = useState(false);
+  const [notice, setNotice] = useState<string>();
 
   useFocusFirstInvalid(formRef, fieldErrors);
 
   // Un aviso que ya está en el HTML al cargar no se anuncia: la región
   // `role="status"` va vacía en el servidor y el texto entra tras montar.
   useEffect(() => {
-    setShowResetNotice(Boolean(passwordReset));
-  }, [passwordReset]);
+    if (passwordReset) setNotice(PASSWORD_RESET_NOTICE);
+    else if (accountCreated) setNotice(ACCOUNT_CREATED_NOTICE);
+  }, [passwordReset, accountCreated]);
 
   const callback = safeInternalPath(callbackUrl);
 
@@ -119,12 +130,10 @@ export function LoginForm({ callbackUrl, passwordReset }: Props) {
       }
     >
       <div role="status">
-        {showResetNotice && (
+        {notice && (
           <p className="mb-5 flex items-start gap-2 rounded-lg bg-brand-teal/10 px-3 py-2 text-sm text-brand-teal-dark">
             <CheckCircle2 className="mt-0.5 h-[18px] w-[18px] shrink-0" />
-            <span>
-              Listo, ya puedes iniciar sesión con tu contraseña nueva.
-            </span>
+            <span>{notice}</span>
           </p>
         )}
       </div>

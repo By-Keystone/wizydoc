@@ -257,6 +257,9 @@ servidor.**
     cada 10 minutos [spec];
   - y la pantalla diría que enviamos un código sin haber enviado uno nuevo. El
     anterior sigue sirviendo.
+- **Con token en la cookie no hay enfriamiento:** el código ya se gastó al
+  verificarlo, así que el anterior no sirve y el backend sí envía uno nuevo.
+  Vale para «Pedir un código nuevo» de la tarjeta vencida.
 - Un correo distinto siempre llama al backend y empieza un avance nuevo, sin
   token.
 
@@ -364,7 +367,10 @@ no se vuelve atrás, así que todo esto tiene que estar listo antes.
    pre-secuestrar una cuenta [spec].
 2. **La sesión de Cognito** (otro ticket): con `serverless`, el middleware,
    `getSession` y `getMe` leen las cookies de D-6. Sin eso, quien crea su
-   cuenta termina en `/login`.
+   cuenta termina en `/login`. Además, con `serverless` platform deja de
+   reenviar la cabecera `cookie` completa a `API_URL`: hoy lo hacen
+   `lib/auth/session.ts`, `lib/auth/me.ts`, `lib/api/fetch.ts` y los rewrites
+   de `next.config.ts`, y llevarían los tokens de Cognito al api de hoy.
 3. **El login contra Cognito,** también detrás de `BACKEND` (otro
    subticket de WIZ-71). Con 204, y cada vez que vuelva, la persona entra por
    `/login`.
@@ -389,7 +395,8 @@ no se vuelve atrás, así que todo esto tiene que estar listo antes.
     pisa. Hoy se reenvía tal cual, así que el límite por IP del backend depende
     de eso.
 11. **Un límite de pedidos por ruta en el usage plan de `backend-infra`** para
-    `POST /api/auth/sign-up/code` (`apiStages[].throttle`, del orden de unidades
+    `POST /api/auth/sign-up/code`, `/code/verify` y `/confirm`, que son
+    públicas desde platform y comparten el cupo de la clave (`apiStages[].throttle`, del orden de unidades
     por segundo). Hoy el formulario público comparte el límite de 100 rps de la
     clave de platform, y un ataque podría dejar sin servicio el resto, incluido
     el login futuro.

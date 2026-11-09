@@ -2,7 +2,7 @@ import type { ActionFailure } from "@/lib/actions/types";
 import { ApiError } from "@/lib/api/errors";
 import { TOO_MANY_ATTEMPTS_ERROR } from "@/lib/auth/sign-up-validation";
 
-const BAD_REQUEST = 400;
+export const BAD_REQUEST = 400;
 const TOO_MANY_REQUESTS = 429;
 
 export function fieldFailure(field: string, message: string): ActionFailure {

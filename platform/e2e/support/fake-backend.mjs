@@ -8,6 +8,12 @@ const CORRECT_CODE = "482913";
 const VERIFICATION_TOKEN_BYTES = 32;
 
 const requests = [];
+const tokensIssuedByEmail = new Map();
+
+const NO_SESSION_EMAIL_PREFIX = "sinsesion";
+const EXPIRED_VERIFICATION_MESSAGE =
+  "Tu verificación venció. Vuelve a pedir el código.";
+const SESSION_LIFETIME_SECONDS = 3600;
 
 const forcedStatusByEmailPrefix = {
   limite: 429,
@@ -122,7 +128,46 @@ const server = createServer(async (request, response) => {
           "El código no es correcto o ya venció. Pide uno nuevo si lo necesitas.",
       });
     }
+    tokensIssuedByEmail.set(email, verificationToken);
     return sendJson(response, 200, { verificationToken });
+  }
+
+  if (
+    request.method === "POST" &&
+    url.pathname === "/api/auth/sign-up/confirm"
+  ) {
+    const body = await readBody(request);
+    const { email = "", verificationToken = "" } = body;
+    const forcedStatus = forcedStatusFor(email);
+    const isTokenOfThisEmail =
+      verificationToken !== "" &&
+      verificationToken === tokensIssuedByEmail.get(email);
+    const session = {
+      idToken: randomBytes(VERIFICATION_TOKEN_BYTES).toString("base64url"),
+      accessToken: randomBytes(VERIFICATION_TOKEN_BYTES).toString("base64url"),
+      refreshToken: randomBytes(VERIFICATION_TOKEN_BYTES).toString("base64url"),
+      expiresIn: SESSION_LIFETIME_SECONDS,
+    };
+    requests.push({
+      path: url.pathname,
+      email,
+      verificationToken,
+      bodyKeys: Object.keys(body).sort(),
+      realIp: request.headers["x-real-ip"],
+      userAgent: request.headers["user-agent"],
+      session: isTokenOfThisEmail && !forcedStatus ? session : undefined,
+    });
+
+    if (forcedStatus) return rejectForced(response, forcedStatus);
+    if (!isTokenOfThisEmail) {
+      return sendJson(response, 400, { message: EXPIRED_VERIFICATION_MESSAGE });
+    }
+    tokensIssuedByEmail.delete(email);
+    if (email.startsWith(NO_SESSION_EMAIL_PREFIX)) {
+      response.writeHead(204);
+      return response.end();
+    }
+    return sendJson(response, 200, session);
   }
 
   return sendJson(response, 404, { message: "Not found" });
