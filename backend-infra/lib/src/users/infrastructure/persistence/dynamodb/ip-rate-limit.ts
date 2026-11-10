@@ -6,7 +6,6 @@ import {
 } from "@aws-sdk/lib-dynamodb";
 import type { IIpRateLimit } from "../../../application/ports/ip-rate-limit.port";
 
-const WINDOW_SECONDS = 10 * 60;
 const UNKNOWN_IP_ADDRESS = "unknown";
 const IPV6_GROUP_COUNT = 8;
 const IPV6_NETWORK_GROUP_COUNT = 4;
@@ -47,16 +46,25 @@ const rateLimitSubject = (ipAddress: string | undefined): string => {
 export interface IpRateLimitSettings {
   itemType: string;
   maxAttempts: number;
+  windowSeconds: number;
 }
 
 export const EMAIL_SEND_RATE_LIMIT: IpRateLimitSettings = {
   itemType: "EMAIL_SEND_ATTEMPTS",
   maxAttempts: 3,
+  windowSeconds: 10 * 60,
 };
 
 export const SIGN_UP_VERIFY_RATE_LIMIT: IpRateLimitSettings = {
   itemType: "SIGN_UP_VERIFY_ATTEMPTS",
   maxAttempts: 10,
+  windowSeconds: 10 * 60,
+};
+
+export const SIGN_IN_RATE_LIMIT: IpRateLimitSettings = {
+  itemType: "SIGN_IN_ATTEMPTS",
+  maxAttempts: 5,
+  windowSeconds: 60,
 };
 
 export class DynamoDBIpRateLimit implements IIpRateLimit {
@@ -69,7 +77,8 @@ export class DynamoDBIpRateLimit implements IIpRateLimit {
 
   async tryRegister(ipAddress: string | undefined): Promise<boolean> {
     const nowInSeconds = Math.floor(this.nowInMilliseconds() / 1000);
-    const windowStart = nowInSeconds - (nowInSeconds % WINDOW_SECONDS);
+    const { windowSeconds } = this.limit;
+    const windowStart = nowInSeconds - (nowInSeconds % windowSeconds);
 
     try {
       await this.client.send(
@@ -86,7 +95,7 @@ export class DynamoDBIpRateLimit implements IIpRateLimit {
           ExpressionAttributeValues: {
             ":one": 1,
             ":maxAttempts": this.limit.maxAttempts,
-            ":deleteAfter": windowStart + WINDOW_SECONDS,
+            ":deleteAfter": windowStart + windowSeconds,
             ":itemType": this.limit.itemType,
           },
         }),

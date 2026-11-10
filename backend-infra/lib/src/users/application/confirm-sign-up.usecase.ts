@@ -77,7 +77,7 @@ export class ConfirmSignUpUseCase {
     private readonly verificationTokens: ISignUpVerificationTokenRepository,
     private readonly users: IUserRepository,
     private readonly identityProvider: IIdentityProvider,
-    private readonly sessions: ISessionProvider,
+    private readonly sessions: Pick<ISessionProvider, "start">,
     private readonly requireTermsAcceptance: boolean,
   ) {}
 

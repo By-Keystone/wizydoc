@@ -4,6 +4,8 @@ import type { IAccountExistsNotices } from "../../lib/src/users/application/port
 import type {
   ISessionProvider,
   Session,
+  SignInAttempt,
+  SignInCredentials,
   StartSessionInput,
 } from "../../lib/src/users/application/ports/session-provider.port";
 import type { ISignUpVerificationTokenRepository } from "../../lib/src/users/domain/repository/sign-up-verification-token.repository";
@@ -62,7 +64,7 @@ export class InMemorySignUpVerificationTokens
   }
 }
 
-export class RecordingSessions implements ISessionProvider {
+export class RecordingSessions implements Pick<ISessionProvider, "start"> {
   readonly started: StartSessionInput[] = [];
   failure?: Error;
 
@@ -83,6 +85,7 @@ export class InMemoryUsers implements IUserRepository {
   readonly createdUsers: User[] = [];
   readonly termsAcceptances: TermsAcceptance[] = [];
   failOnCreate = false;
+  failOnRead = false;
 
   constructor(
     existingUsers: User[] = [],
@@ -107,7 +110,107 @@ export class InMemoryUsers implements IUserRepository {
   async existsByEmail(email: EmailVO): Promise<boolean> {
     return this.users.some((user) => user.email === email);
   }
+
+  async isConfirmed(cognitoSub: string): Promise<boolean> {
+    if (this.failOnRead) throw new Error("DynamoDB no disponible");
+    return this.users.some(
+      (user) => user.cognitoSub === cognitoSub && user.confirmed,
+    );
+  }
 }
+
+export class FakeClock {
+  readonly waits: number[] = [];
+
+  constructor(private current = Date.UTC(2026, 10, 9, 12, 0, 0)) {}
+
+  now = (): number => this.current;
+
+  advance(milliseconds: number): void {
+    this.current += milliseconds;
+  }
+
+  wait = async (milliseconds: number): Promise<void> => {
+    this.waits.push(milliseconds);
+    this.advance(milliseconds);
+  };
+}
+
+interface CognitoAccount {
+  cognitoSub: string;
+  password: string;
+}
+
+const SESSION_EXPIRES_IN_SECONDS = 900;
+
+export class InMemoryCognitoSessions
+  implements Pick<ISessionProvider, "signIn" | "revoke">
+{
+  readonly usernames: string[] = [];
+  readonly issuedRefreshTokens: string[] = [];
+  readonly revokedRefreshTokens: string[] = [];
+  failOnSignIn?: Error;
+  failOnRevoke?: Error;
+  unknownEmailLatency = 120;
+  wrongPasswordLatency = 300;
+  acceptedLatency = 500;
+  revokeLatency = 200;
+  private readonly accounts = new Map<string, CognitoAccount>();
+  private readonly lockedOutEmails = new Set<string>();
+
+  constructor(private readonly clock: FakeClock = new FakeClock()) {}
+
+  addAccount(email: string, password: string, cognitoSub = COGNITO_SUB): void {
+    this.accounts.set(email, { cognitoSub, password });
+  }
+
+  lockOut(email: string): void {
+    this.lockedOutEmails.add(email);
+  }
+
+  async signIn({ email, password }: SignInCredentials): Promise<SignInAttempt> {
+    this.usernames.push(email);
+    if (this.failOnSignIn) throw this.failOnSignIn;
+    const account = this.accounts.get(email);
+    if (account && this.lockedOutEmails.has(email)) {
+      return { kind: "locked-out" };
+    }
+    if (!account) {
+      this.clock.advance(this.unknownEmailLatency);
+      return { kind: "rejected" };
+    }
+    if (account.password !== password) {
+      this.clock.advance(this.wrongPasswordLatency);
+      return { kind: "rejected" };
+    }
+    this.clock.advance(this.acceptedLatency);
+    const refreshToken = `refresh-token-${this.issuedRefreshTokens.length + 1}`;
+    this.issuedRefreshTokens.push(refreshToken);
+    return {
+      kind: "accepted",
+      cognitoSub: account.cognitoSub,
+      session: {
+        idToken: "id-token",
+        accessToken: "access-token",
+        refreshToken,
+        expiresIn: SESSION_EXPIRES_IN_SECONDS,
+      },
+    };
+  }
+
+  async revoke(refreshToken: string): Promise<void> {
+    this.clock.advance(this.revokeLatency);
+    if (this.failOnRevoke) throw this.failOnRevoke;
+    this.revokedRefreshTokens.push(refreshToken);
+  }
+}
+
+export const idTokenFor = (sub: unknown): string =>
+  [
+    Buffer.from(JSON.stringify({ alg: "RS256" })).toString("base64url"),
+    Buffer.from(JSON.stringify({ sub })).toString("base64url"),
+    "firma",
+  ].join(".");
 
 export class InMemorySignUpCodes implements ISignUpCodeRepository {
   readonly saved: SignUpCode[] = [];

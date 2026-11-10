@@ -9,6 +9,7 @@ export interface VerificationToCommit {
 
 export interface IUserRepository {
   existsByEmail(email: EmailVO): Promise<boolean>;
+  isConfirmed(cognitoSub: string): Promise<boolean>;
   createConfirmed(
     user: User,
     verification: VerificationToCommit,

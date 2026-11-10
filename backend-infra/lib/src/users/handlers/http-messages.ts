@@ -1,5 +1,7 @@
 export const TOO_MANY_ATTEMPTS =
   "Demasiados intentos. Intenta de nuevo en unos minutos.";
+export const INVALID_CREDENTIALS = "Correo o contraseña incorrectos.";
+export const SIGN_IN_FAILED = "No pudimos iniciar tu sesión. Intenta de nuevo.";
 export const SIGN_UP_CODE_FAILED =
   "No pudimos enviarte el código. Intenta de nuevo.";
 export const SIGN_UP_CODE_VERIFICATION_FAILED =

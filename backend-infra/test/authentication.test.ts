@@ -32,7 +32,7 @@ test("hay un solo cliente, el de platform, con secreto, sin OAuth y sin revelar 
   }
 });
 
-test("el cliente de platform sólo admite ADMIN_USER_PASSWORD_AUTH y el refresco, y su refresh token dura 30 días", () => {
+test("el cliente de platform sólo admite ADMIN_USER_PASSWORD_AUTH y el refresco", () => {
   const [session] = clientProperties(synthesizeAuthentication()).filter(
     ({ ClientName }) => ClientName === PLATFORM_CLIENT_NAME,
   );
@@ -41,8 +41,30 @@ test("el cliente de platform sólo admite ADMIN_USER_PASSWORD_AUTH y el refresco
     "ALLOW_ADMIN_USER_PASSWORD_AUTH",
     "ALLOW_REFRESH_TOKEN_AUTH",
   ]);
-  assert.equal(session.RefreshTokenValidity, 30 * 24 * 60);
-  assert.equal(session.TokenValidityUnits.RefreshToken, "minutes");
+});
+
+test("el app client emite ID tokens y access tokens de 15 minutos y refresh tokens de 15 días, y no rota el refresh token", () => {
+  const [session] = clientProperties(synthesizeAuthentication()).filter(
+    ({ ClientName }) => ClientName === PLATFORM_CLIENT_NAME,
+  );
+
+  assert.equal(session.IdTokenValidity, 15);
+  assert.equal(session.AccessTokenValidity, 15);
+  assert.equal(session.RefreshTokenValidity, 15 * 24 * 60);
+  assert.deepEqual(session.TokenValidityUnits, {
+    IdToken: "minutes",
+    AccessToken: "minutes",
+    RefreshToken: "minutes",
+  });
+  assert.equal(session.RefreshTokenRotation, undefined);
+});
+
+test("el pool no recuerda dispositivos", () => {
+  const [userPool] = Object.values(
+    synthesizeAuthentication().findResources("AWS::Cognito::UserPool"),
+  );
+
+  assert.equal(userPool.Properties.DeviceConfiguration, undefined);
 });
 
 test("cada cliente escribe sólo email, given_name y family_name, y revoca tokens", () => {

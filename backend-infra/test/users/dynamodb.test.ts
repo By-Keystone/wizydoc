@@ -24,16 +24,19 @@ import { DynamoDBAccountExistsNotices } from "../../lib/src/users/infrastructure
 import {
   DynamoDBIpRateLimit,
   EMAIL_SEND_RATE_LIMIT,
+  SIGN_IN_RATE_LIMIT,
   SIGN_UP_VERIFY_RATE_LIMIT,
 } from "../../lib/src/users/infrastructure/persistence/dynamodb/ip-rate-limit";
 import { SignUpVerificationTokenRepository } from "../../lib/src/users/infrastructure/persistence/dynamodb/sign-up-verification-token.repository";
 import { SignUpCodeRepository } from "../../lib/src/users/infrastructure/persistence/dynamodb/sign-up-code.repository";
 import { UserRepository } from "../../lib/src/users/infrastructure/persistence/dynamodb/user.repository";
 import { emailSchema } from "../../lib/src/users/domain/value-objects/email.vo";
-import { buildUser } from "./fakes";
+import { buildUser, COGNITO_SUB } from "./fakes";
 
 const TABLE_NAME = "MainTable";
 const TEN_PAST_NOON = Date.UTC(2026, 10, 6, 12, 10, 30);
+const THIRTEEN_PAST_NOON_AND_HALF = Date.UTC(2026, 10, 6, 12, 13, 30);
+const THIRTEEN_PAST_NOON = Date.UTC(2026, 10, 6, 12, 13, 0) / 1000;
 const WINDOW_START = Date.UTC(2026, 10, 6, 12, 10, 0) / 1000;
 
 const capturingClient = ({
@@ -552,4 +555,62 @@ test("el token de verificación se lee con lectura consistente y sólo vale si e
   ]) {
     assert.equal((await isValidWith(record)).isValid, false);
   }
+});
+
+test("isConfirmed consulta GSI2 por el sub con una proyección mínima y exige el tipo USER y Confirmed", async () => {
+  const confirmed = capturingClient({
+    response: { Items: [{ ItemType: "USER", Confirmed: true }] },
+  });
+  const unconfirmed = capturingClient({
+    response: { Items: [{ ItemType: "USER", Confirmed: false }] },
+  });
+  const otherType = capturingClient({
+    response: { Items: [{ ItemType: "PATIENT", Confirmed: true }] },
+  });
+  const withoutItem = capturingClient({ response: { Items: [] } });
+
+  const results = [];
+  for (const { client } of [confirmed, unconfirmed, otherType, withoutItem]) {
+    results.push(
+      await new UserRepository(client, TABLE_NAME).isConfirmed(COGNITO_SUB),
+    );
+  }
+
+  assert.deepEqual(results, [true, false, false, false]);
+  const [query] = confirmed.inputs as {
+    IndexName?: string;
+    ProjectionExpression?: string;
+    Limit?: number;
+    ExpressionAttributeValues?: Record<string, unknown>;
+  }[];
+  assert.equal(query.IndexName, "GSI2");
+  assert.equal(query.ProjectionExpression, "#ItemType, #Confirmed");
+  assert.equal(query.Limit, 1);
+  assert.equal(
+    query.ExpressionAttributeValues?.[":gsi2pk"],
+    `COGNITO#${COGNITO_SUB}`,
+  );
+});
+
+test("el límite de inicios de sesión usa su propio prefijo, un máximo de 5 y ventanas de un minuto", async () => {
+  const { client, inputs } = capturingClient();
+
+  await new DynamoDBIpRateLimit(
+    client,
+    TABLE_NAME,
+    SIGN_IN_RATE_LIMIT,
+    () => THIRTEEN_PAST_NOON_AND_HALF,
+  ).tryRegister("190.42.10.7");
+
+  const [update] = inputs as UpdateCommandInput[];
+  assert.deepEqual(update.Key, {
+    PK: "SIGN_IN_ATTEMPTS#190.42.10.7",
+    SK: String(THIRTEEN_PAST_NOON),
+  });
+  assert.deepEqual(update.ExpressionAttributeValues, {
+    ":one": 1,
+    ":maxAttempts": 5,
+    ":deleteAfter": THIRTEEN_PAST_NOON + 60,
+    ":itemType": "SIGN_IN_ATTEMPTS",
+  });
 });
