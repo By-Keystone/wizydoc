@@ -201,6 +201,30 @@ export class BackendStack extends Stack {
       "cognito-idp:DescribeUserPoolClient",
     );
 
+    const sessionEnvironment = {
+      USER_POOL_ID: authentication.userPool.userPoolId,
+      PLATFORM_CLIENT_ID: authentication.platformClient.userPoolClientId,
+    };
+
+    const refreshSessionFunction = this.usersFunction(
+      "RefreshSessionFunction",
+      "refresh-session",
+      "Returns new ID and access tokens for a valid refresh token.",
+      sessionEnvironment,
+    );
+    const signOutFunction = this.usersFunction(
+      "SignOutFunction",
+      "sign-out",
+      "Signs the user out of one device by revoking its refresh token.",
+      sessionEnvironment,
+    );
+    for (const sessionFunction of [refreshSessionFunction, signOutFunction]) {
+      authentication.userPool.grant(
+        sessionFunction,
+        "cognito-idp:DescribeUserPoolClient",
+      );
+    }
+
     const signUpResource =
       apiGateway.api.root.resourceForPath("api/auth/sign-up");
     const signUpCodeResource = signUpResource.addResource("code");
@@ -220,9 +244,19 @@ export class BackendStack extends Stack {
         "POST",
         new apigateway.LambdaIntegration(confirmSignUpFunction),
       );
-    apiGateway.api.root
-      .resourceForPath("api/auth/sign-in")
+    const authResource = apiGateway.api.root.resourceForPath("api/auth");
+    authResource
+      .addResource("sign-in")
       .addMethod("POST", new apigateway.LambdaIntegration(signInFunction));
+    authResource
+      .resourceForPath("token/refresh")
+      .addMethod(
+        "POST",
+        new apigateway.LambdaIntegration(refreshSessionFunction),
+      );
+    authResource
+      .addResource("sign-out")
+      .addMethod("POST", new apigateway.LambdaIntegration(signOutFunction));
     apiGateway.api.root
       .addResource("health")
       .addMethod("GET", new apigateway.LambdaIntegration(healthFunction));
