@@ -442,8 +442,7 @@ Los señalo sin resolverlos: el cómo es del planner y del engineer.
    usuario como dueño, en la segunda spec de WIZ-78 (sección 14). Hoy la crea `POST /account` del api
    desde el onboarding, con la suscripción Gratis (`complete-account-setup.usecase.ts`), y el registro
    de `backend-infra` deja `accountId` vacío. El onboarding ya no crea la cuenta: «Tu plan» le crea el
-   plan, y «Tu consultorio», la organización y la sede. La cuenta no tiene nombre propio: el nombre
-   vive en la organización y en la sede.
+   plan, y «Tu consultorio», la organización y la sede. La cuenta no tiene nombre.
 4. **El plan, el consultorio y el horario se construyen en `backend-infra`** (sección 14). Hoy viven
    en el api, con Postgres: `POST /account` (el plan, que durante la beta sólo acepta `FREE`, según
    `beta-free-plan-only`), `POST /account/first-clinic` (con la política `account`, `confirmed` y
