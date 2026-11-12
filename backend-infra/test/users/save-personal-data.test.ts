@@ -1,12 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { App } from "aws-cdk-lib";
-import { Template } from "aws-cdk-lib/assertions";
-import { BackendStack } from "../../lib/backend-stack";
-import {
-  AuthorizeRequestUseCase,
-  type RoutePolicy,
-} from "../../lib/src/users/application/authorize-request.usecase";
+import { AuthorizeRequestUseCase } from "../../lib/src/users/application/authorize-request.usecase";
 import { SavePersonalDataUseCase } from "../../lib/src/users/application/save-personal-data.usecase";
 import type { OnboardingStep } from "../../lib/src/users/domain/user.entity";
 import {
@@ -21,33 +15,10 @@ import {
   InMemoryOnboarding,
   InMemoryUsers,
   privateEvent,
+  readDeclaredPolicy,
 } from "./fakes";
 
-const readDeclaredPolicy = (): RoutePolicy => {
-  const stack = new BackendStack(
-    new App({ context: { "aws:cdk:bundling-stacks": [] } }),
-    "SavePersonalDataPolicyTest",
-    {
-      env: { account: "111111111111", region: "us-east-2" },
-      hostedZoneId: "Z0000000000000000000",
-      zoneName: "wizydoc.app",
-      apiDomainName: "api.wizydoc.app",
-      frontendUrl: "https://app.wizydoc.app",
-      emailFrom: "WizyDoc <no-reply@wizydoc.app>",
-      termsAcceptanceRequired: false,
-    },
-  );
-  const [savePersonalDataFunction] = Object.entries(
-    Template.fromStack(stack).findResources("AWS::Lambda::Function"),
-  )
-    .filter(([logicalId]) => logicalId.startsWith("SavePersonalDataFunction"))
-    .map(([, resource]) => resource);
-  return JSON.parse(
-    savePersonalDataFunction.Properties.Environment.Variables.ROUTE_POLICY,
-  );
-};
-
-const declaredPolicy = readDeclaredPolicy();
+const declaredPolicy = readDeclaredPolicy("SavePersonalDataFunction");
 
 const validBody = {
   givenName: "  Ana ",

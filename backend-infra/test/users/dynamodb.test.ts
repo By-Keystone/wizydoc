@@ -1007,7 +1007,7 @@ const personalData = {
   treatment: treatmentSchema.parse("DRA"),
 };
 
-test("savePersonalData actualiza sólo el ítem del usuario, con la condición de los pasos de origen, y devuelve el paso de después", async () => {
+test("guardar Tus datos con PERSONAL_DATA guarda el nombre, el apellido, el celular con +51 y el tratamiento, y pasa el paso a PLAN", async () => {
   const { client, inputs } = capturingClient({
     response: { Attributes: { OnboardingStep: "PLAN" } },
   });
@@ -1037,6 +1037,13 @@ test("savePersonalData actualiza sólo el ítem del usuario, con la condición d
     ":Phone": "+51987654321",
     ":Treatment": "DRA",
   });
+  assert.deepEqual(update.ExpressionAttributeNames, {
+    "#OnboardingStep": "OnboardingStep",
+    "#GivenName": "GivenName",
+    "#FamilyName": "FamilyName",
+    "#Phone": "Phone",
+    "#Treatment": "Treatment",
+  });
   assert.equal(update.ReturnValues, "ALL_NEW");
 });
 
@@ -1060,6 +1067,13 @@ test("savePersonalData sin paso de destino no toca OnboardingStep, y sin tratami
     update.UpdateExpression,
     "SET #GivenName = :GivenName, #FamilyName = :FamilyName, #Phone = :Phone, #Treatment = :Treatment",
   );
+  assert.deepEqual(update.ExpressionAttributeNames, {
+    "#OnboardingStep": "OnboardingStep",
+    "#GivenName": "GivenName",
+    "#FamilyName": "FamilyName",
+    "#Phone": "Phone",
+    "#Treatment": "Treatment",
+  });
   assert.equal(update.ExpressionAttributeValues?.[":Treatment"], null);
   assert.equal(
     update.ExpressionAttributeValues?.[":OnboardingStep"],

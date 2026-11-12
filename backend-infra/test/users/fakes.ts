@@ -1,5 +1,9 @@
+import { App } from "aws-cdk-lib";
+import { Template } from "aws-cdk-lib/assertions";
 import type { CognitoIdentityProviderClient } from "@aws-sdk/client-cognito-identity-provider";
 import type { SendEmailCommandInput, SESv2Client } from "@aws-sdk/client-sesv2";
+import { BackendStack } from "../../lib/backend-stack";
+import type { RoutePolicy } from "../../lib/src/users/application/authorize-request.usecase";
 import type { Account } from "../../lib/src/users/domain/account.entity";
 import type { IAccountExistsNotices } from "../../lib/src/users/application/ports/account-exists-notices.port";
 import type {
@@ -508,4 +512,28 @@ export const cognitoClient = (responses: Record<string, unknown>) => {
     },
   } as unknown as CognitoIdentityProviderClient;
   return { client, sent };
+};
+
+export const readDeclaredPolicy = (functionName: string): RoutePolicy => {
+  const stack = new BackendStack(
+    new App({ context: { "aws:cdk:bundling-stacks": [] } }),
+    "DeclaredPolicyTest",
+    {
+      env: { account: "111111111111", region: "us-east-2" },
+      hostedZoneId: "Z0000000000000000000",
+      zoneName: "wizydoc.app",
+      apiDomainName: "api.wizydoc.app",
+      frontendUrl: "https://app.wizydoc.app",
+      emailFrom: "WizyDoc <no-reply@wizydoc.app>",
+      termsAcceptanceRequired: false,
+    },
+  );
+  const [routeFunction] = Object.entries(
+    Template.fromStack(stack).findResources("AWS::Lambda::Function"),
+  )
+    .filter(([logicalId]) => logicalId.startsWith(functionName))
+    .map(([, resource]) => resource);
+  return JSON.parse(
+    routeFunction.Properties.Environment.Variables.ROUTE_POLICY,
+  );
 };

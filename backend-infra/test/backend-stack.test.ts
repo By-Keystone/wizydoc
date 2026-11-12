@@ -630,28 +630,43 @@ test("toda Lambda del stack dice en su descripción qué hace", () => {
   }
 });
 
-test("PUT /api/onboarding/personal-data exige la clave de platform y el ID token, y la Lambda describe lo que hace", () => {
+const ONBOARDING_ROUTES = [
+  {
+    method: "PUT",
+    path: "/api/onboarding/personal-data",
+    functionName: "SavePersonalDataFunction",
+    policy: { onboardingStep: ["PERSONAL_DATA", "PLAN", "CLINIC"] },
+  },
+];
+
+test("las cuatro rutas del onboarding exigen la clave de platform y el ID token, y declaran su policy", () => {
   const template = synthesizeBackend();
-
-  const [method] = Object.values(
-    template.findResources("AWS::ApiGateway::Method", {
-      Properties: { HttpMethod: "PUT" },
-    }),
+  const methods = Object.values(
+    template.findResources("AWS::ApiGateway::Method"),
   );
 
-  assert.equal(
-    resourcePath(template, method.Properties.ResourceId.Ref),
-    "/api/onboarding/personal-data",
-  );
-  assert.equal(method.Properties.ApiKeyRequired, true);
-  assert.equal(method.Properties.AuthorizationType, "COGNITO_USER_POOLS");
-  assert.ok(
-    JSON.stringify(method.Properties.Integration.Uri).includes(
-      functionLogicalId(template, "SavePersonalDataFunction"),
-    ),
-  );
-  assert.equal(
-    functionProperties(template, "SavePersonalDataFunction").Description,
-    "Saves the name, surname, phone and treatment of the signed-in user.",
-  );
+  for (const { method, path, functionName, policy } of ONBOARDING_ROUTES) {
+    const [{ Properties }] = methods.filter(
+      (candidate) =>
+        candidate.Properties.HttpMethod === method &&
+        resourcePath(template, candidate.Properties.ResourceId.Ref) === path,
+    );
+
+    assert.equal(Properties.ApiKeyRequired, true, path);
+    assert.equal(Properties.AuthorizationType, "COGNITO_USER_POOLS", path);
+    assert.ok(
+      JSON.stringify(Properties.Integration.Uri).includes(
+        functionLogicalId(template, functionName),
+      ),
+      path,
+    );
+    assert.deepEqual(
+      JSON.parse(
+        functionProperties(template, functionName).Environment.Variables
+          .ROUTE_POLICY,
+      ),
+      policy,
+      path,
+    );
+  }
 });

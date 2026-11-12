@@ -95,8 +95,7 @@ Producción:
 - `lib/src/users/application/save-personal-data.usecase.ts` (nuevo): el esquema
   de entrada, `PERSONAL_DATA_STEPS` y el caso de uso.
 - `lib/src/users/infrastructure/persistence/dynamodb/onboarding.repository.ts`
-  (nuevo): `userStepUpdate` y `savePersonalData`. `ONLY_IF_NEW` pasa a
-  exportarse desde `user.repository.ts` para las partes siguientes.
+  (nuevo): `userStepUpdate` y `savePersonalData`.
 - `lib/src/users/handlers/save-personal-data.http.ts` y
   `save-personal-data.handler.ts` (nuevos).
 - `lib/src/users/handlers/http-messages.ts`: `PERSONAL_DATA_FAILED`.
@@ -117,7 +116,7 @@ Producción:
 - `lib/src/users/infrastructure/persistence/dynamodb/subscription.schema.ts` y
   `subscription.mappers.ts` (nuevos).
 - `lib/src/users/infrastructure/persistence/dynamodb/onboarding.repository.ts`:
-  `savePlan`.
+  `savePlan`. `ONLY_IF_NEW` pasa a exportarse desde `user.repository.ts`.
 - `lib/src/users/handlers/save-plan.http.ts` y `save-plan.handler.ts` (nuevos).
 - `lib/src/users/handlers/http-messages.ts`: `PLAN_FAILED`.
 - `lib/backend-stack.ts`: `SAVE_PLAN_ACCESS`, `SavePlanFunction` y su ruta.
@@ -583,7 +582,7 @@ un mes):
 
 | Lambda | Handler | Descripción | Parte |
 |---|---|---|---|
-| `SavePersonalDataFunction` | `save-personal-data` | «Saves the owner's name, phone and title in the first onboarding step.» | 2 |
+| `SavePersonalDataFunction` | `save-personal-data` | «Saves the name, surname, phone and treatment of the signed-in user.» | 2 |
 | `SavePlanFunction` | `save-plan` | «Saves the account's plan in the second onboarding step.» | 3 |
 | `CreateClinicFunction` | `create-clinic` | «Creates the owner's organization, clinic and memberships in the third onboarding step.» | 5 |
 | `SaveScheduleFunction` | `save-schedule` | «Saves or skips the owner's weekly schedule and finishes the onboarding.» | 7 |
@@ -836,6 +835,11 @@ Lo comprueban los pedidos a staging de «Verificación».
 
 ## Para otros tickets
 
+- **Endurecer «Tus datos» con `dynamodb:Attributes`:** restringir los atributos
+  que escribe `SavePersonalDataFunction` a `PK`, `SK`, `OnboardingStep`,
+  `GivenName`, `FamilyName`, `Phone` y `Treatment`. Así, quien ejecutara código
+  dentro de la Lambda no podría crear memberships ni tocar el `sub`. Opcional;
+  falta verificar contra AWS cómo convive con `ReturnValues: "ALL_NEW"`.
 - **La policy de la sesión, con la herencia decidida el 12 de noviembre:**
   - para una ruta de sede, la policy necesita la organización de la sede, que
     guarda `CLINIC#<id>` (`OrganizationId`) y no la membership;
