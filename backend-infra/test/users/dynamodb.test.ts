@@ -22,7 +22,8 @@ import { createSignUpCode } from "../../lib/src/users/domain/sign-up-code.entity
 import { createOwnerClinic } from "../../lib/src/users/domain/clinic.entity";
 import { createSubscription } from "../../lib/src/users/domain/subscription.entity";
 import { createTermsAcceptance } from "../../lib/src/users/domain/terms-acceptance.entity";
-import { createUserWithAccount } from "../../lib/src/users/domain/user.entity";
+import { createAccount } from "../../lib/src/users/domain/account.entity";
+import { createUser } from "../../lib/src/users/domain/user.entity";
 import { DynamoDBAccountExistsNotices } from "../../lib/src/users/infrastructure/persistence/dynamodb/account-exists-notices";
 import {
   DynamoDBIpRateLimit,
@@ -92,6 +93,16 @@ const capturingClient = ({
     },
   } as unknown as DynamoDBDocumentClient;
   return { client, inputs };
+};
+
+const buildOwnerWithAccount = () => {
+  const newAccount = createAccount();
+  const user = createUser({
+    email: buildUser().email,
+    cognitoSub: COGNITO_SUB,
+    accountId: newAccount.id,
+  });
+  return { user, account: { ...newAccount, ownerUserId: user.id } };
 };
 
 test("existsByEmail consulta el índice del correo con una proyección mínima y revisa el tipo, sin leer el usuario entero", async () => {
@@ -477,10 +488,7 @@ test("el límite de verificaciones usa su propio prefijo y su máximo de 10, apa
 
 test("crear la cuenta confirmada guarda el usuario, su cuenta y su constancia y gasta el token en una sola transacción, con el token sólo si es del correo y no venció", async () => {
   const { client, inputs } = capturingClient();
-  const { user, account } = createUserWithAccount({
-    email: buildUser().email,
-    cognitoSub: COGNITO_SUB,
-  });
+  const { user, account } = buildOwnerWithAccount();
   const acceptedAt = new Date(TEN_PAST_NOON);
   const termsAcceptance = createTermsAcceptance(
     {
@@ -497,7 +505,8 @@ test("crear la cuenta confirmada guarda el usuario, su cuenta y su constancia y 
     TABLE_NAME,
     () => TEN_PAST_NOON,
   ).createConfirmed(
-    { user, account },
+    user,
+    account,
     { email: user.email, tokenHash: "hash-del-token" },
     termsAcceptance,
   );
@@ -568,15 +577,12 @@ test("el mapper escribe y vuelve a leer los datos personales, incluido el tratam
 
 test("el usuario nuevo ya no guarda OnboardingCompleted", async () => {
   const { client, inputs } = capturingClient();
-  const { user, account } = createUserWithAccount({
-    email: buildUser().email,
-    cognitoSub: COGNITO_SUB,
-  });
+  const { user, account } = buildOwnerWithAccount();
 
-  await new UserRepository(client, TABLE_NAME).createConfirmed(
-    { user, account },
-    { email: user.email, tokenHash: "hash" },
-  );
+  await new UserRepository(client, TABLE_NAME).createConfirmed(user, account, {
+    email: user.email,
+    tokenHash: "hash",
+  });
 
   const [transaction] = inputs as TransactWriteCommandInput[];
   assert.deepEqual(transaction.TransactItems?.[0].Put?.Item, {
@@ -597,18 +603,12 @@ test("el usuario nuevo ya no guarda OnboardingCompleted", async () => {
 });
 
 test("si otra confirmación gastó el token antes, la transacción cancelada informa que no se creó, y cualquier otro error sube", async () => {
-  const { user, account } = createUserWithAccount({
-    email: buildUser().email,
-    cognitoSub: COGNITO_SUB,
-  });
+  const { user, account } = buildOwnerWithAccount();
   const createWith = (failure: Error) =>
     new UserRepository(
       capturingClient({ failure }).client,
       TABLE_NAME,
-    ).createConfirmed(
-      { user, account },
-      { email: user.email, tokenHash: "hash" },
-    );
+    ).createConfirmed(user, account, { email: user.email, tokenHash: "hash" });
 
   assert.equal(
     await createWith(
