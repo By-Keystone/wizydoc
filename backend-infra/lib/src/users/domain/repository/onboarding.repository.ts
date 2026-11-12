@@ -1,3 +1,4 @@
+import type { Subscription } from "../subscription.entity";
 import type { OnboardingStep, PersonalData } from "../user.entity";
 
 export interface OnboardingStepTransition {
@@ -11,4 +12,10 @@ export interface IOnboardingRepository {
     personalData: PersonalData,
     transition: OnboardingStepTransition,
   ): Promise<OnboardingStep | undefined>;
+
+  savePlan(
+    subscription: Subscription,
+    userId: string,
+    transition: OnboardingStepTransition,
+  ): Promise<boolean>;
 }

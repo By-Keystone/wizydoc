@@ -40,6 +40,7 @@ import type {
   IUserRepository,
   UserWithMemberships,
 } from "../../lib/src/users/domain/repository/user.repository";
+import type { Subscription } from "../../lib/src/users/domain/subscription.entity";
 import type { TermsAcceptance } from "../../lib/src/users/domain/terms-acceptance.entity";
 import type {
   OnboardingStep,
@@ -157,6 +158,7 @@ export class InMemoryUsers implements IUserRepository {
 
 export class InMemoryOnboarding implements IOnboardingRepository {
   readonly transitions: OnboardingStepTransition[] = [];
+  readonly subscriptions: Subscription[] = [];
   failOnWrite = false;
   beforeWrite?: () => void;
 
@@ -177,6 +179,26 @@ export class InMemoryOnboarding implements IOnboardingRepository {
     Object.assign(user, personalData);
     user.onboardingStep = transition.to ?? user.onboardingStep;
     return user.onboardingStep;
+  }
+
+  async savePlan(
+    subscription: Subscription,
+    userId: string,
+    transition: OnboardingStepTransition,
+  ): Promise<boolean> {
+    if (this.failOnWrite) throw new Error("DynamoDB no disponible");
+    this.beforeWrite?.();
+    this.transitions.push(transition);
+    const user = this.users.users.find(({ id }) => id === userId);
+    const hasPlan = this.subscriptions.some(
+      ({ accountId }) => accountId === subscription.accountId,
+    );
+    if (hasPlan || !user || !transition.from.includes(user.onboardingStep)) {
+      return false;
+    }
+    this.subscriptions.push(subscription);
+    user.onboardingStep = transition.to ?? user.onboardingStep;
+    return true;
   }
 }
 

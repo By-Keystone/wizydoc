@@ -19,6 +19,7 @@ import {
 } from "../../lib/src/users/domain/legal-documents";
 import { createSignUpVerificationToken } from "../../lib/src/users/domain/sign-up-verification-token.entity";
 import { createSignUpCode } from "../../lib/src/users/domain/sign-up-code.entity";
+import { createSubscription } from "../../lib/src/users/domain/subscription.entity";
 import { createTermsAcceptance } from "../../lib/src/users/domain/terms-acceptance.entity";
 import { createUserWithAccount } from "../../lib/src/users/domain/user.entity";
 import { DynamoDBAccountExistsNotices } from "../../lib/src/users/infrastructure/persistence/dynamodb/account-exists-notices";
@@ -1123,6 +1124,86 @@ test("savePersonalData devuelve undefined si otro pedido cambió el paso, y deja
     new OnboardingRepository(unavailable.client, TABLE_NAME).savePersonalData(
       USER_ID,
       personalData,
+      transition,
+    ),
+    /sin red/,
+  );
+});
+
+const planSubscription = createSubscription(
+  { accountId: ACCOUNT_ID, plan: "FREE" },
+  new Date("2026-11-12T15:00:00.000Z"),
+);
+
+test("guardar Tu plan con FREE crea el plan de la cuenta, indexado por plan, y pasa el paso a CLINIC en la misma transacción", async () => {
+  const { client, inputs } = capturingClient();
+
+  const saved = await new OnboardingRepository(client, TABLE_NAME).savePlan(
+    planSubscription,
+    USER_ID,
+    { from: ["PLAN"], to: "CLINIC" },
+  );
+
+  assert.equal(saved, true);
+  const [transaction] = inputs as TransactWriteCommandInput[];
+  assert.deepEqual(transaction.TransactItems, [
+    {
+      Put: {
+        TableName: TABLE_NAME,
+        Item: {
+          PK: `ACCOUNT#${ACCOUNT_ID}`,
+          SK: "SUBSCRIPTION",
+          ItemType: "SUBSCRIPTION",
+          Plan: "FREE",
+          CreatedAt: "2026-11-12T15:00:00.000Z",
+          GSI1PK: "PLAN#FREE",
+          GSI1SK: `ACCOUNT#${ACCOUNT_ID}`,
+        },
+        ConditionExpression: "attribute_not_exists(PK)",
+      },
+    },
+    {
+      Update: {
+        TableName: TABLE_NAME,
+        Key: { PK: `USER#${USER_ID}`, SK: "!" },
+        ConditionExpression: "#OnboardingStep IN (:from0)",
+        UpdateExpression: "SET #OnboardingStep = :OnboardingStep",
+        ExpressionAttributeNames: { "#OnboardingStep": "OnboardingStep" },
+        ExpressionAttributeValues: {
+          ":from0": "PLAN",
+          ":OnboardingStep": "CLINIC",
+        },
+      },
+    },
+  ]);
+});
+
+test("savePlan devuelve false si otro pedido ya guardó el plan, y deja subir cualquier otro error", async () => {
+  const lostRace = capturingClient({
+    failure: new TransactionCanceledException({
+      message: "cancelada",
+      $metadata: {},
+      CancellationReasons: [
+        { Code: "ConditionalCheckFailed" },
+        { Code: "None" },
+      ],
+    }),
+  });
+  const unavailable = capturingClient({ failure: new Error("sin red") });
+  const transition = { from: ["PLAN"], to: "CLINIC" } as const;
+
+  assert.equal(
+    await new OnboardingRepository(lostRace.client, TABLE_NAME).savePlan(
+      planSubscription,
+      USER_ID,
+      transition,
+    ),
+    false,
+  );
+  await assert.rejects(
+    new OnboardingRepository(unavailable.client, TABLE_NAME).savePlan(
+      planSubscription,
+      USER_ID,
       transition,
     ),
     /sin red/,
