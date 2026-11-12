@@ -441,10 +441,10 @@ test("el límite de verificaciones usa su propio prefijo y su máximo de 10, apa
 
 test("crear la cuenta confirmada guarda el usuario, su cuenta y su constancia y gasta el token en una sola transacción, con el token sólo si es del correo y no venció", async () => {
   const { client, inputs } = capturingClient();
-  const { user, account } = createUserWithAccount(
-    { email: buildUser().email, cognitoSub: COGNITO_SUB },
-    new Date(TEN_PAST_NOON),
-  );
+  const { user, account } = createUserWithAccount({
+    email: buildUser().email,
+    cognitoSub: COGNITO_SUB,
+  });
   const acceptedAt = new Date(TEN_PAST_NOON);
   const termsAcceptance = createTermsAcceptance(
     {
@@ -484,7 +484,6 @@ test("crear la cuenta confirmada guarda el usuario, su cuenta y su constancia y 
     ItemType: "ACCOUNT",
     Id: account.id,
     OwnerUserId: user.id,
-    CreatedAt: "2026-11-06T12:10:30.000Z",
   });
   assert.equal(accountPut.Put?.ConditionExpression, "attribute_not_exists(PK)");
   assert.deepEqual(termsPut.Put?.Item, {
@@ -516,10 +515,10 @@ test("crear la cuenta confirmada guarda el usuario, su cuenta y su constancia y 
 
 test("el usuario nuevo ya no guarda OnboardingCompleted", async () => {
   const { client, inputs } = capturingClient();
-  const { user, account } = createUserWithAccount(
-    { email: buildUser().email, cognitoSub: COGNITO_SUB },
-    new Date(TEN_PAST_NOON),
-  );
+  const { user, account } = createUserWithAccount({
+    email: buildUser().email,
+    cognitoSub: COGNITO_SUB,
+  });
 
   await new UserRepository(client, TABLE_NAME).createConfirmed(
     { user, account },
