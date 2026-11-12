@@ -1,5 +1,4 @@
 import { type ULID, ulid } from "ulid";
-import type { Account } from "./account.entity";
 import type { EmailVO } from "./value-objects/email.vo";
 
 export const ONBOARDING_STEPS = [
@@ -21,31 +20,21 @@ export interface User {
   cognitoSub?: string;
 }
 
-export interface UserWithAccount {
-  user: User;
-  account: Account;
-}
-
-export interface CreateUserWithAccountInput {
+export interface CreateUserInput {
   email: EmailVO;
   cognitoSub: string;
+  accountId: ULID;
 }
 
-export const createUserWithAccount = ({
+export const createUser = ({
   email,
   cognitoSub,
-}: CreateUserWithAccountInput): UserWithAccount => {
-  const userId = ulid();
-  const accountId = ulid();
-  return {
-    user: {
-      id: userId,
-      email,
-      cognitoSub,
-      confirmed: true,
-      accountId,
-      onboardingStep: "PERSONAL_DATA",
-    },
-    account: { id: accountId, ownerUserId: userId },
-  };
-};
+  accountId,
+}: CreateUserInput): User => ({
+  id: ulid(),
+  email,
+  cognitoSub,
+  confirmed: true,
+  accountId,
+  onboardingStep: "PERSONAL_DATA",
+});
