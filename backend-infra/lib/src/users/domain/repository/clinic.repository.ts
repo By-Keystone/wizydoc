@@ -1,5 +1,5 @@
 import type { ULID } from "ulid";
 
 export interface IClinicRepository {
-  findOrganizationId(clinicId: string): Promise<ULID | undefined>;
+  findOrganizationId(clinicId: ULID): Promise<ULID | undefined>;
 }

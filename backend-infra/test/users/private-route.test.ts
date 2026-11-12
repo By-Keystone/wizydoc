@@ -91,7 +91,7 @@ test("un ID token válido cuyo sub no tiene usuario responde 401", async () => {
 });
 
 test("la Lambda toma el sub sólo de los claims del autorizador", async () => {
-  const { call, users } = route();
+  const { call, users, authorized } = route();
   const otherUser = buildUser({ id: OTHER_USER_ID, cognitoSub: "otro-sub" });
   users.users.push(otherUser);
   const spoofed = privateEvent({
@@ -100,8 +100,17 @@ test("la Lambda toma el sub sólo de los claims del autorizador", async () => {
     pathParameters: { sub: "otro-sub", resourceId: CLINIC_ID },
   });
 
-  await call(spoofed);
+  const response = await call(spoofed);
 
+  assert.equal(response.statusCode, 200);
+  assert.deepEqual(authorized, [{ kind: "authorized", user: buildUser() }]);
+
+  let reads = 0;
+  const read = users.findByCognitoSubWithMemberships.bind(users);
+  users.findByCognitoSubWithMemberships = async (sub) => {
+    reads += 1;
+    return read(sub);
+  };
   const noClaims = [
     privateEvent({ requestContext: {} }),
     privateEvent({ requestContext: { authorizer: null } }),
@@ -109,10 +118,11 @@ test("la Lambda toma el sub sólo de los claims del autorizador", async () => {
     privateEvent({ sub: "" }),
     privateEvent({ sub: 42 }),
   ];
-  for (const event of noClaims) {
-    const response = await call({ ...event, body: spoofed.body });
-    assert.equal(response.statusCode, 401);
+  for (const { requestContext } of noClaims) {
+    const unauthorized = await call({ ...spoofed, requestContext });
+    assert.equal(unauthorized.statusCode, 401);
   }
+  assert.equal(reads, 0);
 });
 
 test("por defecto la ruta exige el correo confirmado y responde 403 si no lo está", async () => {
@@ -221,7 +231,12 @@ test("una ruta que exige ser miembro entrega la membership a la ruta", async () 
 
   assert.equal((await call()).statusCode, 200);
   assert.deepEqual(authorized, [
-    { kind: "authorized", user: buildUser(), membership },
+    {
+      kind: "authorized",
+      user: buildUser(),
+      membership,
+      directMembership: membership,
+    },
   ]);
 });
 
@@ -255,16 +270,6 @@ test("una ruta que exige ciertos roles deja pasar a quien tiene uno de ellos", a
   assert.equal((await call()).statusCode, 200);
 });
 
-test("una membership de organización con el mismo id no autoriza una ruta de sede", async () => {
-  const { call, clinics } = route({
-    policy: clinicRoute,
-    memberships: [organizationMembership({ resourceId: CLINIC_ID })],
-  });
-  clinics.organizationIds.clear();
-
-  assert.equal((await call()).statusCode, 404);
-});
-
 test("una membership de sede con el mismo id no autoriza una ruta de organización", async () => {
   const { call, clinics } = route({
     policy: { member: true, resourceType: "ORGANIZATION" },
@@ -292,6 +297,7 @@ test("el rol en la organización se hereda en sus sedes", async () => {
       kind: "authorized",
       user: buildUser(),
       membership: clinicMembership({ role: "ADMIN" }),
+      directMembership: undefined,
     },
   ]);
 });
@@ -339,6 +345,7 @@ test("si el rol directo en la sede no alcanza, se usa el de la organización", a
       kind: "authorized",
       user: buildUser(),
       membership: clinicMembership({ role: "ADMIN" }),
+      directMembership: clinicMembership({ role: "USER" }),
     },
   ]);
 });
@@ -360,7 +367,57 @@ test("si ni el rol directo ni el heredado alcanzan, responde 403", async () => {
   assert.equal((await onlyInherited.call()).statusCode, 403);
 });
 
-test("la sede de otra organización o que no existe no hereda y responde 404", async () => {
+test("un resourceId que no es un ULID responde 404 sin leer la sede", async () => {
+  const { call, clinics } = route({
+    policy: clinicRoute,
+    memberships: [organizationMembership()],
+  });
+
+  const response = await call(privateEvent({ resourceId: "../CLINIC#x" }));
+
+  assert.equal(response.statusCode, 404);
+  assert.equal(clinics.reads, 0);
+});
+
+test("El rol en la organización se hereda en sus sedes: en una sede gana el rol más alto entre la membership directa y la de su organización, y la ruta recibe también la membership directa.", async () => {
+  const direct = clinicMembership({ role: "DOCTOR" });
+  const { call, authorized } = route({
+    policy: clinicRoute,
+    memberships: [direct, organizationMembership({ role: "ADMIN" })],
+  });
+
+  assert.equal((await call()).statusCode, 200);
+  assert.deepEqual(authorized, [
+    {
+      kind: "authorized",
+      user: buildUser(),
+      membership: clinicMembership({ role: "ADMIN" }),
+      directMembership: direct,
+    },
+  ]);
+
+  const directAdmin = clinicMembership({ role: "ADMIN" });
+  const higherDirect = route({
+    policy: clinicRoute,
+    memberships: [directAdmin, organizationMembership({ role: "DOCTOR" })],
+  });
+  await higherDirect.call();
+  assert.deepEqual(higherDirect.authorized, [
+    {
+      kind: "authorized",
+      user: buildUser(),
+      membership: directAdmin,
+      directMembership: directAdmin,
+    },
+  ]);
+});
+
+test("Una membership de organización no sirve en una ruta de sede con el mismo id sin la herencia, y un id de sede que no existe o que es de otra organización responde 404.", async () => {
+  const sameId = route({
+    policy: clinicRoute,
+    memberships: [organizationMembership({ resourceId: CLINIC_ID })],
+  });
+  sameId.clinics.organizationIds.clear();
   const otherOrganization = route({
     policy: clinicRoute,
     memberships: [
@@ -373,6 +430,7 @@ test("la sede de otra organización o que no existe no hereda y responde 404", a
   });
   missingClinic.clinics.organizationIds.clear();
 
+  assert.equal((await sameId.call()).statusCode, 404);
   assert.equal((await otherOrganization.call()).statusCode, 404);
   assert.equal((await missingClinic.call()).statusCode, 404);
 });
@@ -455,13 +513,15 @@ test("readRoutePolicy lee la variable y rechaza una ausente, un campo desconocid
     assert.deepEqual(read('{"confirmed":false,"onboardingStep":"ANY"}')(), {
       confirmed: false,
       onboardingStep: "ANY",
-      member: false,
     });
     assert.throws(read(undefined));
     assert.throws(read('{"admin":true}'));
     assert.throws(read('{"onboardingStep":"DONE"}'));
     assert.throws(read('{"resourceType":"CLINIC","roles":[]}'));
     assert.throws(read('{"member":true}'));
+    assert.throws(
+      read('{"member":false,"resourceType":"CLINIC","roles":["ADMIN"]}'),
+    );
     assert.throws(read('{"resourceType":"CLINIC"}'));
   } finally {
     if (original === undefined) delete process.env[ROUTE_POLICY_VARIABLE];

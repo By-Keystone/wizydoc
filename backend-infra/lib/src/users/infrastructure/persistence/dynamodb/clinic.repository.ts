@@ -14,12 +14,16 @@ export class ClinicRepository implements IClinicRepository {
     private readonly tableName: string,
   ) {}
 
-  async findOrganizationId(clinicId: string): Promise<ULID | undefined> {
+  async findOrganizationId(clinicId: ULID): Promise<ULID | undefined> {
     const { Item } = await this.client.send(
       new GetCommand({
         TableName: this.tableName,
         Key: { PK: clinicPk(clinicId), SK: clinicSk() },
-        ProjectionExpression: "ItemType, OrganizationId",
+        ProjectionExpression: "#ItemType, #OrganizationId",
+        ExpressionAttributeNames: {
+          "#ItemType": "ItemType",
+          "#OrganizationId": "OrganizationId",
+        },
         ConsistentRead: true,
       }),
     );
