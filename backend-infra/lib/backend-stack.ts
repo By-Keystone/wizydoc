@@ -16,6 +16,7 @@ import {
   ANY_ONBOARDING_STEP,
   type RoutePolicy,
 } from "./src/users/application/authorize-request.usecase";
+import { CREATE_CLINIC_STEPS } from "./src/users/application/create-clinic.usecase";
 import { PERSONAL_DATA_STEPS } from "./src/users/application/save-personal-data.usecase";
 import { PLAN_STEPS } from "./src/users/application/save-plan.usecase";
 import {
@@ -75,6 +76,11 @@ const SAVE_PERSONAL_DATA_ACCESS: TableAccess = {
 
 const SAVE_PLAN_ACCESS: TableAccess = {
   "dynamodb:PutItem": ["ACCOUNT#*"],
+  "dynamodb:UpdateItem": ["USER#*"],
+};
+
+const CREATE_CLINIC_ACCESS: TableAccess = {
+  "dynamodb:PutItem": ["ORG#*", "CLINIC#*", "USER#*"],
   "dynamodb:UpdateItem": ["USER#*"],
 };
 
@@ -266,6 +272,13 @@ export class BackendStack extends Stack {
       { TABLE_NAME: database.table.tableName },
     );
 
+    const createClinicFunction = this.usersFunction(
+      "CreateClinicFunction",
+      "create-clinic",
+      "Creates the owner's organization, clinic and memberships in the third onboarding step.",
+      { TABLE_NAME: database.table.tableName },
+    );
+
     const signUpResource =
       apiGateway.api.root.resourceForPath("api/auth/sign-up");
     const signUpCodeResource = signUpResource.addResource("code");
@@ -324,6 +337,15 @@ export class BackendStack extends Stack {
       savePlanFunction,
       { onboardingStep: PLAN_STEPS },
       SAVE_PLAN_ACCESS,
+    );
+    this.addPrivateRoute(
+      apiGateway,
+      database.table,
+      "api/onboarding/clinic",
+      "POST",
+      createClinicFunction,
+      { onboardingStep: CREATE_CLINIC_STEPS },
+      CREATE_CLINIC_ACCESS,
     );
     apiGateway.api.root
       .addResource("health")
