@@ -244,12 +244,14 @@ test("addPrivateRoute rechaza una segunda ruta privada para la misma Lambda y un
       }),
     /ya tiene una ruta privada/,
   );
-  assert.throws(() =>
-    synthesizeApiGateway((apiGateway, stack) =>
-      apiGateway.addPrivateRoute("api/me", "GET", privateHandler(stack), {
-        onboardingStep: "NO_EXISTE",
-      } as never),
-    ),
+  assert.throws(
+    () =>
+      synthesizeApiGateway((apiGateway, stack) =>
+        apiGateway.addPrivateRoute("api/me", "GET", privateHandler(stack), {
+          onboardingStep: "NO_EXISTE",
+        } as never),
+      ),
+    /onboardingStep/,
   );
 });
 
