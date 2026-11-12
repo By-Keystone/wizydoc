@@ -146,11 +146,7 @@ test("crear la cuenta con un token de verificación vigente crea, en la misma tr
   assert.equal(user.accountId, account.id);
   assert.equal(user.onboardingStep, "PERSONAL_DATA");
   assert.equal(account.ownerUserId, user.id);
-  assert.deepEqual(Object.keys(account).sort(), [
-    "createdAt",
-    "id",
-    "ownerUserId",
-  ]);
+  assert.deepEqual(Object.keys(account).sort(), ["id", "ownerUserId"]);
 });
 
 test("crear la cuenta sin token, con un token vencido, ya usado o de otro correo responde 400 y no crea nada", async () => {

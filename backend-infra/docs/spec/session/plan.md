@@ -444,12 +444,13 @@ Cada caso de uso recibe sólo lo que usa: `AuthorizeRequestUseCase`,
 | Ítem | `PK` | `SK` | `ItemType` | Otros atributos |
 |---|---|---|---|---|
 | Usuario (cambia, parte 1) | `USER#<ulid>` | `!` | `USER` | Los de hoy, más `AccountId` y `OnboardingStep`, y sin `OnboardingCompleted`. `GSI1` y `GSI2` no cambian. |
-| Cuenta (nuevo, parte 1) | `ACCOUNT#<ulid>` | `!` | `ACCOUNT` | `Id`, `OwnerUserId`, `CreatedAt` (ISO). Sin nombre y sin plan. |
+| Cuenta (nuevo, parte 1) | `ACCOUNT#<ulid>` | `!` | `ACCOUNT` | `Id`, `OwnerUserId`. Sin nombre, sin plan y sin `CreatedAt`: la fecha sale del `Id` con `decodeTime` (decidido por el humano el 12 de noviembre de 2026). |
 | Sede (la crea WIZ-77; se lee desde la parte 3) | `CLINIC#<id>` | `!` | `CLINIC` | `OrganizationId`. La policy sólo lee ese atributo. |
-| Membership (se lee desde la parte 2; la crea WIZ-77) | `USER#<userId>` | `MEMBERSHIP#<resourceId>` | `MEMBERSHIP` | `UserId`, `ResourceId`, `ResourceType` (`ORGANIZATION` o `CLINIC`), `AccountId`, `Role` (`ADMIN`, `DOCTOR` o `USER`), `Specialties?`; `GSI1PK = ORG#<resourceId>` o `CLINIC#<resourceId>`, `GSI1SK = MEMBER#<userId>`. La policy lee `ResourceId`, `ResourceType`, `AccountId` y `Role`. |
+| Membership (se lee desde la parte 2; la crea WIZ-77) | `USER#<userId>` | `MEMBERSHIP#<resourceId>` | `MEMBERSHIP` | `UserId`, `ResourceId`, `ResourceType` (`ORGANIZATION` o `CLINIC`), `AccountId`, `Role` (`ADMIN`, `DOCTOR` o `USER`), `Specialties?`, sin `CreatedAt`; `GSI1PK = ORG#<resourceId>` o `CLINIC#<resourceId>`, `GSI1SK = MEMBER#<userId>`. La policy lee `ResourceId`, `ResourceType`, `AccountId` y `Role`. |
 
 - **Qué dato nuevo guarda cada uno.** La cuenta es el tenant: su id, al que
-  apuntará todo lo demás, su dueño y cuándo se creó no están en ninguna parte.
+  apuntará todo lo demás, y su dueño no están en ninguna parte. La fecha de
+  creación sale del `Id`, que es un ULID.
   `AccountId` en el usuario es su enlace a la cuenta, que para un invitado no
   saldrá de `OwnerUserId`. `OnboardingStep` es el avance del onboarding, que la
   spec decidió guardar en el usuario.
@@ -574,7 +575,7 @@ Prueba en `test/`. Entre paréntesis, la parte.
 
 | Criterio | Prueba |
 |---|---|
-| Crear la cuenta con un token de verificación vigente crea, en la misma transacción, el usuario con `AccountId` y `OnboardingStep = PERSONAL_DATA`, y la cuenta con el usuario como dueño, sin nombre y sin plan | `users/confirm-sign-up.test.ts`: «crear la cuenta con un token de verificación vigente crea, en la misma transacción, el usuario con AccountId y OnboardingStep = PERSONAL_DATA, y la cuenta con el usuario como dueño, sin nombre y sin plan». `users/dynamodb.test.ts`: «crear la cuenta confirmada guarda el usuario, su cuenta y su constancia y gasta el token en una sola transacción», con el ítem de la cuenta exacto (`PK`, `SK`, `ItemType`, `Id`, `OwnerUserId`, `CreatedAt`) y sin ningún otro ítem. (1) |
+| Crear la cuenta con un token de verificación vigente crea, en la misma transacción, el usuario con `AccountId` y `OnboardingStep = PERSONAL_DATA`, y la cuenta con el usuario como dueño, sin nombre y sin plan | `users/confirm-sign-up.test.ts`: «crear la cuenta con un token de verificación vigente crea, en la misma transacción, el usuario con AccountId y OnboardingStep = PERSONAL_DATA, y la cuenta con el usuario como dueño, sin nombre y sin plan». `users/dynamodb.test.ts`: «crear la cuenta confirmada guarda el usuario, su cuenta y su constancia y gasta el token en una sola transacción», con el ítem de la cuenta exacto (`PK`, `SK`, `ItemType`, `Id`, `OwnerUserId`) y sin ningún otro ítem. (1) |
 | Si falla la transacción, no queda ni el usuario ni la cuenta, y el usuario se borra de Cognito | `users/confirm-sign-up.test.ts`: «si falla la transacción, no queda ni el usuario ni la cuenta, y el usuario se borra de Cognito». La de la spec anterior («si falla la escritura en DynamoDB…») sigue. (1) |
 | El usuario nuevo ya no guarda `OnboardingCompleted` | `users/dynamodb.test.ts`: «el usuario nuevo ya no guarda OnboardingCompleted», con el `Item` completo del usuario en el `Put`. `users/confirm-sign-up.test.ts` fija la lista de campos de la entidad. (1) |
 | `GET /api/me` con un ID token válido responde 200 con los datos del usuario, su cuenta, si es el dueño y su paso del onboarding, aunque no lo haya terminado | `users/me.test.ts`: «GET /api/me con un ID token válido responde 200 con los datos del usuario, su cuenta, si es el dueño y su paso del onboarding, aunque no lo haya terminado», con la policy que declara el stack. (4) |
