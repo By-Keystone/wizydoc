@@ -32,7 +32,14 @@ import { AccountRepository } from "../../lib/src/users/infrastructure/persistenc
 import { ClinicRepository } from "../../lib/src/users/infrastructure/persistence/dynamodb/clinic.repository";
 import { SignUpVerificationTokenRepository } from "../../lib/src/users/infrastructure/persistence/dynamodb/sign-up-verification-token.repository";
 import { SignUpCodeRepository } from "../../lib/src/users/infrastructure/persistence/dynamodb/sign-up-code.repository";
+import { OnboardingRepository } from "../../lib/src/users/infrastructure/persistence/dynamodb/onboarding.repository";
 import { UserRepository } from "../../lib/src/users/infrastructure/persistence/dynamodb/user.repository";
+import {
+  familyNameSchema,
+  givenNameSchema,
+} from "../../lib/src/users/domain/value-objects/person-name.vo";
+import { phoneSchema } from "../../lib/src/users/domain/value-objects/phone.vo";
+import { treatmentSchema } from "../../lib/src/users/domain/value-objects/treatment.vo";
 import { emailSchema } from "../../lib/src/users/domain/value-objects/email.vo";
 import { buildUser, COGNITO_SUB } from "./fakes";
 
@@ -991,4 +998,98 @@ test("la cuenta se lee por su clave con lectura consistente y sólo si es una cu
       ConsistentRead: true,
     },
   ]);
+});
+
+const personalData = {
+  givenName: givenNameSchema.parse("Ana"),
+  familyName: familyNameSchema.parse("Pérez"),
+  phone: phoneSchema.parse("987654321"),
+  treatment: treatmentSchema.parse("DRA"),
+};
+
+test("savePersonalData actualiza sólo el ítem del usuario, con la condición de los pasos de origen, y devuelve el paso de después", async () => {
+  const { client, inputs } = capturingClient({
+    response: { Attributes: { OnboardingStep: "PLAN" } },
+  });
+
+  const step = await new OnboardingRepository(
+    client,
+    TABLE_NAME,
+  ).savePersonalData(USER_ID, personalData, {
+    from: ["PERSONAL_DATA"],
+    to: "PLAN",
+  });
+
+  assert.equal(step, "PLAN");
+  const [update] = inputs as UpdateCommandInput[];
+  assert.equal(update.TableName, TABLE_NAME);
+  assert.deepEqual(update.Key, { PK: `USER#${USER_ID}`, SK: "!" });
+  assert.equal(update.ConditionExpression, "#OnboardingStep IN (:from0)");
+  assert.equal(
+    update.UpdateExpression,
+    "SET #OnboardingStep = :OnboardingStep, #GivenName = :GivenName, #FamilyName = :FamilyName, #Phone = :Phone, #Treatment = :Treatment",
+  );
+  assert.deepEqual(update.ExpressionAttributeValues, {
+    ":from0": "PERSONAL_DATA",
+    ":OnboardingStep": "PLAN",
+    ":GivenName": "Ana",
+    ":FamilyName": "Pérez",
+    ":Phone": "+51987654321",
+    ":Treatment": "DRA",
+  });
+  assert.equal(update.ReturnValues, "ALL_NEW");
+});
+
+test("savePersonalData sin paso de destino no toca OnboardingStep, y sin tratamiento guarda null", async () => {
+  const { client, inputs } = capturingClient({
+    response: { Attributes: { OnboardingStep: "CLINIC" } },
+  });
+
+  await new OnboardingRepository(client, TABLE_NAME).savePersonalData(
+    USER_ID,
+    { ...personalData, treatment: null },
+    { from: ["PLAN", "CLINIC"] },
+  );
+
+  const [update] = inputs as UpdateCommandInput[];
+  assert.equal(
+    update.ConditionExpression,
+    "#OnboardingStep IN (:from0, :from1)",
+  );
+  assert.equal(
+    update.UpdateExpression,
+    "SET #GivenName = :GivenName, #FamilyName = :FamilyName, #Phone = :Phone, #Treatment = :Treatment",
+  );
+  assert.equal(update.ExpressionAttributeValues?.[":Treatment"], null);
+  assert.equal(
+    update.ExpressionAttributeValues?.[":OnboardingStep"],
+    undefined,
+  );
+});
+
+test("savePersonalData devuelve undefined si otro pedido cambió el paso, y deja subir cualquier otro error", async () => {
+  const lostRace = capturingClient({
+    failure: new ConditionalCheckFailedException({
+      message: "condición",
+      $metadata: {},
+    }),
+  });
+  const unavailable = capturingClient({ failure: new Error("sin red") });
+  const transition = { from: ["PERSONAL_DATA"], to: "PLAN" } as const;
+
+  assert.equal(
+    await new OnboardingRepository(
+      lostRace.client,
+      TABLE_NAME,
+    ).savePersonalData(USER_ID, personalData, transition),
+    undefined,
+  );
+  await assert.rejects(
+    new OnboardingRepository(unavailable.client, TABLE_NAME).savePersonalData(
+      USER_ID,
+      personalData,
+      transition,
+    ),
+    /sin red/,
+  );
 });

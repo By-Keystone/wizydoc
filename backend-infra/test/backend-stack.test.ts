@@ -191,6 +191,30 @@ test("cada Lambda sólo tiene los permisos que usa", () => {
   ]) {
     assert.equal(meStatements.includes(forbidden), false, forbidden);
   }
+  assert.deepEqual(accessByAction(template, "SavePersonalDataFunction"), {
+    "dynamodb:UpdateItem": ["USER#*"],
+    "dynamodb:Query": ["USER#*"],
+  });
+  const savePersonalDataStatements = policyFor(
+    template,
+    "SavePersonalDataFunction",
+  );
+  for (const forbidden of [
+    "PutItem",
+    "DeleteItem",
+    "GetItem",
+    "ACCOUNT#*",
+    "CLINIC#*",
+    "/index/GSI1",
+    "cognito-idp:",
+    "ses:",
+  ]) {
+    assert.equal(
+      savePersonalDataStatements.includes(forbidden),
+      false,
+      forbidden,
+    );
+  }
   assert.deepEqual(accessByAction(template, "RefreshSessionFunction"), {});
   assert.deepEqual(accessByAction(template, "SignOutFunction"), {});
 });
@@ -415,6 +439,7 @@ test("las Lambdas de los usuarios tienen 15 segundos, 512 MB y logs que se conse
     "RefreshSessionFunction",
     "SignOutFunction",
     "MeFunction",
+    "SavePersonalDataFunction",
   ]) {
     const properties = functionProperties(template, functionName);
     assert.equal(properties.Timeout, 15, functionName);
@@ -603,4 +628,30 @@ test("toda Lambda del stack dice en su descripción qué hace", () => {
       `la descripción de ${logicalId} pasa de ${LAMBDA_DESCRIPTION_MAX_LENGTH} caracteres`,
     );
   }
+});
+
+test("PUT /api/onboarding/personal-data exige la clave de platform y el ID token, y la Lambda describe lo que hace", () => {
+  const template = synthesizeBackend();
+
+  const [method] = Object.values(
+    template.findResources("AWS::ApiGateway::Method", {
+      Properties: { HttpMethod: "PUT" },
+    }),
+  );
+
+  assert.equal(
+    resourcePath(template, method.Properties.ResourceId.Ref),
+    "/api/onboarding/personal-data",
+  );
+  assert.equal(method.Properties.ApiKeyRequired, true);
+  assert.equal(method.Properties.AuthorizationType, "COGNITO_USER_POOLS");
+  assert.ok(
+    JSON.stringify(method.Properties.Integration.Uri).includes(
+      functionLogicalId(template, "SavePersonalDataFunction"),
+    ),
+  );
+  assert.equal(
+    functionProperties(template, "SavePersonalDataFunction").Description,
+    "Saves the name, surname, phone and treatment of the signed-in user.",
+  );
 });

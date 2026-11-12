@@ -27,6 +27,10 @@ import type { SignUpVerificationToken } from "../../lib/src/users/domain/sign-up
 import type { PrivateApiGatewayEvent } from "../../lib/src/shared/http/api-gateway";
 import type { Membership } from "../../lib/src/users/domain/membership.entity";
 import type { IAccountRepository } from "../../lib/src/users/domain/repository/account.repository";
+import type {
+  IOnboardingRepository,
+  OnboardingStepTransition,
+} from "../../lib/src/users/domain/repository/onboarding.repository";
 import type { IClinicRepository } from "../../lib/src/users/domain/repository/clinic.repository";
 import type {
   IUserRepository,
@@ -34,6 +38,8 @@ import type {
 } from "../../lib/src/users/domain/repository/user.repository";
 import type { TermsAcceptance } from "../../lib/src/users/domain/terms-acceptance.entity";
 import type {
+  OnboardingStep,
+  PersonalData,
   User,
   UserWithAccount,
 } from "../../lib/src/users/domain/user.entity";
@@ -142,6 +148,31 @@ export class InMemoryUsers implements IUserRepository {
     );
     if (!user) return undefined;
     return { user, memberships: this.memberships.get(user.id) ?? [] };
+  }
+}
+
+export class InMemoryOnboarding implements IOnboardingRepository {
+  readonly transitions: OnboardingStepTransition[] = [];
+  failOnWrite = false;
+  beforeWrite?: () => void;
+
+  constructor(private readonly users: InMemoryUsers) {}
+
+  async savePersonalData(
+    userId: string,
+    personalData: PersonalData,
+    transition: OnboardingStepTransition,
+  ): Promise<OnboardingStep | undefined> {
+    if (this.failOnWrite) throw new Error("DynamoDB no disponible");
+    this.beforeWrite?.();
+    this.transitions.push(transition);
+    const user = this.users.users.find(({ id }) => id === userId);
+    if (!user || !transition.from.includes(user.onboardingStep)) {
+      return undefined;
+    }
+    Object.assign(user, personalData);
+    user.onboardingStep = transition.to ?? user.onboardingStep;
+    return user.onboardingStep;
   }
 }
 
