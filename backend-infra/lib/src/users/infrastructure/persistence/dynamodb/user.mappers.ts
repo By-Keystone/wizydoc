@@ -23,7 +23,8 @@ export const fromDomainToDynamo = (user: User): UsersDynamoDBSchema => {
     Id: user.id,
     Confirmed: user.confirmed,
     Email: user.email,
-    OnboardingCompleted: user.onboardingCompleted,
+    AccountId: user.accountId,
+    OnboardingStep: user.onboardingStep,
     CognitoSub: user.cognitoSub,
   };
 };
