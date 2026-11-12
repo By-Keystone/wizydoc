@@ -1,6 +1,7 @@
+import type { Account } from "../account.entity";
 import type { Membership } from "../membership.entity";
 import type { TermsAcceptance } from "../terms-acceptance.entity";
-import type { User, UserWithAccount } from "../user.entity";
+import type { User } from "../user.entity";
 import type { EmailVO } from "../value-objects/email.vo";
 
 export interface VerificationToCommit {
@@ -20,7 +21,8 @@ export interface IUserRepository {
     cognitoSub: string,
   ): Promise<UserWithMemberships | undefined>;
   createConfirmed(
-    userWithAccount: UserWithAccount,
+    user: User,
+    account: Account,
     verification: VerificationToCommit,
     termsAcceptance?: TermsAcceptance,
   ): Promise<boolean>;

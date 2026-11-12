@@ -54,7 +54,6 @@ import type {
   OnboardingStep,
   PersonalData,
   User,
-  UserWithAccount,
 } from "../../lib/src/users/domain/user.entity";
 import {
   type EmailVO,
@@ -128,7 +127,8 @@ export class InMemoryUsers implements IUserRepository {
   }
 
   async createConfirmed(
-    { user, account }: UserWithAccount,
+    user: User,
+    account: Account,
     { email, tokenHash }: VerificationToCommit,
     termsAcceptance?: TermsAcceptance,
   ): Promise<boolean> {
