@@ -57,7 +57,11 @@ test("crear «Tu consultorio» crea, en una transacción, la organización, la s
 
   const response = await call();
 
-  const [{ organization, clinic, memberships }] = onboarding.ownerClinics;
+  const {
+    organizations: [organization],
+    clinics: [clinic],
+    memberships,
+  } = onboarding;
   assert.equal(response.statusCode, 201);
   assert.deepEqual(body(response), {
     organizationId: organization.id,
@@ -96,7 +100,11 @@ test("crear «Tu consultorio» ignora la organización y la cuenta del cuerpo", 
     }),
   );
 
-  const [{ organization, clinic, memberships }] = onboarding.ownerClinics;
+  const {
+    organizations: [organization],
+    clinics: [clinic],
+    memberships,
+  } = onboarding;
   assert.notEqual(organization.id, "01M6MSQWFCK15Q3X04AQEQ0AAA");
   assert.equal(clinic.organizationId, organization.id);
   assert.deepEqual(
@@ -116,7 +124,10 @@ test("los textos se recortan", async () => {
     }),
   );
 
-  const [{ clinic, memberships }] = onboarding.ownerClinics;
+  const {
+    clinics: [clinic],
+    memberships,
+  } = onboarding;
   assert.equal(clinic.name, "Consultorio");
   assert.equal(clinic.address, "Calle 1");
   assert.deepEqual(memberships[1].specialties, ["X"]);
@@ -152,7 +163,7 @@ test("un cuerpo inválido responde 400 con el primer mensaje, sin leer la sesió
 
     assert.equal(response.statusCode, 400);
     assert.deepEqual(body(response), { message });
-    assert.deepEqual(flow.onboarding.ownerClinics, []);
+    assert.deepEqual(flow.onboarding.clinics, []);
   }
   const response = await clinicFlow().call(
     privateEvent({ body: "no es json" }),
@@ -171,7 +182,7 @@ test("de dos pedidos a la vez para crear el consultorio, sólo uno lo crea; el o
 
   assert.equal(response.statusCode, 409);
   assert.deepEqual(body(response), { message: CLINIC_ALREADY_CREATED });
-  assert.deepEqual(onboarding.ownerClinics, []);
+  assert.deepEqual(onboarding.clinics, []);
 });
 
 test("cada ruta usada fuera de su paso responde 403 con el paso en que va el usuario", async () => {
@@ -190,7 +201,7 @@ test("cada ruta usada fuera de su paso responde 403 con el paso en que va el usu
       message: ONBOARDING_INCOMPLETE,
       onboardingStep: step,
     });
-    assert.deepEqual(onboarding.ownerClinics, []);
+    assert.deepEqual(onboarding.clinics, []);
   }
 });
 

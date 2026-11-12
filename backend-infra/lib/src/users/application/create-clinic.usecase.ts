@@ -48,14 +48,19 @@ export class CreateClinicUseCase {
     input: CreateClinicInput,
   ): Promise<CreateClinicResult> {
     const ownerClinic = createOwnerClinic(
-      { ...input, ownerUserId: user.id, accountId: user.accountId },
+      {
+        ownerUserId: user.id,
+        accountId: user.accountId,
+        name: input.name,
+        address: input.address,
+        specialty: input.specialty,
+      },
       this.now(),
     );
-    const wasCreated = await this.onboarding.createClinic(
-      ownerClinic,
-      user.id,
-      { from: CREATE_CLINIC_STEPS, to: "SCHEDULE" },
-    );
+    const wasCreated = await this.onboarding.createClinic(ownerClinic, {
+      from: CREATE_CLINIC_STEPS,
+      to: "SCHEDULE",
+    });
     if (!wasCreated) return { kind: "already-created" };
     return {
       kind: "created",
