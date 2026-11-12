@@ -1,5 +1,6 @@
 import type { CognitoIdentityProviderClient } from "@aws-sdk/client-cognito-identity-provider";
 import type { SendEmailCommandInput, SESv2Client } from "@aws-sdk/client-sesv2";
+import type { Account } from "../../lib/src/users/domain/account.entity";
 import type { IAccountExistsNotices } from "../../lib/src/users/application/ports/account-exists-notices.port";
 import type {
   ISessionProvider,
@@ -25,7 +26,10 @@ import {
 import type { SignUpVerificationToken } from "../../lib/src/users/domain/sign-up-verification-token.entity";
 import type { IUserRepository } from "../../lib/src/users/domain/repository/user.repository";
 import type { TermsAcceptance } from "../../lib/src/users/domain/terms-acceptance.entity";
-import type { User } from "../../lib/src/users/domain/user.entity";
+import type {
+  User,
+  UserWithAccount,
+} from "../../lib/src/users/domain/user.entity";
 import {
   type EmailVO,
   emailSchema,
@@ -84,6 +88,7 @@ export class RecordingSessions implements Pick<ISessionProvider, "start"> {
 export class InMemoryUsers implements IUserRepository {
   readonly users: User[];
   readonly createdUsers: User[] = [];
+  readonly createdAccounts: Account[] = [];
   readonly termsAcceptances: TermsAcceptance[] = [];
   failOnCreate = false;
   failOnRead = false;
@@ -96,7 +101,7 @@ export class InMemoryUsers implements IUserRepository {
   }
 
   async createConfirmed(
-    user: User,
+    { user, account }: UserWithAccount,
     { email, tokenHash }: VerificationToCommit,
     termsAcceptance?: TermsAcceptance,
   ): Promise<boolean> {
@@ -104,6 +109,7 @@ export class InMemoryUsers implements IUserRepository {
     if (!this.verificationTokens?.consume(email, tokenHash)) return false;
     this.users.push(user);
     this.createdUsers.push(user);
+    this.createdAccounts.push(account);
     if (termsAcceptance) this.termsAcceptances.push(termsAcceptance);
     return true;
   }
@@ -393,7 +399,8 @@ export const buildUser = (overrides: Partial<User> = {}): User => ({
   id: "01M6MSQWFCK15Q3X04AQEQ0S8Q",
   email: emailSchema.parse("ana@clinica.pe"),
   confirmed: true,
-  onboardingCompleted: true,
+  accountId: "01M6MSQWFCK15Q3X04AQEQ0S9R",
+  onboardingStep: "COMPLETED",
   cognitoSub: COGNITO_SUB,
   ...overrides,
 });

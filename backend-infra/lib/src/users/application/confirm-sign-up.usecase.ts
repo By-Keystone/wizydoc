@@ -9,7 +9,7 @@ import type { ISignUpVerificationTokenRepository } from "../domain/repository/si
 import type { IUserRepository } from "../domain/repository/user.repository";
 import { hashSignUpVerificationToken } from "../domain/sign-up-verification-token.entity";
 import { createTermsAcceptance } from "../domain/terms-acceptance.entity";
-import { createUser } from "../domain/user.entity";
+import { createUserWithAccount } from "../domain/user.entity";
 import { emailSchema } from "../domain/value-objects/email.vo";
 import { passwordSchema } from "../domain/value-objects/password.vo";
 import type { IIdentityProvider } from "./ports/identity-provider.port";
@@ -105,19 +105,23 @@ export class ConfirmSignUpUseCase {
       return VERIFICATION_REJECTED;
     }
 
-    const user = createUser({
-      email,
-      cognitoSub,
-      confirmed: true,
-      onboardingCompleted: false,
-    });
+    const owner = createUserWithAccount({ email, cognitoSub });
     const termsAcceptance = this.requireTermsAcceptance
-      ? createTermsAcceptance({ userId: user.id, email, ipAddress, userAgent })
+      ? createTermsAcceptance({
+          userId: owner.user.id,
+          email,
+          ipAddress,
+          userAgent,
+        })
       : undefined;
 
     const wasCreated = await this.createOrRemoveIdentity(
       () =>
-        this.users.createConfirmed(user, { email, tokenHash }, termsAcceptance),
+        this.users.createConfirmed(
+          owner,
+          { email, tokenHash },
+          termsAcceptance,
+        ),
       cognitoSub,
     );
     if (!wasCreated) return VERIFICATION_REJECTED;
