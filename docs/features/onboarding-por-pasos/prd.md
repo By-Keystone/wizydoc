@@ -256,7 +256,7 @@ Es el formulario de primer-uso (O-1 a O-7), con estos cambios:
 - **[Decisión, 9 de noviembre de 2026] Lo que cambia de O-3 y O-6:** la cuenta ya existe, creada sin
   nombre al confirmar el registro, y el onboarding no la crea (sección 14). Por eso ya no se da el
   error a medias de O-6 («Tu cuenta quedó creada, pero no pudimos crear tu consultorio»). La cuenta
-  no tiene nombre propio: el nombre vive en la organización y en la sede.
+  no tiene nombre.
 - **Lo que cambia de O-5:** después de crear el consultorio, sigue a «Tu horario» en lugar de ir al
   panel.
 - **[Decisión, 9 de noviembre de 2026] Sin el modo «Termina de crear tu consultorio» (D-3 de
@@ -442,8 +442,7 @@ Los señalo sin resolverlos: el cómo es del planner y del engineer.
    usuario como dueño, en la segunda spec de WIZ-78 (sección 14). Hoy la crea `POST /account` del api
    desde el onboarding, con la suscripción Gratis (`complete-account-setup.usecase.ts`), y el registro
    de `backend-infra` deja `accountId` vacío. El onboarding ya no crea la cuenta: «Tu plan» le crea el
-   plan, y «Tu consultorio», la organización y la sede. La cuenta no tiene nombre propio: el nombre
-   vive en la organización y en la sede.
+   plan, y «Tu consultorio», la organización y la sede. La cuenta no tiene nombre.
 4. **El plan, el consultorio y el horario se construyen en `backend-infra`** (sección 14). Hoy viven
    en el api, con Postgres: `POST /account` (el plan, que durante la beta sólo acepta `FREE`, según
    `beta-free-plan-only`), `POST /account/first-clinic` (con la política `account`, `confirmed` y
@@ -512,7 +511,7 @@ Se cambian en un PR `docs:` aparte, cuando la feature ya esté mergeada:
 | --- | --- |
 | `docs/PRODUCT.md`, «Estado › Primer uso» | El onboarding tiene cuatro pasos: tus datos, tu plan (sólo Gratis durante la beta), tu consultorio y el horario, este último opcional. La cuenta se crea al confirmar el registro, sin plan. |
 | `docs/capacidades.md` | La fila del onboarding. |
-| `docs/legal/politica-privacidad.md`, A.1, A.2 y A.4 | **Va en WIZ-80, que tiene que estar antes de publicar el onboarding nuevo**, y no en el PR `docs:` de después del merge. Se valida con un abogado junto con WIZ-56. El nombre, el apellido y el celular se dan en el onboarding, después del registro, y el celular es obligatorio. Su finalidad, el soporte y los avisos de la cuenta, va entre las de A.2 (sección 4.2). Como la cuenta no tiene nombre propio, «Nombre de la cuenta» sale de A.1. «Plan contratado y estado de la suscripción» ya no viene «al crear la cuenta», sino de «Tu plan». |
+| `docs/legal/politica-privacidad.md`, A.1, A.2 y A.4 | **Va en WIZ-80, que tiene que estar antes de publicar el onboarding nuevo**, y no en el PR `docs:` de después del merge. Se valida con un abogado junto con WIZ-56. El nombre, el apellido y el celular se dan en el onboarding, después del registro, y el celular es obligatorio. Su finalidad, el soporte y los avisos de la cuenta, va entre las de A.2 (sección 4.2). Como la cuenta no tiene nombre, «Nombre de la cuenta» sale de A.1. «Plan contratado y estado de la suscripción» ya no viene «al crear la cuenta», sino de «Tu plan». |
 | `platform/e2e/README.md` | Sólo si cambia cómo se corren o se escriben las pruebas (prerrequisito 9). |
 
 ---
@@ -531,7 +530,7 @@ de noviembre de 2026. La fila 10 cambia la
 | 3 | ¿El celular del médico es obligatorio? | **Sí.** La política de privacidad tiene que decir la finalidad, y hay que validarlo con un abogado. | Sección 4.2, pv-1, pv-4 y sección 13. |
 | 4 | ¿Se prioriza «Renombrar sede»? | **Sí, justo después del onboarding,** en WIZ-79 («Edit the clinic name and address»), bloqueado por WIZ-77: editar el nombre y la dirección del consultorio desde el panel. | Resumen y secciones 3.2, 5, 9 y 12. |
 | 5 | ¿Cuándo sale? | **Con el registro nuevo y la sesión de Cognito.** El onboarding del registro nuevo se construye en `backend-infra`, porque los usuarios nuevos viven en Cognito y DynamoDB, y el api de Railway nunca va a aceptar su sesión (decidido el 8 de noviembre de 2026, WIZ-78). No se hace primero sobre el api de hoy. | Secciones 6, 7 y 12, y prerrequisitos 1, 2, 4 y 8. |
-| 6 | ¿Dónde y cuándo se crea la cuenta (el tenant)? | **Al confirmar el registro,** sin nombre y sin plan, con el usuario como dueño, en la segunda spec de WIZ-78. El plan lo crea «Tu plan» (fila 10). «Tu consultorio» crea la organización y la sede dentro de esa cuenta, con el dueño como administrador y como médico de la sede, con su especialidad. La cuenta no tiene nombre propio: el nombre vive en la organización y en la sede. | Resumen, secciones 4.1, 4.4, 7 y 13, y prerrequisitos 3 y 5. |
+| 6 | ¿Dónde y cuándo se crea la cuenta (el tenant)? | **Al confirmar el registro,** sin nombre y sin plan, con el usuario como dueño, en la segunda spec de WIZ-78. El plan lo crea «Tu plan» (fila 10). «Tu consultorio» crea la organización y la sede dentro de esa cuenta, con el dueño como administrador y como médico de la sede, con su especialidad. La cuenta no tiene nombre. | Resumen, secciones 4.1, 4.4, 7 y 13, y prerrequisitos 3 y 5. |
 | 7 | ¿Se quita el modo «Termina de crear tu consultorio» (D-3 de primer-uso)? | **Sí.** En el backend nuevo toda cuenta nace sin organización, y las cuentas de la beta no se migran, así que nadie lo usaría. | Secciones 4.4 y 6. |
 | 8 | ¿Cuál es la finalidad del celular? | **Soporte y avisos de la cuenta, sin novedades comerciales.** Aprobada como tarea, no para ahora: va en WIZ-80, que cambia la política de privacidad y se valida con un abogado junto con WIZ-56. Tiene que estar antes de publicar el onboarding nuevo. | Resumen, sección 4.2, pv-1 y sección 13. |
 | 9 | ¿«Renombrar sede» se construye en `backend-infra`? | **Sí,** «en un futuro cercano»: es WIZ-79. | Resumen y secciones 9 y 12. |
