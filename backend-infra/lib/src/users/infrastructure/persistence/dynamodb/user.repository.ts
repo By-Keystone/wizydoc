@@ -3,13 +3,14 @@ import {
   QueryCommand,
   TransactWriteCommand,
 } from "@aws-sdk/lib-dynamodb";
+import type { Account } from "../../../domain/account.entity";
 import type {
   IUserRepository,
   UserWithMemberships,
   VerificationToCommit,
 } from "../../../domain/repository/user.repository";
 import type { TermsAcceptance } from "../../../domain/terms-acceptance.entity";
-import type { UserWithAccount } from "../../../domain/user.entity";
+import type { User } from "../../../domain/user.entity";
 import type { EmailVO } from "../../../domain/value-objects/email.vo";
 import { fromAccountToDynamo } from "./account.mappers";
 import { isLostRace } from "./lost-race";
@@ -58,7 +59,8 @@ export class UserRepository implements IUserRepository {
   ) {}
 
   async createConfirmed(
-    { user, account }: UserWithAccount,
+    user: User,
+    account: Account,
     { email, tokenHash }: VerificationToCommit,
     termsAcceptance?: TermsAcceptance,
   ): Promise<boolean> {
