@@ -32,10 +32,7 @@ import type {
   UserWithMemberships,
 } from "../../lib/src/users/domain/repository/user.repository";
 import type { TermsAcceptance } from "../../lib/src/users/domain/terms-acceptance.entity";
-import type {
-  User,
-  UserWithAccount,
-} from "../../lib/src/users/domain/user.entity";
+import type { User } from "../../lib/src/users/domain/user.entity";
 import {
   type EmailVO,
   emailSchema,
@@ -108,7 +105,8 @@ export class InMemoryUsers implements IUserRepository {
   }
 
   async createConfirmed(
-    { user, account }: UserWithAccount,
+    user: User,
+    account: Account,
     { email, tokenHash }: VerificationToCommit,
     termsAcceptance?: TermsAcceptance,
   ): Promise<boolean> {
