@@ -37,7 +37,7 @@
 
 | Hoy (Better Auth y el api) | Con esta spec |
 |---|---|
-| La cuenta la crea el onboarding, con el nombre del consultorio. | La crea el registro, sin nombre: el nombre vive en la organización. |
+| La cuenta la crea el onboarding, con el nombre del consultorio. | La crea el registro y no tiene nombre. |
 | `onboardingCompleted` es un booleano que pasa a `true` al crear la cuenta. | `OnboardingStep` dice en qué paso va (`PERSONAL_DATA`, `PLAN`, `CLINIC`, `SCHEDULE` o `COMPLETED`) y `OnboardingCompletedAt`, cuándo terminó. |
 | La sesión es la cookie de Better Auth, que el api busca en Postgres. | La sesión es el ID token de Cognito, que valida el gateway. El backend no guarda sesiones. |
 | La policy lee la sesión, el usuario y la membership en Postgres. | Lee el usuario y sus memberships en DynamoDB, por el `sub` del token. |

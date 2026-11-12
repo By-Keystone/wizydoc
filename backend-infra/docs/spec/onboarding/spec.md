@@ -40,7 +40,7 @@ siga siendo el esperado: no se puede saltar un paso ni crear dos consultorios.
 | Un formulario «Tu consultorio» que crea la cuenta, la organización y la sede. | Cuatro pasos. La cuenta ya existe desde el registro. |
 | El nombre, el apellido y el celular los pide el registro. | Los pide «Tus datos». |
 | El plan va oculto (`FREE`) en el formulario. | «Tu plan» lo guarda en su propio ítem. En la beta, el backend sólo acepta Gratis. |
-| La cuenta lleva el nombre del consultorio. | La cuenta no tiene nombre; el nombre vive en la organización y en la sede. |
+| La cuenta lleva el nombre del consultorio. | La cuenta no tiene nombre. |
 | El onboarding termina al crear la cuenta. | Termina al guardar u omitir el horario. |
 | La especialidad va a un catálogo por organización. | Va en la membership del médico, como lista. |
 
