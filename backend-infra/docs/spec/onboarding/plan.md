@@ -95,8 +95,7 @@ Producción:
 - `lib/src/users/application/save-personal-data.usecase.ts` (nuevo): el esquema
   de entrada, `PERSONAL_DATA_STEPS` y el caso de uso.
 - `lib/src/users/infrastructure/persistence/dynamodb/onboarding.repository.ts`
-  (nuevo): `userStepUpdate` y `savePersonalData`. `ONLY_IF_NEW` pasa a
-  exportarse desde `user.repository.ts` para las partes siguientes.
+  (nuevo): `userStepUpdate` y `savePersonalData`.
 - `lib/src/users/handlers/save-personal-data.http.ts` y
   `save-personal-data.handler.ts` (nuevos).
 - `lib/src/users/handlers/http-messages.ts`: `PERSONAL_DATA_FAILED`.
@@ -114,6 +113,8 @@ Producción:
   `BETA_PLAN`, `Subscription` y `createSubscription`.
 - `lib/src/users/application/save-plan.usecase.ts` (nuevo), con `PLAN_STEPS`.
 - `lib/src/users/domain/repository/onboarding.repository.ts`: `savePlan`.
+- `lib/src/users/infrastructure/persistence/dynamodb/user.repository.ts`:
+  `ONLY_IF_NEW` pasa a exportarse, porque `savePlan` es el primero que lo usa.
 - `lib/src/users/infrastructure/persistence/dynamodb/subscription.schema.ts` y
   `subscription.mappers.ts` (nuevos).
 - `lib/src/users/infrastructure/persistence/dynamodb/onboarding.repository.ts`:
@@ -133,7 +134,8 @@ Producción:
   `createOwnerClinic`.
 - `lib/src/users/domain/membership.entity.ts`: `NewMembership`.
 - `lib/src/users/infrastructure/persistence/dynamodb/organization.schema.ts`,
-  `organization.mappers.ts`, `clinic.schema.ts` y `clinic.mappers.ts` (nuevos).
+  `organization.mappers.ts`, `clinic.mappers.ts` (nuevo). `clinic.schema.ts` gana el ítem completo, y la
+  lectura de la policy sigue validando sólo `OrganizationId`.
 - `lib/src/users/infrastructure/persistence/dynamodb/membership.schema.ts` y
   `membership.mappers.ts`: el ítem completo y `fromMembershipToDynamo`, junto a
   la lectura que ya existe.
@@ -726,7 +728,7 @@ Prueba en `test/users/`, salvo donde se indica. Entre paréntesis, la parte.
 | De dos pedidos a la vez para crear el consultorio, sólo uno lo crea; el otro responde 409 | `create-clinic.test.ts`: «de dos pedidos a la vez para crear el consultorio, sólo uno lo crea; el otro responde 409», con las dos lecturas antes de la primera escritura (5). `dynamodb.test.ts`: una cancelación por `ConditionalCheckFailed` o `TransactionConflict` devuelve `false` (4). |
 | Guardar «Tu horario» crea el horario del usuario en su sede y pasa el paso a `COMPLETED`, con `OnboardingCompletedAt` | `dynamodb.test.ts` (6) y `save-schedule.test.ts` (7): «guardar Tu horario crea el horario del usuario en su sede y pasa el paso a COMPLETED, con OnboardingCompletedAt». |
 | Omitir «Tu horario» pasa el paso a `COMPLETED`, con `OnboardingCompletedAt`, sin crear horario | `dynamodb.test.ts` (6) y `save-schedule.test.ts` (7): «omitir Tu horario pasa el paso a COMPLETED, con OnboardingCompletedAt, sin crear horario». |
-| Un horario con bloques que se solapan o con el inicio después del fin responde 400 y no termina el onboarding | `weekly-schedule.vo.test.ts` (6) y `save-schedule.test.ts` (7): «un horario con bloques que se solapan o con el inicio después del fin responde 400 y no termina el onboarding». |
+| Un horario con bloques que se solapan o con el inicio después del fin responde 400 y no termina el onboarding | `save-schedule.test.ts` (7): «un horario con bloques que se solapan o con el inicio después del fin responde 400 y no termina el onboarding». |
 | Cada ruta usada fuera de su paso responde 403 con el paso en que va el usuario | `save-personal-data.test.ts` (2), `save-plan.test.ts` (3), `create-clinic.test.ts` (5) y `save-schedule.test.ts` (7): «cada ruta usada fuera de su paso responde 403 con el paso en que va el usuario», con cada paso que no está en su lista y la policy que declara el stack. |
 | Las cuatro rutas exigen la clave de platform y el ID token, y declaran su policy | `test/backend-stack.test.ts`: «las cuatro rutas del onboarding exigen la clave de platform y el ID token, y declaran su policy», con el `ROUTE_POLICY` exacto de cada una. La prueba de la sesión «toda ruta privada declara su policy…» las cubre también. Crece con cada parte de ruta (2, 3, 5 y 7). |
 | Ni los datos personales ni los tokens aparecen en los logs | Las cuatro pruebas de ruta: «ni los datos personales ni los tokens aparecen en los logs», con errores cuyo mensaje lleva el nombre, el celular, el correo y el token (2, 3, 5 y 7). |
@@ -830,6 +832,13 @@ Lo comprueban los pedidos a staging de «Verificación».
   ningún tipo leído cae después.
 - **IAM no separa los ítems de una misma partición** (ver «Lo que IAM no puede
   separar»).
+- **Endurecer un value object exige migrar antes los ítems guardados.** La
+  lectura de la policy los valida con el mismo esquema: si un usuario tiene un
+  dato que el esquema nuevo rechaza, recibe 500 en toda ruta privada.
+- **`GSI1` y `GSI2` proyectan todos los atributos,** así que desde la parte 2 el
+  nombre y el celular también quedan en los índices, y las Lambdas públicas los
+  consultan sin límite de atributos. Hoy sólo piden `ItemType`, `Id` y
+  `Confirmed`. Si hace falta, se proyectan sólo las claves en un índice nuevo.
 - **Los datos personales están en memoria en cada ruta privada,** porque los
   trae la lectura de la policy. Ninguna los registra, y la prueba de logs de cada
   ruta lo fija.
@@ -837,8 +846,6 @@ Lo comprueban los pedidos a staging de «Verificación».
 ## Para otros tickets
 
 - **La policy de la sesión, con la herencia decidida el 12 de noviembre:**
-  - para una ruta de sede, la policy necesita la organización de la sede, que
-    guarda `CLINIC#<id>` (`OrganizationId`) y no la membership;
   - el dueño queda con `ADMIN` efectivo en su sede, por la organización, y
     `DOCTOR` directo. Una ruta que pregunta si alguien atiende en una sede (la
     agenda, «Mi día», el booking) mira la membership directa y sus

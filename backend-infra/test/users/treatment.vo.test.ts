@@ -10,8 +10,7 @@ test("el tratamiento acepta DR y DRA", () => {
   assert.equal(treatmentSchema.parse("DRA"), "DRA");
 });
 
-test("el tratamiento acepta null sólo con nullable", () => {
-  assert.equal(treatmentSchema.nullable().parse(null), null);
+test("el tratamiento no acepta null por sí solo", () => {
   assert.equal(treatmentSchema.safeParse(null).success, false);
 });
 

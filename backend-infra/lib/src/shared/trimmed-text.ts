@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export interface TrimmedTextMessages {
+interface TrimmedTextRules {
   maxLength: number;
   missing: string;
   tooLong: string;
@@ -10,7 +10,7 @@ export const trimmedTextSchema = ({
   maxLength,
   missing,
   tooLong,
-}: TrimmedTextMessages) =>
+}: TrimmedTextRules) =>
   z
     .string({ error: missing })
     .trim()

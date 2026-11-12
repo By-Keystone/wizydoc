@@ -1,3 +1,4 @@
+import type { z } from "zod";
 import { trimmedTextSchema } from "../../../shared/trimmed-text";
 
 const MAX_NAME_LENGTH = 100;
@@ -14,4 +15,4 @@ export const familyNameSchema = trimmedTextSchema({
   tooLong: "El apellido no puede tener más de 100 caracteres.",
 }).brand<"PersonNameVO">();
 
-export type PersonNameVO = ReturnType<typeof givenNameSchema.parse>;
+export type PersonNameVO = z.output<typeof givenNameSchema>;

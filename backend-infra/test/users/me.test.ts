@@ -148,7 +148,13 @@ test("sin cuenta, /api/me responde 500", async (context) => {
 test("ni los tokens ni los datos personales aparecen en los logs", async (context) => {
   const errors = context.mock.method(console, "error", () => {});
   const flow = meFlow();
-  const secrets = ["ana@clinica.pe", COGNITO_SUB, "eyJhbGciOi.token.firma"];
+  const secrets = [
+    "ana@clinica.pe",
+    "Pérez",
+    "+51987654321",
+    COGNITO_SUB,
+    "eyJhbGciOi.token.firma",
+  ];
   flow.users.findByCognitoSubWithMemberships = async () => {
     throw new Error(`falló con ${secrets.join(" ")}`);
   };
