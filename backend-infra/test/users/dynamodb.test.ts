@@ -1,3 +1,4 @@
+import { decodeTime, ulid } from "ulid";
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
@@ -19,6 +20,7 @@ import {
 } from "../../lib/src/users/domain/legal-documents";
 import { createSignUpVerificationToken } from "../../lib/src/users/domain/sign-up-verification-token.entity";
 import { createSignUpCode } from "../../lib/src/users/domain/sign-up-code.entity";
+import { createOwnerClinic } from "../../lib/src/users/domain/clinic.entity";
 import { createSubscription } from "../../lib/src/users/domain/subscription.entity";
 import { createTermsAcceptance } from "../../lib/src/users/domain/terms-acceptance.entity";
 import { createUserWithAccount } from "../../lib/src/users/domain/user.entity";
@@ -1203,6 +1205,182 @@ test("savePlan devuelve false si otro pedido ya guardó el plan, y deja subir cu
   await assert.rejects(
     new OnboardingRepository(unavailable.client, TABLE_NAME).savePlan(
       planSubscription,
+      USER_ID,
+      transition,
+    ),
+    /sin red/,
+  );
+});
+
+const ownerClinicNow = new Date("2026-11-12T15:00:00.000Z");
+const OTHER_ACCOUNT_ID = ulid();
+
+const buildOwnerClinic = () =>
+  createOwnerClinic(
+    {
+      ownerUserId: USER_ID,
+      accountId: ACCOUNT_ID,
+      name: "Consultorio Sol",
+      address: "Av. Larco 123",
+      specialty: "Cardiología",
+    },
+    ownerClinicNow,
+  );
+
+test("la fábrica del consultorio usa el mismo nombre, da la especialidad sólo al DOCTOR y fecha los ids en now", () => {
+  const { organization, clinic, memberships } = buildOwnerClinic();
+  const [adminMembership, doctorMembership] = memberships;
+
+  assert.equal(organization.name, "Consultorio Sol");
+  assert.equal(clinic.name, "Consultorio Sol");
+  assert.equal(decodeTime(organization.id), ownerClinicNow.getTime());
+  assert.equal(decodeTime(clinic.id), ownerClinicNow.getTime());
+  assert.equal(adminMembership.role, "ADMIN");
+  assert.equal(adminMembership.specialties, undefined);
+  assert.equal(doctorMembership.role, "DOCTOR");
+  assert.deepEqual(doctorMembership.specialties, ["Cardiología"]);
+});
+
+test("la fábrica del consultorio apunta la sede a su organización y lleva el accountId recibido en las cuatro piezas", () => {
+  const { organization, clinic, memberships } = buildOwnerClinic();
+
+  assert.equal(clinic.organizationId, organization.id);
+  assert.equal(memberships[0].resourceId, organization.id);
+  assert.equal(memberships[1].resourceId, clinic.id);
+  for (const { accountId } of [organization, clinic, ...memberships]) {
+    assert.equal(accountId, ACCOUNT_ID);
+    assert.notEqual(accountId, OTHER_ACCOUNT_ID);
+  }
+});
+
+test("crear Tu consultorio escribe en una transacción la organización, la sede y las dos memberships, y pasa el paso a SCHEDULE", async () => {
+  const { client, inputs } = capturingClient();
+  const ownerClinic = buildOwnerClinic();
+  const { organization, clinic } = ownerClinic;
+
+  const created = await new OnboardingRepository(
+    client,
+    TABLE_NAME,
+  ).createClinic(ownerClinic, USER_ID, { from: ["CLINIC"], to: "SCHEDULE" });
+
+  assert.equal(created, true);
+  const [transaction] = inputs as TransactWriteCommandInput[];
+  const onlyIfNew = "attribute_not_exists(PK)";
+  assert.deepEqual(transaction.TransactItems, [
+    {
+      Put: {
+        TableName: TABLE_NAME,
+        Item: {
+          PK: `ORG#${organization.id}`,
+          SK: "!",
+          ItemType: "ORGANIZATION",
+          Id: organization.id,
+          AccountId: ACCOUNT_ID,
+          Name: "Consultorio Sol",
+          GSI1PK: `ACCOUNT#${ACCOUNT_ID}`,
+          GSI1SK: `ORG#${organization.id}`,
+        },
+        ConditionExpression: onlyIfNew,
+      },
+    },
+    {
+      Put: {
+        TableName: TABLE_NAME,
+        Item: {
+          PK: `CLINIC#${clinic.id}`,
+          SK: "!",
+          ItemType: "CLINIC",
+          Id: clinic.id,
+          AccountId: ACCOUNT_ID,
+          OrganizationId: organization.id,
+          Name: "Consultorio Sol",
+          Address: "Av. Larco 123",
+          GSI1PK: `ORG#${organization.id}`,
+          GSI1SK: `CLINIC#${clinic.id}`,
+          GSI2PK: `ACCOUNT#${ACCOUNT_ID}`,
+          GSI2SK: `CLINIC#${clinic.id}`,
+        },
+        ConditionExpression: onlyIfNew,
+      },
+    },
+    {
+      Put: {
+        TableName: TABLE_NAME,
+        Item: {
+          PK: `USER#${USER_ID}`,
+          SK: `MEMBERSHIP#${organization.id}`,
+          ItemType: "MEMBERSHIP",
+          UserId: USER_ID,
+          ResourceId: organization.id,
+          ResourceType: "ORGANIZATION",
+          AccountId: ACCOUNT_ID,
+          Role: "ADMIN",
+          GSI1PK: `ORG#${organization.id}`,
+          GSI1SK: `MEMBER#${USER_ID}`,
+        },
+        ConditionExpression: onlyIfNew,
+      },
+    },
+    {
+      Put: {
+        TableName: TABLE_NAME,
+        Item: {
+          PK: `USER#${USER_ID}`,
+          SK: `MEMBERSHIP#${clinic.id}`,
+          ItemType: "MEMBERSHIP",
+          UserId: USER_ID,
+          ResourceId: clinic.id,
+          ResourceType: "CLINIC",
+          AccountId: ACCOUNT_ID,
+          Role: "DOCTOR",
+          Specialties: ["Cardiología"],
+          GSI1PK: `CLINIC#${clinic.id}`,
+          GSI1SK: `MEMBER#${USER_ID}`,
+        },
+        ConditionExpression: onlyIfNew,
+      },
+    },
+    {
+      Update: {
+        TableName: TABLE_NAME,
+        Key: { PK: `USER#${USER_ID}`, SK: "!" },
+        ConditionExpression: "#OnboardingStep IN (:from0)",
+        UpdateExpression: "SET #OnboardingStep = :OnboardingStep",
+        ExpressionAttributeNames: { "#OnboardingStep": "OnboardingStep" },
+        ExpressionAttributeValues: {
+          ":from0": "CLINIC",
+          ":OnboardingStep": "SCHEDULE",
+        },
+      },
+    },
+  ]);
+});
+
+test("createClinic devuelve false si otro pedido ya creó el consultorio, y deja subir cualquier otro error", async () => {
+  const lostRace = capturingClient({
+    failure: new TransactionCanceledException({
+      message: "cancelada",
+      $metadata: {},
+      CancellationReasons: [
+        { Code: "None" },
+        { Code: "ConditionalCheckFailed" },
+      ],
+    }),
+  });
+  const unavailable = capturingClient({ failure: new Error("sin red") });
+  const transition = { from: ["CLINIC"], to: "SCHEDULE" } as const;
+
+  assert.equal(
+    await new OnboardingRepository(lostRace.client, TABLE_NAME).createClinic(
+      buildOwnerClinic(),
+      USER_ID,
+      transition,
+    ),
+    false,
+  );
+  await assert.rejects(
+    new OnboardingRepository(unavailable.client, TABLE_NAME).createClinic(
+      buildOwnerClinic(),
       USER_ID,
       transition,
     ),

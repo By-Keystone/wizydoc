@@ -40,6 +40,7 @@ import type {
   IUserRepository,
   UserWithMemberships,
 } from "../../lib/src/users/domain/repository/user.repository";
+import type { OwnerClinic } from "../../lib/src/users/domain/clinic.entity";
 import type { Subscription } from "../../lib/src/users/domain/subscription.entity";
 import type { TermsAcceptance } from "../../lib/src/users/domain/terms-acceptance.entity";
 import type {
@@ -159,6 +160,7 @@ export class InMemoryUsers implements IUserRepository {
 export class InMemoryOnboarding implements IOnboardingRepository {
   readonly transitions: OnboardingStepTransition[] = [];
   readonly subscriptions: Subscription[] = [];
+  readonly ownerClinics: OwnerClinic[] = [];
   failOnWrite = false;
   beforeWrite?: () => void;
 
@@ -197,6 +199,21 @@ export class InMemoryOnboarding implements IOnboardingRepository {
       return false;
     }
     this.subscriptions.push(subscription);
+    user.onboardingStep = transition.to ?? user.onboardingStep;
+    return true;
+  }
+
+  async createClinic(
+    ownerClinic: OwnerClinic,
+    userId: string,
+    transition: OnboardingStepTransition,
+  ): Promise<boolean> {
+    if (this.failOnWrite) throw new Error("DynamoDB no disponible");
+    this.beforeWrite?.();
+    this.transitions.push(transition);
+    const user = this.users.users.find(({ id }) => id === userId);
+    if (!user || !transition.from.includes(user.onboardingStep)) return false;
+    this.ownerClinics.push(ownerClinic);
     user.onboardingStep = transition.to ?? user.onboardingStep;
     return true;
   }
