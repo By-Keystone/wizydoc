@@ -45,7 +45,7 @@ Producción (`backend-infra/`):
   `onboardingCompleted`; `createUser` recibe el `accountId` y crea sólo el
   usuario.
 - `lib/src/users/domain/account.entity.ts` (nuevo): `Account` y
-  `createAccount`.
+  `createAccount`, que genera el id de la cuenta.
 - `lib/src/users/domain/repository/user.repository.ts`: `createConfirmed`
   recibe el usuario con su cuenta.
 - `lib/src/users/application/confirm-sign-up.usecase.ts`: crea el usuario con
@@ -114,12 +114,12 @@ Pruebas: `test/users/me.test.ts` (nuevo), `test/users/fakes.ts`,
 
 ### La cuenta al registrarse (parte 1)
 
-- **Una fábrica para cada uno.** `createUser({ email, cognitoSub, accountId })`
-  crea el usuario confirmado, con `onboardingStep = PERSONAL_DATA`, y
-  `createAccount(owner)` crea la cuenta con el `accountId` del dueño y su id
-  como `ownerUserId`. La confirmación genera el ULID de la cuenta nueva y llama
-  a las dos. Así crear un usuario no crea una cuenta: un invitado usará sólo
-  `createUser`, con la cuenta de quien lo invita.
+- **Primero la cuenta, después el usuario.** `createAccount()` genera el id de
+  la cuenta; `createUser({ email, cognitoSub, accountId })` crea el usuario
+  confirmado en esa cuenta, con `onboardingStep = PERSONAL_DATA`; y la cuenta
+  toma como `ownerUserId` el id de ese usuario. Crear un usuario no crea una
+  cuenta: un invitado usará sólo `createUser`, con la cuenta de quien lo
+  invita.
 - **La misma transacción de hoy, con un `Put` más.** `createConfirmed(user,
   account, verification, termsAcceptance?)` escribe, en este orden: el
   usuario, la cuenta y la constancia (los tres con `attribute_not_exists(PK)`),
@@ -373,8 +373,8 @@ directa ni transitivamente.
 1. Valida el token de verificación y que el correo no tenga cuenta.
 2. Crea al usuario en Cognito.
 3. Si no lo crea, 400 como hoy.
-4. `const owner = createUser({ email, cognitoSub, accountId: ulid() })` y
-   `const account = createAccount(owner)`; la constancia usa `owner.id`.
+4. `createAccount()`, después `createUser({ email, cognitoSub, accountId })` y
+   la cuenta con `ownerUserId = owner.id`; la constancia usa `owner.id`.
 5. `users.createConfirmed(owner, account, { email, tokenHash },
    termsAcceptance)` dentro de `createOrRemoveIdentity`.
 6. Inicia la sesión como hoy.
@@ -468,9 +468,8 @@ cuerpo; los errores, sólo `errorName(error)`. La etapa sigue sin
 
 ## Aislamiento entre cuentas
 
-- **La cuenta la crea el servidor.** La confirmación genera el id y
-  `createAccount` toma al dueño del usuario recién creado; ningún dato del
-  pedido elige la cuenta.
+- **La cuenta la crea el servidor.** `createAccount` genera el id y el dueño es
+  el usuario recién creado; ningún dato del pedido elige la cuenta.
 - **La identidad sale sólo del `sub` que validó el gateway.** Del `sub` al id
   por `GSI2`, y del id a la partición `USER#<id>`: la policy no lee nada con un
   valor que mande el cliente.

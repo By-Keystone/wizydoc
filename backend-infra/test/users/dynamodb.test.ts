@@ -59,6 +59,16 @@ const capturingClient = ({
   return { client, inputs };
 };
 
+const buildOwnerWithAccount = () => {
+  const newAccount = createAccount();
+  const user = createUser({
+    email: buildUser().email,
+    cognitoSub: COGNITO_SUB,
+    accountId: newAccount.id,
+  });
+  return { user, account: { ...newAccount, ownerUserId: user.id } };
+};
+
 test("existsByEmail consulta el índice del correo con una proyección mínima y revisa el tipo, sin leer el usuario entero", async () => {
   const email = emailSchema.parse("ana@clinica.pe");
   const withUser = capturingClient({
@@ -442,12 +452,7 @@ test("el límite de verificaciones usa su propio prefijo y su máximo de 10, apa
 
 test("crear la cuenta confirmada guarda el usuario, su cuenta y su constancia y gasta el token en una sola transacción, con el token sólo si es del correo y no venció", async () => {
   const { client, inputs } = capturingClient();
-  const user = createUser({
-    email: buildUser().email,
-    cognitoSub: COGNITO_SUB,
-    accountId: buildUser().accountId,
-  });
-  const account = createAccount(user);
+  const { user, account } = buildOwnerWithAccount();
   const acceptedAt = new Date(TEN_PAST_NOON);
   const termsAcceptance = createTermsAcceptance(
     {
@@ -519,12 +524,7 @@ test("crear la cuenta confirmada guarda el usuario, su cuenta y su constancia y 
 
 test("el usuario nuevo ya no guarda OnboardingCompleted", async () => {
   const { client, inputs } = capturingClient();
-  const user = createUser({
-    email: buildUser().email,
-    cognitoSub: COGNITO_SUB,
-    accountId: buildUser().accountId,
-  });
-  const account = createAccount(user);
+  const { user, account } = buildOwnerWithAccount();
 
   await new UserRepository(client, TABLE_NAME).createConfirmed(user, account, {
     email: user.email,
@@ -550,12 +550,7 @@ test("el usuario nuevo ya no guarda OnboardingCompleted", async () => {
 });
 
 test("si otra confirmación gastó el token antes, la transacción cancelada informa que no se creó, y cualquier otro error sube", async () => {
-  const user = createUser({
-    email: buildUser().email,
-    cognitoSub: COGNITO_SUB,
-    accountId: buildUser().accountId,
-  });
-  const account = createAccount(user);
+  const { user, account } = buildOwnerWithAccount();
   const createWith = (failure: Error) =>
     new UserRepository(
       capturingClient({ failure }).client,
