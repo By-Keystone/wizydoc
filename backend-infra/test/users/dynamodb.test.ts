@@ -764,10 +764,43 @@ test("la partición del usuario se lee sin nada más que lo que pide la policy",
     "AccountId",
     "OnboardingStep",
     "CognitoSub",
+    "GivenName",
+    "FamilyName",
+    "Phone",
+    "Treatment",
     "ResourceId",
     "ResourceType",
     "Role",
   ]);
+});
+
+test("la lectura de la sesión trae el nombre, el apellido, el celular y el tratamiento del usuario", async () => {
+  const withPersonalData = {
+    ...userItem,
+    GivenName: " Ana ",
+    FamilyName: "Pérez",
+    Phone: "+51987654321",
+    Treatment: "DRA",
+  };
+  const withoutTreatment = { ...withPersonalData, Treatment: null };
+
+  const session = await findSession(
+    ...sessionResponses({ Items: [withPersonalData] }),
+  ).found;
+  const sessionWithoutTreatment = await findSession(
+    ...sessionResponses({ Items: [withoutTreatment] }),
+  ).found;
+  const sessionWithoutData = await findSession(
+    ...sessionResponses({ Items: [userItem] }),
+  ).found;
+
+  assert.equal(session?.user.givenName, "Ana");
+  assert.equal(session?.user.familyName, "Pérez");
+  assert.equal(session?.user.phone, "+51987654321");
+  assert.equal(session?.user.treatment, "DRA");
+  assert.equal(sessionWithoutTreatment?.user.treatment, null);
+  assert.equal(sessionWithoutData?.user.givenName, undefined);
+  assert.equal(sessionWithoutData?.user.treatment, undefined);
 });
 
 test("sin un usuario en el índice, en la partición o con otro CognitoSub, no hay usuario", async () => {

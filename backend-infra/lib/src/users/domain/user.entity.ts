@@ -1,6 +1,9 @@
 import { type ULID, ulid } from "ulid";
 import type { Account } from "./account.entity";
 import type { EmailVO } from "./value-objects/email.vo";
+import type { PersonNameVO } from "./value-objects/person-name.vo";
+import type { PhoneVO } from "./value-objects/phone.vo";
+import type { TreatmentVO } from "./value-objects/treatment.vo";
 
 export const ONBOARDING_STEPS = [
   "PERSONAL_DATA",
@@ -12,7 +15,14 @@ export const ONBOARDING_STEPS = [
 
 export type OnboardingStep = (typeof ONBOARDING_STEPS)[number];
 
-export interface User {
+export interface PersonalData {
+  givenName: PersonNameVO;
+  familyName: PersonNameVO;
+  phone: PhoneVO;
+  treatment: TreatmentVO | null;
+}
+
+export interface User extends Partial<PersonalData> {
   id: ULID;
   email: EmailVO;
   confirmed: boolean;

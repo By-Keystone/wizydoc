@@ -31,8 +31,18 @@ export const fromDomainToDynamo = (user: User): UsersDynamoDBSchema => {
 };
 
 export const fromDynamoToDomain = (item: unknown): User => {
-  const { Id, Email, Confirmed, AccountId, OnboardingStep, CognitoSub } =
-    userItemSchema.parse(item);
+  const {
+    Id,
+    Email,
+    Confirmed,
+    AccountId,
+    OnboardingStep,
+    CognitoSub,
+    GivenName,
+    FamilyName,
+    Phone,
+    Treatment,
+  } = userItemSchema.parse(item);
   return {
     id: Id,
     email: Email,
@@ -40,5 +50,9 @@ export const fromDynamoToDomain = (item: unknown): User => {
     accountId: AccountId,
     onboardingStep: OnboardingStep,
     cognitoSub: CognitoSub,
+    givenName: GivenName,
+    familyName: FamilyName,
+    phone: Phone,
+    treatment: Treatment,
   };
 };

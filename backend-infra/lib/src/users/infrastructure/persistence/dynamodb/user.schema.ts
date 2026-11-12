@@ -5,6 +5,12 @@ import {
   type OnboardingStep,
 } from "../../../domain/user.entity";
 import { emailSchema } from "../../../domain/value-objects/email.vo";
+import {
+  familyNameSchema,
+  givenNameSchema,
+} from "../../../domain/value-objects/person-name.vo";
+import { phoneSchema } from "../../../domain/value-objects/phone.vo";
+import { treatmentSchema } from "../../../domain/value-objects/treatment.vo";
 
 type PKPrefix = "USER#";
 type PK = `${PKPrefix}${string}`;
@@ -37,6 +43,10 @@ export interface UsersDynamoDBSchema {
   AccountId: ULID;
   OnboardingStep: OnboardingStep;
   CognitoSub?: string;
+  GivenName?: string;
+  FamilyName?: string;
+  Phone?: string;
+  Treatment?: string | null;
 }
 
 export const userIdSchema = z.ulid();
@@ -48,6 +58,10 @@ export const userItemSchema = z.object({
   AccountId: z.ulid(),
   OnboardingStep: z.enum(ONBOARDING_STEPS),
   CognitoSub: z.string().min(1).optional(),
+  GivenName: givenNameSchema.optional(),
+  FamilyName: familyNameSchema.optional(),
+  Phone: phoneSchema.optional(),
+  Treatment: treatmentSchema.nullable().optional(),
 });
 
 export const pk = (id: string): PK => `USER#${id}`;

@@ -8,6 +8,12 @@ import {
   type RoutePolicy,
 } from "../../lib/src/users/application/authorize-request.usecase";
 import { GetMeUseCase } from "../../lib/src/users/application/get-me.usecase";
+import {
+  familyNameSchema,
+  givenNameSchema,
+} from "../../lib/src/users/domain/value-objects/person-name.vo";
+import { phoneSchema } from "../../lib/src/users/domain/value-objects/phone.vo";
+import { treatmentSchema } from "../../lib/src/users/domain/value-objects/treatment.vo";
 import { handleMe } from "../../lib/src/users/handlers/me.http";
 import {
   buildUser,
@@ -88,6 +94,23 @@ test("GET /api/me con un ID token válido responde 200 con los datos del usuario
     isAccountOwner: true,
     onboardingStep: "PERSONAL_DATA",
   });
+});
+
+test("GET /api/me responde el nombre, el apellido, el celular y el tratamiento guardados", async () => {
+  const user = buildUser({
+    givenName: givenNameSchema.parse("Ana"),
+    familyName: familyNameSchema.parse("Pérez"),
+    phone: phoneSchema.parse("987654321"),
+    treatment: treatmentSchema.parse("DRA"),
+  });
+
+  const response = await meFlow({ user }).call();
+
+  const body = JSON.parse(response.body);
+  assert.equal(body.givenName, "Ana");
+  assert.equal(body.familyName, "Pérez");
+  assert.equal(body.phone, "+51987654321");
+  assert.equal(body.treatment, "DRA");
 });
 
 test("el ROUTE_POLICY de MeFunction es confirmed false y cualquier paso del onboarding", () => {
