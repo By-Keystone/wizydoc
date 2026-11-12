@@ -68,7 +68,7 @@ const routePaths = (template: Template) =>
     .map(({ Properties }) => resourcePath(template, Properties.ResourceId.Ref))
     .sort();
 
-test("las rutas POST (la sesión y Tu consultorio) y exigen la clave de platform", () => {
+test("las rutas POST son las de la sesión y «Tu consultorio», y exigen la clave de platform", () => {
   const template = synthesizeBackend();
 
   const postMethods = Object.values(

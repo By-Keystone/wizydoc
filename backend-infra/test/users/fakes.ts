@@ -173,9 +173,9 @@ export class InMemoryOnboarding implements IOnboardingRepository {
   readonly clinics: Clinic[] = [];
   readonly memberships: NewMembership[] = [];
   readonly schedules: Schedule[] = [];
-  readonly completedAt = new Map<string, Date>();
+  readonly completedAtByUserId = new Map<string, Date>();
   failOnWrite = false;
-  beforeWrite?: () => void;
+  beforeWrite?: () => void | Promise<void>;
 
   constructor(private readonly users: InMemoryUsers) {}
 
@@ -221,7 +221,7 @@ export class InMemoryOnboarding implements IOnboardingRepository {
     transition: Required<OnboardingStepTransition>,
   ): Promise<boolean> {
     if (this.failOnWrite) throw new Error("DynamoDB no disponible");
-    this.beforeWrite?.();
+    await this.beforeWrite?.();
     this.transitions.push(transition);
     const user = this.users.users.find(({ id }) => id === ownerUserId);
     if (!user || !transition.from.includes(user.onboardingStep)) return false;
@@ -246,7 +246,7 @@ export class InMemoryOnboarding implements IOnboardingRepository {
     const user = this.users.users.find(({ id }) => id === userId);
     if (!user || !transition.from.includes(user.onboardingStep)) return false;
     if (schedule) this.schedules.push(schedule);
-    this.completedAt.set(userId, completedAt);
+    this.completedAtByUserId.set(userId, completedAt);
     user.onboardingStep = transition.to;
     return true;
   }

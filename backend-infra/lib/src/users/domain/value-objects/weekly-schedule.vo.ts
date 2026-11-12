@@ -56,22 +56,17 @@ type ScheduleBlock = z.infer<typeof scheduleBlockSchema>;
 const byDayAndStart = (a: ScheduleBlock, b: ScheduleBlock): number =>
   a.dayOfWeek - b.dayOfWeek || toMinutes(a.startTime) - toMinutes(b.startTime);
 
-const findOverlappingDay = (blocks: ScheduleBlock[]): number | undefined => {
-  const ordered = blocks
-    .filter(
-      (block) =>
-        hasValidTimes(block) && block.dayOfWeek >= 0 && block.dayOfWeek <= 6,
-    )
-    .sort(byDayAndStart);
-  return ordered.find((block, index) => {
-    const previous = ordered[index - 1];
+const findOverlappingDay = (
+  orderedBlocks: ScheduleBlock[],
+): number | undefined =>
+  orderedBlocks.find((block, index) => {
+    const previous = orderedBlocks[index - 1];
     return (
       previous !== undefined &&
       previous.dayOfWeek === block.dayOfWeek &&
       toMinutes(block.startTime) < toMinutes(previous.endTime)
     );
   })?.dayOfWeek;
-};
 
 export const weeklyScheduleSchema = z
   .array(scheduleBlockSchema, {
@@ -81,16 +76,16 @@ export const weeklyScheduleSchema = z
   .max(MAX_SCHEDULE_BLOCKS, {
     error: `No puedes registrar más de ${MAX_SCHEDULE_BLOCKS} rangos de disponibilidad`,
   })
-  .superRefine((blocks, context) => {
-    if (blocks.length > MAX_SCHEDULE_BLOCKS) return;
-    const overlappingDay = findOverlappingDay(blocks);
-    if (overlappingDay === undefined) return;
+  .transform((blocks, context) => {
+    const orderedBlocks = [...blocks].sort(byDayAndStart);
+    const overlappingDay = findOverlappingDay(orderedBlocks);
+    if (overlappingDay === undefined) return orderedBlocks;
     context.addIssue({
       code: "custom",
       message: `Los rangos del ${DAY_NAMES[overlappingDay]} no pueden solaparse`,
     });
+    return z.NEVER;
   })
-  .transform((blocks) => [...blocks].sort(byDayAndStart))
   .brand<"WeeklyScheduleVO">();
 
 export type WeeklyScheduleVO = z.output<typeof weeklyScheduleSchema>;

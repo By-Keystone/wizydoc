@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { AuthorizeRequestUseCase } from "../../lib/src/users/application/authorize-request.usecase";
 import { CreateClinicUseCase } from "../../lib/src/users/application/create-clinic.usecase";
+import { givenNameSchema } from "../../lib/src/users/domain/value-objects/person-name.vo";
+import { phoneSchema } from "../../lib/src/users/domain/value-objects/phone.vo";
 import type { OnboardingStep } from "../../lib/src/users/domain/user.entity";
 import { handleCreateClinic } from "../../lib/src/users/handlers/create-clinic.http";
 import {
@@ -31,7 +33,11 @@ const bodyEvent = (body: unknown) =>
   privateEvent({ body: JSON.stringify(body) });
 
 const clinicFlow = (onboardingStep: OnboardingStep = "CLINIC") => {
-  const user = buildUser({ onboardingStep });
+  const user = buildUser({
+    onboardingStep,
+    givenName: givenNameSchema.parse("Ana"),
+    phone: phoneSchema.parse("987654321"),
+  });
   const users = new InMemoryUsers([user]);
   const onboarding = new InMemoryOnboarding(users);
   return {
@@ -73,14 +79,30 @@ test("crear «Tu consultorio» crea, en una transacción, la organización, la s
   assert.equal(clinic.address, VALID_BODY.address);
   assert.equal(clinic.organizationId, organization.id);
   assert.deepEqual(
-    memberships.map(({ resourceType, role, specialties }) => ({
-      resourceType,
-      role,
-      specialties,
-    })),
+    memberships.map(
+      ({ userId, resourceId, resourceType, role, specialties }) => ({
+        userId,
+        resourceId,
+        resourceType,
+        role,
+        specialties,
+      }),
+    ),
     [
-      { resourceType: "ORGANIZATION", role: "ADMIN", specialties: undefined },
-      { resourceType: "CLINIC", role: "DOCTOR", specialties: ["Pediatría"] },
+      {
+        userId: user.id,
+        resourceId: organization.id,
+        resourceType: "ORGANIZATION",
+        role: "ADMIN",
+        specialties: undefined,
+      },
+      {
+        userId: user.id,
+        resourceId: clinic.id,
+        resourceType: "CLINIC",
+        role: "DOCTOR",
+        specialties: ["Pediatría"],
+      },
     ],
   );
   assert.equal(user.onboardingStep, "SCHEDULE");
@@ -172,17 +194,28 @@ test("un cuerpo inválido responde 400 con el primer mensaje, sin leer la sesió
 });
 
 test("de dos pedidos a la vez para crear el consultorio, sólo uno lo crea; el otro responde 409", async () => {
-  const { call, users, onboarding } = clinicFlow();
-  onboarding.beforeWrite = () => {
-    onboarding.beforeWrite = undefined;
-    users.users[0].onboardingStep = "SCHEDULE";
-  };
+  const { call, user, onboarding } = clinicFlow();
+  const arrivals: (() => void)[] = [];
+  onboarding.beforeWrite = () =>
+    new Promise<void>((resolve) => {
+      arrivals.push(resolve);
+      if (arrivals.length === 2) for (const release of arrivals) release();
+    });
 
-  const response = await call();
+  const responses = await Promise.all([call(), call()]);
 
-  assert.equal(response.statusCode, 409);
-  assert.deepEqual(body(response), { message: CLINIC_ALREADY_CREATED });
-  assert.deepEqual(onboarding.clinics, []);
+  assert.deepEqual(
+    responses.map(({ statusCode }) => statusCode).sort(),
+    [201, 409],
+  );
+  const conflict = responses.find(({ statusCode }) => statusCode === 409);
+  assert.deepEqual(body(conflict as { body: string }), {
+    message: CLINIC_ALREADY_CREATED,
+  });
+  assert.equal(onboarding.organizations.length, 1);
+  assert.equal(onboarding.clinics.length, 1);
+  assert.equal(onboarding.memberships.length, 2);
+  assert.equal(user.onboardingStep, "SCHEDULE");
 });
 
 test("cada ruta usada fuera de su paso responde 403 con el paso en que va el usuario", async () => {
@@ -224,14 +257,18 @@ test("si falla DynamoDB al escribir o al leer la sesión, responde 500 con el me
   }
 });
 
-test("ni el cuerpo ni los tokens aparecen en los logs", async (context) => {
+test("ni los datos personales ni los tokens aparecen en los logs", async (context) => {
   const errors = context.mock.method(console, "error", () => {});
   const flow = clinicFlow();
   const secrets = [
     VALID_BODY.name,
     VALID_BODY.address,
     VALID_BODY.specialty,
+    "Ana",
+    "987654321",
+    "ana@clinica.pe",
     COGNITO_SUB,
+    "eyJhbGciOi.token.firma",
   ];
   flow.onboarding.createClinic = async () => {
     throw new Error(`falló con ${secrets.join(" ")}`);

@@ -70,6 +70,9 @@ test("dos bloques del mismo día que se solapan responden con el nombre del día
     firstMessage([block(0, "09:00", "12:00"), block(0, "10:00", "11:00")]),
     "Los rangos del domingo no pueden solaparse",
   );
+});
+
+test("un bloque que termina justo cuando empieza el siguiente no se solapa", () => {
   assert.equal(
     weeklyScheduleSchema.safeParse([
       block(1, "09:00", "12:00"),
@@ -84,9 +87,9 @@ test("el horario semanal acepta 70 bloques y no 71", () => {
   const blocks = (count: number) =>
     Array.from({ length: count }, (_, index) =>
       block(
-        Math.floor(index / 10),
-        `${String(index % 10).padStart(2, "0")}:00`,
-        `${String(index % 10).padStart(2, "0")}:30`,
+        index % 7,
+        `${String(Math.floor(index / 7)).padStart(2, "0")}:00`,
+        `${String(Math.floor(index / 7)).padStart(2, "0")}:30`,
       ),
     );
 
