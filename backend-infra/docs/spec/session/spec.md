@@ -16,7 +16,9 @@
   - la cuenta se crea al confirmar el registro, sin nombre y sin plan, con el
     usuario como dueño y enlazado a ella;
   - el paso del onboarding se guarda en el usuario (`OnboardingStep`), junto con
-    la fecha en que lo terminó.
+    la fecha en que lo terminó;
+  - el rol que alguien tiene en una organización vale también en todas sus
+    sedes, como hoy (decidido el 12 de noviembre).
 
 ## Qué cambia
 
@@ -35,7 +37,7 @@
 
 | Hoy (Better Auth y el api) | Con esta spec |
 |---|---|
-| La cuenta la crea el onboarding, con el nombre del consultorio. | La crea el registro, sin nombre: el nombre vive en la organización. |
+| La cuenta la crea el onboarding, con el nombre del consultorio. | La crea el registro y no tiene nombre. |
 | `onboardingCompleted` es un booleano que pasa a `true` al crear la cuenta. | `OnboardingStep` dice en qué paso va (`PERSONAL_DATA`, `PLAN`, `CLINIC`, `SCHEDULE` o `COMPLETED`) y `OnboardingCompletedAt`, cuándo terminó. |
 | La sesión es la cookie de Better Auth, que el api busca en Postgres. | La sesión es el ID token de Cognito, que valida el gateway. El backend no guarda sesiones. |
 | La policy lee la sesión, el usuario y la membership en Postgres. | Lee el usuario y sus memberships en DynamoDB, por el `sub` del token. |
@@ -50,7 +52,7 @@ transacción que ya crea al usuario:
 | Ítem | Qué guarda |
 |---|---|
 | El usuario (`USER#<id>`) | Lo de hoy, más `AccountId` (la cuenta nueva) y `OnboardingStep = PERSONAL_DATA`. Ya no guarda `OnboardingCompleted`. |
-| La cuenta (`ACCOUNT#<id>`, `SK "!"`) | `Id`, `OwnerUserId` (el usuario nuevo) y `CreatedAt`. Sin nombre y sin plan. |
+| La cuenta (`ACCOUNT#<id>`, `SK "!"`) | `Id` y `OwnerUserId` (el usuario nuevo). Sin nombre, sin plan y sin `CreatedAt`: la fecha de creación sale del `Id`, que es un ULID. |
 
 Si la transacción falla, no queda ni el usuario ni la cuenta, y el usuario se
 borra de Cognito, como hoy.
@@ -83,6 +85,14 @@ comprueba en este orden:
 | ser miembro del recurso de la ruta | no tiene membership sobre ese recurso | 404 «No encontramos lo que buscas.» |
 | uno de ciertos roles sobre el recurso | su membership tiene otro rol | 403 «No tienes permiso para hacer esto.» |
 
+- **En una sede vale también el rol que la persona tiene en su organización,**
+  como hoy. Si tiene una membership sobre la sede y otra sobre su organización,
+  gana el rol más alto (`ADMIN` sobre `DOCTOR` sobre `USER`). La ruta recibe
+  además la membership directa sobre la sede, si existe, para saber si la
+  persona atiende ahí.
+- Cada ruta declara de qué tipo es su recurso, organización o sede: una
+  membership de organización no sirve en una ruta de sede con el mismo id, salvo
+  por la herencia anterior.
 - Sin membership responde 404 y no 403, como hoy: así no revela qué recursos
   existen en otras cuentas.
 - Una ruta que no declara su policy no se puede crear: la prueba de síntesis
@@ -128,6 +138,12 @@ comprueba en este orden:
 - Una ruta que exige ser miembro de un recurso responde 404 si el usuario no
   tiene membership sobre él, también si el recurso existe en otra cuenta.
 - Una ruta que exige ciertos roles responde 403 si la membership tiene otro.
+- El rol en la organización se hereda en sus sedes: en una sede gana el rol más
+  alto entre la membership directa y la de su organización, y la ruta recibe
+  también la membership directa.
+- Una membership de organización no sirve en una ruta de sede con el mismo id
+  sin la herencia, y un id de sede que no existe o que es de otra organización
+  responde 404.
 - Toda ruta privada declara su policy y exige la clave de platform y el ID
   token.
 - Ni los tokens ni los datos personales aparecen en los logs.
