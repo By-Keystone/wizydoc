@@ -1,4 +1,3 @@
-import { ulid } from "ulid";
 import { z } from "zod";
 import { errorName } from "../../shared/errors";
 import { INVALID_REQUEST } from "../../shared/messages";
@@ -6,7 +5,7 @@ import {
   CURRENT_PRIVACY_POLICY_VERSION,
   CURRENT_TERMS_VERSION,
 } from "../domain/legal-documents";
-import { createAccount } from "../domain/account.entity";
+import { type Account, createAccount } from "../domain/account.entity";
 import type { ISignUpVerificationTokenRepository } from "../domain/repository/sign-up-verification-token.repository";
 import type { IUserRepository } from "../domain/repository/user.repository";
 import { hashSignUpVerificationToken } from "../domain/sign-up-verification-token.entity";
@@ -107,8 +106,9 @@ export class ConfirmSignUpUseCase {
       return VERIFICATION_REJECTED;
     }
 
-    const owner = createUser({ email, cognitoSub, accountId: ulid() });
-    const account = createAccount(owner);
+    const newAccount = createAccount();
+    const owner = createUser({ email, cognitoSub, accountId: newAccount.id });
+    const account: Account = { ...newAccount, ownerUserId: owner.id };
     const termsAcceptance = this.requireTermsAcceptance
       ? createTermsAcceptance({
           userId: owner.id,
