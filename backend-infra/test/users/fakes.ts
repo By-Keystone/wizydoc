@@ -171,7 +171,7 @@ export class InMemoryOnboarding implements IOnboardingRepository {
   readonly clinics: Clinic[] = [];
   readonly memberships: NewMembership[] = [];
   failOnWrite = false;
-  beforeWrite?: () => void;
+  beforeWrite?: () => void | Promise<void>;
 
   constructor(private readonly users: InMemoryUsers) {}
 
@@ -217,7 +217,7 @@ export class InMemoryOnboarding implements IOnboardingRepository {
     transition: Required<OnboardingStepTransition>,
   ): Promise<boolean> {
     if (this.failOnWrite) throw new Error("DynamoDB no disponible");
-    this.beforeWrite?.();
+    await this.beforeWrite?.();
     this.transitions.push(transition);
     const user = this.users.users.find(({ id }) => id === ownerUserId);
     if (!user || !transition.from.includes(user.onboardingStep)) return false;
