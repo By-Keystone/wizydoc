@@ -582,6 +582,15 @@ test("toda Lambda de una ruta privada puede leer al usuario de la sesión y sus 
       logicalId,
     );
     assert.ok(properties.Environment.Variables.TABLE_NAME, logicalId);
+    const { resourceType } = JSON.parse(
+      properties.Environment.Variables.ROUTE_POLICY,
+    );
+    const clinicReads = accessByAction(template, logicalId)["dynamodb:GetItem"];
+    assert.equal(
+      clinicReads?.includes("CLINIC#*") ?? false,
+      resourceType === "CLINIC",
+      logicalId,
+    );
   }
 });
 

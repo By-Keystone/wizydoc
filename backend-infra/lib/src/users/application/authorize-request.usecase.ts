@@ -40,7 +40,7 @@ export const routePolicySchema = z
     resourceType: z.enum(MEMBERSHIP_RESOURCE_TYPES).optional(),
   })
   .refine((policy) => policy.member !== false || policy.roles === undefined, {
-    error: "roles exige member: true",
+    error: "roles no admite member: false",
   })
   .refine(
     (policy) =>
