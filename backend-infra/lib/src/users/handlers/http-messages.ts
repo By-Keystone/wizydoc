@@ -12,3 +12,9 @@ export const SIGN_UP_CODE_VERIFICATION_FAILED =
   "No pudimos comprobar el código. Intenta de nuevo.";
 export const CONFIRM_SIGN_UP_FAILED =
   "No pudimos crear tu cuenta. Intenta de nuevo.";
+export const EMAIL_NOT_CONFIRMED = "Confirma tu correo para continuar.";
+export const ONBOARDING_INCOMPLETE = "Termina de configurar tu cuenta.";
+export const RESOURCE_NOT_FOUND = "No encontramos lo que buscas.";
+export const ROLE_FORBIDDEN = "No tienes permiso para hacer esto.";
+export const REQUEST_FAILED =
+  "No pudimos completar la solicitud. Intenta de nuevo.";

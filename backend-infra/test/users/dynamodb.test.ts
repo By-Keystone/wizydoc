@@ -28,6 +28,7 @@ import {
   SIGN_IN_RATE_LIMIT,
   SIGN_UP_VERIFY_RATE_LIMIT,
 } from "../../lib/src/users/infrastructure/persistence/dynamodb/ip-rate-limit";
+import { ClinicRepository } from "../../lib/src/users/infrastructure/persistence/dynamodb/clinic.repository";
 import { SignUpVerificationTokenRepository } from "../../lib/src/users/infrastructure/persistence/dynamodb/sign-up-verification-token.repository";
 import { SignUpCodeRepository } from "../../lib/src/users/infrastructure/persistence/dynamodb/sign-up-code.repository";
 import { UserRepository } from "../../lib/src/users/infrastructure/persistence/dynamodb/user.repository";
@@ -874,4 +875,44 @@ test("el límite de inicios de sesión usa su propio prefijo, un máximo de 5 y 
     ":deleteAfter": THIRTEEN_PAST_NOON + 60,
     ":itemType": "SIGN_IN_ATTEMPTS",
   });
+});
+
+test("la sede se lee por su clave con lectura consistente y sólo si es una sede", async () => {
+  const organizationId = "01M6MSQWFCK15Q3X04AQEQ0SCV";
+  const found = capturingClient({
+    response: { Item: { ItemType: "CLINIC", OrganizationId: organizationId } },
+  });
+  const otherType = capturingClient({
+    response: {
+      Item: { ItemType: "ORGANIZATION", OrganizationId: organizationId },
+    },
+  });
+  const missing = capturingClient();
+
+  assert.equal(
+    await new ClinicRepository(found.client, TABLE_NAME).findOrganizationId(
+      CLINIC_ID,
+    ),
+    organizationId,
+  );
+  assert.equal(
+    await new ClinicRepository(otherType.client, TABLE_NAME).findOrganizationId(
+      CLINIC_ID,
+    ),
+    undefined,
+  );
+  assert.equal(
+    await new ClinicRepository(missing.client, TABLE_NAME).findOrganizationId(
+      CLINIC_ID,
+    ),
+    undefined,
+  );
+  assert.deepEqual(found.inputs, [
+    {
+      TableName: TABLE_NAME,
+      Key: { PK: `CLINIC#${CLINIC_ID}`, SK: "!" },
+      ProjectionExpression: "ItemType, OrganizationId",
+      ConsistentRead: true,
+    },
+  ]);
 });

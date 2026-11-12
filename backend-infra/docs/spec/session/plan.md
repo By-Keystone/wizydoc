@@ -22,7 +22,7 @@ tamaños son de código de producción, sin pruebas ni docs.
 |---|---|---|---|
 | 1 | Este plan y **la cuenta al registrarse**: el ítem `ACCOUNT#<id>`, el usuario con `AccountId` y `OnboardingStep = PERSONAL_DATA` y sin `OnboardingCompleted`, los dos en la transacción de la confirmación, y el permiso sobre `ACCOUNT#*`. | Las pruebas de la confirmación y de DynamoDB, y una cuenta creada en staging. | ~100 líneas |
 | 2 | **Leer al usuario de la sesión**: del `sub` al id por `GSI2`, y el usuario y sus memberships en una sola lectura consistente de su partición. La entidad `Membership` y sus mappers de lectura. Ninguna Lambda lo usa todavía. | Las pruebas de DynamoDB. | ~140 líneas |
-| 3 | **La policy**: lo que declara una ruta (`RoutePolicy`), el caso de uso que la evalúa en el orden de la spec y el envoltorio de las rutas privadas, que lee el `sub` de los claims y traduce cada resultado a 401, 403, 404 o 500. Ninguna ruta la usa todavía. | Las pruebas de la policy con rutas de prueba. | ~190 líneas |
+| 3 | **La policy**: lo que declara una ruta (`RoutePolicy`), el caso de uso que la evalúa en el orden de la spec el envoltorio de las rutas privadas, que lee el `sub` de los claims y traduce cada resultado a 401, 403, 404 o 500, y la herencia del rol de la organización en sus sedes, con la lectura de la sede. Ninguna ruta la usa todavía. | Las pruebas de la policy con rutas de prueba. | ~300 líneas |
 | 4 | **El autorizador y `GET /api/me`**: el autorizador de Cognito, la respuesta 401 del gateway, `addPrivateRoute`, la lectura de la cuenta, el caso de uso y el handler de `/api/me`, su Lambda, su ruta y sus permisos. | Las pruebas de síntesis y de `/api/me`, y los pedidos a staging de «Verificación». | ~235 líneas |
 
 - **El autorizador va con `/api/me`, no solo.** CDK no sintetiza un
@@ -89,8 +89,13 @@ Producción:
 - `lib/src/users/application/authorize-request.usecase.ts` (nuevo).
 - `lib/src/users/handlers/private-route.ts` (nuevo).
 - `lib/src/users/handlers/http-messages.ts`: los mensajes de la policy.
+- `lib/src/users/domain/repository/clinic.repository.ts` (nuevo):
+  `IClinicRepository`.
+- `lib/src/users/infrastructure/persistence/dynamodb/clinic.schema.ts` y
+  `clinic.repository.ts` (nuevos): la lectura de la sede.
 
-Pruebas: `test/users/private-route.test.ts` (nuevo) y `test/users/fakes.ts`.
+Pruebas: `test/users/private-route.test.ts` (nuevo), `test/users/fakes.ts` y
+`test/users/dynamodb.test.ts`.
 
 ### Archivos de la parte 4
 
@@ -193,9 +198,10 @@ DynamoDB, uno detrás del otro:
 | Campo | Valores | Si la ruta no lo declara |
 |---|---|---|
 | `confirmed` | `true` o `false` | `true`: exige el correo confirmado |
-| `onboardingStep` | un paso de `ONBOARDING_STEPS` o `ANY_ONBOARDING_STEP` (`"ANY"`) | `COMPLETED` |
+| `onboardingStep` | un paso de `ONBOARDING_STEPS`, una lista no vacía de pasos o `ANY_ONBOARDING_STEP` (`"ANY"`) | `COMPLETED` |
 | `member` | `true` o `false` | `false` |
 | `roles` | una lista no vacía de `MEMBERSHIP_ROLES` | sin restricción de rol |
+| `resourceType` | `ORGANIZATION` o `CLINIC` | obligatorio si la ruta exige membership y prohibido si no |
 
 - **Lo que no se declara es lo más estricto,** salvo `member`, que depende de la
   ruta: lo cubre la comprobación de `{resourceId}` de `addPrivateRoute` (ver
@@ -215,12 +221,13 @@ cognitoSub, resourceId })` devuelve:
    leer nada: es un error de configuración nuestro (500).
 2. Sin usuario → `{ kind: "session-expired" }`.
 3. `confirmed` y el usuario sin confirmar → `{ kind: "email-not-confirmed" }`.
-4. Un paso distinto de `ANY` y el usuario en otro paso → `{ kind:
+4. Un paso distinto de `ANY` (o una lista que no lo incluye) y el usuario en otro paso → `{ kind:
    "wrong-onboarding-step", onboardingStep }`, con el paso en que va. La
    comparación es de igualdad: la ruta de «Tu plan» exigirá `PLAN`.
 5. Sin membership exigida → `{ kind: "authorized", user }`.
-6. Sin una membership cuyo `resourceId` sea el de la ruta → `{ kind:
-   "resource-not-found" }`.
+6. Sin una membership del tipo de recurso de la ruta (`resourceType`) cuyo
+   `resourceId` sea el de la ruta, propia o heredada (ver «El rol de la
+   organización se hereda en sus sedes») → `{ kind: "resource-not-found" }`.
 7. `roles` y el rol de la membership fuera de la lista → `{ kind:
    "role-forbidden" }`.
 8. Si no → `{ kind: "authorized", user, membership }`.
@@ -231,11 +238,28 @@ cognitoSub, resourceId })` devuelve:
   igual.
 - **No se compara `membership.accountId` con `user.accountId`:** las
   invitaciones darán memberships sobre recursos de otra cuenta.
-- **Sin herencia de la organización a sus sedes.** Hoy `GetUserMembership`
-  hereda el rol de la organización en sus sedes. La spec dice «no tiene
-  membership sobre ese recurso» y el modelo no guarda la organización de una
-  sede en la membership. Ninguna ruta de esta spec lo necesita; ver «Preguntas
-  para el humano».
+- **El tipo de recurso es parte de la comprobación.** Una membership sólo
+  cuenta si su `resourceType` es el que declara la ruta: una de organización no
+  autoriza una ruta de sede con el mismo id, salvo por la herencia de abajo.
+
+**El rol de la organización se hereda en sus sedes** (decidido el 12 de
+noviembre de 2026, como hoy en `GetUserMembership`). Sólo en rutas de tipo
+`CLINIC`:
+1. Se busca la membership directa sobre la sede.
+2. Se lee la sede (`CLINIC#<id>` / `SK "!"`, su `OrganizationId`, con lectura
+   consistente) y se busca entre las memberships del usuario la de esa
+   organización. Es la única lectura extra, y se omite si el usuario no tiene
+   ninguna membership de organización.
+3. La membership efectiva es la de **rol más alto** entre la directa y la
+   heredada (`ADMIN` 100, `DOCTOR` 50, `USER` 10, como el api; empata la
+   directa). Si es la heredada, la ruta recibe una membership de la sede
+   (`resourceType = CLINIC`, `resourceId` = la sede) con el `accountId` y el rol
+   de la organización. Después se aplica `roles` a esa membership: 403 si su rol
+   no está en la lista, 404 si no hay ninguna.
+- **La sede inexistente o de otra cuenta responde 404**, como cualquier recurso
+  sin membership: sólo se hereda de una organización de la que el usuario es
+  miembro, y una sede de otra organización no coincide.
+- **Las rutas de organización no heredan nada.**
 
 **Lo que responde el envoltorio.** `handlePrivateRoute(event, authorizeRequest,
 respond)`:
@@ -384,7 +408,8 @@ directa ni transitivamente.
 2. `handlePrivateRoute` lee `requestContext.authorizer.claims.sub` y
    `pathParameters.resourceId`.
 3. `AuthorizeRequestUseCase.execute` lee al usuario y sus memberships y aplica
-   la policy en el orden de la spec.
+   la policy en el orden de la spec. En una ruta de sede sin membership directa
+   que alcance, lee además la sede para heredar el rol de su organización.
 4. Si autoriza, `respond({ user, membership })`; si no, la respuesta de la
    tabla.
 
@@ -407,8 +432,11 @@ arriba.
 | `IUserRepository` | Parte 1: `createConfirmed(owner: UserWithAccount, verification, termsAcceptance?)`, con `UserWithAccount = { user: User; account: Account }`. Parte 2: `findByCognitoSubWithMemberships(cognitoSub): Promise<UserWithMemberships \| undefined>`, con `UserWithMemberships = { user: User; memberships: Membership[] }`. | `infrastructure/persistence/dynamodb/user.repository.ts` |
 | `IAccountRepository` (nuevo, parte 4) | `findById(accountId): Promise<Account \| undefined>` | `infrastructure/persistence/dynamodb/account.repository.ts` |
 
+| `IClinicRepository` (nuevo, parte 3) | `findOrganizationId(clinicId): Promise<ULID \| undefined>` | `infrastructure/persistence/dynamodb/clinic.repository.ts` |
+
 Cada caso de uso recibe sólo lo que usa: `AuthorizeRequestUseCase`,
-`Pick<IUserRepository, "findByCognitoSubWithMemberships">`; `GetMeUseCase`,
+`Pick<IUserRepository, "findByCognitoSubWithMemberships">` y
+`Pick<IClinicRepository, "findOrganizationId">`; `GetMeUseCase`,
 `Pick<IAccountRepository, "findById">`.
 
 ## Ítems de DynamoDB
@@ -417,7 +445,8 @@ Cada caso de uso recibe sólo lo que usa: `AuthorizeRequestUseCase`,
 |---|---|---|---|---|
 | Usuario (cambia, parte 1) | `USER#<ulid>` | `!` | `USER` | Los de hoy, más `AccountId` y `OnboardingStep`, y sin `OnboardingCompleted`. `GSI1` y `GSI2` no cambian. |
 | Cuenta (nuevo, parte 1) | `ACCOUNT#<ulid>` | `!` | `ACCOUNT` | `Id`, `OwnerUserId`, `CreatedAt` (ISO). Sin nombre y sin plan. |
-| Membership (se lee desde la parte 2; la crea WIZ-77) | `USER#<userId>` | `MEMBERSHIP#<resourceId>` | `MEMBERSHIP` | `UserId`, `ResourceId`, `ResourceType` (`ORGANIZATION` o `CLINIC`), `AccountId`, `Role` (`ADMIN`, `DOCTOR` o `USER`), `Specialties?`, `CreatedAt`; `GSI1PK = ORG#<resourceId>` o `CLINIC#<resourceId>`, `GSI1SK = MEMBER#<userId>`. La policy lee `ResourceId`, `ResourceType`, `AccountId` y `Role`. |
+| Sede (la crea WIZ-77; se lee desde la parte 3) | `CLINIC#<id>` | `!` | `CLINIC` | `OrganizationId`. La policy sólo lee ese atributo. |
+| Membership (se lee desde la parte 2; la crea WIZ-77) | `USER#<userId>` | `MEMBERSHIP#<resourceId>` | `MEMBERSHIP` | `UserId`, `ResourceId`, `ResourceType` (`ORGANIZATION` o `CLINIC`), `AccountId`, `Role` (`ADMIN`, `DOCTOR` o `USER`), `Specialties?`; `GSI1PK = ORG#<resourceId>` o `CLINIC#<resourceId>`, `GSI1SK = MEMBER#<userId>`. La policy lee `ResourceId`, `ResourceType`, `AccountId` y `Role`. |
 
 - **Qué dato nuevo guarda cada uno.** La cuenta es el tenant: su id, al que
   apuntará todo lo demás, su dueño y cuándo se creó no están en ninguna parte.
@@ -444,12 +473,16 @@ un mes):
   - `dynamodb:Query` sobre `index/GSI2` (`grantIndexQuery`), sin
     `dynamodb:LeadingKeys`, como las otras consultas de índices;
   - `dynamodb:Query` sobre la tabla con `LeadingKeys` en `USER#*`;
-  - `dynamodb:GetItem` con `LeadingKeys` en `ACCOUNT#*`.
+  - `dynamodb:GetItem` con `LeadingKeys` en `ACCOUNT#*`;
+  - `dynamodb:GetItem` con `LeadingKeys` en `CLINIC#*`, para heredar el rol de
+    la organización.
   - Nada de `PutItem`, `UpdateItem`, `DeleteItem`, `GSI1`, Cognito ni SES.
 - `TableAccess` admite `"dynamodb:Query"`. `SESSION_USER_ACCESS = {
-  "dynamodb:Query": ["USER#*"] }` es lo que necesita toda Lambda de una ruta
+  "dynamodb:Query": ["USER#*"], "dynamodb:GetItem": ["CLINIC#*"] }` es lo que necesita toda Lambda de una ruta
   privada para su policy, junto con la consulta de `GSI2` y `TABLE_NAME`, y
-  `ME_ACCESS` le suma `GetItem` sobre `ACCOUNT#*`.
+  `ME_ACCESS` le suma `GetItem` sobre `ACCOUNT#*`. Toda Lambda privada
+  necesita además `"dynamodb:GetItem": ["CLINIC#*"]` (`SESSION_USER_ACCESS`
+  lo incluye).
 
 **Ruta:** `apiGateway.addPrivateRoute("api/me", "GET", meFunction, {
 confirmed: false, onboardingStep: ANY_ONBOARDING_STEP })`. La revisión de la
@@ -475,6 +508,10 @@ cuerpo; los errores, sólo `errorName(error)`. La etapa sigue sin
 - **Las memberships son sólo las del usuario.** Se leen de su propia partición,
   y el `resourceId` de la ruta sólo se compara en memoria contra ellas. Un
   recurso de otra cuenta responde 404, igual que uno que no existe.
+- **La herencia no abre otra cuenta.** La única lectura fuera de la partición
+  del usuario es la sede de la ruta, y sólo da su `OrganizationId`: se hereda
+  únicamente si el usuario ya es miembro de esa organización. Una sede de otra
+  organización o de otra cuenta, o que no existe, responde 404.
 - **`/api/me` lee la cuenta por el `AccountId` del usuario,** que viene de
   DynamoDB, no del pedido.
 - **Las rutas que vengan** acotan sus consultas por la `membership` que entrega
@@ -515,7 +552,13 @@ infraestructura con síntesis de CDK.
   ese; `roles` sin membership responde 404; una policy que exige membership sin
   `resourceId` responde 500 sin leer DynamoDB; si falla la lectura responde 500;
   `readRoutePolicy` rechaza una variable ausente, un campo desconocido, un paso
-  que no existe y `roles` vacío.
+  que no existe, `roles` vacío y un `resourceType` sin membership o al revés.
+  Herencia: el rol de la organización autoriza su sede; gana el rol más alto
+  entre el directo y el heredado, y `roles` se aplica a ése; una
+  sede de otra organización o inexistente responde 404; una membership de
+  organización no autoriza una ruta de sede con su id ni una de sede una ruta de
+  organización; sin memberships de organización no se lee la sede. La lectura de
+  la sede es consistente y sólo acepta un ítem `CLINIC`.
 - Parte 4: un usuario que no es dueño de su cuenta recibe `isAccountOwner:
   false`; sin cuenta, `/api/me` responde 500; la cuenta se lee con lectura
   consistente y sólo si su `ItemType` es `ACCOUNT`; el `ROUTE_POLICY` de
@@ -693,10 +736,5 @@ Lo comprueban los pedidos a staging de «Verificación».
 ## Preguntas para el humano
 
 - **¿El administrador de la organización hereda el acceso a sus sedes, como
-  hoy?** Hoy `GetUserMembership` le da el rol de la organización en cada sede,
-  aunque no tenga membership directa. Con este plan, la policy sólo mira la
-  membership directa sobre el recurso, como dice la spec, y la membership no
-  guarda la organización de su sede. No bloquea ninguna parte: ninguna ruta de
-  esta spec es de una sede. Recomiendo no heredar en la policy y que quien crea
-  la sede (o invita) escriba la membership directa con el rol que corresponde;
-  así cada pedido sigue con las mismas dos lecturas.
+  hoy?** Respondida el 12 de noviembre de 2026: sí, se hereda. Ver «El rol de
+  la organización se hereda en sus sedes».
