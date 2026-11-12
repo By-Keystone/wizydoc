@@ -40,6 +40,10 @@ import {
 } from "../../lib/src/users/domain/value-objects/person-name.vo";
 import { phoneSchema } from "../../lib/src/users/domain/value-objects/phone.vo";
 import { treatmentSchema } from "../../lib/src/users/domain/value-objects/treatment.vo";
+import {
+  fromDomainToDynamo,
+  fromDynamoToDomain,
+} from "../../lib/src/users/infrastructure/persistence/dynamodb/user.mappers";
 import { emailSchema } from "../../lib/src/users/domain/value-objects/email.vo";
 import { buildUser, COGNITO_SUB } from "./fakes";
 
@@ -543,6 +547,23 @@ test("crear la cuenta confirmada guarda el usuario, su cuenta y su constancia y 
   });
 });
 
+test("el mapper escribe y vuelve a leer los datos personales, incluido el tratamiento null", () => {
+  const stored = fromDomainToDynamo(
+    fromDynamoToDomain({
+      ...userItem,
+      GivenName: "Ana",
+      FamilyName: "Pérez",
+      Phone: "+51987654321",
+      Treatment: null,
+    }),
+  );
+
+  assert.equal(stored.GivenName, "Ana");
+  assert.equal(stored.FamilyName, "Pérez");
+  assert.equal(stored.Phone, "+51987654321");
+  assert.equal(stored.Treatment, null);
+});
+
 test("el usuario nuevo ya no guarda OnboardingCompleted", async () => {
   const { client, inputs } = capturingClient();
   const { user, account } = createUserWithAccount({
@@ -750,7 +771,7 @@ test("el usuario de la sesión y sus memberships se leen sólo de su propia part
   });
 });
 
-test("la partición del usuario se lee sin nada más que lo que pide la policy", async () => {
+test("la partición del usuario se lee sin nada más que lo que piden la policy y /api/me", async () => {
   const { found, inputs } = findSession(
     ...sessionResponses({ Items: [userItem] }),
   );

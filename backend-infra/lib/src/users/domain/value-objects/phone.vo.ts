@@ -21,8 +21,7 @@ const toNationalDigits = (phone: string): string | null => {
   return hasCountryCode ? digits.slice(COUNTRY_CODE.length) : digits;
 };
 
-const toInternationalNumber = (raw: string): string | null => {
-  const phone = raw.trim();
+const toInternationalNumber = (phone: string): string | null => {
   if (!ONLY_PHONE_CHARACTERS.test(phone)) return null;
 
   const nationalDigits = toNationalDigits(phone);

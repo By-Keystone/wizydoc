@@ -27,6 +27,10 @@ export const fromDomainToDynamo = (user: User): UsersDynamoDBSchema => {
     AccountId: user.accountId,
     OnboardingStep: user.onboardingStep,
     CognitoSub: user.cognitoSub,
+    ...(user.givenName !== undefined && { GivenName: user.givenName }),
+    ...(user.familyName !== undefined && { FamilyName: user.familyName }),
+    ...(user.phone !== undefined && { Phone: user.phone }),
+    ...(user.treatment !== undefined && { Treatment: user.treatment }),
   };
 };
 

@@ -10,7 +10,10 @@ import {
   givenNameSchema,
 } from "../../../domain/value-objects/person-name.vo";
 import { phoneSchema } from "../../../domain/value-objects/phone.vo";
-import { treatmentSchema } from "../../../domain/value-objects/treatment.vo";
+import {
+  type TreatmentVO,
+  treatmentSchema,
+} from "../../../domain/value-objects/treatment.vo";
 
 type PKPrefix = "USER#";
 type PK = `${PKPrefix}${string}`;
@@ -46,7 +49,7 @@ export interface UsersDynamoDBSchema {
   GivenName?: string;
   FamilyName?: string;
   Phone?: string;
-  Treatment?: string | null;
+  Treatment?: TreatmentVO | null;
 }
 
 export const userIdSchema = z.ulid();

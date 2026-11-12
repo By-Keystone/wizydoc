@@ -379,7 +379,7 @@ test("un resourceId que no es un ULID responde 404 sin leer la sede", async () =
   assert.equal(clinics.reads, 0);
 });
 
-test("El rol en la organización se hereda en sus sedes: en una sede gana el rol más alto entre la membership directa y la de su organización, y la ruta recibe también la membership directa.", async () => {
+test("el rol en la organización se hereda en sus sedes: en una sede gana el rol más alto entre la membership directa y la de su organización, y la ruta recibe también la membership directa", async () => {
   const direct = clinicMembership({ role: "DOCTOR" });
   const { call, authorized } = route({
     policy: clinicRoute,
@@ -412,7 +412,7 @@ test("El rol en la organización se hereda en sus sedes: en una sede gana el rol
   ]);
 });
 
-test("Una membership de organización no sirve en una ruta de sede con el mismo id sin la herencia, y un id de sede que no existe o que es de otra organización responde 404.", async () => {
+test("una membership de organización no sirve en una ruta de sede con el mismo id sin la herencia, y un id de sede que no existe o que es de otra organización responde 404", async () => {
   const sameId = route({
     policy: clinicRoute,
     memberships: [organizationMembership({ resourceId: CLINIC_ID })],

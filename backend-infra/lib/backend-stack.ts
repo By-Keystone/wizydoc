@@ -325,7 +325,10 @@ export class BackendStack extends Stack {
     ];
     grantTableAccess(routeFunction, table, {
       ...routeAccess,
-      "dynamodb:Query": SESSION_USER_PREFIXES,
+      "dynamodb:Query": [
+        ...SESSION_USER_PREFIXES,
+        ...(routeAccess["dynamodb:Query"] ?? []),
+      ],
       ...(getItemPrefixes.length > 0
         ? { "dynamodb:GetItem": getItemPrefixes }
         : {}),
