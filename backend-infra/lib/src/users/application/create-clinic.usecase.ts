@@ -9,6 +9,8 @@ export const CREATE_CLINIC_STEPS: [OnboardingStep, ...OnboardingStep[]] = [
   "CLINIC",
 ];
 
+const NEXT_STEP: OnboardingStep = "SCHEDULE";
+
 export const createClinicInputSchema = z.object(
   {
     name: trimmedTextSchema({
@@ -34,7 +36,12 @@ export const createClinicInputSchema = z.object(
 export type CreateClinicInput = z.output<typeof createClinicInputSchema>;
 
 export type CreateClinicResult =
-  | { kind: "created"; organizationId: string; clinicId: string }
+  | {
+      kind: "created";
+      organizationId: string;
+      clinicId: string;
+      onboardingStep: OnboardingStep;
+    }
   | { kind: "already-created" };
 
 export class CreateClinicUseCase {
@@ -59,13 +66,14 @@ export class CreateClinicUseCase {
     );
     const wasCreated = await this.onboarding.createClinic(ownerClinic, {
       from: CREATE_CLINIC_STEPS,
-      to: "SCHEDULE",
+      to: NEXT_STEP,
     });
     if (!wasCreated) return { kind: "already-created" };
     return {
       kind: "created",
       organizationId: ownerClinic.organization.id,
       clinicId: ownerClinic.clinic.id,
+      onboardingStep: NEXT_STEP,
     };
   }
 }

@@ -43,7 +43,7 @@ export const handleCreateClinic = async (
       return jsonResponse(HTTP_STATUS.CREATED, {
         organizationId: result.organizationId,
         clinicId: result.clinicId,
-        onboardingStep: "SCHEDULE",
+        onboardingStep: result.onboardingStep,
       });
     },
     CLINIC_FAILED,

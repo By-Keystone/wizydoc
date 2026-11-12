@@ -511,6 +511,11 @@ nuevo.».
   que fija sus permisos.
 - **Lo mismo vale para las rutas del onboarding:** `UpdateItem` también crea
   ítems, así que toda Lambda que escribe en `USER#*` podría crear una membership.
+- **`CreateClinicFunction` también puede escribir `ORG#*` y `CLINIC#*`:** código
+  ejecutado dentro de la Lambda podría reemplazar la organización o la sede de
+  otra cuenta, por ejemplo cambiando `CLINIC#<ajena>.OrganizationId` para
+  heredar `ADMIN`. Lo cierra lo mismo que en `USER#*`: `attribute_not_exists(PK)`
+  en el código. Se acepta igual.
 - **Se descartaron dos alternativas:**
   - `dynamodb:Attributes`, que filtra por nombre de atributo. Le impediría a la
     confirmación escribir `Role` o `Plan`, pero no `CognitoSub` ni `GSI2PK`, que
@@ -845,6 +850,9 @@ Lo comprueban los pedidos a staging de «Verificación».
 
 ## Para otros tickets
 
+- **Invitaciones:** un invitado debe nacer en `COMPLETED`, o al menos no en un
+  paso anterior. Si naciera en `CLINIC`, podría crear una organización en la
+  cuenta de quien lo invitó.
 - **Endurecer «Tus datos» con `dynamodb:Attributes`:** restringir los atributos
   que escribe `SavePersonalDataFunction` a `PK`, `SK`, `OnboardingStep`,
   `GivenName`, `FamilyName`, `Phone` y `Treatment`. Así, quien ejecutara código
