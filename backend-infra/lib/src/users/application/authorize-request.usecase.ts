@@ -1,3 +1,4 @@
+import type { ULID } from "ulid";
 import { z } from "zod";
 import {
   MEMBERSHIP_RESOURCE_TYPES,
@@ -34,9 +35,12 @@ export const routePolicySchema = z
       .enum([...ONBOARDING_STEPS, ANY_ONBOARDING_STEP])
       .or(z.array(z.enum(ONBOARDING_STEPS)).nonempty())
       .default("COMPLETED"),
-    member: z.boolean().default(false),
+    member: z.boolean().optional(),
     roles: z.array(z.enum(MEMBERSHIP_ROLES)).nonempty().optional(),
     resourceType: z.enum(MEMBERSHIP_RESOURCE_TYPES).optional(),
+  })
+  .refine((policy) => policy.member !== false || policy.roles === undefined, {
+    error: "roles exige member: true",
   })
   .refine(
     (policy) =>
@@ -55,6 +59,7 @@ export interface AuthorizeRequestInput {
 export interface AuthorizedRequest {
   user: User;
   membership?: Membership;
+  directMembership?: Membership;
 }
 
 export type AuthorizeRequestResult =
@@ -83,10 +88,9 @@ export class AuthorizeRequestUseCase {
     cognitoSub,
     resourceId,
   }: AuthorizeRequestInput): Promise<AuthorizeRequestResult> {
-    const needsMembership = requiresMembership(this.policy);
-    if (needsMembership && !resourceId) {
-      throw new Error("La ruta exige membership y no tiene resourceId");
-    }
+    const routeResourceId = requiresMembership(this.policy)
+      ? requireResourceId(resourceId)
+      : undefined;
 
     const session =
       await this.users.findByCognitoSubWithMemberships(cognitoSub);
@@ -102,12 +106,18 @@ export class AuthorizeRequestUseCase {
         onboardingStep: user.onboardingStep,
       };
     }
-    if (!needsMembership || !resourceId) return { kind: "authorized", user };
+    if (routeResourceId === undefined) return { kind: "authorized", user };
+    if (!z.ulid().safeParse(routeResourceId).success) {
+      return { kind: "resource-not-found" };
+    }
 
-    const membership = await this.findMembership(memberships, resourceId);
+    const { membership, directMembership } = await this.findMembership(
+      memberships,
+      routeResourceId,
+    );
     if (!membership) return { kind: "resource-not-found" };
     if (!this.hasAllowedRole(membership)) return { kind: "role-forbidden" };
-    return { kind: "authorized", user, membership };
+    return { kind: "authorized", user, membership, directMembership };
   }
 
   private isInAllowedStep({ onboardingStep }: User): boolean {
@@ -124,28 +134,34 @@ export class AuthorizeRequestUseCase {
 
   private async findMembership(
     memberships: Membership[],
-    resourceId: string,
-  ): Promise<Membership | undefined> {
-    const direct = memberships.find(
+    resourceId: ULID,
+  ): Promise<{ membership?: Membership; directMembership?: Membership }> {
+    const directMembership = memberships.find(
       (membership) =>
         membership.resourceType === this.policy.resourceType &&
         membership.resourceId === resourceId,
     );
-    if (this.policy.resourceType !== "CLINIC") return direct;
+    if (this.policy.resourceType !== "CLINIC") {
+      return { membership: directMembership, directMembership };
+    }
 
     const inherited = await this.findInheritedFromOrganization(
       memberships,
       resourceId,
     );
-    if (!direct || !inherited) return direct ?? inherited;
-    return ROLE_RANK[inherited.role] > ROLE_RANK[direct.role]
-      ? inherited
-      : direct;
+    const isInheritedHigher =
+      directMembership && inherited
+        ? ROLE_RANK[inherited.role] > ROLE_RANK[directMembership.role]
+        : inherited !== undefined;
+    return {
+      membership: isInheritedHigher ? inherited : directMembership,
+      directMembership,
+    };
   }
 
   private async findInheritedFromOrganization(
     memberships: Membership[],
-    clinicId: string,
+    clinicId: ULID,
   ): Promise<Membership | undefined> {
     const organizationMemberships = memberships.filter(
       ({ resourceType }) => resourceType === "ORGANIZATION",
@@ -165,3 +181,10 @@ export class AuthorizeRequestUseCase {
     );
   }
 }
+
+const requireResourceId = (resourceId: string | undefined): string => {
+  if (!resourceId) {
+    throw new Error("La ruta exige membership y no tiene resourceId");
+  }
+  return resourceId;
+};

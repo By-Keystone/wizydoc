@@ -46,15 +46,6 @@ export const noContentResponse = (): ApiGatewayResult => ({
   body: "",
 });
 
-export const messageResponse = (
-  statusCode: number,
-  message: string,
-): ApiGatewayResult => ({
-  statusCode,
-  headers: { "content-type": "application/json" },
-  body: JSON.stringify({ message }),
-});
-
 export const jsonResponse = (
   statusCode: number,
   body: object,
@@ -63,6 +54,11 @@ export const jsonResponse = (
   headers: { "content-type": "application/json" },
   body: JSON.stringify(body),
 });
+
+export const messageResponse = (
+  statusCode: number,
+  message: string,
+): ApiGatewayResult => jsonResponse(statusCode, { message });
 
 export const parseJsonBody = (body: string | null): unknown => {
   if (!body) return undefined;

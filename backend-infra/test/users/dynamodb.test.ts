@@ -910,7 +910,11 @@ test("la sede se lee por su clave con lectura consistente y sólo si es una sede
     {
       TableName: TABLE_NAME,
       Key: { PK: `CLINIC#${CLINIC_ID}`, SK: "!" },
-      ProjectionExpression: "ItemType, OrganizationId",
+      ProjectionExpression: "#ItemType, #OrganizationId",
+      ExpressionAttributeNames: {
+        "#ItemType": "ItemType",
+        "#OrganizationId": "OrganizationId",
+      },
       ConsistentRead: true,
     },
   ]);
