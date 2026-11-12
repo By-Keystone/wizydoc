@@ -3,11 +3,15 @@ import { test } from "node:test";
 import * as vm from "node:vm";
 import { App, Stack } from "aws-cdk-lib";
 import * as apigateway from "aws-cdk-lib/aws-apigateway";
-import { Template } from "aws-cdk-lib/assertions";
+import { Match, Template } from "aws-cdk-lib/assertions";
+import * as cognito from "aws-cdk-lib/aws-cognito";
+import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as route53 from "aws-cdk-lib/aws-route53";
 import { ApiGateway } from "../lib/api-gateway";
 
-function synthesizeApiGateway() {
+function synthesizeApiGateway(
+  addRoutes: (apiGateway: ApiGateway, stack: Stack) => void = () => {},
+) {
   const stack = new Stack(new App(), "ApiGatewayTest", {
     env: { account: "111111111111", region: "us-east-2" },
   });
@@ -20,10 +24,13 @@ function synthesizeApiGateway() {
   const apiGateway = new ApiGateway(stack, "ApiGateway", {
     hostedZone,
     domainName: "api.wizydoc.app",
+    userPool: new cognito.UserPool(stack, "UserPool"),
+    platformClientId: "platform-client-id",
   });
   apiGateway.api.root
     .addResource("example")
     .addMethod("GET", new apigateway.MockIntegration());
+  addRoutes(apiGateway, stack);
 
   return Template.fromStack(stack);
 }
@@ -106,6 +113,116 @@ test("la etapa no registra los cuerpos de los pedidos ni de las respuestas", () 
   for (const { DataTraceEnabled } of methodSettings) {
     assert.notEqual(DataTraceEnabled, true);
   }
+});
+
+const privateHandler = (stack: Stack) =>
+  new lambda.Function(stack, "PrivateHandler", {
+    runtime: lambda.Runtime.NODEJS_22_X,
+    handler: "index.handler",
+    code: lambda.Code.fromInline("exports.handler = async () => ({});"),
+  });
+
+const withPrivateRoute = (apiGateway: ApiGateway, stack: Stack) =>
+  apiGateway.addPrivateRoute("api/me", "GET", privateHandler(stack), {
+    confirmed: false,
+    onboardingStep: "ANY",
+  });
+
+test("una ruta privada sin ID token, con uno vencido o con uno de otro user pool responde 401 sin invocar ninguna Lambda", () => {
+  const template = synthesizeApiGateway(withPrivateRoute);
+
+  const [authorizer] = Object.values(
+    template.findResources("AWS::ApiGateway::Authorizer"),
+  );
+  assert.equal(authorizer.Properties.Type, "COGNITO_USER_POOLS");
+  assert.equal(
+    authorizer.Properties.IdentitySource,
+    "method.request.header.Authorization",
+  );
+  assert.equal(authorizer.Properties.AuthorizerResultTtlInSeconds, 0);
+  assert.deepEqual(authorizer.Properties.ProviderARNs.length, 1);
+  assert.equal(
+    authorizer.Properties.IdentityValidationExpression,
+    "^platform-client-id$",
+  );
+  template.hasResourceProperties("AWS::ApiGateway::GatewayResponse", {
+    ResponseType: "UNAUTHORIZED",
+    StatusCode: "401",
+    ResponseTemplates: {
+      "application/json": JSON.stringify({
+        message: "Tu sesión venció. Inicia sesión de nuevo.",
+      }),
+    },
+  });
+});
+
+test("addPrivateRoute crea el método con el autorizador y deja la policy en ROUTE_POLICY", () => {
+  const template = synthesizeApiGateway(withPrivateRoute);
+
+  template.hasResourceProperties("AWS::ApiGateway::Method", {
+    HttpMethod: "GET",
+    AuthorizationType: "COGNITO_USER_POOLS",
+    ApiKeyRequired: true,
+    AuthorizerId: Match.anyValue(),
+  });
+  template.hasResourceProperties("AWS::Lambda::Function", {
+    Environment: {
+      Variables: {
+        ROUTE_POLICY: JSON.stringify({
+          confirmed: false,
+          onboardingStep: "ANY",
+        }),
+      },
+    },
+  });
+});
+
+test("addPrivateRoute rechaza {resourceId} sin membership y membership sin {resourceId}", () => {
+  assert.throws(() =>
+    synthesizeApiGateway((apiGateway, stack) =>
+      apiGateway.addPrivateRoute(
+        "api/clinic/{resourceId}",
+        "GET",
+        privateHandler(stack),
+        {},
+      ),
+    ),
+  );
+  assert.throws(() =>
+    synthesizeApiGateway((apiGateway, stack) =>
+      apiGateway.addPrivateRoute("api/clinic", "GET", privateHandler(stack), {
+        member: true,
+        resourceType: "CLINIC",
+      }),
+    ),
+  );
+  assert.doesNotThrow(() =>
+    synthesizeApiGateway((apiGateway, stack) =>
+      apiGateway.addPrivateRoute(
+        "api/clinic/{resourceId}",
+        "GET",
+        privateHandler(stack),
+        { member: true, resourceType: "CLINIC" },
+      ),
+    ),
+  );
+});
+
+test("un ApiGateway sin rutas privadas no crea el autorizador", () => {
+  const template = synthesizeApiGateway();
+
+  assert.deepEqual(template.findResources("AWS::ApiGateway::Authorizer"), {});
+});
+
+test("el log de acceso no guarda la ruta ni los claims del autorizador", () => {
+  const template = synthesizeApiGateway(withPrivateRoute);
+
+  const [stage] = Object.values(
+    template.findResources("AWS::ApiGateway::Stage"),
+  );
+  const accessLogFormat: string = stage.Properties.AccessLogSetting.Format;
+
+  assert.doesNotMatch(accessLogFormat, /\$context\.(path|authorizer)/);
 });
 
 const REDEPLOY_FUNCTION = "ApiGatewayRedeployStaleStageFunction";

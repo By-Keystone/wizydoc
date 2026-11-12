@@ -26,6 +26,7 @@ import {
 import type { SignUpVerificationToken } from "../../lib/src/users/domain/sign-up-verification-token.entity";
 import type { PrivateApiGatewayEvent } from "../../lib/src/shared/http/api-gateway";
 import type { Membership } from "../../lib/src/users/domain/membership.entity";
+import type { IAccountRepository } from "../../lib/src/users/domain/repository/account.repository";
 import type { IClinicRepository } from "../../lib/src/users/domain/repository/clinic.repository";
 import type {
   IUserRepository,
@@ -141,6 +142,14 @@ export class InMemoryUsers implements IUserRepository {
     );
     if (!user) return undefined;
     return { user, memberships: this.memberships.get(user.id) ?? [] };
+  }
+}
+
+export class InMemoryAccounts implements IAccountRepository {
+  readonly accounts: Account[] = [];
+
+  async findById(accountId: string): Promise<Account | undefined> {
+    return this.accounts.find((account) => account.id === accountId);
   }
 }
 

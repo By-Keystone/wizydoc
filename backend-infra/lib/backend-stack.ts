@@ -12,6 +12,7 @@ import { ApiGateway } from "./api-gateway";
 import { Authentication } from "./authentication";
 import { DynamoTables } from "./dynamo";
 import { senderAddressOf } from "./sender-address";
+import { ANY_ONBOARDING_STEP } from "./src/users/application/authorize-request.usecase";
 import {
   type SignUpEmailTemplate,
   SignUpEmailTemplates,
@@ -34,6 +35,7 @@ const USER_COGNITO_SUB_INDEX = "GSI2";
 type TableAccess = Partial<
   Record<
     | "dynamodb:GetItem"
+    | "dynamodb:Query"
     | "dynamodb:PutItem"
     | "dynamodb:UpdateItem"
     | "dynamodb:DeleteItem",
@@ -57,6 +59,15 @@ const VERIFY_SIGN_UP_CODE_ACCESS: TableAccess = {
   "dynamodb:PutItem": ["SIGN_UP_VERIFICATION#*"],
   "dynamodb:UpdateItem": ["SIGN_UP_CODE#*", "SIGN_UP_VERIFY_ATTEMPTS#*"],
   "dynamodb:DeleteItem": ["SIGN_UP_CODE#*"],
+};
+
+const SESSION_USER_ACCESS: TableAccess = {
+  "dynamodb:Query": ["USER#*"],
+  "dynamodb:GetItem": ["CLINIC#*"],
+};
+const ME_ACCESS: TableAccess = {
+  ...SESSION_USER_ACCESS,
+  "dynamodb:GetItem": ["CLINIC#*", "ACCOUNT#*"],
 };
 
 export interface BackendStackProps extends StackProps {
@@ -86,12 +97,13 @@ export class BackendStack extends Stack {
       code: lambda.Code.fromInline(HEALTH_RESPONSE_HANDLER),
     });
 
+    const authentication = new Authentication(this, "Authentication");
     const apiGateway = new ApiGateway(this, "ApiGateway", {
       hostedZone,
       domainName: props.apiDomainName,
+      userPool: authentication.userPool,
+      platformClientId: authentication.platformClient.userPoolClientId,
     });
-
-    const authentication = new Authentication(this, "Authentication");
     const database = new DynamoTables(this, "Database");
     const emailTemplates = new SignUpEmailTemplates(
       this,
@@ -225,6 +237,15 @@ export class BackendStack extends Stack {
       );
     }
 
+    const meFunction = this.usersFunction(
+      "MeFunction",
+      "me",
+      "Returns the signed-in user, their account and their onboarding step.",
+      { TABLE_NAME: database.table.tableName },
+    );
+    grantTableAccess(meFunction, database.table, ME_ACCESS);
+    grantIndexQuery(meFunction, database.table, USER_COGNITO_SUB_INDEX);
+
     const signUpResource =
       apiGateway.api.root.resourceForPath("api/auth/sign-up");
     const signUpCodeResource = signUpResource.addResource("code");
@@ -257,6 +278,10 @@ export class BackendStack extends Stack {
     authResource
       .addResource("sign-out")
       .addMethod("POST", new apigateway.LambdaIntegration(signOutFunction));
+    apiGateway.addPrivateRoute("api/me", "GET", meFunction, {
+      confirmed: false,
+      onboardingStep: ANY_ONBOARDING_STEP,
+    });
     apiGateway.api.root
       .addResource("health")
       .addMethod("GET", new apigateway.LambdaIntegration(healthFunction));

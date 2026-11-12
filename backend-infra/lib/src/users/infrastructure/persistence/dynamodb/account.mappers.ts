@@ -2,6 +2,7 @@ import type { Account } from "../../../domain/account.entity";
 import {
   ACCOUNT_ITEM_TYPE,
   type AccountDynamoDBSchema,
+  accountItemSchema,
   accountPk,
   accountSk,
 } from "./account.schema";
@@ -15,3 +16,8 @@ export const fromAccountToDynamo = (
   Id: account.id,
   OwnerUserId: account.ownerUserId,
 });
+
+export const fromDynamoToAccount = (item: unknown): Account => {
+  const { Id, OwnerUserId } = accountItemSchema.parse(item);
+  return { id: Id, ownerUserId: OwnerUserId };
+};
