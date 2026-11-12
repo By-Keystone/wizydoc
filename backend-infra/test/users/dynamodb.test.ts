@@ -20,6 +20,7 @@ import {
 import { createSignUpVerificationToken } from "../../lib/src/users/domain/sign-up-verification-token.entity";
 import { createSignUpCode } from "../../lib/src/users/domain/sign-up-code.entity";
 import { createOwnerClinic } from "../../lib/src/users/domain/clinic.entity";
+import { weeklyScheduleSchema } from "../../lib/src/users/domain/value-objects/weekly-schedule.vo";
 import { createSubscription } from "../../lib/src/users/domain/subscription.entity";
 import { createTermsAcceptance } from "../../lib/src/users/domain/terms-acceptance.entity";
 import { createUserWithAccount } from "../../lib/src/users/domain/user.entity";
@@ -1348,4 +1349,119 @@ test("createClinic devuelve false si otro pedido ya creó el consultorio, y deja
   );
   assert.equal(await createWith(canceledBecause("TransactionConflict")), false);
   await assert.rejects(createWith(new Error("sin red")), /sin red/);
+});
+
+const COMPLETED_AT = new Date("2026-11-12T16:00:00.000Z");
+
+const buildSchedule = () => ({
+  userId: USER_ID,
+  clinicId: CLINIC_ID,
+  accountId: ACCOUNT_ID,
+  weeklySchedule: weeklyScheduleSchema.parse([
+    { dayOfWeek: 3, startTime: "09:00", endTime: "13:00" },
+    { dayOfWeek: 1, startTime: "08:30", endTime: "12:00" },
+  ]),
+  updatedAt: COMPLETED_AT,
+});
+
+const completeStepUpdate = {
+  Update: {
+    TableName: TABLE_NAME,
+    Key: { PK: `USER#${USER_ID}`, SK: "!" },
+    ConditionExpression: "#OnboardingStep IN (:from0)",
+    UpdateExpression:
+      "SET #OnboardingStep = :OnboardingStep, #OnboardingCompletedAt = :OnboardingCompletedAt",
+    ExpressionAttributeNames: {
+      "#OnboardingStep": "OnboardingStep",
+      "#OnboardingCompletedAt": "OnboardingCompletedAt",
+    },
+    ExpressionAttributeValues: {
+      ":from0": "SCHEDULE",
+      ":OnboardingStep": "COMPLETED",
+      ":OnboardingCompletedAt": "2026-11-12T16:00:00.000Z",
+    },
+  },
+};
+
+const completeTransition = { from: ["SCHEDULE"], to: "COMPLETED" } as const;
+
+test("guardar Tu horario crea el horario del usuario en su sede y pasa el paso a COMPLETED, con OnboardingCompletedAt", async () => {
+  const { client, inputs } = capturingClient();
+
+  const completed = await new OnboardingRepository(
+    client,
+    TABLE_NAME,
+  ).completeOnboarding(
+    { userId: USER_ID, completedAt: COMPLETED_AT, schedule: buildSchedule() },
+    completeTransition,
+  );
+
+  assert.equal(completed, true);
+  const [transaction] = inputs as TransactWriteCommandInput[];
+  assert.deepEqual(transaction.TransactItems, [
+    {
+      Put: {
+        TableName: TABLE_NAME,
+        Item: {
+          PK: `USER#${USER_ID}`,
+          SK: `SCHEDULE#${CLINIC_ID}`,
+          ItemType: "SCHEDULE",
+          UserId: USER_ID,
+          ClinicId: CLINIC_ID,
+          AccountId: ACCOUNT_ID,
+          WeeklySchedule: [
+            { DayOfWeek: 1, StartTime: "08:30", EndTime: "12:00" },
+            { DayOfWeek: 3, StartTime: "09:00", EndTime: "13:00" },
+          ],
+          UpdatedAt: "2026-11-12T16:00:00.000Z",
+          GSI1PK: `CLINIC#${CLINIC_ID}`,
+          GSI1SK: `SCHEDULE#${USER_ID}`,
+        },
+      },
+    },
+    completeStepUpdate,
+  ]);
+});
+
+test("omitir Tu horario pasa el paso a COMPLETED, con OnboardingCompletedAt, sin crear horario", async () => {
+  const { client, inputs } = capturingClient();
+
+  const completed = await new OnboardingRepository(
+    client,
+    TABLE_NAME,
+  ).completeOnboarding(
+    { userId: USER_ID, completedAt: COMPLETED_AT },
+    completeTransition,
+  );
+
+  assert.equal(completed, true);
+  const [transaction] = inputs as TransactWriteCommandInput[];
+  assert.deepEqual(transaction.TransactItems, [completeStepUpdate]);
+});
+
+test("completeOnboarding devuelve false si otro pedido ya terminó el onboarding, y deja subir cualquier otro error", async () => {
+  const canceledBecause = (userUpdateCode: string) =>
+    new TransactionCanceledException({
+      message: "cancelada",
+      $metadata: {},
+      CancellationReasons: ["None", userUpdateCode].map((Code) => ({ Code })),
+    });
+  const completeWith = (failure: Error) =>
+    new OnboardingRepository(
+      capturingClient({ failure }).client,
+      TABLE_NAME,
+    ).completeOnboarding(
+      { userId: USER_ID, completedAt: COMPLETED_AT, schedule: buildSchedule() },
+      completeTransition,
+    );
+
+  assert.equal(
+    await completeWith(canceledBecause("ConditionalCheckFailed")),
+    false,
+  );
+  assert.equal(
+    await completeWith(canceledBecause("TransactionConflict")),
+    false,
+  );
+  await assert.rejects(completeWith(new Error("sin red")), /sin red/);
 });

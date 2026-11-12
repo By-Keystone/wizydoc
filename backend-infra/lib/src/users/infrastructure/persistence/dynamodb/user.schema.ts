@@ -50,6 +50,7 @@ export interface UsersDynamoDBSchema {
   FamilyName?: string;
   Phone?: string;
   Treatment?: TreatmentVO | null;
+  OnboardingCompletedAt?: string;
 }
 
 export const userIdSchema = z.ulid();

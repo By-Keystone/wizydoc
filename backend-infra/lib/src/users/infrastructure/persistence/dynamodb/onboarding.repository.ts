@@ -7,6 +7,7 @@ import { z } from "zod";
 import type { OwnerClinic } from "../../../domain/clinic.entity";
 import type {
   IOnboardingRepository,
+  OnboardingCompletion,
   OnboardingStepTransition,
 } from "../../../domain/repository/onboarding.repository";
 import type { Subscription } from "../../../domain/subscription.entity";
@@ -19,6 +20,7 @@ import { fromClinicToDynamo } from "./clinic.mappers";
 import { isLostRace } from "./lost-race";
 import { fromMembershipToDynamo } from "./membership.mappers";
 import { fromOrganizationToDynamo } from "./organization.mappers";
+import { fromScheduleToDynamo } from "./schedule.mappers";
 import { fromSubscriptionToDynamo } from "./subscription.mappers";
 import { ONLY_IF_NEW } from "./user.repository";
 import { pk, sk } from "./user.schema";
@@ -101,6 +103,39 @@ export class OnboardingRepository implements IOnboardingRepository {
               },
             })),
             { Update: this.userStepUpdate(ownerUserId, transition, {}) },
+          ],
+        }),
+      );
+      return true;
+    } catch (error) {
+      if (isLostRace(error)) return false;
+      throw error;
+    }
+  }
+
+  async completeOnboarding(
+    { userId, completedAt, schedule }: OnboardingCompletion,
+    transition: Required<OnboardingStepTransition>,
+  ): Promise<boolean> {
+    try {
+      await this.client.send(
+        new TransactWriteCommand({
+          TransactItems: [
+            ...(schedule
+              ? [
+                  {
+                    Put: {
+                      TableName: this.tableName,
+                      Item: fromScheduleToDynamo(schedule),
+                    },
+                  },
+                ]
+              : []),
+            {
+              Update: this.userStepUpdate(userId, transition, {
+                OnboardingCompletedAt: completedAt.toISOString(),
+              }),
+            },
           ],
         }),
       );

@@ -36,6 +36,7 @@ import type {
 import type { IAccountRepository } from "../../lib/src/users/domain/repository/account.repository";
 import type {
   IOnboardingRepository,
+  OnboardingCompletion,
   OnboardingStepTransition,
 } from "../../lib/src/users/domain/repository/onboarding.repository";
 import type { IClinicRepository } from "../../lib/src/users/domain/repository/clinic.repository";
@@ -48,6 +49,7 @@ import type {
   OwnerClinic,
 } from "../../lib/src/users/domain/clinic.entity";
 import type { Organization } from "../../lib/src/users/domain/organization.entity";
+import type { Schedule } from "../../lib/src/users/domain/schedule.entity";
 import type { Subscription } from "../../lib/src/users/domain/subscription.entity";
 import type { TermsAcceptance } from "../../lib/src/users/domain/terms-acceptance.entity";
 import type {
@@ -170,6 +172,8 @@ export class InMemoryOnboarding implements IOnboardingRepository {
   readonly organizations: Organization[] = [];
   readonly clinics: Clinic[] = [];
   readonly memberships: NewMembership[] = [];
+  readonly schedules: Schedule[] = [];
+  readonly completedAt = new Map<string, Date>();
   failOnWrite = false;
   beforeWrite?: () => void;
 
@@ -228,6 +232,21 @@ export class InMemoryOnboarding implements IOnboardingRepository {
       ...(this.users.memberships.get(user.id) ?? []),
       ...memberships,
     ]);
+    user.onboardingStep = transition.to;
+    return true;
+  }
+
+  async completeOnboarding(
+    { userId, completedAt, schedule }: OnboardingCompletion,
+    transition: Required<OnboardingStepTransition>,
+  ): Promise<boolean> {
+    if (this.failOnWrite) throw new Error("DynamoDB no disponible");
+    this.beforeWrite?.();
+    this.transitions.push(transition);
+    const user = this.users.users.find(({ id }) => id === userId);
+    if (!user || !transition.from.includes(user.onboardingStep)) return false;
+    if (schedule) this.schedules.push(schedule);
+    this.completedAt.set(userId, completedAt);
     user.onboardingStep = transition.to;
     return true;
   }
