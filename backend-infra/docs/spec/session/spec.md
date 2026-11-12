@@ -50,7 +50,7 @@ transacción que ya crea al usuario:
 | Ítem | Qué guarda |
 |---|---|
 | El usuario (`USER#<id>`) | Lo de hoy, más `AccountId` (la cuenta nueva) y `OnboardingStep = PERSONAL_DATA`. Ya no guarda `OnboardingCompleted`. |
-| La cuenta (`ACCOUNT#<id>`, `SK "!"`) | `Id`, `OwnerUserId` (el usuario nuevo) y `CreatedAt`. Sin nombre y sin plan. |
+| La cuenta (`ACCOUNT#<id>`, `SK "!"`) | `Id` y `OwnerUserId` (el usuario nuevo). Sin nombre, sin plan y sin `CreatedAt`: la fecha de creación sale del `Id`, que es un ULID. |
 
 Si la transacción falla, no queda ni el usuario ni la cuenta, y el usuario se
 borra de Cognito, como hoy.
