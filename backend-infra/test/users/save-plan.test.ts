@@ -3,6 +3,8 @@ import { test } from "node:test";
 import { AuthorizeRequestUseCase } from "../../lib/src/users/application/authorize-request.usecase";
 import { SavePlanUseCase } from "../../lib/src/users/application/save-plan.usecase";
 import type { OnboardingStep } from "../../lib/src/users/domain/user.entity";
+import { givenNameSchema } from "../../lib/src/users/domain/value-objects/person-name.vo";
+import { phoneSchema } from "../../lib/src/users/domain/value-objects/phone.vo";
 import {
   ONBOARDING_INCOMPLETE,
   PLAN_FAILED,
@@ -25,7 +27,11 @@ const bodyEvent = (body: unknown) =>
   privateEvent({ body: JSON.stringify(body) });
 
 const planFlow = (onboardingStep: OnboardingStep = "PLAN") => {
-  const user = buildUser({ onboardingStep });
+  const user = buildUser({
+    onboardingStep,
+    givenName: givenNameSchema.parse("Ana"),
+    phone: phoneSchema.parse("987654321"),
+  });
   const users = new InMemoryUsers([user]);
   const onboarding = new InMemoryOnboarding(users);
   return {
@@ -81,6 +87,10 @@ test("un plan que no existe o un cuerpo invÃ¡lido responde 400 sin leer la sesiÃ
     [{ plan: "PLATINO" }, "Elige un plan."],
     [{}, "Elige un plan."],
     [{ plan: 1 }, "Elige un plan."],
+    [
+      { plan: "CONSULTORIO" },
+      "Durante la beta, todas las cuentas empiezan en Gratis.",
+    ],
   ];
   for (const [requestBody, message] of cases) {
     const flow = planFlow();
@@ -97,7 +107,7 @@ test("un plan que no existe o un cuerpo invÃ¡lido responde 400 sin leer la sesiÃ
 });
 
 test("con CLINIC y FREE responde 200 sin escribir", async () => {
-  const { call, user, onboarding, users } = planFlow("CLINIC");
+  const { call, user, onboarding } = planFlow("CLINIC");
 
   const response = await call();
 
@@ -105,7 +115,7 @@ test("con CLINIC y FREE responde 200 sin escribir", async () => {
   assert.deepEqual(body(response), { onboardingStep: "CLINIC" });
   assert.deepEqual(onboarding.transitions, []);
   assert.deepEqual(onboarding.subscriptions, []);
-  assert.equal(users.users[0], user);
+  assert.equal(user.onboardingStep, "CLINIC");
 });
 
 test("si pierde la carrera responde 200 con CLINIC", async () => {
