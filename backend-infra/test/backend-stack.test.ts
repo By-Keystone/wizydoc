@@ -176,8 +176,21 @@ test("cada Lambda sólo tiene los permisos que usa", () => {
   });
   assert.deepEqual(accessByAction(template, "MeFunction"), {
     "dynamodb:Query": ["USER#*"],
-    "dynamodb:GetItem": ["CLINIC#*", "ACCOUNT#*"],
+    "dynamodb:GetItem": ["ACCOUNT#*"],
   });
+  const meStatements = policyFor(template, "MeFunction");
+  for (const forbidden of [
+    "PutItem",
+    "UpdateItem",
+    "DeleteItem",
+    "CLINIC#*",
+    "/index/GSI1",
+    "/index/*",
+    "cognito-idp:",
+    "ses:",
+  ]) {
+    assert.equal(meStatements.includes(forbidden), false, forbidden);
+  }
   assert.deepEqual(accessByAction(template, "RefreshSessionFunction"), {});
   assert.deepEqual(accessByAction(template, "SignOutFunction"), {});
 });
@@ -503,7 +516,11 @@ const functionOfMethod = (template: Template, integrationUri: unknown) => {
     template.findResources("AWS::Lambda::Function"),
   ).filter((id) => JSON.stringify(integrationUri).includes(id));
   assert.ok(logicalId, "el método no tiene una Lambda");
-  return template.findResources("AWS::Lambda::Function")[logicalId].Properties;
+  return {
+    logicalId,
+    properties: template.findResources("AWS::Lambda::Function")[logicalId]
+      .Properties,
+  };
 };
 
 test("toda ruta privada declara su policy y exige la clave de platform y el ID token", () => {
@@ -516,6 +533,12 @@ test("toda ruta privada declara su policy y exige la clave de platform y el ID t
   );
 
   assert.equal(authorizers.length, 1);
+  const [clientLogicalId] = Object.keys(
+    template.findResources("AWS::Cognito::UserPoolClient"),
+  );
+  assert.deepEqual(authorizers[0][1].Properties.IdentityValidationExpression, {
+    "Fn::Join": ["", ["^", { Ref: clientLogicalId }, "$"]],
+  });
   const privateMethods = methods.filter(
     ({ Properties }) =>
       !PUBLIC_ROUTES.includes(
@@ -530,7 +553,7 @@ test("toda ruta privada declara su policy y exige la clave de platform y el ID t
     const { ROUTE_POLICY } = functionOfMethod(
       template,
       Properties.Integration.Uri,
-    ).Environment.Variables;
+    ).properties.Environment.Variables;
     assert.ok(routePolicySchema.safeParse(JSON.parse(ROUTE_POLICY)).success);
   }
   for (const { Properties } of methods) {
@@ -540,21 +563,25 @@ test("toda ruta privada declara su policy y exige la clave de platform y el ID t
 
 test("toda Lambda de una ruta privada puede leer al usuario de la sesión y sus memberships", () => {
   const template = synthesizeBackend();
-  const policy = policyFor(template, "MeFunction");
 
-  for (const expected of ["/index/GSI2", "USER#*", "CLINIC#*", "ACCOUNT#*"]) {
-    assert.ok(policy.includes(expected), expected);
-  }
-  for (const forbidden of [
-    "PutItem",
-    "UpdateItem",
-    "DeleteItem",
-    "/index/GSI1",
-    "/index/*",
-    "cognito-idp:",
-    "ses:",
-  ]) {
-    assert.equal(policy.includes(forbidden), false, forbidden);
+  const privateMethods = Object.values(
+    template.findResources("AWS::ApiGateway::Method"),
+  ).filter(({ Properties }) => Properties.AuthorizerId);
+  assert.ok(privateMethods.length > 0);
+  for (const { Properties } of privateMethods) {
+    const { logicalId, properties } = functionOfMethod(
+      template,
+      Properties.Integration.Uri,
+    );
+
+    assert.deepEqual(accessByAction(template, logicalId)["dynamodb:Query"], [
+      "USER#*",
+    ]);
+    assert.ok(
+      policyFor(template, logicalId).includes("/index/GSI2"),
+      logicalId,
+    );
+    assert.ok(properties.Environment.Variables.TABLE_NAME, logicalId);
   }
 });
 

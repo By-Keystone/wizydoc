@@ -15,6 +15,7 @@ import {
   ROUTE_POLICY_VARIABLE,
   type RoutePolicy,
   requiresMembership,
+  routePolicySchema,
 } from "./src/users/application/authorize-request.usecase";
 import { SESSION_EXPIRED } from "./src/users/handlers/http-messages";
 
@@ -114,6 +115,7 @@ export interface ApiGatewayProps {
 export class ApiGateway extends Construct {
   readonly api: apigateway.RestApi;
   private sessionAuthorizer?: apigateway.CognitoUserPoolsAuthorizer;
+  private readonly privateRouteFunctions = new Set<lambda.Function>();
 
   constructor(
     scope: Construct,
@@ -184,25 +186,42 @@ export class ApiGateway extends Construct {
   addPrivateRoute(
     path: string,
     httpMethod: string,
-    handler: lambda.Function,
+    routeFunction: lambda.Function,
     policy: RoutePolicy,
   ) {
-    const hasResourceId = path.includes(`{${RESOURCE_ID_PARAMETER}}`);
-    if (hasResourceId !== requiresMembership(policy)) {
+    routePolicySchema.parse(policy);
+    const route = `${httpMethod} /${path}`;
+    if (this.privateRouteFunctions.has(routeFunction)) {
       throw new Error(
-        `${httpMethod} /${path}: {${RESOURCE_ID_PARAMETER}} y la membership de la policy se declaran juntos.`,
+        `${route}: la Lambda ya tiene una ruta privada y su ROUTE_POLICY se pisaría.`,
+      );
+    }
+    const pathParameters: string[] = path.match(/\{[^}]*\}/g) ?? [];
+    const resourceIdParameter = `{${RESOURCE_ID_PARAMETER}}`;
+    if (pathParameters.some((parameter) => parameter !== resourceIdParameter)) {
+      throw new Error(
+        `${route}: el único parámetro permitido es ${resourceIdParameter}.`,
+      );
+    }
+    if (
+      pathParameters.includes(resourceIdParameter) !==
+      requiresMembership(policy)
+    ) {
+      throw new Error(
+        `${route}: ${resourceIdParameter} y la membership de la policy se declaran juntos.`,
       );
     }
 
-    handler.addEnvironment(ROUTE_POLICY_VARIABLE, JSON.stringify(policy));
+    this.privateRouteFunctions.add(routeFunction);
+    routeFunction.addEnvironment(ROUTE_POLICY_VARIABLE, JSON.stringify(policy));
     this.api.root
       .resourceForPath(path)
-      .addMethod(httpMethod, new apigateway.LambdaIntegration(handler), {
-        authorizer: this.sessionAuthorizerFor(),
+      .addMethod(httpMethod, new apigateway.LambdaIntegration(routeFunction), {
+        authorizer: this.ensureSessionAuthorizer(),
       });
   }
 
-  private sessionAuthorizerFor() {
+  private ensureSessionAuthorizer() {
     if (this.sessionAuthorizer) return this.sessionAuthorizer;
 
     this.sessionAuthorizer = new apigateway.CognitoUserPoolsAuthorizer(

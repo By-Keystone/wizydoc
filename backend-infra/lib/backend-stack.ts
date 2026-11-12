@@ -12,7 +12,10 @@ import { ApiGateway } from "./api-gateway";
 import { Authentication } from "./authentication";
 import { DynamoTables } from "./dynamo";
 import { senderAddressOf } from "./sender-address";
-import { ANY_ONBOARDING_STEP } from "./src/users/application/authorize-request.usecase";
+import {
+  ANY_ONBOARDING_STEP,
+  type RoutePolicy,
+} from "./src/users/application/authorize-request.usecase";
 import {
   type SignUpEmailTemplate,
   SignUpEmailTemplates,
@@ -61,14 +64,9 @@ const VERIFY_SIGN_UP_CODE_ACCESS: TableAccess = {
   "dynamodb:DeleteItem": ["SIGN_UP_CODE#*"],
 };
 
-const SESSION_USER_ACCESS: TableAccess = {
-  "dynamodb:Query": ["USER#*"],
-  "dynamodb:GetItem": ["CLINIC#*"],
-};
-const ME_ACCESS: TableAccess = {
-  ...SESSION_USER_ACCESS,
-  "dynamodb:GetItem": ["CLINIC#*", "ACCOUNT#*"],
-};
+const SESSION_USER_PREFIXES = ["USER#*"];
+const CLINIC_PREFIXES = ["CLINIC#*"];
+const ME_ACCESS: TableAccess = { "dynamodb:GetItem": ["ACCOUNT#*"] };
 
 export interface BackendStackProps extends StackProps {
   hostedZoneId: string;
@@ -243,8 +241,6 @@ export class BackendStack extends Stack {
       "Returns the signed-in user, their account and their onboarding step.",
       { TABLE_NAME: database.table.tableName },
     );
-    grantTableAccess(meFunction, database.table, ME_ACCESS);
-    grantIndexQuery(meFunction, database.table, USER_COGNITO_SUB_INDEX);
 
     const signUpResource =
       apiGateway.api.root.resourceForPath("api/auth/sign-up");
@@ -278,13 +274,44 @@ export class BackendStack extends Stack {
     authResource
       .addResource("sign-out")
       .addMethod("POST", new apigateway.LambdaIntegration(signOutFunction));
-    apiGateway.addPrivateRoute("api/me", "GET", meFunction, {
-      confirmed: false,
-      onboardingStep: ANY_ONBOARDING_STEP,
-    });
+    this.addPrivateRoute(
+      apiGateway,
+      database.table,
+      "api/me",
+      "GET",
+      meFunction,
+      { confirmed: false, onboardingStep: ANY_ONBOARDING_STEP },
+      ME_ACCESS,
+    );
     apiGateway.api.root
       .addResource("health")
       .addMethod("GET", new apigateway.LambdaIntegration(healthFunction));
+  }
+
+  private addPrivateRoute(
+    apiGateway: ApiGateway,
+    table: ITableV2,
+    path: string,
+    httpMethod: string,
+    routeFunction: NodejsFunction,
+    policy: RoutePolicy,
+    routeAccess: TableAccess = {},
+  ) {
+    const clinicPrefixes =
+      policy.resourceType === "CLINIC" ? CLINIC_PREFIXES : [];
+    const getItemPrefixes = [
+      ...clinicPrefixes,
+      ...(routeAccess["dynamodb:GetItem"] ?? []),
+    ];
+    grantTableAccess(routeFunction, table, {
+      ...routeAccess,
+      "dynamodb:Query": SESSION_USER_PREFIXES,
+      ...(getItemPrefixes.length > 0
+        ? { "dynamodb:GetItem": getItemPrefixes }
+        : {}),
+    });
+    grantIndexQuery(routeFunction, table, USER_COGNITO_SUB_INDEX);
+    apiGateway.addPrivateRoute(path, httpMethod, routeFunction, policy);
   }
 
   private usersFunction(

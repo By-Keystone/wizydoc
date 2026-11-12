@@ -140,7 +140,14 @@ test("una ruta privada sin ID token, con uno vencido o con uno de otro user pool
     "method.request.header.Authorization",
   );
   assert.equal(authorizer.Properties.AuthorizerResultTtlInSeconds, 0);
-  assert.deepEqual(authorizer.Properties.ProviderARNs.length, 1);
+  assert.deepEqual(authorizer.Properties.ProviderARNs, [
+    {
+      "Fn::GetAtt": [
+        Object.keys(template.findResources("AWS::Cognito::UserPool"))[0],
+        "Arn",
+      ],
+    },
+  ]);
   assert.equal(
     authorizer.Properties.IdentityValidationExpression,
     "^platform-client-id$",
@@ -178,23 +185,27 @@ test("addPrivateRoute crea el método con el autorizador y deja la policy en ROU
 });
 
 test("addPrivateRoute rechaza {resourceId} sin membership y membership sin {resourceId}", () => {
-  assert.throws(() =>
-    synthesizeApiGateway((apiGateway, stack) =>
-      apiGateway.addPrivateRoute(
-        "api/clinic/{resourceId}",
-        "GET",
-        privateHandler(stack),
-        {},
+  assert.throws(
+    () =>
+      synthesizeApiGateway((apiGateway, stack) =>
+        apiGateway.addPrivateRoute(
+          "api/clinic/{resourceId}",
+          "GET",
+          privateHandler(stack),
+          {},
+        ),
       ),
-    ),
+    /\{resourceId\} y la membership/,
   );
-  assert.throws(() =>
-    synthesizeApiGateway((apiGateway, stack) =>
-      apiGateway.addPrivateRoute("api/clinic", "GET", privateHandler(stack), {
-        member: true,
-        resourceType: "CLINIC",
-      }),
-    ),
+  assert.throws(
+    () =>
+      synthesizeApiGateway((apiGateway, stack) =>
+        apiGateway.addPrivateRoute("api/clinic", "GET", privateHandler(stack), {
+          member: true,
+          resourceType: "CLINIC",
+        }),
+      ),
+    /\{resourceId\} y la membership/,
   );
   assert.doesNotThrow(() =>
     synthesizeApiGateway((apiGateway, stack) =>
@@ -204,6 +215,40 @@ test("addPrivateRoute rechaza {resourceId} sin membership y membership sin {reso
         privateHandler(stack),
         { member: true, resourceType: "CLINIC" },
       ),
+    ),
+  );
+});
+
+test("addPrivateRoute rechaza cualquier parámetro que no sea {resourceId}", () => {
+  assert.throws(
+    () =>
+      synthesizeApiGateway((apiGateway, stack) =>
+        apiGateway.addPrivateRoute(
+          "api/clinic/{clinicId}",
+          "GET",
+          privateHandler(stack),
+          {},
+        ),
+      ),
+    /el único parámetro permitido es \{resourceId\}/,
+  );
+});
+
+test("addPrivateRoute rechaza una segunda ruta privada para la misma Lambda y una policy inválida", () => {
+  assert.throws(
+    () =>
+      synthesizeApiGateway((apiGateway, stack) => {
+        const sharedFunction = privateHandler(stack);
+        apiGateway.addPrivateRoute("api/me", "GET", sharedFunction, {});
+        apiGateway.addPrivateRoute("api/other", "GET", sharedFunction, {});
+      }),
+    /ya tiene una ruta privada/,
+  );
+  assert.throws(() =>
+    synthesizeApiGateway((apiGateway, stack) =>
+      apiGateway.addPrivateRoute("api/me", "GET", privateHandler(stack), {
+        onboardingStep: "NO_EXISTE",
+      } as never),
     ),
   );
 });

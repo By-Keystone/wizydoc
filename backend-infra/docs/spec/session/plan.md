@@ -679,16 +679,27 @@ Lo comprueban los pedidos a staging de «Verificación».
   real.
 
 **Parte 4**
-- Sin `Authorization`, el gateway responde `UNAUTHORIZED` (401) y no
-  `MISSING_AUTHENTICATION_TOKEN`, que hoy respondería 404.
-- El access token queda rechazado por el `aud`, y un token de otro pool, por la
-  firma.
-- `IdentityValidationExpression` funciona con el id del cliente resuelto por
+- `IdentityValidationExpression` con el id del cliente resuelto por
   CloudFormation.
-- Si `Bearer <token>` pasa, y qué responde un pedido sin clave y sin token.
-- El cuerpo de la respuesta 401 llega con las tildes.
 - `MeFunction` puede hacer el `Query` con `LeadingKeys` en `USER#*`, el de
   `index/GSI2` y el `GetItem` en `ACCOUNT#*`.
+
+## Verificado contra AWS
+
+**Parte 4.** Probado el 12 de noviembre de 2026 en la cuenta de desarrollo, con
+recursos temporales ya borrados: un REST API con un `COGNITO_USER_POOLS` como el
+de la parte 4 (`Authorization`, TTL 0, `IdentityValidationExpression
+^<cliente>$`), la clave obligatoria y la respuesta `UNAUTHORIZED` 401.
+- Con la clave y el ID token del cliente de platform: 200, y los claims traen el
+  `sub` correcto y `aud` = el cliente.
+- Con `Bearer <ID token>`: también 200.
+- Con el access token, un ID token de otro cliente del mismo pool, uno de otro
+  pool, un token inventado o sin token: 401, con «Tu sesión venció. Inicia
+  sesión de nuevo.» y las tildes bien.
+- Sin la clave y con un ID token válido: 403 «Forbidden».
+- Sin la clave y sin token: 401, porque el autorizador corre antes que la clave.
+- Una clave nueva del usage plan tarda unos 30 s en responder 200 en todos los
+  nodos.
 
 ## Riesgos aceptados del plan
 

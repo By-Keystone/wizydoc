@@ -20,7 +20,7 @@ import {
 
 const OWNER_USER_ID = "01M6MSQWFCK15Q3X04AQEQ0SFY";
 
-const declaredPolicy = (): RoutePolicy => {
+const readDeclaredPolicy = (): RoutePolicy => {
   const stack = new BackendStack(
     new App({ context: { "aws:cdk:bundling-stacks": [] } }),
     "MePolicyTest",
@@ -42,6 +42,8 @@ const declaredPolicy = (): RoutePolicy => {
   return JSON.parse(meFunction.Properties.Environment.Variables.ROUTE_POLICY);
 };
 
+const declaredPolicy = readDeclaredPolicy();
+
 const meFlow = ({
   user = buildUser({ onboardingStep: "PERSONAL_DATA" }),
   ownerUserId = user.id,
@@ -61,7 +63,7 @@ const meFlow = ({
         authorizeRequest: new AuthorizeRequestUseCase(
           users,
           new InMemoryClinics(),
-          declaredPolicy(),
+          declaredPolicy,
         ),
         getMe: new GetMeUseCase(accounts),
       }),
@@ -89,7 +91,7 @@ test("GET /api/me con un ID token válido responde 200 con los datos del usuario
 });
 
 test("el ROUTE_POLICY de MeFunction es confirmed false y cualquier paso del onboarding", () => {
-  assert.deepEqual(declaredPolicy(), {
+  assert.deepEqual(declaredPolicy, {
     confirmed: false,
     onboardingStep: "ANY",
   });
