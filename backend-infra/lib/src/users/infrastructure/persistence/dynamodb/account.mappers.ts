@@ -14,5 +14,4 @@ export const fromAccountToDynamo = (
   ItemType: ACCOUNT_ITEM_TYPE,
   Id: account.id,
   OwnerUserId: account.ownerUserId,
-  CreatedAt: account.createdAt.toISOString(),
 });

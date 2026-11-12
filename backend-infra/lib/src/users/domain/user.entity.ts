@@ -31,10 +31,10 @@ export interface CreateUserWithAccountInput {
   cognitoSub: string;
 }
 
-export const createUserWithAccount = (
-  { email, cognitoSub }: CreateUserWithAccountInput,
-  now = new Date(),
-): UserWithAccount => {
+export const createUserWithAccount = ({
+  email,
+  cognitoSub,
+}: CreateUserWithAccountInput): UserWithAccount => {
   const userId = ulid();
   const accountId = ulid();
   return {
@@ -46,6 +46,6 @@ export const createUserWithAccount = (
       accountId,
       onboardingStep: "PERSONAL_DATA",
     },
-    account: { id: accountId, ownerUserId: userId, createdAt: now },
+    account: { id: accountId, ownerUserId: userId },
   };
 };
