@@ -1,3 +1,4 @@
+import type { ULID } from "ulid";
 import { z } from "zod";
 import {
   MEMBERSHIP_RESOURCE_TYPES,
@@ -12,10 +13,10 @@ export interface MembershipDynamoDBSchema {
   PK: `USER#${string}`;
   SK: `MEMBERSHIP#${string}`;
   ItemType: typeof MEMBERSHIP_ITEM_TYPE;
-  UserId: string;
-  ResourceId: string;
+  UserId: ULID;
+  ResourceId: ULID;
   ResourceType: MembershipResourceType;
-  AccountId: string;
+  AccountId: ULID;
   Role: MembershipRole;
   Specialties?: string[];
   GSI1PK: `ORG#${string}` | `CLINIC#${string}`;

@@ -22,7 +22,7 @@ export const fromDynamoToMembership = (item: unknown): Membership => {
   };
 };
 
-export const fromNewMembershipToDynamo = ({
+export const fromMembershipToDynamo = ({
   userId,
   resourceId,
   resourceType,

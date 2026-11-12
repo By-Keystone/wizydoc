@@ -11,6 +11,7 @@ export interface Clinic {
 }
 
 export interface OwnerClinic {
+  ownerUserId: ULID;
   organization: Organization;
   clinic: Clinic;
   memberships: [NewMembership, NewMembership];
@@ -41,6 +42,7 @@ export const createOwnerClinic = (
     address,
   };
   return {
+    ownerUserId,
     organization,
     clinic,
     memberships: [

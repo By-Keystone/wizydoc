@@ -22,7 +22,6 @@ export interface IOnboardingRepository {
 
   createClinic(
     ownerClinic: OwnerClinic,
-    userId: string,
-    transition: OnboardingStepTransition,
+    transition: Required<OnboardingStepTransition>,
   ): Promise<boolean>;
 }
