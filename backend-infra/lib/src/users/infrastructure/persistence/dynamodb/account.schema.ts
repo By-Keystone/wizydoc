@@ -11,7 +11,6 @@ export interface AccountDynamoDBSchema {
   ItemType: typeof ACCOUNT_ITEM_TYPE;
   Id: ULID;
   OwnerUserId: ULID;
-  CreatedAt: string;
 }
 
 export const accountPk = (id: string): PK => `ACCOUNT#${id}`;
