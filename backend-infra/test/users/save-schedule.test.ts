@@ -4,6 +4,8 @@ import { AuthorizeRequestUseCase } from "../../lib/src/users/application/authori
 import { SaveScheduleUseCase } from "../../lib/src/users/application/save-schedule.usecase";
 import type { Membership } from "../../lib/src/users/domain/membership.entity";
 import type { OnboardingStep } from "../../lib/src/users/domain/user.entity";
+import { givenNameSchema } from "../../lib/src/users/domain/value-objects/person-name.vo";
+import { phoneSchema } from "../../lib/src/users/domain/value-objects/phone.vo";
 import {
   ONBOARDING_ALREADY_COMPLETED,
   ONBOARDING_INCOMPLETE,
@@ -23,6 +25,7 @@ import {
 const declaredPolicy = readDeclaredPolicy("SaveScheduleFunction");
 const NOW = new Date("2026-11-12T15:00:00.000Z");
 const CLINIC_ID = "01M6MSQWFCK15Q3X04AQEQ0C1A";
+const SECOND_CLINIC_ID = "01M6MSQWFCK15Q3X04AQEQ0C3C";
 const OTHER_ACCOUNT_CLINIC_ID = "01M6MSQWFCK15Q3X04AQEQ0C2B";
 const ORGANIZATION_ID = "01M6MSQWFCK15Q3X04AQEQ0D3C";
 const ACCOUNT_ID = "01M6MSQWFCK15Q3X04AQEQ0S9R";
@@ -57,7 +60,11 @@ const scheduleFlow = (
   onboardingStep: OnboardingStep = "SCHEDULE",
   memberships: Membership[] = ownerMemberships,
 ) => {
-  const user = buildUser({ onboardingStep });
+  const user = buildUser({
+    onboardingStep,
+    givenName: givenNameSchema.parse("Ana"),
+    phone: phoneSchema.parse("987654321"),
+  });
   const users = new InMemoryUsers([user]);
   users.memberships.set(user.id, memberships);
   const onboarding = new InMemoryOnboarding(users);
@@ -96,7 +103,7 @@ test("guardar Tu horario crea el horario del usuario en su sede y pasa el paso a
     },
   ]);
   assert.equal(user.onboardingStep, "COMPLETED");
-  assert.equal(onboarding.completedAt.get(user.id), NOW);
+  assert.equal(onboarding.completedAtByUserId.get(user.id), NOW);
   assert.deepEqual(onboarding.transitions, [
     { from: ["SCHEDULE"], to: "COMPLETED" },
   ]);
@@ -111,7 +118,16 @@ test("omitir Tu horario pasa el paso a COMPLETED, con OnboardingCompletedAt, sin
   assert.deepEqual(body(response), { onboardingStep: "COMPLETED" });
   assert.deepEqual(onboarding.schedules, []);
   assert.equal(user.onboardingStep, "COMPLETED");
-  assert.equal(onboarding.completedAt.get(user.id), NOW);
+  assert.equal(onboarding.completedAtByUserId.get(user.id), NOW);
+});
+
+test("skip: false con un horario válido lo guarda", async () => {
+  const { call, onboarding } = scheduleFlow();
+
+  const response = await call(bodyEvent({ skip: false, ...VALID_BODY }));
+
+  assert.equal(response.statusCode, 200);
+  assert.equal(onboarding.schedules.length, 1);
 });
 
 test("skip: true ignora un weeklySchedule inválido", async () => {
@@ -164,6 +180,27 @@ test("un horario con bloques que se solapan o con el inicio después del fin res
     assert.deepEqual(flow.onboarding.schedules, []);
     assert.equal(flow.user.onboardingStep, "SCHEDULE");
   }
+
+  const emptyBody = scheduleFlow();
+  const emptyList = await emptyBody.call(bodyEvent([]));
+  assert.equal(emptyList.statusCode, 400);
+  assert.deepEqual(body(emptyList), { message: "La solicitud no es válida." });
+
+  const withoutSchedule = scheduleFlow();
+  withoutSchedule.users.failOnRead = true;
+  const explicitNoSkip = await withoutSchedule.call(bodyEvent({ skip: false }));
+  assert.equal(explicitNoSkip.statusCode, 400);
+  assert.deepEqual(body(explicitNoSkip), {
+    message: "La disponibilidad debe ser una lista de rangos",
+  });
+
+  const notJson = scheduleFlow();
+  const invalidJson = await notJson.call(privateEvent({ body: "no es json" }));
+  assert.equal(invalidJson.statusCode, 400);
+  assert.deepEqual(body(invalidJson), {
+    message: "La solicitud no es válida.",
+  });
+  assert.deepEqual(notJson.onboarding.schedules, []);
 });
 
 test("la sede sale de la membership propia y no de la de otra cuenta", async () => {
@@ -193,7 +230,7 @@ test("sin una membership DOCTOR en una sede propia, responde 500", async (contex
   ]);
   const twoClinics = scheduleFlow("SCHEDULE", [
     ...ownerMemberships,
-    { ...ownerMemberships[1], resourceId: OTHER_ACCOUNT_CLINIC_ID },
+    { ...ownerMemberships[1], resourceId: SECOND_CLINIC_ID },
   ]);
 
   for (const flow of [withoutClinic, otherAccountOnly, twoClinics]) {
@@ -261,7 +298,14 @@ test("si falla DynamoDB al escribir o al leer la sesión, responde 500 con el me
 test("ni los datos personales ni los tokens aparecen en los logs", async (context) => {
   const errors = context.mock.method(console, "error", () => {});
   const flow = scheduleFlow();
-  const secrets = ["09:00", "ana@clinica.pe", "+51987654321", COGNITO_SUB];
+  const secrets = [
+    "Ana",
+    "987654321",
+    "09:00",
+    "ana@clinica.pe",
+    COGNITO_SUB,
+    "eyJhbGciOi.token.firma",
+  ];
   flow.onboarding.completeOnboarding = async () => {
     throw new Error(`falló con ${secrets.join(" ")}`);
   };
