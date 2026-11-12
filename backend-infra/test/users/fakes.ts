@@ -40,7 +40,11 @@ import type {
   IUserRepository,
   UserWithMemberships,
 } from "../../lib/src/users/domain/repository/user.repository";
-import type { OwnerClinic } from "../../lib/src/users/domain/clinic.entity";
+import type {
+  Clinic,
+  OwnerClinic,
+} from "../../lib/src/users/domain/clinic.entity";
+import type { Organization } from "../../lib/src/users/domain/organization.entity";
 import type { Subscription } from "../../lib/src/users/domain/subscription.entity";
 import type { TermsAcceptance } from "../../lib/src/users/domain/terms-acceptance.entity";
 import type {
@@ -160,7 +164,8 @@ export class InMemoryUsers implements IUserRepository {
 export class InMemoryOnboarding implements IOnboardingRepository {
   readonly transitions: OnboardingStepTransition[] = [];
   readonly subscriptions: Subscription[] = [];
-  readonly ownerClinics: OwnerClinic[] = [];
+  readonly organizations: Organization[] = [];
+  readonly clinics: Clinic[] = [];
   failOnWrite = false;
   beforeWrite?: () => void;
 
@@ -204,17 +209,21 @@ export class InMemoryOnboarding implements IOnboardingRepository {
   }
 
   async createClinic(
-    ownerClinic: OwnerClinic,
-    userId: string,
-    transition: OnboardingStepTransition,
+    { ownerUserId, organization, clinic, memberships }: OwnerClinic,
+    transition: Required<OnboardingStepTransition>,
   ): Promise<boolean> {
     if (this.failOnWrite) throw new Error("DynamoDB no disponible");
     this.beforeWrite?.();
     this.transitions.push(transition);
-    const user = this.users.users.find(({ id }) => id === userId);
+    const user = this.users.users.find(({ id }) => id === ownerUserId);
     if (!user || !transition.from.includes(user.onboardingStep)) return false;
-    this.ownerClinics.push(ownerClinic);
-    user.onboardingStep = transition.to ?? user.onboardingStep;
+    this.organizations.push(organization);
+    this.clinics.push(clinic);
+    this.users.memberships.set(user.id, [
+      ...(this.users.memberships.get(user.id) ?? []),
+      ...memberships,
+    ]);
+    user.onboardingStep = transition.to;
     return true;
   }
 }

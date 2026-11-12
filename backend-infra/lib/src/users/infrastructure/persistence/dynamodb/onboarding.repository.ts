@@ -17,7 +17,7 @@ import {
 } from "../../../domain/user.entity";
 import { fromClinicToDynamo } from "./clinic.mappers";
 import { isLostRace } from "./lost-race";
-import { fromNewMembershipToDynamo } from "./membership.mappers";
+import { fromMembershipToDynamo } from "./membership.mappers";
 import { fromOrganizationToDynamo } from "./organization.mappers";
 import { fromSubscriptionToDynamo } from "./subscription.mappers";
 import { ONLY_IF_NEW } from "./user.repository";
@@ -81,14 +81,13 @@ export class OnboardingRepository implements IOnboardingRepository {
   }
 
   async createClinic(
-    { organization, clinic, memberships }: OwnerClinic,
-    userId: string,
-    transition: OnboardingStepTransition,
+    { ownerUserId, organization, clinic, memberships }: OwnerClinic,
+    transition: Required<OnboardingStepTransition>,
   ): Promise<boolean> {
     const newItems = [
       fromOrganizationToDynamo(organization),
       fromClinicToDynamo(clinic),
-      ...memberships.map(fromNewMembershipToDynamo),
+      ...memberships.map(fromMembershipToDynamo),
     ];
     try {
       await this.client.send(
@@ -101,7 +100,7 @@ export class OnboardingRepository implements IOnboardingRepository {
                 ConditionExpression: ONLY_IF_NEW,
               },
             })),
-            { Update: this.userStepUpdate(userId, transition, {}) },
+            { Update: this.userStepUpdate(ownerUserId, transition, {}) },
           ],
         }),
       );

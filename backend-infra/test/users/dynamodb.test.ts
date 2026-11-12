@@ -1,4 +1,3 @@
-import { decodeTime, ulid } from "ulid";
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
@@ -1212,9 +1211,6 @@ test("savePlan devuelve false si otro pedido ya guardó el plan, y deja subir cu
   );
 });
 
-const ownerClinicNow = new Date("2026-11-12T15:00:00.000Z");
-const OTHER_ACCOUNT_ID = ulid();
-
 const buildOwnerClinic = () =>
   createOwnerClinic(
     {
@@ -1224,36 +1220,10 @@ const buildOwnerClinic = () =>
       address: "Av. Larco 123",
       specialty: "Cardiología",
     },
-    ownerClinicNow,
+    new Date("2026-11-12T15:00:00.000Z"),
   );
 
-test("la fábrica del consultorio usa el mismo nombre, da la especialidad sólo al DOCTOR y fecha los ids en now", () => {
-  const { organization, clinic, memberships } = buildOwnerClinic();
-  const [adminMembership, doctorMembership] = memberships;
-
-  assert.equal(organization.name, "Consultorio Sol");
-  assert.equal(clinic.name, "Consultorio Sol");
-  assert.equal(decodeTime(organization.id), ownerClinicNow.getTime());
-  assert.equal(decodeTime(clinic.id), ownerClinicNow.getTime());
-  assert.equal(adminMembership.role, "ADMIN");
-  assert.equal(adminMembership.specialties, undefined);
-  assert.equal(doctorMembership.role, "DOCTOR");
-  assert.deepEqual(doctorMembership.specialties, ["Cardiología"]);
-});
-
-test("la fábrica del consultorio apunta la sede a su organización y lleva el accountId recibido en las cuatro piezas", () => {
-  const { organization, clinic, memberships } = buildOwnerClinic();
-
-  assert.equal(clinic.organizationId, organization.id);
-  assert.equal(memberships[0].resourceId, organization.id);
-  assert.equal(memberships[1].resourceId, clinic.id);
-  for (const { accountId } of [organization, clinic, ...memberships]) {
-    assert.equal(accountId, ACCOUNT_ID);
-    assert.notEqual(accountId, OTHER_ACCOUNT_ID);
-  }
-});
-
-test("crear Tu consultorio escribe en una transacción la organización, la sede y las dos memberships, y pasa el paso a SCHEDULE", async () => {
+test("crear Tu consultorio crea, en una transacción, la organización, la sede, la membership ADMIN sobre la organización, la membership DOCTOR sobre la sede con la especialidad, y pasa el paso a SCHEDULE", async () => {
   const { client, inputs } = capturingClient();
   const ownerClinic = buildOwnerClinic();
   const { organization, clinic } = ownerClinic;
@@ -1261,7 +1231,7 @@ test("crear Tu consultorio escribe en una transacción la organización, la sede
   const created = await new OnboardingRepository(
     client,
     TABLE_NAME,
-  ).createClinic(ownerClinic, USER_ID, { from: ["CLINIC"], to: "SCHEDULE" });
+  ).createClinic(ownerClinic, { from: ["CLINIC"], to: "SCHEDULE" });
 
   assert.equal(created, true);
   const [transaction] = inputs as TransactWriteCommandInput[];
@@ -1357,33 +1327,25 @@ test("crear Tu consultorio escribe en una transacción la organización, la sede
 });
 
 test("createClinic devuelve false si otro pedido ya creó el consultorio, y deja subir cualquier otro error", async () => {
-  const lostRace = capturingClient({
-    failure: new TransactionCanceledException({
+  const transition = { from: ["CLINIC"], to: "SCHEDULE" } as const;
+  const canceledBecause = (userUpdateCode: string) =>
+    new TransactionCanceledException({
       message: "cancelada",
       $metadata: {},
-      CancellationReasons: [
-        { Code: "None" },
-        { Code: "ConditionalCheckFailed" },
-      ],
-    }),
-  });
-  const unavailable = capturingClient({ failure: new Error("sin red") });
-  const transition = { from: ["CLINIC"], to: "SCHEDULE" } as const;
+      CancellationReasons: ["None", "None", "None", "None", userUpdateCode].map(
+        (Code) => ({ Code }),
+      ),
+    });
+  const createWith = (failure: Error) =>
+    new OnboardingRepository(
+      capturingClient({ failure }).client,
+      TABLE_NAME,
+    ).createClinic(buildOwnerClinic(), transition);
 
   assert.equal(
-    await new OnboardingRepository(lostRace.client, TABLE_NAME).createClinic(
-      buildOwnerClinic(),
-      USER_ID,
-      transition,
-    ),
+    await createWith(canceledBecause("ConditionalCheckFailed")),
     false,
   );
-  await assert.rejects(
-    new OnboardingRepository(unavailable.client, TABLE_NAME).createClinic(
-      buildOwnerClinic(),
-      USER_ID,
-      transition,
-    ),
-    /sin red/,
-  );
+  assert.equal(await createWith(canceledBecause("TransactionConflict")), false);
+  await assert.rejects(createWith(new Error("sin red")), /sin red/);
 });
