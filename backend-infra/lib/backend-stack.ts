@@ -19,6 +19,7 @@ import {
 import { CREATE_CLINIC_STEPS } from "./src/users/application/create-clinic.usecase";
 import { PERSONAL_DATA_STEPS } from "./src/users/application/save-personal-data.usecase";
 import { PLAN_STEPS } from "./src/users/application/save-plan.usecase";
+import { SAVE_SCHEDULE_STEPS } from "./src/users/application/save-schedule.usecase";
 import {
   type SignUpEmailTemplate,
   SignUpEmailTemplates,
@@ -81,6 +82,11 @@ const SAVE_PLAN_ACCESS: TableAccess = {
 
 const CREATE_CLINIC_ACCESS: TableAccess = {
   "dynamodb:PutItem": ["ORG#*", "CLINIC#*", "USER#*"],
+  "dynamodb:UpdateItem": ["USER#*"],
+};
+
+const SAVE_SCHEDULE_ACCESS: TableAccess = {
+  "dynamodb:PutItem": ["USER#*"],
   "dynamodb:UpdateItem": ["USER#*"],
 };
 
@@ -279,6 +285,13 @@ export class BackendStack extends Stack {
       { TABLE_NAME: database.table.tableName },
     );
 
+    const saveScheduleFunction = this.usersFunction(
+      "SaveScheduleFunction",
+      "save-schedule",
+      "Saves or skips the owner's weekly schedule and finishes the onboarding.",
+      { TABLE_NAME: database.table.tableName },
+    );
+
     const signUpResource =
       apiGateway.api.root.resourceForPath("api/auth/sign-up");
     const signUpCodeResource = signUpResource.addResource("code");
@@ -346,6 +359,15 @@ export class BackendStack extends Stack {
       createClinicFunction,
       { onboardingStep: CREATE_CLINIC_STEPS },
       CREATE_CLINIC_ACCESS,
+    );
+    this.addPrivateRoute(
+      apiGateway,
+      database.table,
+      "api/onboarding/schedule",
+      "PUT",
+      saveScheduleFunction,
+      { onboardingStep: SAVE_SCHEDULE_STEPS },
+      SAVE_SCHEDULE_ACCESS,
     );
     apiGateway.api.root
       .addResource("health")

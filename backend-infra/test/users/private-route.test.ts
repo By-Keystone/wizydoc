@@ -103,7 +103,9 @@ test("la Lambda toma el sub sólo de los claims del autorizador", async () => {
   const response = await call(spoofed);
 
   assert.equal(response.statusCode, 200);
-  assert.deepEqual(authorized, [{ kind: "authorized", user: buildUser() }]);
+  assert.deepEqual(authorized, [
+    { kind: "authorized", user: buildUser(), memberships: [] },
+  ]);
 
   let reads = 0;
   const read = users.findByCognitoSubWithMemberships.bind(users);
@@ -234,6 +236,7 @@ test("una ruta que exige ser miembro entrega la membership a la ruta", async () 
     {
       kind: "authorized",
       user: buildUser(),
+      memberships: [membership],
       membership,
       directMembership: membership,
     },
@@ -296,6 +299,7 @@ test("el rol en la organización se hereda en sus sedes", async () => {
     {
       kind: "authorized",
       user: buildUser(),
+      memberships: [organizationMembership({ role: "ADMIN" })],
       membership: clinicMembership({ role: "ADMIN" }),
       directMembership: undefined,
     },
@@ -344,6 +348,10 @@ test("si el rol directo en la sede no alcanza, se usa el de la organización", a
     {
       kind: "authorized",
       user: buildUser(),
+      memberships: [
+        clinicMembership({ role: "USER" }),
+        organizationMembership({ role: "ADMIN" }),
+      ],
       membership: clinicMembership({ role: "ADMIN" }),
       directMembership: clinicMembership({ role: "USER" }),
     },
@@ -391,6 +399,7 @@ test("el rol en la organización se hereda en sus sedes: en una sede gana el rol
     {
       kind: "authorized",
       user: buildUser(),
+      memberships: [direct, organizationMembership({ role: "ADMIN" })],
       membership: clinicMembership({ role: "ADMIN" }),
       directMembership: direct,
     },
@@ -406,6 +415,7 @@ test("el rol en la organización se hereda en sus sedes: en una sede gana el rol
     {
       kind: "authorized",
       user: buildUser(),
+      memberships: [directAdmin, organizationMembership({ role: "DOCTOR" })],
       membership: directAdmin,
       directMembership: directAdmin,
     },
