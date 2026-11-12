@@ -153,7 +153,7 @@ test("cada Lambda sólo tiene los permisos que usa", () => {
   });
   assert.deepEqual(accessByAction(template, "ConfirmSignUpFunction"), {
     "dynamodb:GetItem": ["SIGN_UP_VERIFICATION#*"],
-    "dynamodb:PutItem": ["USER#*"],
+    "dynamodb:PutItem": ["USER#*", "ACCOUNT#*"],
     "dynamodb:DeleteItem": ["SIGN_UP_VERIFICATION#*"],
   });
   assert.deepEqual(accessByAction(template, "VerifySignUpCodeFunction"), {
