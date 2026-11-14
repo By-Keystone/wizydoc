@@ -29,7 +29,10 @@ import {
 } from "../../lib/src/users/domain/sign-up-code.entity";
 import type { SignUpVerificationToken } from "../../lib/src/users/domain/sign-up-verification-token.entity";
 import type { PrivateApiGatewayEvent } from "../../lib/src/shared/http/api-gateway";
-import type { Membership } from "../../lib/src/users/domain/membership.entity";
+import type {
+  Membership,
+  NewMembership,
+} from "../../lib/src/users/domain/membership.entity";
 import type { IAccountRepository } from "../../lib/src/users/domain/repository/account.repository";
 import type {
   IOnboardingRepository,
@@ -166,8 +169,9 @@ export class InMemoryOnboarding implements IOnboardingRepository {
   readonly subscriptions: Subscription[] = [];
   readonly organizations: Organization[] = [];
   readonly clinics: Clinic[] = [];
+  readonly memberships: NewMembership[] = [];
   failOnWrite = false;
-  beforeWrite?: () => void;
+  beforeWrite?: () => void | Promise<void>;
 
   constructor(private readonly users: InMemoryUsers) {}
 
@@ -213,12 +217,13 @@ export class InMemoryOnboarding implements IOnboardingRepository {
     transition: Required<OnboardingStepTransition>,
   ): Promise<boolean> {
     if (this.failOnWrite) throw new Error("DynamoDB no disponible");
-    this.beforeWrite?.();
+    await this.beforeWrite?.();
     this.transitions.push(transition);
     const user = this.users.users.find(({ id }) => id === ownerUserId);
     if (!user || !transition.from.includes(user.onboardingStep)) return false;
     this.organizations.push(organization);
     this.clinics.push(clinic);
+    this.memberships.push(...memberships);
     this.users.memberships.set(user.id, [
       ...(this.users.memberships.get(user.id) ?? []),
       ...memberships,

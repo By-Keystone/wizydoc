@@ -68,7 +68,7 @@ const routePaths = (template: Template) =>
     .map(({ Properties }) => resourcePath(template, Properties.ResourceId.Ref))
     .sort();
 
-test("las tres rutas de la sesión son POST y exigen la clave de platform", () => {
+test("las rutas POST son las de la sesión y «Tu consultorio», y exigen la clave de platform", () => {
   const template = synthesizeBackend();
 
   const postMethods = Object.values(
@@ -84,6 +84,7 @@ test("las tres rutas de la sesión son POST y exigen la clave de platform", () =
     "/api/auth/sign-up/code/verify",
     "/api/auth/sign-up/confirm",
     "/api/auth/token/refresh",
+    "/api/onboarding/clinic",
   ]);
   const lambdaByPath: Record<string, string> = {
     "/api/auth/sign-in": "SignInFunction",
@@ -92,6 +93,7 @@ test("las tres rutas de la sesión son POST y exigen la clave de platform", () =
     "/api/auth/sign-up/code/verify": "VerifySignUpCodeFunction",
     "/api/auth/sign-up/confirm": "ConfirmSignUpFunction",
     "/api/auth/token/refresh": "RefreshSessionFunction",
+    "/api/onboarding/clinic": "CreateClinicFunction",
   };
   for (const { Properties } of postMethods) {
     const functionName =
@@ -230,6 +232,22 @@ test("cada Lambda sólo tiene los permisos que usa", () => {
     "ses:",
   ]) {
     assert.equal(savePlanStatements.includes(forbidden), false, forbidden);
+  }
+  assert.deepEqual(accessByAction(template, "CreateClinicFunction"), {
+    "dynamodb:PutItem": ["ORG#*", "CLINIC#*", "USER#*"],
+    "dynamodb:UpdateItem": ["USER#*"],
+    "dynamodb:Query": ["USER#*"],
+  });
+  const createClinicStatements = policyFor(template, "CreateClinicFunction");
+  for (const forbidden of [
+    "DeleteItem",
+    "GetItem",
+    "ACCOUNT#*",
+    "/index/GSI1",
+    "cognito-idp:",
+    "ses:",
+  ]) {
+    assert.equal(createClinicStatements.includes(forbidden), false, forbidden);
   }
   assert.deepEqual(accessByAction(template, "RefreshSessionFunction"), {});
   assert.deepEqual(accessByAction(template, "SignOutFunction"), {});
@@ -457,6 +475,7 @@ test("las Lambdas de los usuarios tienen 15 segundos, 512 MB y logs que se conse
     "MeFunction",
     "SavePersonalDataFunction",
     "SavePlanFunction",
+    "CreateClinicFunction",
   ]) {
     const properties = functionProperties(template, functionName);
     assert.equal(properties.Timeout, 15, functionName);
@@ -668,6 +687,12 @@ const ONBOARDING_ROUTES = [
     path: "/api/onboarding/plan",
     functionName: "SavePlanFunction",
     policy: { onboardingStep: ["PLAN", "CLINIC"] },
+  },
+  {
+    method: "POST",
+    path: "/api/onboarding/clinic",
+    functionName: "CreateClinicFunction",
+    policy: { onboardingStep: ["CLINIC"] },
   },
 ];
 
