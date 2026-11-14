@@ -9,6 +9,7 @@ import type {
   DynamoDBDocumentClient,
   GetCommandInput,
   PutCommandInput,
+  QueryCommandInput,
   TransactWriteCommandInput,
   UpdateCommandInput,
 } from "@aws-sdk/lib-dynamodb";
@@ -802,15 +803,26 @@ test("un ítem de otro tipo en la partición no se mapea como membership", async
   assert.deepEqual(session?.memberships, []);
 });
 
-test("una partición de más de una página lanza un error", async () => {
-  await assert.rejects(
-    findSession(
-      ...sessionResponses({
-        Items: [userItem],
-        LastEvaluatedKey: { PK: `USER#${USER_ID}`, SK: "!" },
-      }),
-    ).found,
-    { message: /no cabe/ },
+test("una partición de más de una página se lee completa, página por página", async () => {
+  const lastEvaluatedKey = { PK: `USER#${USER_ID}`, SK: "!" };
+  const { found, inputs } = findSession(
+    ...sessionResponses({
+      Items: [userItem],
+      LastEvaluatedKey: lastEvaluatedKey,
+    }),
+    { Items: [membershipItem] },
+  );
+
+  const session = await found;
+
+  assert.equal(session?.user.id, USER_ID);
+  assert.equal(session?.memberships.length, 1);
+  const [, firstPage, secondPage] = inputs as QueryCommandInput[];
+  assert.equal(firstPage.ExclusiveStartKey, undefined);
+  assert.deepEqual(secondPage.ExclusiveStartKey, lastEvaluatedKey);
+  assert.equal(
+    secondPage.KeyConditionExpression,
+    firstPage.KeyConditionExpression,
   );
 });
 
