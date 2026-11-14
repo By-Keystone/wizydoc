@@ -15,7 +15,10 @@ import type { EmailVO } from "../../../domain/value-objects/email.vo";
 import { fromAccountToDynamo } from "./account.mappers";
 import { isLostRace } from "./lost-race";
 import { fromDynamoToMembership } from "./membership.mappers";
-import { MEMBERSHIP_ITEM_TYPE } from "./membership.schema";
+import {
+  MEMBERSHIP_ITEM_TYPE,
+  type MembershipDynamoDBSchema,
+} from "./membership.schema";
 import {
   signUpVerificationTokenPk,
   signUpVerificationTokenSk,
@@ -27,7 +30,7 @@ import {
   gsi2pk,
   pk,
   USER_ITEM_TYPE,
-  userIdSchema,
+  type UsersDynamoDBSchema,
 } from "./user.schema";
 
 const ONLY_IF_NEW = "attribute_not_exists(PK)";
@@ -46,6 +49,22 @@ const PARTITION_READ_ATTRIBUTES = [
   "ResourceType",
   "Role",
 ];
+
+type SessionPartitionItem =
+  | Pick<
+      UsersDynamoDBSchema,
+      | "ItemType"
+      | "Id"
+      | "Email"
+      | "Confirmed"
+      | "AccountId"
+      | "OnboardingStep"
+      | "CognitoSub"
+    >
+  | Pick<
+      MembershipDynamoDBSchema,
+      "ItemType" | "ResourceId" | "ResourceType" | "AccountId" | "Role"
+    >;
 
 export class UserRepository implements IUserRepository {
   constructor(
@@ -150,7 +169,7 @@ export class UserRepository implements IUserRepository {
     const userId = await this.findUserIdByCognitoSub(cognitoSub);
     if (!userId) return undefined;
 
-    const { Items = [], LastEvaluatedKey } = await this.client.send(
+    const { Items, LastEvaluatedKey } = await this.client.send(
       new QueryCommand({
         TableName: this.tableName,
         KeyConditionExpression: "#PK = :pk",
@@ -173,14 +192,15 @@ export class UserRepository implements IUserRepository {
     if (LastEvaluatedKey)
       throw new Error("La partición del usuario no cabe en una sola lectura");
 
-    const userItem = Items.find((item) => item.ItemType === USER_ITEM_TYPE);
+    const partition = (Items ?? []) as SessionPartitionItem[];
+    const userItem = partition.find((item) => item.ItemType === USER_ITEM_TYPE);
     if (!userItem || userItem.CognitoSub !== cognitoSub) return undefined;
 
     return {
       user: fromDynamoToDomain(userItem),
-      memberships: Items.filter(
-        (item) => item.ItemType === MEMBERSHIP_ITEM_TYPE,
-      ).map(fromDynamoToMembership),
+      memberships: partition
+        .filter((item) => item.ItemType === MEMBERSHIP_ITEM_TYPE)
+        .map(fromDynamoToMembership),
     };
   }
 
@@ -203,12 +223,12 @@ export class UserRepository implements IUserRepository {
       }),
     );
 
-    const userItems = (Items ?? []).filter(
-      (item) => item.ItemType === USER_ITEM_TYPE,
-    );
+    const userItems = (
+      (Items ?? []) as Pick<UsersDynamoDBSchema, "ItemType" | "Id">[]
+    ).filter((item) => item.ItemType === USER_ITEM_TYPE);
     if (userItems.length > 1) {
       throw new Error("Hay más de un usuario con el mismo sub");
     }
-    return userItems.length ? userIdSchema.parse(userItems[0].Id) : undefined;
+    return userItems[0]?.Id;
   }
 }

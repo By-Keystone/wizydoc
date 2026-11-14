@@ -800,31 +800,7 @@ test("un ítem de otro tipo en la partición no se mapea como membership", async
   assert.deepEqual(session?.memberships, []);
 });
 
-test("un usuario sin AccountId u OnboardingStep válidos lanza un error, y una partición de más de una página también", async () => {
-  const { AccountId: _accountId, ...withoutAccount } = userItem;
-  const invalidItems = [
-    withoutAccount,
-    { ...userItem, OnboardingStep: "OTRO" },
-    { ...userItem, Email: "no es un correo" },
-  ];
-
-  const invalidMemberships = [
-    { ...membershipItem, Role: "OWNER" },
-    { ...membershipItem, ResourceType: "PATIENT" },
-  ];
-
-  for (const invalid of invalidItems) {
-    await assert.rejects(
-      findSession(...sessionResponses({ Items: [invalid] })).found,
-      { name: "ZodError" },
-    );
-  }
-  for (const invalid of invalidMemberships) {
-    await assert.rejects(
-      findSession(...sessionResponses({ Items: [userItem, invalid] })).found,
-      { name: "ZodError" },
-    );
-  }
+test("una partición de más de una página lanza un error", async () => {
   await assert.rejects(
     findSession(
       ...sessionResponses({
@@ -836,7 +812,7 @@ test("un usuario sin AccountId u OnboardingStep válidos lanza un error, y una p
   );
 });
 
-test("dos usuarios con el mismo sub en GSI2 lanzan un error sin valores, y un Id que no es ULID también", async () => {
+test("dos usuarios con el mismo sub en GSI2 lanzan un error sin valores", async () => {
   await assert.rejects(
     findSession({
       Items: [
@@ -845,10 +821,6 @@ test("dos usuarios con el mismo sub en GSI2 lanzan un error sin valores, y un Id
       ],
     }).found,
     { message: "Hay más de un usuario con el mismo sub" },
-  );
-  await assert.rejects(
-    findSession({ Items: [{ ItemType: "USER", Id: "" }] }).found,
-    { name: "ZodError" },
   );
 });
 

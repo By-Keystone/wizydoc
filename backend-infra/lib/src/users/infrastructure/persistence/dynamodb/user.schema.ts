@@ -1,10 +1,6 @@
 import type { ULID } from "ulid";
-import { z } from "zod";
-import {
-  ONBOARDING_STEPS,
-  type OnboardingStep,
-} from "../../../domain/user.entity";
-import { emailSchema } from "../../../domain/value-objects/email.vo";
+import type { OnboardingStep } from "../../../domain/user.entity";
+import type { EmailVO } from "../../../domain/value-objects/email.vo";
 
 type PKPrefix = "USER#";
 type PK = `${PKPrefix}${string}`;
@@ -32,23 +28,12 @@ export interface UsersDynamoDBSchema {
   GSI2PK?: GSI2PK;
   GSI2SK?: GSI2SK;
   Id: ULID;
-  Email: string;
+  Email: EmailVO;
   Confirmed: boolean;
   AccountId: ULID;
   OnboardingStep: OnboardingStep;
   CognitoSub?: string;
 }
-
-export const userIdSchema = z.ulid();
-
-export const userItemSchema = z.object({
-  Id: userIdSchema,
-  Email: emailSchema,
-  Confirmed: z.boolean(),
-  AccountId: z.ulid(),
-  OnboardingStep: z.enum(ONBOARDING_STEPS),
-  CognitoSub: z.string().min(1).optional(),
-});
 
 export const pk = (id: string): PK => `USER#${id}`;
 export const sk = (): SK => "!";
