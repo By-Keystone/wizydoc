@@ -6,21 +6,24 @@ import { clinicPk } from "./clinic.schema";
 import {
   MEMBERSHIP_ITEM_TYPE,
   type MembershipDynamoDBSchema,
-  membershipItemSchema,
 } from "./membership.schema";
 import { organizationPk } from "./organization.schema";
 import { pk } from "./user.schema";
 
-export const fromDynamoToMembership = (item: unknown): Membership => {
-  const { ResourceId, ResourceType, AccountId, Role } =
-    membershipItemSchema.parse(item);
-  return {
-    resourceId: ResourceId,
-    resourceType: ResourceType,
-    accountId: AccountId,
-    role: Role,
-  };
-};
+export const fromDynamoToMembership = ({
+  ResourceId,
+  ResourceType,
+  AccountId,
+  Role,
+}: Pick<
+  MembershipDynamoDBSchema,
+  "ResourceId" | "ResourceType" | "AccountId" | "Role"
+>): Membership => ({
+  resourceId: ResourceId,
+  resourceType: ResourceType,
+  accountId: AccountId,
+  role: Role,
+});
 
 export const fromMembershipToDynamo = ({
   userId,

@@ -69,8 +69,8 @@ Producción (`backend-infra/`):
 - `lib/src/users/domain/user.entity.ts`: `PersonalData`; `User` gana sus cuatro
   campos, opcionales.
 - `lib/src/users/infrastructure/persistence/dynamodb/user.schema.ts`:
-  `GivenName`, `FamilyName`, `Phone` y `Treatment` en el ítem y en
-  `userItemSchema`.
+  `GivenName`, `FamilyName`, `Phone` y `Treatment` en el ítem, con sus value
+  objects.
 - `lib/src/users/infrastructure/persistence/dynamodb/user.mappers.ts`:
   `fromDynamoToDomain` los mapea.
 - `lib/src/users/infrastructure/persistence/dynamodb/user.repository.ts`: los
@@ -134,11 +134,10 @@ Producción:
   `createOwnerClinic`.
 - `lib/src/users/domain/membership.entity.ts`: `NewMembership`.
 - `lib/src/users/infrastructure/persistence/dynamodb/organization.schema.ts`,
-  `organization.mappers.ts`, `clinic.mappers.ts` (nuevo). `clinic.schema.ts` gana el ítem completo, y la
-  lectura de la policy sigue validando sólo `OrganizationId`.
-- `lib/src/users/infrastructure/persistence/dynamodb/membership.schema.ts` y
-  `membership.mappers.ts`: el ítem completo y `fromMembershipToDynamo`, junto a
-  la lectura que ya existe.
+  `organization.mappers.ts` y `clinic.mappers.ts` (nuevos). `ClinicDynamoDBSchema`
+  y `MembershipDynamoDBSchema` ya existen desde la sesión.
+- `lib/src/users/infrastructure/persistence/dynamodb/membership.mappers.ts`:
+  `fromMembershipToDynamo`, junto a la lectura que ya existe.
 - `lib/src/users/domain/repository/onboarding.repository.ts` y
   `infrastructure/persistence/dynamodb/onboarding.repository.ts`: `createClinic`.
 
@@ -299,10 +298,9 @@ cualquier otro error sube y responde 500.
   PhoneVO; treatment: TreatmentVO | null }`. `User` gana sus cuatro campos como
   opcionales (`Partial<PersonalData>`): no existen hasta «Tus datos».
 - **La lectura de la policy los trae:** `PARTITION_READ_ATTRIBUTES` suma
-  `GivenName`, `FamilyName`, `Phone` y `Treatment`, y `userItemSchema` los lee
-  opcionales con sus value objects, que son idempotentes, como ya hace `Email`:
-  un celular con `+51` vuelve a dar el mismo. Así `/api/me` no necesita otra
-  lectura. Cada ruta privada tiene esos datos en memoria, y ninguna los registra.
+  `GivenName`, `FamilyName`, `Phone` y `Treatment`, y `fromDynamoToDomain` los
+  mapea opcionales con el tipo del ítem, sin validarlos: lo que se guarda ya
+  pasó por sus value objects. Así `/api/me` no necesita otra lectura. Cada ruta privada tiene esos datos en memoria, y ninguna los registra.
 - **`/api/me`** responde `user.givenName ?? null` y lo mismo con los otros tres.
 
 **El cliente de Cognito** (parte 1): `writableAttributes` queda sólo con
@@ -333,8 +331,8 @@ personalData): Promise<OnboardingStep>`.
 
 **La escritura** (parte 2): un `UpdateCommand` con `userStepUpdate` y `SET
 #GivenName, #FamilyName, #Phone, #Treatment`, más `ReturnValues: "ALL_NEW"`.
-Devuelve el `OnboardingStep` de `Attributes`, validado con
-`z.enum(ONBOARDING_STEPS)`.
+Devuelve el `OnboardingStep` de `Attributes`, tipado con
+`Pick<UsersDynamoDBSchema, "OnboardingStep">`.
 - **`ALL_NEW`** hace que el paso de la respuesta sea el de después de guardar,
   aunque «Tu plan» lo haya movido al mismo tiempo. No gasta lectura.
 - **Sin tratamiento se guarda `Treatment: null`,** que se lee como `null`. Así una
@@ -838,9 +836,9 @@ Lo comprueban los pedidos a staging de «Verificación».
   ningún tipo leído cae después.
 - **IAM no separa los ítems de una misma partición** (ver «Lo que IAM no puede
   separar»).
-- **Endurecer un value object exige migrar antes los ítems guardados.** La
-  lectura de la policy los valida con el mismo esquema: si un usuario tiene un
-  dato que el esquema nuevo rechaza, recibe 500 en toda ruta privada.
+- **Endurecer un value object no cambia los ítems guardados.** Lo leído no se
+  valida, así que un dato guardado con las reglas anteriores se sigue leyendo
+  tal cual. Si hace falta, se migra aparte.
 - **`GSI1` y `GSI2` proyectan todos los atributos,** así que desde la parte 2 el
   nombre y el celular también quedan en los índices, y las Lambdas públicas los
   consultan sin límite de atributos. Hoy sólo piden `ItemType`, `Id` y

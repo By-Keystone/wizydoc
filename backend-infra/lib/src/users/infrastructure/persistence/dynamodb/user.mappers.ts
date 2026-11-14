@@ -8,7 +8,6 @@ import {
   sk,
   USER_ITEM_TYPE,
   type UsersDynamoDBSchema,
-  userItemSchema,
 } from "./user.schema";
 
 export const fromDomainToDynamo = (user: User): UsersDynamoDBSchema => {
@@ -34,29 +33,38 @@ export const fromDomainToDynamo = (user: User): UsersDynamoDBSchema => {
   };
 };
 
-export const fromDynamoToDomain = (item: unknown): User => {
-  const {
-    Id,
-    Email,
-    Confirmed,
-    AccountId,
-    OnboardingStep,
-    CognitoSub,
-    GivenName,
-    FamilyName,
-    Phone,
-    Treatment,
-  } = userItemSchema.parse(item);
-  return {
-    id: Id,
-    email: Email,
-    confirmed: Confirmed,
-    accountId: AccountId,
-    onboardingStep: OnboardingStep,
-    cognitoSub: CognitoSub,
-    givenName: GivenName,
-    familyName: FamilyName,
-    phone: Phone,
-    treatment: Treatment,
-  };
-};
+export const fromDynamoToDomain = ({
+  Id,
+  Email,
+  Confirmed,
+  AccountId,
+  OnboardingStep,
+  CognitoSub,
+  GivenName,
+  FamilyName,
+  Phone,
+  Treatment,
+}: Pick<
+  UsersDynamoDBSchema,
+  | "Id"
+  | "Email"
+  | "Confirmed"
+  | "AccountId"
+  | "OnboardingStep"
+  | "CognitoSub"
+  | "GivenName"
+  | "FamilyName"
+  | "Phone"
+  | "Treatment"
+>): User => ({
+  id: Id,
+  email: Email,
+  confirmed: Confirmed,
+  accountId: AccountId,
+  onboardingStep: OnboardingStep,
+  cognitoSub: CognitoSub,
+  givenName: GivenName,
+  familyName: FamilyName,
+  phone: Phone,
+  treatment: Treatment,
+});

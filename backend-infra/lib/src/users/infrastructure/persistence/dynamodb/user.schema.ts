@@ -1,19 +1,9 @@
 import type { ULID } from "ulid";
-import { z } from "zod";
-import {
-  ONBOARDING_STEPS,
-  type OnboardingStep,
-} from "../../../domain/user.entity";
-import { emailSchema } from "../../../domain/value-objects/email.vo";
-import {
-  familyNameSchema,
-  givenNameSchema,
-} from "../../../domain/value-objects/person-name.vo";
-import { phoneSchema } from "../../../domain/value-objects/phone.vo";
-import {
-  type TreatmentVO,
-  treatmentSchema,
-} from "../../../domain/value-objects/treatment.vo";
+import type { OnboardingStep } from "../../../domain/user.entity";
+import type { EmailVO } from "../../../domain/value-objects/email.vo";
+import type { PersonNameVO } from "../../../domain/value-objects/person-name.vo";
+import type { PhoneVO } from "../../../domain/value-objects/phone.vo";
+import type { TreatmentVO } from "../../../domain/value-objects/treatment.vo";
 
 type PKPrefix = "USER#";
 type PK = `${PKPrefix}${string}`;
@@ -41,32 +31,17 @@ export interface UsersDynamoDBSchema {
   GSI2PK?: GSI2PK;
   GSI2SK?: GSI2SK;
   Id: ULID;
-  Email: string;
+  Email: EmailVO;
   Confirmed: boolean;
   AccountId: ULID;
   OnboardingStep: OnboardingStep;
   CognitoSub?: string;
-  GivenName?: string;
-  FamilyName?: string;
-  Phone?: string;
+  GivenName?: PersonNameVO;
+  FamilyName?: PersonNameVO;
+  Phone?: PhoneVO;
   Treatment?: TreatmentVO | null;
   OnboardingCompletedAt?: string;
 }
-
-export const userIdSchema = z.ulid();
-
-export const userItemSchema = z.object({
-  Id: userIdSchema,
-  Email: emailSchema,
-  Confirmed: z.boolean(),
-  AccountId: z.ulid(),
-  OnboardingStep: z.enum(ONBOARDING_STEPS),
-  CognitoSub: z.string().min(1).optional(),
-  GivenName: givenNameSchema.optional(),
-  FamilyName: familyNameSchema.optional(),
-  Phone: phoneSchema.optional(),
-  Treatment: treatmentSchema.nullable().optional(),
-});
 
 export const pk = (id: string): PK => `USER#${id}`;
 export const sk = (): SK => "!";
