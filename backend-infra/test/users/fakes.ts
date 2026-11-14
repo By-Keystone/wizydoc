@@ -24,7 +24,9 @@ import {
   type SignUpCode,
 } from "../../lib/src/users/domain/sign-up-code.entity";
 import type { SignUpVerificationToken } from "../../lib/src/users/domain/sign-up-verification-token.entity";
+import type { PrivateApiGatewayEvent } from "../../lib/src/shared/http/api-gateway";
 import type { Membership } from "../../lib/src/users/domain/membership.entity";
+import type { IClinicRepository } from "../../lib/src/users/domain/repository/clinic.repository";
 import type {
   IUserRepository,
   UserWithMemberships,
@@ -139,6 +141,31 @@ export class InMemoryUsers implements IUserRepository {
     return { user, memberships: this.memberships.get(user.id) ?? [] };
   }
 }
+
+export class InMemoryClinics implements IClinicRepository {
+  readonly organizationIds = new Map<string, string>();
+  reads = 0;
+
+  async findOrganizationId(clinicId: string): Promise<string | undefined> {
+    this.reads += 1;
+    return this.organizationIds.get(clinicId);
+  }
+}
+
+export const privateEvent = ({
+  sub = COGNITO_SUB,
+  resourceId,
+  ...overrides
+}: {
+  sub?: unknown;
+  resourceId?: string;
+} & Partial<PrivateApiGatewayEvent> = {}): PrivateApiGatewayEvent => ({
+  body: null,
+  headers: {},
+  pathParameters: resourceId ? { resourceId } : null,
+  requestContext: { authorizer: { claims: { sub } } },
+  ...overrides,
+});
 
 export class FakeClock {
   readonly waits: number[] = [];
