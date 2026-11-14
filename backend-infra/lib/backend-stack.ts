@@ -16,6 +16,7 @@ import {
   ANY_ONBOARDING_STEP,
   type RoutePolicy,
 } from "./src/users/application/authorize-request.usecase";
+import { PERSONAL_DATA_STEPS } from "./src/users/application/save-personal-data.usecase";
 import {
   type SignUpEmailTemplate,
   SignUpEmailTemplates,
@@ -67,6 +68,9 @@ const VERIFY_SIGN_UP_CODE_ACCESS: TableAccess = {
 const SESSION_USER_PREFIXES = ["USER#*"];
 const CLINIC_PREFIXES = ["CLINIC#*"];
 const ME_ACCESS: TableAccess = { "dynamodb:GetItem": ["ACCOUNT#*"] };
+const SAVE_PERSONAL_DATA_ACCESS: TableAccess = {
+  "dynamodb:UpdateItem": ["USER#*"],
+};
 
 export interface BackendStackProps extends StackProps {
   hostedZoneId: string;
@@ -242,6 +246,13 @@ export class BackendStack extends Stack {
       { TABLE_NAME: database.table.tableName },
     );
 
+    const savePersonalDataFunction = this.usersFunction(
+      "SavePersonalDataFunction",
+      "save-personal-data",
+      "Saves the name, surname, phone and treatment of the signed-in user.",
+      { TABLE_NAME: database.table.tableName },
+    );
+
     const signUpResource =
       apiGateway.api.root.resourceForPath("api/auth/sign-up");
     const signUpCodeResource = signUpResource.addResource("code");
@@ -282,6 +293,15 @@ export class BackendStack extends Stack {
       meFunction,
       { confirmed: false, onboardingStep: ANY_ONBOARDING_STEP },
       ME_ACCESS,
+    );
+    this.addPrivateRoute(
+      apiGateway,
+      database.table,
+      "api/onboarding/personal-data",
+      "PUT",
+      savePersonalDataFunction,
+      { onboardingStep: PERSONAL_DATA_STEPS },
+      SAVE_PERSONAL_DATA_ACCESS,
     );
     apiGateway.api.root
       .addResource("health")

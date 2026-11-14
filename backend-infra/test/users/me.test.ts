@@ -1,12 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { App } from "aws-cdk-lib";
-import { Template } from "aws-cdk-lib/assertions";
-import { BackendStack } from "../../lib/backend-stack";
-import {
-  AuthorizeRequestUseCase,
-  type RoutePolicy,
-} from "../../lib/src/users/application/authorize-request.usecase";
+import { AuthorizeRequestUseCase } from "../../lib/src/users/application/authorize-request.usecase";
 import { GetMeUseCase } from "../../lib/src/users/application/get-me.usecase";
 import {
   familyNameSchema,
@@ -22,33 +16,12 @@ import {
   InMemoryClinics,
   InMemoryUsers,
   privateEvent,
+  readDeclaredPolicy,
 } from "./fakes";
 
 const OWNER_USER_ID = "01M6MSQWFCK15Q3X04AQEQ0SFY";
 
-const readDeclaredPolicy = (): RoutePolicy => {
-  const stack = new BackendStack(
-    new App({ context: { "aws:cdk:bundling-stacks": [] } }),
-    "MePolicyTest",
-    {
-      env: { account: "111111111111", region: "us-east-2" },
-      hostedZoneId: "Z0000000000000000000",
-      zoneName: "wizydoc.app",
-      apiDomainName: "api.wizydoc.app",
-      frontendUrl: "https://app.wizydoc.app",
-      emailFrom: "WizyDoc <no-reply@wizydoc.app>",
-      termsAcceptanceRequired: false,
-    },
-  );
-  const [meFunction] = Object.entries(
-    Template.fromStack(stack).findResources("AWS::Lambda::Function"),
-  )
-    .filter(([logicalId]) => logicalId.startsWith("MeFunction"))
-    .map(([, resource]) => resource);
-  return JSON.parse(meFunction.Properties.Environment.Variables.ROUTE_POLICY);
-};
-
-const declaredPolicy = readDeclaredPolicy();
+const declaredPolicy = readDeclaredPolicy("MeFunction");
 
 const meFlow = ({
   user = buildUser({ onboardingStep: "PERSONAL_DATA" }),
