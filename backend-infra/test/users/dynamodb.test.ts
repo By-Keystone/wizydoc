@@ -20,6 +20,8 @@ import {
 import { createSignUpVerificationToken } from "../../lib/src/users/domain/sign-up-verification-token.entity";
 import { createSignUpCode } from "../../lib/src/users/domain/sign-up-code.entity";
 import { createTermsAcceptance } from "../../lib/src/users/domain/terms-acceptance.entity";
+import { createAccount } from "../../lib/src/users/domain/account.entity";
+import { createUser } from "../../lib/src/users/domain/user.entity";
 import { DynamoDBAccountExistsNotices } from "../../lib/src/users/infrastructure/persistence/dynamodb/account-exists-notices";
 import {
   DynamoDBIpRateLimit,
@@ -55,6 +57,16 @@ const capturingClient = ({
     },
   } as unknown as DynamoDBDocumentClient;
   return { client, inputs };
+};
+
+const buildOwnerWithAccount = () => {
+  const newAccount = createAccount();
+  const user = createUser({
+    email: buildUser().email,
+    cognitoSub: COGNITO_SUB,
+    accountId: newAccount.id,
+  });
+  return { user, account: { ...newAccount, ownerUserId: user.id } };
 };
 
 test("existsByEmail consulta el índice del correo con una proyección mínima y revisa el tipo, sin leer el usuario entero", async () => {
@@ -438,9 +450,9 @@ test("el límite de verificaciones usa su propio prefijo y su máximo de 10, apa
   });
 });
 
-test("crear la cuenta confirmada guarda el usuario y su constancia y gasta el token en una transacción, con el token sólo si es del correo y no venció", async () => {
+test("crear la cuenta confirmada guarda el usuario, su cuenta y su constancia y gasta el token en una sola transacción, con el token sólo si es del correo y no venció", async () => {
   const { client, inputs } = capturingClient();
-  const user = buildUser({ confirmed: true, onboardingCompleted: false });
+  const { user, account } = buildOwnerWithAccount();
   const acceptedAt = new Date(TEN_PAST_NOON);
   const termsAcceptance = createTermsAcceptance(
     {
@@ -458,17 +470,31 @@ test("crear la cuenta confirmada guarda el usuario y su constancia y gasta el to
     () => TEN_PAST_NOON,
   ).createConfirmed(
     user,
+    account,
     { email: user.email, tokenHash: "hash-del-token" },
     termsAcceptance,
   );
 
   const [transaction] = inputs as TransactWriteCommandInput[];
-  const [userPut, termsPut, tokenDelete] = transaction.TransactItems ?? [];
+  const [userPut, accountPut, termsPut, tokenDelete] =
+    transaction.TransactItems ?? [];
   assert.equal(wasCreated, true);
-  assert.equal(transaction.TransactItems?.length, 3);
+  assert.equal(inputs.length, 1);
+  assert.equal(transaction.TransactItems?.length, 4);
   assert.equal(userPut.Put?.Item?.PK, `USER#${user.id}`);
   assert.equal(userPut.Put?.Item?.Confirmed, true);
+  assert.equal(userPut.Put?.Item?.AccountId, account.id);
+  assert.equal(userPut.Put?.Item?.OnboardingStep, "PERSONAL_DATA");
+  assert.equal("OnboardingCompleted" in (userPut.Put?.Item ?? {}), false);
   assert.equal(userPut.Put?.ConditionExpression, "attribute_not_exists(PK)");
+  assert.deepEqual(accountPut.Put?.Item, {
+    PK: `ACCOUNT#${account.id}`,
+    SK: "!",
+    ItemType: "ACCOUNT",
+    Id: account.id,
+    OwnerUserId: user.id,
+  });
+  assert.equal(accountPut.Put?.ConditionExpression, "attribute_not_exists(PK)");
   assert.deepEqual(termsPut.Put?.Item, {
     PK: `USER#${user.id}`,
     SK: `TERMS_ACCEPTANCE#${acceptedAt.toISOString()}`,
@@ -496,13 +522,40 @@ test("crear la cuenta confirmada guarda el usuario y su constancia y gasta el to
   });
 });
 
+test("el usuario nuevo ya no guarda OnboardingCompleted", async () => {
+  const { client, inputs } = capturingClient();
+  const { user, account } = buildOwnerWithAccount();
+
+  await new UserRepository(client, TABLE_NAME).createConfirmed(user, account, {
+    email: user.email,
+    tokenHash: "hash",
+  });
+
+  const [transaction] = inputs as TransactWriteCommandInput[];
+  assert.deepEqual(transaction.TransactItems?.[0].Put?.Item, {
+    PK: `USER#${user.id}`,
+    SK: "!",
+    ItemType: "USER",
+    GSI1PK: "USER_EMAIL#ana@clinica.pe",
+    GSI1SK: "!",
+    GSI2PK: `COGNITO#${COGNITO_SUB}`,
+    GSI2SK: "!",
+    Id: user.id,
+    Email: "ana@clinica.pe",
+    Confirmed: true,
+    AccountId: account.id,
+    OnboardingStep: "PERSONAL_DATA",
+    CognitoSub: COGNITO_SUB,
+  });
+});
+
 test("si otra confirmación gastó el token antes, la transacción cancelada informa que no se creó, y cualquier otro error sube", async () => {
-  const user = buildUser();
+  const { user, account } = buildOwnerWithAccount();
   const createWith = (failure: Error) =>
     new UserRepository(
       capturingClient({ failure }).client,
       TABLE_NAME,
-    ).createConfirmed(user, { email: user.email, tokenHash: "hash" });
+    ).createConfirmed(user, account, { email: user.email, tokenHash: "hash" });
 
   assert.equal(
     await createWith(
@@ -510,6 +563,7 @@ test("si otra confirmación gastó el token antes, la transacción cancelada inf
         message: "cancelada",
         $metadata: {},
         CancellationReasons: [
+          { Code: "None" },
           { Code: "None" },
           { Code: "ConditionalCheckFailed" },
         ],
