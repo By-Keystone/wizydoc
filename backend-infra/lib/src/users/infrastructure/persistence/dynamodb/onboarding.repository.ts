@@ -2,18 +2,13 @@ import {
   type DynamoDBDocumentClient,
   UpdateCommand,
 } from "@aws-sdk/lib-dynamodb";
-import { z } from "zod";
 import type {
   IOnboardingRepository,
   OnboardingStepTransition,
 } from "../../../domain/repository/onboarding.repository";
-import {
-  ONBOARDING_STEPS,
-  type OnboardingStep,
-  type PersonalData,
-} from "../../../domain/user.entity";
+import type { OnboardingStep, PersonalData } from "../../../domain/user.entity";
 import { isLostRace } from "./lost-race";
-import { pk, sk } from "./user.schema";
+import { pk, sk, type UsersDynamoDBSchema } from "./user.schema";
 
 export class OnboardingRepository implements IOnboardingRepository {
   constructor(
@@ -38,7 +33,8 @@ export class OnboardingRepository implements IOnboardingRepository {
           ReturnValues: "ALL_NEW",
         }),
       );
-      return z.enum(ONBOARDING_STEPS).parse(Attributes?.OnboardingStep);
+      return (Attributes as Pick<UsersDynamoDBSchema, "OnboardingStep">)
+        .OnboardingStep;
     } catch (error) {
       if (isLostRace(error)) return undefined;
       throw error;

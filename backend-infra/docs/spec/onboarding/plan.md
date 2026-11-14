@@ -331,8 +331,8 @@ personalData): Promise<OnboardingStep>`.
 
 **La escritura** (parte 2): un `UpdateCommand` con `userStepUpdate` y `SET
 #GivenName, #FamilyName, #Phone, #Treatment`, más `ReturnValues: "ALL_NEW"`.
-Devuelve el `OnboardingStep` de `Attributes`, validado con
-`z.enum(ONBOARDING_STEPS)`.
+Devuelve el `OnboardingStep` de `Attributes`, tipado con
+`Pick<UsersDynamoDBSchema, "OnboardingStep">`.
 - **`ALL_NEW`** hace que el paso de la respuesta sea el de después de guardar,
   aunque «Tu plan» lo haya movido al mismo tiempo. No gasta lectura.
 - **Sin tratamiento se guarda `Treatment: null`,** que se lee como `null`. Así una
