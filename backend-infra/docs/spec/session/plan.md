@@ -71,10 +71,10 @@ Producción:
   `CLINIC`) y `Membership`.
 - `lib/src/users/domain/repository/user.repository.ts`: `UserWithMemberships`
   y `findByCognitoSubWithMemberships`.
-- `lib/src/users/infrastructure/persistence/dynamodb/user.schema.ts`: el
-  esquema de lectura del usuario.
+- `lib/src/users/infrastructure/persistence/dynamodb/user.schema.ts`: `Email`
+  como `EmailVO`, que es lo que se guarda.
 - `lib/src/users/infrastructure/persistence/dynamodb/membership.schema.ts` y
-  `membership.mappers.ts` (nuevos): sólo la lectura.
+  `membership.mappers.ts` (nuevos): el tipo del ítem y su lectura.
 - `lib/src/users/infrastructure/persistence/dynamodb/user.mappers.ts`:
   `fromDynamoToDomain`.
 - `lib/src/users/infrastructure/persistence/dynamodb/user.repository.ts`:
@@ -173,10 +173,12 @@ DynamoDB, uno detrás del otro:
 - **Más de 1 MB en la partición** (`LastEvaluatedKey` presente) lanza un error
   sin valores (500) en lugar de devolver memberships incompletas. Con los ítems
   de hoy no puede pasar.
-- **Cada ítem se valida con Zod antes de mapear,** y se revisa `ItemType`, como
-  pide `AGENTS.md`. Un usuario sin `AccountId` u `OnboardingStep` válidos es un
-  error, no un usuario: responde 500 (ver «Riesgos aceptados del plan»). Un
-  `Email` se vuelve a pasar por `emailSchema`, que es idempotente.
+- **Cada ítem se tipa con el schema de su ítem y se revisa `ItemType`,** como
+  pide `AGENTS.md`. Los mappers reciben un `Pick` de `UsersDynamoDBSchema` o de
+  `MembershipDynamoDBSchema` con los atributos que proyecta la lectura, nunca
+  `unknown`. Lo leído no se valida con Zod: los ítems los escriben sólo
+  nuestras Lambdas, con esos mismos tipos (decidido por el humano el 14 de
+  noviembre de 2026).
 - **`isConfirmed` no cambia.** Lo sigue usando el inicio de sesión.
 
 ### La policy (parte 3)
@@ -704,9 +706,10 @@ Lo comprueban los pedidos a staging de «Verificación».
 
 ## Riesgos aceptados del plan
 
-- **Los usuarios de staging creados antes de la parte 1 reciben 500** en toda
-  ruta privada: no tienen `AccountId` ni `OnboardingStep`. Son cuentas de
-  prueba; quien pruebe crea una nueva. En producción no hay usuarios de este
+- **Los usuarios de staging creados antes de la parte 1 no funcionan** en las
+  rutas privadas: no tienen `AccountId` ni `OnboardingStep`, y como lo leído no
+  se valida, responden 403 o 500 según la ruta. Son cuentas de prueba; quien
+  pruebe crea una nueva. En producción no hay usuarios de este
   backend: todavía no hay ningún release `backend-infra-*`.
 - **El primer `/api/me` después del registro puede responder 401** si `GSI2`
   todavía no tiene al usuario. Entre la transacción y ese pedido pasan el
