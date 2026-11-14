@@ -34,6 +34,10 @@ import { ClinicRepository } from "../../lib/src/users/infrastructure/persistence
 import { SignUpVerificationTokenRepository } from "../../lib/src/users/infrastructure/persistence/dynamodb/sign-up-verification-token.repository";
 import { SignUpCodeRepository } from "../../lib/src/users/infrastructure/persistence/dynamodb/sign-up-code.repository";
 import { UserRepository } from "../../lib/src/users/infrastructure/persistence/dynamodb/user.repository";
+import {
+  fromDomainToDynamo,
+  fromDynamoToDomain,
+} from "../../lib/src/users/infrastructure/persistence/dynamodb/user.mappers";
 import { emailSchema } from "../../lib/src/users/domain/value-objects/email.vo";
 import { buildUser, COGNITO_SUB } from "./fakes";
 
@@ -545,6 +549,23 @@ test("crear la cuenta confirmada guarda el usuario, su cuenta y su constancia y 
   });
 });
 
+test("el mapper escribe y vuelve a leer los datos personales, incluido el tratamiento null", () => {
+  const stored = fromDomainToDynamo(
+    fromDynamoToDomain({
+      ...userItem,
+      GivenName: "Ana",
+      FamilyName: "Pérez",
+      Phone: "+51987654321",
+      Treatment: null,
+    }),
+  );
+
+  assert.equal(stored.GivenName, "Ana");
+  assert.equal(stored.FamilyName, "Pérez");
+  assert.equal(stored.Phone, "+51987654321");
+  assert.equal(stored.Treatment, null);
+});
+
 test("el usuario nuevo ya no guarda OnboardingCompleted", async () => {
   const { client, inputs } = capturingClient();
   const { user, account } = buildOwnerWithAccount();
@@ -743,7 +764,7 @@ test("el usuario de la sesión y sus memberships se leen sólo de su propia part
   });
 });
 
-test("la partición del usuario se lee sin nada más que lo que pide la policy", async () => {
+test("la partición del usuario se lee sin nada más que lo que piden la policy y /api/me", async () => {
   const { found, inputs } = findSession(
     ...sessionResponses({ Items: [userItem] }),
   );
@@ -764,10 +785,43 @@ test("la partición del usuario se lee sin nada más que lo que pide la policy",
     "AccountId",
     "OnboardingStep",
     "CognitoSub",
+    "GivenName",
+    "FamilyName",
+    "Phone",
+    "Treatment",
     "ResourceId",
     "ResourceType",
     "Role",
   ]);
+});
+
+test("la lectura de la sesión trae el nombre, el apellido, el celular y el tratamiento del usuario", async () => {
+  const withPersonalData = {
+    ...userItem,
+    GivenName: " Ana ",
+    FamilyName: "Pérez",
+    Phone: "+51987654321",
+    Treatment: "DRA",
+  };
+  const withoutTreatment = { ...withPersonalData, Treatment: null };
+
+  const session = await findSession(
+    ...sessionResponses({ Items: [withPersonalData] }),
+  ).found;
+  const sessionWithoutTreatment = await findSession(
+    ...sessionResponses({ Items: [withoutTreatment] }),
+  ).found;
+  const sessionWithoutData = await findSession(
+    ...sessionResponses({ Items: [userItem] }),
+  ).found;
+
+  assert.equal(session?.user.givenName, "Ana");
+  assert.equal(session?.user.familyName, "Pérez");
+  assert.equal(session?.user.phone, "+51987654321");
+  assert.equal(session?.user.treatment, "DRA");
+  assert.equal(sessionWithoutTreatment?.user.treatment, null);
+  assert.equal(sessionWithoutData?.user.givenName, undefined);
+  assert.equal(sessionWithoutData?.user.treatment, undefined);
 });
 
 test("sin un usuario en el índice, en la partición o con otro CognitoSub, no hay usuario", async () => {

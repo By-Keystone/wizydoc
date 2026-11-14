@@ -67,13 +67,9 @@ test("el pool no recuerda dispositivos", () => {
   assert.equal(userPool.Properties.DeviceConfiguration, undefined);
 });
 
-test("cada cliente escribe sólo email, given_name y family_name, y revoca tokens", () => {
+test("cada cliente escribe sólo email y revoca tokens", () => {
   for (const client of clientProperties(synthesizeAuthentication())) {
-    assert.deepEqual([...client.WriteAttributes].sort(), [
-      "email",
-      "family_name",
-      "given_name",
-    ]);
+    assert.deepEqual(client.WriteAttributes, ["email"]);
     assert.equal(client.EnableTokenRevocation, true);
   }
 });

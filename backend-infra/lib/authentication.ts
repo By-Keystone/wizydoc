@@ -8,11 +8,7 @@ const REFRESH_TOKEN_VALIDITY = Duration.days(15);
 export const PLATFORM_CLIENT_NAME = "wizydoc-platform";
 
 const writableAttributes =
-  new cognito.ClientAttributes().withStandardAttributes({
-    email: true,
-    givenName: true,
-    familyName: true,
-  });
+  new cognito.ClientAttributes().withStandardAttributes({ email: true });
 
 export class Authentication extends Construct {
   readonly userPool: cognito.UserPool;
