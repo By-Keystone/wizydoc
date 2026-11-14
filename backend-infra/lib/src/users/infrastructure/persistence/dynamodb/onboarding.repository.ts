@@ -3,7 +3,6 @@ import {
   TransactWriteCommand,
   UpdateCommand,
 } from "@aws-sdk/lib-dynamodb";
-import { z } from "zod";
 import type { OwnerClinic } from "../../../domain/clinic.entity";
 import type {
   IOnboardingRepository,
@@ -11,11 +10,7 @@ import type {
   OnboardingStepTransition,
 } from "../../../domain/repository/onboarding.repository";
 import type { Subscription } from "../../../domain/subscription.entity";
-import {
-  ONBOARDING_STEPS,
-  type OnboardingStep,
-  type PersonalData,
-} from "../../../domain/user.entity";
+import type { OnboardingStep, PersonalData } from "../../../domain/user.entity";
 import { fromClinicToDynamo } from "./clinic.mappers";
 import { isLostRace } from "./lost-race";
 import { fromMembershipToDynamo } from "./membership.mappers";
@@ -23,7 +18,7 @@ import { fromOrganizationToDynamo } from "./organization.mappers";
 import { fromScheduleToDynamo } from "./schedule.mappers";
 import { fromSubscriptionToDynamo } from "./subscription.mappers";
 import { ONLY_IF_NEW } from "./user.repository";
-import { pk, sk } from "./user.schema";
+import { pk, sk, type UsersDynamoDBSchema } from "./user.schema";
 
 export class OnboardingRepository implements IOnboardingRepository {
   constructor(
@@ -48,7 +43,8 @@ export class OnboardingRepository implements IOnboardingRepository {
           ReturnValues: "ALL_NEW",
         }),
       );
-      return z.enum(ONBOARDING_STEPS).parse(Attributes?.OnboardingStep);
+      return (Attributes as Pick<UsersDynamoDBSchema, "OnboardingStep">)
+        .OnboardingStep;
     } catch (error) {
       if (isLostRace(error)) return undefined;
       throw error;
