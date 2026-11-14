@@ -1,5 +1,6 @@
 import {
   type DynamoDBDocumentClient,
+  TransactWriteCommand,
   UpdateCommand,
 } from "@aws-sdk/lib-dynamodb";
 import { z } from "zod";
@@ -7,12 +8,15 @@ import type {
   IOnboardingRepository,
   OnboardingStepTransition,
 } from "../../../domain/repository/onboarding.repository";
+import type { Subscription } from "../../../domain/subscription.entity";
 import {
   ONBOARDING_STEPS,
   type OnboardingStep,
   type PersonalData,
 } from "../../../domain/user.entity";
 import { isLostRace } from "./lost-race";
+import { fromSubscriptionToDynamo } from "./subscription.mappers";
+import { ONLY_IF_NEW } from "./user.repository";
 import { pk, sk } from "./user.schema";
 
 export class OnboardingRepository implements IOnboardingRepository {
@@ -41,6 +45,33 @@ export class OnboardingRepository implements IOnboardingRepository {
       return z.enum(ONBOARDING_STEPS).parse(Attributes?.OnboardingStep);
     } catch (error) {
       if (isLostRace(error)) return undefined;
+      throw error;
+    }
+  }
+
+  async savePlan(
+    subscription: Subscription,
+    userId: string,
+    transition: OnboardingStepTransition,
+  ): Promise<boolean> {
+    try {
+      await this.client.send(
+        new TransactWriteCommand({
+          TransactItems: [
+            {
+              Put: {
+                TableName: this.tableName,
+                Item: fromSubscriptionToDynamo(subscription),
+                ConditionExpression: ONLY_IF_NEW,
+              },
+            },
+            { Update: this.userStepUpdate(userId, transition, {}) },
+          ],
+        }),
+      );
+      return true;
+    } catch (error) {
+      if (isLostRace(error)) return false;
       throw error;
     }
   }

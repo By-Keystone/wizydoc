@@ -30,7 +30,7 @@ import {
   userIdSchema,
 } from "./user.schema";
 
-const ONLY_IF_NEW = "attribute_not_exists(PK)";
+export const ONLY_IF_NEW = "attribute_not_exists(PK)";
 const ONLY_IF_VERIFICATION_IS_VALID =
   "attribute_exists(PK) AND Email = :email AND DeleteAfter > :now";
 

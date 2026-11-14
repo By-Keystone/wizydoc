@@ -17,6 +17,7 @@ import {
   type RoutePolicy,
 } from "./src/users/application/authorize-request.usecase";
 import { PERSONAL_DATA_STEPS } from "./src/users/application/save-personal-data.usecase";
+import { PLAN_STEPS } from "./src/users/application/save-plan.usecase";
 import {
   type SignUpEmailTemplate,
   SignUpEmailTemplates,
@@ -69,6 +70,11 @@ const SESSION_USER_PREFIXES = ["USER#*"];
 const CLINIC_PREFIXES = ["CLINIC#*"];
 const ME_ACCESS: TableAccess = { "dynamodb:GetItem": ["ACCOUNT#*"] };
 const SAVE_PERSONAL_DATA_ACCESS: TableAccess = {
+  "dynamodb:UpdateItem": ["USER#*"],
+};
+
+const SAVE_PLAN_ACCESS: TableAccess = {
+  "dynamodb:PutItem": ["ACCOUNT#*"],
   "dynamodb:UpdateItem": ["USER#*"],
 };
 
@@ -253,6 +259,13 @@ export class BackendStack extends Stack {
       { TABLE_NAME: database.table.tableName },
     );
 
+    const savePlanFunction = this.usersFunction(
+      "SavePlanFunction",
+      "save-plan",
+      "Saves the account's plan in the second onboarding step.",
+      { TABLE_NAME: database.table.tableName },
+    );
+
     const signUpResource =
       apiGateway.api.root.resourceForPath("api/auth/sign-up");
     const signUpCodeResource = signUpResource.addResource("code");
@@ -302,6 +315,15 @@ export class BackendStack extends Stack {
       savePersonalDataFunction,
       { onboardingStep: PERSONAL_DATA_STEPS },
       SAVE_PERSONAL_DATA_ACCESS,
+    );
+    this.addPrivateRoute(
+      apiGateway,
+      database.table,
+      "api/onboarding/plan",
+      "PUT",
+      savePlanFunction,
+      { onboardingStep: PLAN_STEPS },
+      SAVE_PLAN_ACCESS,
     );
     apiGateway.api.root
       .addResource("health")
