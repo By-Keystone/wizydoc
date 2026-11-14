@@ -264,6 +264,27 @@ test("de dos confirmaciones a la vez con el mismo token, sólo una crea la cuent
   assert.deepEqual(flow.identityProvider.deletedSubs, []);
 });
 
+test("de dos confirmaciones a la vez del mismo correo con tokens distintos, sólo una crea el usuario, y su sub queda en un solo usuario", async (context) => {
+  context.mock.method(console, "warn", () => {});
+  const flow = confirmationFlow();
+  const { token: firstToken } = verified(flow);
+  const { token: secondToken } = verified(flow);
+
+  const responses = await Promise.all([
+    confirm(flow, firstToken),
+    confirm(flow, secondToken),
+  ]);
+
+  assert.deepEqual(
+    responses.map(({ statusCode }) => statusCode).sort(),
+    [200, 400],
+  );
+  assert.deepEqual(
+    flow.users.createdUsers.map(({ cognitoSub }) => cognitoSub),
+    [COGNITO_SUB],
+  );
+});
+
 test("si el token se gasta entre su lectura y la transacción, responde 400 y borra de Cognito su propio usuario por su sub", async () => {
   const flow = confirmationFlow();
   const { token } = verified(flow);
