@@ -448,7 +448,8 @@ El esquema devuelve los bloques ordenados por día y hora de inicio. Las horas
 son de pared de la sede y se guardan tal cual.
 
 **La entrada** (parte 7): `z.object({ skip: z.boolean({ error: INVALID_REQUEST
-}).optional(), weeklySchedule: z.unknown() }, { error: INVALID_REQUEST })`, con
+}).optional(), weeklySchedule: z.unknown().optional() }, { error: INVALID_REQUEST })`
+(con `z.unknown()` a secas, Zod 4 rechaza `{ skip: true }` sin la clave), con
 un `.transform`:
 - con `skip: true`, devuelve `{ skip: true }` sin mirar `weeklySchedule`;
 - si no, lo pasa por `weeklyScheduleSchema` y copia su primer error
@@ -881,6 +882,12 @@ Lo comprueban los pedidos a staging de «Verificación».
   - después de un 409, vuelve a leer `/api/me`;
   - el nombre prellenado del consultorio sale de `givenName`, `familyName` y
     `treatment` de `/api/me`.
+- **`AuthorizedRequest.memberships`** llega a toda ruta tal como se leyó, con las
+  de otras cuentas y sin filtrar por rol. Una ruta que la use en lugar de
+  `membership` tiene que filtrar por `accountId`, como `findOwnClinicId`.
+- **El horario en `GSI1 CLINIC#<id>`** no prueba que el médico siga en la sede.
+  El booking y la agenda tendrán que cruzarlo con la membership, o borrar el
+  horario cuando se quite a alguien de la sede.
 - **«Mi disponibilidad»:** reusa `weeklyScheduleSchema` y el ítem `SCHEDULE`, y
   lo reemplaza con un `Put`. Si permite una lista vacía, como hoy, saca el
   `.min(1)` del value object y lo deja en la entrada del onboarding.
