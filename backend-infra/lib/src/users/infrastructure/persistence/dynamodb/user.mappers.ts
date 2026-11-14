@@ -8,6 +8,7 @@ import {
   sk,
   USER_ITEM_TYPE,
   type UsersDynamoDBSchema,
+  userItemSchema,
 } from "./user.schema";
 
 export const fromDomainToDynamo = (user: User): UsersDynamoDBSchema => {
@@ -26,5 +27,18 @@ export const fromDomainToDynamo = (user: User): UsersDynamoDBSchema => {
     AccountId: user.accountId,
     OnboardingStep: user.onboardingStep,
     CognitoSub: user.cognitoSub,
+  };
+};
+
+export const fromDynamoToDomain = (item: unknown): User => {
+  const { Id, Email, Confirmed, AccountId, OnboardingStep, CognitoSub } =
+    userItemSchema.parse(item);
+  return {
+    id: Id,
+    email: Email,
+    confirmed: Confirmed,
+    accountId: AccountId,
+    onboardingStep: OnboardingStep,
+    cognitoSub: CognitoSub,
   };
 };

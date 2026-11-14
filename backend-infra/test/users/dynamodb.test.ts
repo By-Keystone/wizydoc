@@ -35,6 +35,27 @@ import { UserRepository } from "../../lib/src/users/infrastructure/persistence/d
 import { emailSchema } from "../../lib/src/users/domain/value-objects/email.vo";
 import { buildUser, COGNITO_SUB } from "./fakes";
 
+const USER_ID = "01M6MSQWFCK15Q3X04AQEQ0S8Q";
+const ACCOUNT_ID = "01M6MSQWFCK15Q3X04AQEQ0S9R";
+const CLINIC_ID = "01M6MSQWFCK15Q3X04AQEQ0SAS";
+
+const userItem = {
+  ItemType: "USER",
+  Id: USER_ID,
+  Email: "ana@clinica.pe",
+  Confirmed: true,
+  AccountId: ACCOUNT_ID,
+  OnboardingStep: "COMPLETED",
+  CognitoSub: COGNITO_SUB,
+};
+const membershipItem = {
+  ItemType: "MEMBERSHIP",
+  ResourceId: CLINIC_ID,
+  ResourceType: "CLINIC",
+  AccountId: ACCOUNT_ID,
+  Role: "DOCTOR",
+};
+
 const TABLE_NAME = "MainTable";
 const TEN_PAST_NOON = Date.UTC(2026, 10, 6, 12, 10, 30);
 const THIRTEEN_PAST_NOON_AND_HALF = Date.UTC(2026, 10, 6, 12, 13, 30);
@@ -643,6 +664,191 @@ test("isConfirmed consulta GSI2 por el sub con una proyección mínima y exige e
   assert.equal(
     query.ExpressionAttributeValues?.[":gsi2pk"],
     `COGNITO#${COGNITO_SUB}`,
+  );
+});
+
+const sessionClient = (...responses: unknown[]) => {
+  const inputs: unknown[] = [];
+  const client = {
+    send: async (command: { input: unknown }) => {
+      inputs.push(command.input);
+      return responses.shift();
+    },
+  } as unknown as DynamoDBDocumentClient;
+  return { client, inputs };
+};
+
+const findSession = (...responses: unknown[]) => {
+  const { client, inputs } = sessionClient(...responses);
+  const found = new UserRepository(
+    client,
+    TABLE_NAME,
+  ).findByCognitoSubWithMemberships(COGNITO_SUB);
+  return { found, inputs };
+};
+
+const sessionResponses = (partition: unknown) => [
+  { Items: [{ ItemType: "USER", Id: USER_ID }] },
+  partition,
+];
+
+test("el usuario de la sesión y sus memberships se leen sólo de su propia partición", async () => {
+  const { found, inputs } = findSession(
+    ...sessionResponses({ Items: [userItem, membershipItem] }),
+  );
+
+  const session = await found;
+
+  assert.equal(session?.user.id, USER_ID);
+  assert.equal(session?.user.accountId, ACCOUNT_ID);
+  assert.equal(session?.user.onboardingStep, "COMPLETED");
+  assert.deepEqual(session?.memberships, [
+    {
+      resourceId: CLINIC_ID,
+      resourceType: "CLINIC",
+      accountId: ACCOUNT_ID,
+      role: "DOCTOR",
+    },
+  ]);
+  const [index, partition] = inputs as {
+    IndexName?: string;
+    ProjectionExpression: string;
+    ConsistentRead?: boolean;
+    FilterExpression?: string;
+    KeyConditionExpression?: string;
+    Limit?: number;
+    ExpressionAttributeNames: Record<string, string>;
+    ExpressionAttributeValues: Record<string, unknown>;
+  }[];
+  assert.equal(index.IndexName, "GSI2");
+  assert.equal(index.ProjectionExpression, "#ItemType, #Id");
+  assert.equal(index.Limit, 2);
+  assert.equal(index.KeyConditionExpression, "#GSI2PK = :gsi2pk");
+  assert.equal(index.ExpressionAttributeNames["#GSI2PK"], "GSI2PK");
+  assert.equal(
+    index.ExpressionAttributeValues[":gsi2pk"],
+    `COGNITO#${COGNITO_SUB}`,
+  );
+  assert.equal(partition.IndexName, undefined);
+  assert.equal(partition.ConsistentRead, true);
+  assert.equal(partition.KeyConditionExpression, "#PK = :pk");
+  assert.equal(partition.ExpressionAttributeNames["#PK"], "PK");
+  assert.equal(partition.FilterExpression, "#ItemType IN (:user, :membership)");
+  assert.deepEqual(partition.ExpressionAttributeValues, {
+    ":pk": `USER#${USER_ID}`,
+    ":user": "USER",
+    ":membership": "MEMBERSHIP",
+  });
+});
+
+test("la partición del usuario se lee sin nada más que lo que pide la policy", async () => {
+  const { found, inputs } = findSession(
+    ...sessionResponses({ Items: [userItem] }),
+  );
+  await found;
+
+  const [, partition] = inputs as {
+    ProjectionExpression: string;
+    ExpressionAttributeNames: Record<string, string>;
+  }[];
+  const projected = partition.ProjectionExpression.split(", ").map(
+    (name) => partition.ExpressionAttributeNames[name],
+  );
+  assert.deepEqual(projected, [
+    "ItemType",
+    "Id",
+    "Email",
+    "Confirmed",
+    "AccountId",
+    "OnboardingStep",
+    "CognitoSub",
+    "ResourceId",
+    "ResourceType",
+    "Role",
+  ]);
+});
+
+test("sin un usuario en el índice, en la partición o con otro CognitoSub, no hay usuario", async () => {
+  const withoutIndexItem = findSession({ Items: [] });
+  const indexItemOfOtherType = findSession({
+    Items: [{ ItemType: "PATIENT", Id: USER_ID }],
+  });
+  const partitionWithoutUser = findSession(
+    ...sessionResponses({ Items: [membershipItem] }),
+  );
+  const userOfOtherSub = findSession(
+    ...sessionResponses({
+      Items: [{ ...userItem, CognitoSub: "otro-sub" }, membershipItem],
+    }),
+  );
+
+  assert.equal(await withoutIndexItem.found, undefined);
+  assert.equal(await indexItemOfOtherType.found, undefined);
+  assert.equal(await partitionWithoutUser.found, undefined);
+  assert.equal(await userOfOtherSub.found, undefined);
+  assert.equal(withoutIndexItem.inputs.length, 1);
+  assert.equal(indexItemOfOtherType.inputs.length, 1);
+});
+
+test("un ítem de otro tipo en la partición no se mapea como membership", async () => {
+  const session = await findSession(
+    ...sessionResponses({
+      Items: [userItem, { ...membershipItem, ItemType: "TERMS_ACCEPTANCE" }],
+    }),
+  ).found;
+
+  assert.deepEqual(session?.memberships, []);
+});
+
+test("un usuario sin AccountId u OnboardingStep válidos lanza un error, y una partición de más de una página también", async () => {
+  const { AccountId: _accountId, ...withoutAccount } = userItem;
+  const invalidItems = [
+    withoutAccount,
+    { ...userItem, OnboardingStep: "OTRO" },
+    { ...userItem, Email: "no es un correo" },
+  ];
+
+  const invalidMemberships = [
+    { ...membershipItem, Role: "OWNER" },
+    { ...membershipItem, ResourceType: "PATIENT" },
+  ];
+
+  for (const invalid of invalidItems) {
+    await assert.rejects(
+      findSession(...sessionResponses({ Items: [invalid] })).found,
+      { name: "ZodError" },
+    );
+  }
+  for (const invalid of invalidMemberships) {
+    await assert.rejects(
+      findSession(...sessionResponses({ Items: [userItem, invalid] })).found,
+      { name: "ZodError" },
+    );
+  }
+  await assert.rejects(
+    findSession(
+      ...sessionResponses({
+        Items: [userItem],
+        LastEvaluatedKey: { PK: `USER#${USER_ID}`, SK: "!" },
+      }),
+    ).found,
+    { message: /no cabe/ },
+  );
+});
+
+test("dos usuarios con el mismo sub en GSI2 lanzan un error sin valores, y un Id que no es ULID también", async () => {
+  await assert.rejects(
+    findSession({
+      Items: [
+        { ItemType: "USER", Id: USER_ID },
+        { ItemType: "USER", Id: CLINIC_ID },
+      ],
+    }).found,
+    { message: "Hay más de un usuario con el mismo sub" },
+  );
+  await assert.rejects(
+    findSession({ Items: [{ ItemType: "USER", Id: "" }] }).found,
+    { name: "ZodError" },
   );
 });
 

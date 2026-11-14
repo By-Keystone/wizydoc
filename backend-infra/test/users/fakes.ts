@@ -24,7 +24,11 @@ import {
   type SignUpCode,
 } from "../../lib/src/users/domain/sign-up-code.entity";
 import type { SignUpVerificationToken } from "../../lib/src/users/domain/sign-up-verification-token.entity";
-import type { IUserRepository } from "../../lib/src/users/domain/repository/user.repository";
+import type { Membership } from "../../lib/src/users/domain/membership.entity";
+import type {
+  IUserRepository,
+  UserWithMemberships,
+} from "../../lib/src/users/domain/repository/user.repository";
 import type { TermsAcceptance } from "../../lib/src/users/domain/terms-acceptance.entity";
 import type { User } from "../../lib/src/users/domain/user.entity";
 import {
@@ -86,6 +90,7 @@ export class InMemoryUsers implements IUserRepository {
   readonly users: User[];
   readonly createdUsers: User[] = [];
   readonly createdAccounts: Account[] = [];
+  readonly memberships = new Map<string, Membership[]>();
   readonly termsAcceptances: TermsAcceptance[] = [];
   failOnCreate = false;
   failOnRead = false;
@@ -121,6 +126,17 @@ export class InMemoryUsers implements IUserRepository {
     return this.users.some(
       (user) => user.cognitoSub === cognitoSub && user.confirmed,
     );
+  }
+
+  async findByCognitoSubWithMemberships(
+    cognitoSub: string,
+  ): Promise<UserWithMemberships | undefined> {
+    if (this.failOnRead) throw new Error("DynamoDB no disponible");
+    const user = this.users.find(
+      (existing) => existing.cognitoSub === cognitoSub,
+    );
+    if (!user) return undefined;
+    return { user, memberships: this.memberships.get(user.id) ?? [] };
   }
 }
 

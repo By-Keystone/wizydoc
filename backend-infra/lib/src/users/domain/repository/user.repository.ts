@@ -1,4 +1,5 @@
 import type { Account } from "../account.entity";
+import type { Membership } from "../membership.entity";
 import type { TermsAcceptance } from "../terms-acceptance.entity";
 import type { User } from "../user.entity";
 import type { EmailVO } from "../value-objects/email.vo";
@@ -8,9 +9,17 @@ export interface VerificationToCommit {
   tokenHash: string;
 }
 
+export interface UserWithMemberships {
+  user: User;
+  memberships: Membership[];
+}
+
 export interface IUserRepository {
   existsByEmail(email: EmailVO): Promise<boolean>;
   isConfirmed(cognitoSub: string): Promise<boolean>;
+  findByCognitoSubWithMemberships(
+    cognitoSub: string,
+  ): Promise<UserWithMemberships | undefined>;
   createConfirmed(
     user: User,
     account: Account,
