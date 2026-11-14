@@ -3,7 +3,7 @@ import type { ULID } from "ulid";
 import type { IClinicRepository } from "../../../domain/repository/clinic.repository";
 import {
   CLINIC_ITEM_TYPE,
-  clinicItemSchema,
+  type ClinicDynamoDBSchema,
   clinicPk,
   clinicSk,
 } from "./clinic.schema";
@@ -28,7 +28,10 @@ export class ClinicRepository implements IClinicRepository {
       }),
     );
 
-    if (Item?.ItemType !== CLINIC_ITEM_TYPE) return undefined;
-    return clinicItemSchema.parse(Item).OrganizationId;
+    const clinicItem = Item as
+      | Pick<ClinicDynamoDBSchema, "ItemType" | "OrganizationId">
+      | undefined;
+    if (clinicItem?.ItemType !== CLINIC_ITEM_TYPE) return undefined;
+    return clinicItem.OrganizationId;
   }
 }

@@ -2,7 +2,12 @@ import { type DynamoDBDocumentClient, GetCommand } from "@aws-sdk/lib-dynamodb";
 import type { Account } from "../../../domain/account.entity";
 import type { IAccountRepository } from "../../../domain/repository/account.repository";
 import { fromDynamoToAccount } from "./account.mappers";
-import { ACCOUNT_ITEM_TYPE, accountPk, accountSk } from "./account.schema";
+import {
+  ACCOUNT_ITEM_TYPE,
+  type AccountDynamoDBSchema,
+  accountPk,
+  accountSk,
+} from "./account.schema";
 
 export class AccountRepository implements IAccountRepository {
   constructor(
@@ -20,7 +25,10 @@ export class AccountRepository implements IAccountRepository {
       }),
     );
 
-    if (Item?.ItemType !== ACCOUNT_ITEM_TYPE) return undefined;
-    return fromDynamoToAccount(Item);
+    const accountItem = Item as
+      | Pick<AccountDynamoDBSchema, "ItemType" | "Id" | "OwnerUserId">
+      | undefined;
+    if (accountItem?.ItemType !== ACCOUNT_ITEM_TYPE) return undefined;
+    return fromDynamoToAccount(accountItem);
   }
 }

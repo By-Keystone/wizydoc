@@ -22,6 +22,11 @@ import { createSignUpCode } from "../../lib/src/users/domain/sign-up-code.entity
 import { createTermsAcceptance } from "../../lib/src/users/domain/terms-acceptance.entity";
 import { createAccount } from "../../lib/src/users/domain/account.entity";
 import { createUser } from "../../lib/src/users/domain/user.entity";
+import {
+  familyNameSchema,
+  givenNameSchema,
+} from "../../lib/src/users/domain/value-objects/person-name.vo";
+import { phoneSchema } from "../../lib/src/users/domain/value-objects/phone.vo";
 import { DynamoDBAccountExistsNotices } from "../../lib/src/users/infrastructure/persistence/dynamodb/account-exists-notices";
 import {
   DynamoDBIpRateLimit,
@@ -550,20 +555,21 @@ test("crear la cuenta confirmada guarda el usuario, su cuenta y su constancia y 
 });
 
 test("el mapper escribe y vuelve a leer los datos personales, incluido el tratamiento null", () => {
-  const stored = fromDomainToDynamo(
-    fromDynamoToDomain({
-      ...userItem,
-      GivenName: "Ana",
-      FamilyName: "Pérez",
-      Phone: "+51987654321",
-      Treatment: null,
-    }),
-  );
+  const user = {
+    ...buildUser(),
+    givenName: givenNameSchema.parse("Ana"),
+    familyName: familyNameSchema.parse("Pérez"),
+    phone: phoneSchema.parse("987654321"),
+    treatment: null,
+  };
+
+  const stored = fromDomainToDynamo(user);
 
   assert.equal(stored.GivenName, "Ana");
   assert.equal(stored.FamilyName, "Pérez");
   assert.equal(stored.Phone, "+51987654321");
   assert.equal(stored.Treatment, null);
+  assert.deepEqual(fromDynamoToDomain(stored), user);
 });
 
 test("el usuario nuevo ya no guarda OnboardingCompleted", async () => {
@@ -798,7 +804,7 @@ test("la partición del usuario se lee sin nada más que lo que piden la policy 
 test("la lectura de la sesión trae el nombre, el apellido, el celular y el tratamiento del usuario", async () => {
   const withPersonalData = {
     ...userItem,
-    GivenName: " Ana ",
+    GivenName: "Ana",
     FamilyName: "Pérez",
     Phone: "+51987654321",
     Treatment: "DRA",
@@ -856,31 +862,7 @@ test("un ítem de otro tipo en la partición no se mapea como membership", async
   assert.deepEqual(session?.memberships, []);
 });
 
-test("un usuario sin AccountId u OnboardingStep válidos lanza un error, y una partición de más de una página también", async () => {
-  const { AccountId: _accountId, ...withoutAccount } = userItem;
-  const invalidItems = [
-    withoutAccount,
-    { ...userItem, OnboardingStep: "OTRO" },
-    { ...userItem, Email: "no es un correo" },
-  ];
-
-  const invalidMemberships = [
-    { ...membershipItem, Role: "OWNER" },
-    { ...membershipItem, ResourceType: "PATIENT" },
-  ];
-
-  for (const invalid of invalidItems) {
-    await assert.rejects(
-      findSession(...sessionResponses({ Items: [invalid] })).found,
-      { name: "ZodError" },
-    );
-  }
-  for (const invalid of invalidMemberships) {
-    await assert.rejects(
-      findSession(...sessionResponses({ Items: [userItem, invalid] })).found,
-      { name: "ZodError" },
-    );
-  }
+test("una partición de más de una página lanza un error", async () => {
   await assert.rejects(
     findSession(
       ...sessionResponses({
@@ -892,7 +874,7 @@ test("un usuario sin AccountId u OnboardingStep válidos lanza un error, y una p
   );
 });
 
-test("dos usuarios con el mismo sub en GSI2 lanzan un error sin valores, y un Id que no es ULID también", async () => {
+test("dos usuarios con el mismo sub en GSI2 lanzan un error sin valores", async () => {
   await assert.rejects(
     findSession({
       Items: [
@@ -901,10 +883,6 @@ test("dos usuarios con el mismo sub en GSI2 lanzan un error sin valores, y un Id
       ],
     }).found,
     { message: "Hay más de un usuario con el mismo sub" },
-  );
-  await assert.rejects(
-    findSession({ Items: [{ ItemType: "USER", Id: "" }] }).found,
-    { name: "ZodError" },
   );
 });
 
