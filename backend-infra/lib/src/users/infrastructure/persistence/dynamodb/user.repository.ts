@@ -1,6 +1,7 @@
 import {
   type DynamoDBDocumentClient,
   QueryCommand,
+  type QueryCommandOutput,
   TransactWriteCommand,
 } from "@aws-sdk/lib-dynamodb";
 import type { Account } from "../../../domain/account.entity";
@@ -177,30 +178,34 @@ export class UserRepository implements IUserRepository {
     const userId = await this.findUserIdByCognitoSub(cognitoSub);
     if (!userId) return undefined;
 
-    const { Items, LastEvaluatedKey } = await this.client.send(
-      new QueryCommand({
-        TableName: this.tableName,
-        KeyConditionExpression: "#PK = :pk",
-        FilterExpression: "#ItemType IN (:user, :membership)",
-        ProjectionExpression: PARTITION_READ_ATTRIBUTES.map(
-          (name) => `#${name}`,
-        ).join(", "),
-        ExpressionAttributeValues: {
-          ":pk": pk(userId),
-          ":user": USER_ITEM_TYPE,
-          ":membership": MEMBERSHIP_ITEM_TYPE,
-        },
-        ExpressionAttributeNames: Object.fromEntries([
-          ["#PK", "PK"],
-          ...PARTITION_READ_ATTRIBUTES.map((name) => [`#${name}`, name]),
-        ]),
-        ConsistentRead: true,
-      }),
-    );
-    if (LastEvaluatedKey)
-      throw new Error("La partición del usuario no cabe en una sola lectura");
+    const partition: SessionPartitionItem[] = [];
+    let startKey: QueryCommandOutput["LastEvaluatedKey"];
+    do {
+      const { Items = [], LastEvaluatedKey } = await this.client.send(
+        new QueryCommand({
+          TableName: this.tableName,
+          KeyConditionExpression: "#PK = :pk",
+          FilterExpression: "#ItemType IN (:user, :membership)",
+          ProjectionExpression: PARTITION_READ_ATTRIBUTES.map(
+            (name) => `#${name}`,
+          ).join(", "),
+          ExpressionAttributeValues: {
+            ":pk": pk(userId),
+            ":user": USER_ITEM_TYPE,
+            ":membership": MEMBERSHIP_ITEM_TYPE,
+          },
+          ExpressionAttributeNames: Object.fromEntries([
+            ["#PK", "PK"],
+            ...PARTITION_READ_ATTRIBUTES.map((name) => [`#${name}`, name]),
+          ]),
+          ConsistentRead: true,
+          ...(startKey ? { ExclusiveStartKey: startKey } : {}),
+        }),
+      );
+      partition.push(...(Items as SessionPartitionItem[]));
+      startKey = LastEvaluatedKey;
+    } while (startKey);
 
-    const partition = (Items ?? []) as SessionPartitionItem[];
     const userItem = partition.find((item) => item.ItemType === USER_ITEM_TYPE);
     if (!userItem || userItem.CognitoSub !== cognitoSub) return undefined;
 
