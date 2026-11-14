@@ -1,4 +1,5 @@
 import type { ULID } from "ulid";
+import type { OnboardingStep } from "../../../domain/user.entity";
 
 type PKPrefix = "USER#";
 type PK = `${PKPrefix}${string}`;
@@ -28,7 +29,8 @@ export interface UsersDynamoDBSchema {
   Id: ULID;
   Email: string;
   Confirmed: boolean;
-  OnboardingCompleted: boolean;
+  AccountId: ULID;
+  OnboardingStep: OnboardingStep;
   CognitoSub?: string;
 }
 

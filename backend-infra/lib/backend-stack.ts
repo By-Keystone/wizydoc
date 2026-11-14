@@ -47,7 +47,7 @@ const REQUEST_SIGN_UP_CODE_ACCESS: TableAccess = {
 };
 const CONFIRM_SIGN_UP_ACCESS: TableAccess = {
   "dynamodb:GetItem": ["SIGN_UP_VERIFICATION#*"],
-  "dynamodb:PutItem": ["USER#*"],
+  "dynamodb:PutItem": ["USER#*", "ACCOUNT#*"],
   "dynamodb:DeleteItem": ["SIGN_UP_VERIFICATION#*"],
 };
 const SIGN_IN_ACCESS: TableAccess = {

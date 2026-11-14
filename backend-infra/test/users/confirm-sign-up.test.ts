@@ -96,6 +96,7 @@ const confirm = (
 const assertNothingCreated = (flow: ReturnType<typeof confirmationFlow>) => {
   assert.deepEqual(flow.identityProvider.createdEmails, []);
   assert.deepEqual(flow.users.createdUsers, []);
+  assert.deepEqual(flow.users.createdAccounts, []);
   assert.deepEqual(flow.sessions.started, []);
 };
 
@@ -117,14 +118,14 @@ test("crear la cuenta con un token de verificación vigente crea el usuario conf
   const [user] = flow.users.createdUsers;
   assert.equal(user.email, email);
   assert.equal(user.confirmed, true);
-  assert.equal(user.onboardingCompleted, false);
   assert.equal(user.cognitoSub, COGNITO_SUB);
   assert.deepEqual(Object.keys(user).sort(), [
+    "accountId",
     "cognitoSub",
     "confirmed",
     "email",
     "id",
-    "onboardingCompleted",
+    "onboardingStep",
   ]);
   assert.deepEqual(flow.identityProvider.createdEmails, ["ana@clinica.pe"]);
   assert.deepEqual(flow.identityProvider.passwords, [PASSWORD]);
@@ -132,6 +133,20 @@ test("crear la cuenta con un token de verificación vigente crea el usuario conf
     { cognitoSub: COGNITO_SUB, password: PASSWORD },
   ]);
   assert.equal(again.statusCode, 400);
+});
+
+test("crear la cuenta con un token de verificación vigente crea, en la misma transacción, el usuario con AccountId y OnboardingStep = PERSONAL_DATA, y la cuenta con el usuario como dueño, sin nombre y sin plan", async () => {
+  const flow = confirmationFlow();
+  const { token } = verified(flow);
+
+  await confirm(flow, token);
+
+  const [user] = flow.users.createdUsers;
+  const [account] = flow.users.createdAccounts;
+  assert.equal(user.accountId, account.id);
+  assert.equal(user.onboardingStep, "PERSONAL_DATA");
+  assert.equal(account.ownerUserId, user.id);
+  assert.deepEqual(Object.keys(account).sort(), ["id", "ownerUserId"]);
 });
 
 test("crear la cuenta sin token, con un token vencido, ya usado o de otro correo responde 400 y no crea nada", async () => {
@@ -265,6 +280,7 @@ test("si el token se gasta entre su lectura y la transacción, responde 400 y bo
     message: VERIFICATION_EXPIRED,
   });
   assert.deepEqual(flow.users.createdUsers, []);
+  assert.deepEqual(flow.users.createdAccounts, []);
   assert.deepEqual(flow.identityProvider.deletedSubs, [COGNITO_SUB]);
   assert.deepEqual(flow.sessions.started, []);
 });
@@ -282,6 +298,18 @@ test("si falla la escritura en DynamoDB, el usuario se borra de Cognito por su s
   });
   assert.deepEqual(flow.identityProvider.deletedSubs, [COGNITO_SUB]);
   assert.deepEqual(flow.sessions.started, []);
+});
+
+test("si falla la transacción, no queda ni el usuario ni la cuenta, y el usuario se borra de Cognito", async () => {
+  const flow = confirmationFlow();
+  flow.users.failOnCreate = true;
+  const { token } = verified(flow);
+
+  await confirm(flow, token);
+
+  assert.deepEqual(flow.users.createdUsers, []);
+  assert.deepEqual(flow.users.createdAccounts, []);
+  assert.deepEqual(flow.identityProvider.deletedSubs, [COGNITO_SUB]);
 });
 
 test("si Cognito no entrega los tokens, la cuenta queda creada y responde 204", async () => {
