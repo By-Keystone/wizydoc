@@ -1,10 +1,27 @@
+import type { ULID } from "ulid";
 import { z } from "zod";
 import {
   MEMBERSHIP_RESOURCE_TYPES,
   MEMBERSHIP_ROLES,
+  type MembershipResourceType,
+  type MembershipRole,
 } from "../../../domain/membership.entity";
 
 export const MEMBERSHIP_ITEM_TYPE = "MEMBERSHIP";
+
+export interface MembershipDynamoDBSchema {
+  PK: `USER#${string}`;
+  SK: `MEMBERSHIP#${string}`;
+  ItemType: typeof MEMBERSHIP_ITEM_TYPE;
+  UserId: ULID;
+  ResourceId: ULID;
+  ResourceType: MembershipResourceType;
+  AccountId: ULID;
+  Role: MembershipRole;
+  Specialties?: string[];
+  GSI1PK: `ORG#${string}` | `CLINIC#${string}`;
+  GSI1SK: `MEMBER#${string}`;
+}
 
 export const membershipItemSchema = z.object({
   ResourceId: z.ulid(),

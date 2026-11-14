@@ -19,6 +19,7 @@ import {
 } from "../../lib/src/users/domain/legal-documents";
 import { createSignUpVerificationToken } from "../../lib/src/users/domain/sign-up-verification-token.entity";
 import { createSignUpCode } from "../../lib/src/users/domain/sign-up-code.entity";
+import { createOwnerClinic } from "../../lib/src/users/domain/clinic.entity";
 import { createSubscription } from "../../lib/src/users/domain/subscription.entity";
 import { createTermsAcceptance } from "../../lib/src/users/domain/terms-acceptance.entity";
 import { createAccount } from "../../lib/src/users/domain/account.entity";
@@ -1208,4 +1209,143 @@ test("savePlan devuelve false si otro pedido ya guardó el plan, y deja subir cu
     ),
     /sin red/,
   );
+});
+
+const buildOwnerClinic = () =>
+  createOwnerClinic(
+    {
+      ownerUserId: USER_ID,
+      accountId: ACCOUNT_ID,
+      name: "Consultorio Sol",
+      address: "Av. Larco 123",
+      specialty: "Cardiología",
+    },
+    new Date("2026-11-12T15:00:00.000Z"),
+  );
+
+test("crear Tu consultorio crea, en una transacción, la organización, la sede, la membership ADMIN sobre la organización, la membership DOCTOR sobre la sede con la especialidad, y pasa el paso a SCHEDULE", async () => {
+  const { client, inputs } = capturingClient();
+  const ownerClinic = buildOwnerClinic();
+  const { organization, clinic } = ownerClinic;
+
+  const created = await new OnboardingRepository(
+    client,
+    TABLE_NAME,
+  ).createClinic(ownerClinic, { from: ["CLINIC"], to: "SCHEDULE" });
+
+  assert.equal(created, true);
+  const [transaction] = inputs as TransactWriteCommandInput[];
+  const onlyIfNew = "attribute_not_exists(PK)";
+  assert.deepEqual(transaction.TransactItems, [
+    {
+      Put: {
+        TableName: TABLE_NAME,
+        Item: {
+          PK: `ORG#${organization.id}`,
+          SK: "!",
+          ItemType: "ORGANIZATION",
+          Id: organization.id,
+          AccountId: ACCOUNT_ID,
+          Name: "Consultorio Sol",
+          GSI1PK: `ACCOUNT#${ACCOUNT_ID}`,
+          GSI1SK: `ORG#${organization.id}`,
+        },
+        ConditionExpression: onlyIfNew,
+      },
+    },
+    {
+      Put: {
+        TableName: TABLE_NAME,
+        Item: {
+          PK: `CLINIC#${clinic.id}`,
+          SK: "!",
+          ItemType: "CLINIC",
+          Id: clinic.id,
+          AccountId: ACCOUNT_ID,
+          OrganizationId: organization.id,
+          Name: "Consultorio Sol",
+          Address: "Av. Larco 123",
+          GSI1PK: `ORG#${organization.id}`,
+          GSI1SK: `CLINIC#${clinic.id}`,
+          GSI2PK: `ACCOUNT#${ACCOUNT_ID}`,
+          GSI2SK: `CLINIC#${clinic.id}`,
+        },
+        ConditionExpression: onlyIfNew,
+      },
+    },
+    {
+      Put: {
+        TableName: TABLE_NAME,
+        Item: {
+          PK: `USER#${USER_ID}`,
+          SK: `MEMBERSHIP#${organization.id}`,
+          ItemType: "MEMBERSHIP",
+          UserId: USER_ID,
+          ResourceId: organization.id,
+          ResourceType: "ORGANIZATION",
+          AccountId: ACCOUNT_ID,
+          Role: "ADMIN",
+          GSI1PK: `ORG#${organization.id}`,
+          GSI1SK: `MEMBER#${USER_ID}`,
+        },
+        ConditionExpression: onlyIfNew,
+      },
+    },
+    {
+      Put: {
+        TableName: TABLE_NAME,
+        Item: {
+          PK: `USER#${USER_ID}`,
+          SK: `MEMBERSHIP#${clinic.id}`,
+          ItemType: "MEMBERSHIP",
+          UserId: USER_ID,
+          ResourceId: clinic.id,
+          ResourceType: "CLINIC",
+          AccountId: ACCOUNT_ID,
+          Role: "DOCTOR",
+          Specialties: ["Cardiología"],
+          GSI1PK: `CLINIC#${clinic.id}`,
+          GSI1SK: `MEMBER#${USER_ID}`,
+        },
+        ConditionExpression: onlyIfNew,
+      },
+    },
+    {
+      Update: {
+        TableName: TABLE_NAME,
+        Key: { PK: `USER#${USER_ID}`, SK: "!" },
+        ConditionExpression: "#OnboardingStep IN (:from0)",
+        UpdateExpression: "SET #OnboardingStep = :OnboardingStep",
+        ExpressionAttributeNames: { "#OnboardingStep": "OnboardingStep" },
+        ExpressionAttributeValues: {
+          ":from0": "CLINIC",
+          ":OnboardingStep": "SCHEDULE",
+        },
+      },
+    },
+  ]);
+});
+
+test("createClinic devuelve false si otro pedido ya creó el consultorio, y deja subir cualquier otro error", async () => {
+  const transition = { from: ["CLINIC"], to: "SCHEDULE" } as const;
+  const canceledBecause = (userUpdateCode: string) =>
+    new TransactionCanceledException({
+      message: "cancelada",
+      $metadata: {},
+      CancellationReasons: ["None", "None", "None", "None", userUpdateCode].map(
+        (Code) => ({ Code }),
+      ),
+    });
+  const createWith = (failure: Error) =>
+    new OnboardingRepository(
+      capturingClient({ failure }).client,
+      TABLE_NAME,
+    ).createClinic(buildOwnerClinic(), transition);
+
+  assert.equal(
+    await createWith(canceledBecause("ConditionalCheckFailed")),
+    false,
+  );
+  assert.equal(await createWith(canceledBecause("TransactionConflict")), false);
+  await assert.rejects(createWith(new Error("sin red")), /sin red/);
 });

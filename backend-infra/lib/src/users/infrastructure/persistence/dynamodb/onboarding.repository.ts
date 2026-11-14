@@ -4,6 +4,7 @@ import {
   UpdateCommand,
 } from "@aws-sdk/lib-dynamodb";
 import { z } from "zod";
+import type { OwnerClinic } from "../../../domain/clinic.entity";
 import type {
   IOnboardingRepository,
   OnboardingStepTransition,
@@ -14,7 +15,10 @@ import {
   type OnboardingStep,
   type PersonalData,
 } from "../../../domain/user.entity";
+import { fromClinicToDynamo } from "./clinic.mappers";
 import { isLostRace } from "./lost-race";
+import { fromMembershipToDynamo } from "./membership.mappers";
+import { fromOrganizationToDynamo } from "./organization.mappers";
 import { fromSubscriptionToDynamo } from "./subscription.mappers";
 import { ONLY_IF_NEW } from "./user.repository";
 import { pk, sk } from "./user.schema";
@@ -66,6 +70,37 @@ export class OnboardingRepository implements IOnboardingRepository {
               },
             },
             { Update: this.userStepUpdate(userId, transition, {}) },
+          ],
+        }),
+      );
+      return true;
+    } catch (error) {
+      if (isLostRace(error)) return false;
+      throw error;
+    }
+  }
+
+  async createClinic(
+    { ownerUserId, organization, clinic, memberships }: OwnerClinic,
+    transition: Required<OnboardingStepTransition>,
+  ): Promise<boolean> {
+    const newItems = [
+      fromOrganizationToDynamo(organization),
+      fromClinicToDynamo(clinic),
+      ...memberships.map(fromMembershipToDynamo),
+    ];
+    try {
+      await this.client.send(
+        new TransactWriteCommand({
+          TransactItems: [
+            ...newItems.map((Item) => ({
+              Put: {
+                TableName: this.tableName,
+                Item,
+                ConditionExpression: ONLY_IF_NEW,
+              },
+            })),
+            { Update: this.userStepUpdate(ownerUserId, transition, {}) },
           ],
         }),
       );
