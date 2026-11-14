@@ -29,6 +29,7 @@ import {
   SIGN_IN_RATE_LIMIT,
   SIGN_UP_VERIFY_RATE_LIMIT,
 } from "../../lib/src/users/infrastructure/persistence/dynamodb/ip-rate-limit";
+import { AccountRepository } from "../../lib/src/users/infrastructure/persistence/dynamodb/account.repository";
 import { ClinicRepository } from "../../lib/src/users/infrastructure/persistence/dynamodb/clinic.repository";
 import { SignUpVerificationTokenRepository } from "../../lib/src/users/infrastructure/persistence/dynamodb/sign-up-verification-token.repository";
 import { SignUpCodeRepository } from "../../lib/src/users/infrastructure/persistence/dynamodb/sign-up-code.repository";
@@ -915,6 +916,45 @@ test("la sede se lee por su clave con lectura consistente y sólo si es una sede
         "#ItemType": "ItemType",
         "#OrganizationId": "OrganizationId",
       },
+      ConsistentRead: true,
+    },
+  ]);
+});
+
+test("la cuenta se lee por su clave con lectura consistente y sólo si es una cuenta", async () => {
+  const found = capturingClient({
+    response: {
+      Item: { ItemType: "ACCOUNT", Id: ACCOUNT_ID, OwnerUserId: USER_ID },
+    },
+  });
+  const otherType = capturingClient({
+    response: {
+      Item: { ItemType: "USER", Id: ACCOUNT_ID, OwnerUserId: USER_ID },
+    },
+  });
+  const missing = capturingClient();
+
+  assert.deepEqual(
+    await new AccountRepository(found.client, TABLE_NAME).findById(ACCOUNT_ID),
+    { id: ACCOUNT_ID, ownerUserId: USER_ID },
+  );
+  assert.equal(
+    await new AccountRepository(otherType.client, TABLE_NAME).findById(
+      ACCOUNT_ID,
+    ),
+    undefined,
+  );
+  assert.equal(
+    await new AccountRepository(missing.client, TABLE_NAME).findById(
+      ACCOUNT_ID,
+    ),
+    undefined,
+  );
+  assert.deepEqual(found.inputs, [
+    {
+      TableName: TABLE_NAME,
+      Key: { PK: `ACCOUNT#${ACCOUNT_ID}`, SK: "!" },
+      ProjectionExpression: "ItemType, Id, OwnerUserId",
       ConsistentRead: true,
     },
   ]);

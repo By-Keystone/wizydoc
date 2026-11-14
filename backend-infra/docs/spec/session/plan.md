@@ -348,8 +348,8 @@ contraseña incorrectos.». `EXPIRED_TOKEN` es de las firmas de AWS y no aplica.
 ### Lo que `lib/*.ts` importa de `lib/src` (parte 4)
 
 Nace una dependencia de la capa de CDK (`lib/*.ts`) hacia `lib/src`:
-`SESSION_EXPIRED`, `RoutePolicy`, `requiresMembership`, `ROUTE_POLICY_VARIABLE`
-y `ANY_ONBOARDING_STEP`. La síntesis carga esos módulos, así que
+`SESSION_EXPIRED`, `RoutePolicy`, `routePolicySchema`, `requiresMembership`,
+`RESOURCE_ID_PARAMETER`, `ROUTE_POLICY_VARIABLE` y `ANY_ONBOARDING_STEP`. La síntesis carga esos módulos, así que
 `authorize-request.usecase.ts` y `http-messages.ts` no importan el AWS SDK,
 directa ni transitivamente.
 
@@ -363,6 +363,12 @@ directa ni transitivamente.
 - **Lanza un error al sintetizar** si la ruta tiene `{resourceId}` y la policy
   no exige membership, o si la exige y la ruta no tiene `{resourceId}`. Así una
   ruta sobre un recurso no puede olvidar `member`.
+- **Una Lambda por ruta privada:** un `Set` en el construct rechaza una segunda
+  ruta con la misma Lambda, cuya `ROUTE_POLICY` se pisaría.
+- **`{resourceId}` es el único parámetro de path permitido:** otro, como
+  `{clinicId}`, no pasaría por la policy y leería un id ajeno.
+- **La policy se valida al sintetizar** con `routePolicySchema.parse`, para que
+  una inválida falle con un mensaje y no al arrancar la Lambda.
 - **La prueba de síntesis** recorre todos los métodos del stack. Los públicos
   son una lista fija en la prueba (`GET /health` y las seis `POST
   /api/auth/…`), y los demás tienen que tener `COGNITO_USER_POOLS`, el único
@@ -483,19 +489,22 @@ un mes):
   - `dynamodb:Query` sobre `index/GSI2` (`grantIndexQuery`), sin
     `dynamodb:LeadingKeys`, como las otras consultas de índices;
   - `dynamodb:Query` sobre la tabla con `LeadingKeys` en `USER#*`;
-  - `dynamodb:GetItem` con `LeadingKeys` en `ACCOUNT#*`;
-  - `dynamodb:GetItem` con `LeadingKeys` en `CLINIC#*`, para heredar el rol de
-    la organización.
+  - `dynamodb:GetItem` con `LeadingKeys` en `ACCOUNT#*`.
+  - Sin `CLINIC#*`: la ruta no es de tipo `CLINIC`, y no hereda nada.
   - Nada de `PutItem`, `UpdateItem`, `DeleteItem`, `GSI1`, Cognito ni SES.
-- `TableAccess` admite `"dynamodb:Query"`. `SESSION_USER_ACCESS = {
-  "dynamodb:Query": ["USER#*"], "dynamodb:GetItem": ["CLINIC#*"] }` es lo que necesita toda Lambda de una ruta
-  privada para su policy, junto con la consulta de `GSI2` y `TABLE_NAME`, y
-  `ME_ACCESS` le suma `GetItem` sobre `ACCOUNT#*`. Toda Lambda privada
-  necesita además `"dynamodb:GetItem": ["CLINIC#*"]` (`SESSION_USER_ACCESS`
-  lo incluye).
+- `TableAccess` admite `"dynamodb:Query"`. El método privado
+  `BackendStack.addPrivateRoute` da a toda Lambda de una ruta privada lo que
+  necesita su policy: `dynamodb:Query` con `LeadingKeys` en
+  `SESSION_USER_PREFIXES` (`USER#*`), la consulta de `GSI2`, y
+  `dynamodb:GetItem` en `CLINIC#*` (`CLINIC_PREFIXES`) **sólo si el
+  `resourceType` de la policy es `CLINIC`**, para heredar el rol de la
+  organización. Lo propio de la ruta (`ME_ACCESS`, `GetItem` sobre `ACCOUNT#*`)
+  se suma a eso, y la Lambda trae su `TABLE_NAME`. Lo hace el stack y no el
+  construct `ApiGateway`, que no conoce la tabla.
 
-**Ruta:** `apiGateway.addPrivateRoute("api/me", "GET", meFunction, {
-confirmed: false, onboardingStep: ANY_ONBOARDING_STEP })`. La revisión de la
+**Ruta:** `this.addPrivateRoute(apiGateway, database.table, "api/me", "GET",
+meFunction, { confirmed: false, onboardingStep: ANY_ONBOARDING_STEP },
+ME_ACCESS)`, que llama a `ApiGateway.addPrivateRoute`. La revisión de la
 etapa de #149 no cambia: sólo actúa cuando se quitan rutas.
 
 **El gateway:** `SessionAuthorizer` y la respuesta `SessionExpired` (ver
@@ -574,7 +583,9 @@ infraestructura con síntesis de CDK.
   false`; sin cuenta, `/api/me` responde 500; la cuenta se lee con lectura
   consistente y sólo si su `ItemType` es `ACCOUNT`; el `ROUTE_POLICY` de
   `MeFunction` es `{"confirmed":false,"onboardingStep":"ANY"}`; `addPrivateRoute`
-  rechaza `{resourceId}` sin membership y membership sin `{resourceId}`; un
+  rechaza `{resourceId}` sin membership y membership sin `{resourceId}`, otro
+  parámetro de path, una segunda ruta con la misma Lambda y una policy inválida;
+  `CLINIC#*` sólo llega a las Lambdas con `resourceType: "CLINIC"`; un
   `ApiGateway` sin rutas privadas no crea el autorizador; `GET /health` y `GET
   /api/me` son las únicas rutas `GET`; `MeFunction` tiene 15 segundos, 512 MB y
   su descripción.
@@ -691,16 +702,27 @@ Lo comprueban los pedidos a staging de «Verificación».
   real.
 
 **Parte 4**
-- Sin `Authorization`, el gateway responde `UNAUTHORIZED` (401) y no
-  `MISSING_AUTHENTICATION_TOKEN`, que hoy respondería 404.
-- El access token queda rechazado por el `aud`, y un token de otro pool, por la
-  firma.
-- `IdentityValidationExpression` funciona con el id del cliente resuelto por
+- `IdentityValidationExpression` con el id del cliente resuelto por
   CloudFormation.
-- Si `Bearer <token>` pasa, y qué responde un pedido sin clave y sin token.
-- El cuerpo de la respuesta 401 llega con las tildes.
 - `MeFunction` puede hacer el `Query` con `LeadingKeys` en `USER#*`, el de
   `index/GSI2` y el `GetItem` en `ACCOUNT#*`.
+
+## Verificado contra AWS
+
+**Parte 4.** Probado el 12 de noviembre de 2026 en la cuenta de desarrollo, con
+recursos temporales ya borrados: un REST API con un `COGNITO_USER_POOLS` como el
+de la parte 4 (`Authorization`, TTL 0, `IdentityValidationExpression
+^<cliente>$`), la clave obligatoria y la respuesta `UNAUTHORIZED` 401.
+- Con la clave y el ID token del cliente de platform: 200, y los claims traen el
+  `sub` correcto y `aud` = el cliente.
+- Con `Bearer <ID token>`: también 200.
+- Con el access token, un ID token de otro cliente del mismo pool, uno de otro
+  pool, un token inventado o sin token: 401, con «Tu sesión venció. Inicia
+  sesión de nuevo.» y las tildes bien.
+- Sin la clave y con un ID token válido: 403 «Forbidden».
+- Sin la clave y sin token: 401, porque el autorizador corre antes que la clave.
+- Una clave nueva del usage plan tarda unos 30 s en responder 200 en todos los
+  nodos.
 
 ## Riesgos aceptados del plan
 
@@ -738,10 +760,10 @@ Lo comprueban los pedidos a staging de «Verificación».
   `SUBSCRIPTION`; suma `givenName`, `familyName`, `phone` y `treatment` al
   usuario y a `/api/me`. Cada ruta de un paso declara `onboardingStep: "<el
   paso>"` y, si va sobre un recurso, `member` o `roles` con `{resourceId}`.
-- **Toda ruta privada nueva** se crea con `addPrivateRoute`, con
-  `SESSION_USER_ACCESS`, la consulta de `GSI2` y `TABLE_NAME`, y usa
-  `handlePrivateRoute`. La prueba de síntesis lo exige salvo lo último, que
-  revisa el reviewer.
+- **Toda ruta privada nueva** se crea con `BackendStack.addPrivateRoute`, que da
+  los permisos de la sesión y la consulta de `GSI2`; la Lambda trae `TABLE_NAME`
+  y usa `handlePrivateRoute`. La prueba de síntesis lo exige salvo lo último,
+  que revisa el reviewer.
 - **Las invitaciones:** un usuario sin cuenta propia cambia `GetMeUseCase`, que
   hoy falla si la cuenta no existe, y es el primer caso de `isAccountOwner:
   false`.

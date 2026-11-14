@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { App } from "aws-cdk-lib";
 import { Match, Template } from "aws-cdk-lib/assertions";
+import { routePolicySchema } from "../lib/src/users/application/authorize-request.usecase";
 import { BackendStack, type BackendStackProps } from "../lib/backend-stack";
 
 const SKIP_BUNDLING = { "aws:cdk:bundling-stacks": [] };
@@ -107,7 +108,7 @@ test("las tres rutas de la sesión son POST y exigen la clave de platform", () =
   }
 });
 
-test("GET /health es la única ruta GET, exige la clave de platform y no hay ruta comodín", () => {
+test("GET /health y GET /api/me son las únicas rutas GET, exigen la clave de platform y no hay ruta comodín", () => {
   const template = synthesizeBackend();
 
   const getMethods = Object.values(
@@ -122,8 +123,17 @@ test("GET /health es la única ruta GET, exige la clave de platform y no hay rut
     template.findResources("AWS::ApiGateway::Method"),
   ).map((method) => method.Properties.HttpMethod);
 
-  assert.equal(getMethods.length, 1);
-  assert.equal(getMethods[0].Properties.ApiKeyRequired, true);
+  assert.deepEqual(
+    getMethods
+      .map(({ Properties }) =>
+        resourcePath(template, Properties.ResourceId.Ref),
+      )
+      .sort(),
+    ["/api/me", "/health"],
+  );
+  for (const method of getMethods) {
+    assert.equal(method.Properties.ApiKeyRequired, true);
+  }
   assert.ok(pathParts.includes("health"));
   assert.equal(pathParts.includes("{proxy+}"), false);
   assert.equal(httpMethods.includes("ANY"), false);
@@ -164,6 +174,23 @@ test("cada Lambda sólo tiene los permisos que usa", () => {
   assert.deepEqual(accessByAction(template, "SignInFunction"), {
     "dynamodb:UpdateItem": ["SIGN_IN_ATTEMPTS#*"],
   });
+  assert.deepEqual(accessByAction(template, "MeFunction"), {
+    "dynamodb:Query": ["USER#*"],
+    "dynamodb:GetItem": ["ACCOUNT#*"],
+  });
+  const meStatements = policyFor(template, "MeFunction");
+  for (const forbidden of [
+    "PutItem",
+    "UpdateItem",
+    "DeleteItem",
+    "CLINIC#*",
+    "/index/GSI1",
+    "/index/*",
+    "cognito-idp:",
+    "ses:",
+  ]) {
+    assert.equal(meStatements.includes(forbidden), false, forbidden);
+  }
   assert.deepEqual(accessByAction(template, "RefreshSessionFunction"), {});
   assert.deepEqual(accessByAction(template, "SignOutFunction"), {});
 });
@@ -387,6 +414,7 @@ test("las Lambdas de los usuarios tienen 15 segundos, 512 MB y logs que se conse
     "SignInFunction",
     "RefreshSessionFunction",
     "SignOutFunction",
+    "MeFunction",
   ]) {
     const properties = functionProperties(template, functionName);
     assert.equal(properties.Timeout, 15, functionName);
@@ -471,6 +499,99 @@ test("el stack tiene un solo user pool, con el cliente de platform, y la confirm
       .USER_POOL_ID,
     { Ref: poolLogicalId },
   );
+});
+
+const PUBLIC_ROUTES = [
+  "GET /health",
+  "POST /api/auth/sign-in",
+  "POST /api/auth/sign-out",
+  "POST /api/auth/sign-up/code",
+  "POST /api/auth/sign-up/code/verify",
+  "POST /api/auth/sign-up/confirm",
+  "POST /api/auth/token/refresh",
+];
+
+const functionOfMethod = (template: Template, integrationUri: unknown) => {
+  const [logicalId] = Object.keys(
+    template.findResources("AWS::Lambda::Function"),
+  ).filter((id) => JSON.stringify(integrationUri).includes(id));
+  assert.ok(logicalId, "el método no tiene una Lambda");
+  return {
+    logicalId,
+    properties: template.findResources("AWS::Lambda::Function")[logicalId]
+      .Properties,
+  };
+};
+
+test("toda ruta privada declara su policy y exige la clave de platform y el ID token", () => {
+  const template = synthesizeBackend();
+  const methods = Object.values(
+    template.findResources("AWS::ApiGateway::Method"),
+  );
+  const authorizers = Object.entries(
+    template.findResources("AWS::ApiGateway::Authorizer"),
+  );
+
+  assert.equal(authorizers.length, 1);
+  const [clientLogicalId] = Object.keys(
+    template.findResources("AWS::Cognito::UserPoolClient"),
+  );
+  assert.deepEqual(authorizers[0][1].Properties.IdentityValidationExpression, {
+    "Fn::Join": ["", ["^", { Ref: clientLogicalId }, "$"]],
+  });
+  const privateMethods = methods.filter(
+    ({ Properties }) =>
+      !PUBLIC_ROUTES.includes(
+        `${Properties.HttpMethod} ${resourcePath(template, Properties.ResourceId.Ref)}`,
+      ),
+  );
+  assert.ok(privateMethods.length > 0);
+  for (const { Properties } of privateMethods) {
+    assert.equal(Properties.AuthorizationType, "COGNITO_USER_POOLS");
+    assert.deepEqual(Properties.AuthorizerId, { Ref: authorizers[0][0] });
+    assert.equal(Properties.ApiKeyRequired, true);
+    const { ROUTE_POLICY } = functionOfMethod(
+      template,
+      Properties.Integration.Uri,
+    ).properties.Environment.Variables;
+    assert.ok(routePolicySchema.safeParse(JSON.parse(ROUTE_POLICY)).success);
+  }
+  for (const { Properties } of methods) {
+    assert.equal(Properties.ApiKeyRequired, true);
+  }
+});
+
+test("toda Lambda de una ruta privada puede leer al usuario de la sesión y sus memberships", () => {
+  const template = synthesizeBackend();
+
+  const privateMethods = Object.values(
+    template.findResources("AWS::ApiGateway::Method"),
+  ).filter(({ Properties }) => Properties.AuthorizerId);
+  assert.ok(privateMethods.length > 0);
+  for (const { Properties } of privateMethods) {
+    const { logicalId, properties } = functionOfMethod(
+      template,
+      Properties.Integration.Uri,
+    );
+
+    assert.deepEqual(accessByAction(template, logicalId)["dynamodb:Query"], [
+      "USER#*",
+    ]);
+    assert.ok(
+      policyFor(template, logicalId).includes("/index/GSI2"),
+      logicalId,
+    );
+    assert.ok(properties.Environment.Variables.TABLE_NAME, logicalId);
+    const { resourceType } = JSON.parse(
+      properties.Environment.Variables.ROUTE_POLICY,
+    );
+    const clinicReads = accessByAction(template, logicalId)["dynamodb:GetItem"];
+    assert.equal(
+      clinicReads?.includes("CLINIC#*") ?? false,
+      resourceType === "CLINIC",
+      logicalId,
+    );
+  }
 });
 
 const LAMBDA_DESCRIPTION_MAX_LENGTH = 256;

@@ -1,6 +1,7 @@
 import { CfnOutput, Duration, Stack } from "aws-cdk-lib";
 import * as apigateway from "aws-cdk-lib/aws-apigateway";
 import * as acm from "aws-cdk-lib/aws-certificatemanager";
+import type * as cognito from "aws-cdk-lib/aws-cognito";
 import * as events from "aws-cdk-lib/aws-events";
 import * as eventsTargets from "aws-cdk-lib/aws-events-targets";
 import * as iam from "aws-cdk-lib/aws-iam";
@@ -9,12 +10,21 @@ import * as logs from "aws-cdk-lib/aws-logs";
 import * as route53 from "aws-cdk-lib/aws-route53";
 import * as route53Targets from "aws-cdk-lib/aws-route53-targets";
 import { Construct } from "constructs";
+import {
+  RESOURCE_ID_PARAMETER,
+  ROUTE_POLICY_VARIABLE,
+  type RoutePolicy,
+  requiresMembership,
+  routePolicySchema,
+} from "./src/users/application/authorize-request.usecase";
+import { SESSION_EXPIRED } from "./src/users/handlers/http-messages";
 
 const PLATFORM_REQUESTS_PER_SECOND = 100;
 const PLATFORM_BURST_REQUESTS = 200;
 
 const DISABLED_EXECUTE_API_URL_OUTPUT = "Endpoint";
 const UNKNOWN_ROUTE_BODY = JSON.stringify({ message: "Not found" });
+const SESSION_EXPIRED_BODY = JSON.stringify({ message: SESSION_EXPIRED });
 
 const STAGE_REVIEW_TIMEOUT = Duration.seconds(30);
 const RESOURCES_PER_PAGE = 500;
@@ -98,12 +108,20 @@ const accessLogFormat = apigateway.AccessLogFormat.custom(
 export interface ApiGatewayProps {
   hostedZone: route53.IHostedZone;
   domainName: string;
+  userPool: cognito.IUserPool;
+  platformClientId: string;
 }
 
 export class ApiGateway extends Construct {
   readonly api: apigateway.RestApi;
+  private sessionAuthorizer?: apigateway.CognitoUserPoolsAuthorizer;
+  private readonly privateRouteFunctions = new Set<lambda.Function>();
 
-  constructor(scope: Construct, id: string, props: ApiGatewayProps) {
+  constructor(
+    scope: Construct,
+    id: string,
+    private readonly props: ApiGatewayProps,
+  ) {
     super(scope, id);
 
     const certificate = new acm.Certificate(this, "Certificate", {
@@ -136,6 +154,12 @@ export class ApiGateway extends Construct {
       templates: { "application/json": UNKNOWN_ROUTE_BODY },
     });
 
+    api.addGatewayResponse("SessionExpired", {
+      type: apigateway.ResponseType.UNAUTHORIZED,
+      statusCode: "401",
+      templates: { "application/json": SESSION_EXPIRED_BODY },
+    });
+
     const platformApiKey = api.addApiKey("PlatformApiKey");
     const platformUsagePlan = api.addUsagePlan("PlatformUsagePlan", {
       throttle: {
@@ -157,6 +181,63 @@ export class ApiGateway extends Construct {
     new CfnOutput(this, "PlatformApiKeyId", { value: platformApiKey.keyId });
 
     this.redeployStageWhenRoutesAreRemoved(api);
+  }
+
+  addPrivateRoute(
+    path: string,
+    httpMethod: string,
+    routeFunction: lambda.Function,
+    policy: RoutePolicy,
+  ) {
+    routePolicySchema.parse(policy);
+    const route = `${httpMethod} /${path}`;
+    if (this.privateRouteFunctions.has(routeFunction)) {
+      throw new Error(
+        `${route}: la Lambda ya tiene una ruta privada y su ROUTE_POLICY se pisaría.`,
+      );
+    }
+    const pathParameters: string[] = path.match(/\{[^}]*\}/g) ?? [];
+    const resourceIdParameter = `{${RESOURCE_ID_PARAMETER}}`;
+    if (pathParameters.some((parameter) => parameter !== resourceIdParameter)) {
+      throw new Error(
+        `${route}: el único parámetro permitido es ${resourceIdParameter}.`,
+      );
+    }
+    if (
+      pathParameters.includes(resourceIdParameter) !==
+      requiresMembership(policy)
+    ) {
+      throw new Error(
+        `${route}: ${resourceIdParameter} y la membership de la policy se declaran juntos.`,
+      );
+    }
+
+    this.privateRouteFunctions.add(routeFunction);
+    routeFunction.addEnvironment(ROUTE_POLICY_VARIABLE, JSON.stringify(policy));
+    this.api.root
+      .resourceForPath(path)
+      .addMethod(httpMethod, new apigateway.LambdaIntegration(routeFunction), {
+        authorizer: this.ensureSessionAuthorizer(),
+      });
+  }
+
+  private ensureSessionAuthorizer() {
+    if (this.sessionAuthorizer) return this.sessionAuthorizer;
+
+    this.sessionAuthorizer = new apigateway.CognitoUserPoolsAuthorizer(
+      this,
+      "SessionAuthorizer",
+      {
+        cognitoUserPools: [this.props.userPool],
+        resultsCacheTtl: Duration.seconds(0),
+      },
+    );
+    // Con ID token, el gateway compara esta expresión con el aud: así queda fuera
+    // el access token, que no lo trae, y el de cualquier otro cliente del pool.
+    (
+      this.sessionAuthorizer.node.defaultChild as apigateway.CfnAuthorizer
+    ).identityValidationExpression = `^${this.props.platformClientId}$`;
+    return this.sessionAuthorizer;
   }
 
   // CloudFormation crea el deployment nuevo antes de borrar las rutas quitadas,
