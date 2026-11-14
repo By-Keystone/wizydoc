@@ -71,10 +71,10 @@ Producción:
   `CLINIC`) y `Membership`.
 - `lib/src/users/domain/repository/user.repository.ts`: `UserWithMemberships`
   y `findByCognitoSubWithMemberships`.
-- `lib/src/users/infrastructure/persistence/dynamodb/user.schema.ts`: el
-  esquema de lectura del usuario.
+- `lib/src/users/infrastructure/persistence/dynamodb/user.schema.ts`: `Email`
+  como `EmailVO`, que es lo que se guarda.
 - `lib/src/users/infrastructure/persistence/dynamodb/membership.schema.ts` y
-  `membership.mappers.ts` (nuevos): sólo la lectura.
+  `membership.mappers.ts` (nuevos): el tipo del ítem y su lectura.
 - `lib/src/users/infrastructure/persistence/dynamodb/user.mappers.ts`:
   `fromDynamoToDomain`.
 - `lib/src/users/infrastructure/persistence/dynamodb/user.repository.ts`:
@@ -165,13 +165,16 @@ DynamoDB, uno detrás del otro:
 - **Costo:** la consulta del índice gasta media unidad de lectura y la de la
   partición, una (cabe en 4 KB salvo un usuario con decenas de memberships). El
   filtro no ahorra capacidad, pero los ítems filtrados son pocos.
-- **Más de 1 MB en la partición** (`LastEvaluatedKey` presente) lanza un error
-  sin valores (500) en lugar de devolver memberships incompletas. Con los ítems
-  de hoy no puede pasar.
-- **Cada ítem se valida con Zod antes de mapear,** y se revisa `ItemType`, como
-  pide `AGENTS.md`. Un usuario sin `AccountId` u `OnboardingStep` válidos es un
-  error, no un usuario: responde 500 (ver «Riesgos aceptados del plan»). Un
-  `Email` se vuelve a pasar por `emailSchema`, que es idempotente.
+- **Más de 1 MB en la partición** (`LastEvaluatedKey` presente) se lee página
+  por página con `ExclusiveStartKey` hasta que no queda `LastEvaluatedKey`, para
+  no decidir con memberships incompletas. Con los ítems de hoy, una página
+  alcanza.
+- **Cada ítem se tipa con el schema de su ítem y se revisa `ItemType`,** como
+  pide `AGENTS.md`. Los mappers reciben un `Pick` de `UsersDynamoDBSchema` o de
+  `MembershipDynamoDBSchema` con los atributos que proyecta la lectura, nunca
+  `unknown`. Lo leído no se valida con Zod: los ítems los escriben sólo
+  nuestras Lambdas, con esos mismos tipos (decidido por el humano el 14 de
+  noviembre de 2026).
 - **`isConfirmed` no cambia.** Lo sigue usando el inicio de sesión.
 
 ### La policy (parte 3)
@@ -508,8 +511,7 @@ infraestructura con síntesis de CDK.
 - Parte 2: la consulta de `GSI2` proyecta sólo `ItemType` e `Id`; la de la
   partición es consistente y filtra `USER` y `MEMBERSHIP`; un ítem de otro tipo
   en `GSI2`, una partición sin usuario o un usuario con otro `CognitoSub` no
-  devuelven usuario; un usuario sin `AccountId` u `OnboardingStep` lanza un
-  error; una partición de más de una página lanza un error.
+  devuelven usuario; una partición de más de una página se lee completa.
 - Parte 3: con el correo sin confirmar, una ruta que exige `confirmed` responde
   403 «Confirma tu correo para continuar.»; con todo en contra responde el
   primer paso que falla; `ANY` deja pasar cualquier paso y un paso concreto sólo
@@ -649,9 +651,10 @@ Lo comprueban los pedidos a staging de «Verificación».
 
 ## Riesgos aceptados del plan
 
-- **Los usuarios de staging creados antes de la parte 1 reciben 500** en toda
-  ruta privada: no tienen `AccountId` ni `OnboardingStep`. Son cuentas de
-  prueba; quien pruebe crea una nueva. En producción no hay usuarios de este
+- **Los usuarios de staging creados antes de la parte 1 no funcionan** en las
+  rutas privadas: no tienen `AccountId` ni `OnboardingStep`, y como lo leído no
+  se valida, responden 403 o 500 según la ruta. Son cuentas de prueba; quien
+  pruebe crea una nueva. En producción no hay usuarios de este
   backend: todavía no hay ningún release `backend-infra-*`.
 - **El primer `/api/me` después del registro puede responder 401** si `GSI2`
   todavía no tiene al usuario. Entre la transacción y ese pedido pasan el

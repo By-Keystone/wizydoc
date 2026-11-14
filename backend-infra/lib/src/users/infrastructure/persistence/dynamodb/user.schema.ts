@@ -1,5 +1,6 @@
 import type { ULID } from "ulid";
 import type { OnboardingStep } from "../../../domain/user.entity";
+import type { EmailVO } from "../../../domain/value-objects/email.vo";
 
 type PKPrefix = "USER#";
 type PK = `${PKPrefix}${string}`;
@@ -27,7 +28,7 @@ export interface UsersDynamoDBSchema {
   GSI2PK?: GSI2PK;
   GSI2SK?: GSI2SK;
   Id: ULID;
-  Email: string;
+  Email: EmailVO;
   Confirmed: boolean;
   AccountId: ULID;
   OnboardingStep: OnboardingStep;

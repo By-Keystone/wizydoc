@@ -28,3 +28,22 @@ export const fromDomainToDynamo = (user: User): UsersDynamoDBSchema => {
     CognitoSub: user.cognitoSub,
   };
 };
+
+export const fromDynamoToDomain = ({
+  Id,
+  Email,
+  Confirmed,
+  AccountId,
+  OnboardingStep,
+  CognitoSub,
+}: Pick<
+  UsersDynamoDBSchema,
+  "Id" | "Email" | "Confirmed" | "AccountId" | "OnboardingStep" | "CognitoSub"
+>): User => ({
+  id: Id,
+  email: Email,
+  confirmed: Confirmed,
+  accountId: AccountId,
+  onboardingStep: OnboardingStep,
+  cognitoSub: CognitoSub,
+});
