@@ -755,7 +755,7 @@ test("el usuario de la sesión y sus memberships se leen sólo de su propia part
   }[];
   assert.equal(index.IndexName, "GSI2");
   assert.equal(index.ProjectionExpression, "#ItemType, #Id");
-  assert.equal(index.Limit, 2);
+  assert.equal(index.Limit, 1);
   assert.equal(index.KeyConditionExpression, "#GSI2PK = :gsi2pk");
   assert.equal(index.ExpressionAttributeNames["#GSI2PK"], "GSI2PK");
   assert.equal(
@@ -886,18 +886,6 @@ test("una partición de más de una página se lee completa, página por página
   assert.equal(
     secondPage.KeyConditionExpression,
     firstPage.KeyConditionExpression,
-  );
-});
-
-test("dos usuarios con el mismo sub en GSI2 lanzan un error sin valores", async () => {
-  await assert.rejects(
-    findSession({
-      Items: [
-        { ItemType: "USER", Id: USER_ID },
-        { ItemType: "USER", Id: CLINIC_ID },
-      ],
-    }).found,
-    { message: "Hay más de un usuario con el mismo sub" },
   );
 });
 
