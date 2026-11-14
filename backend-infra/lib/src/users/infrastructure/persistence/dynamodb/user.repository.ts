@@ -232,16 +232,14 @@ export class UserRepository implements IUserRepository {
           "#ItemType": "ItemType",
           "#Id": "Id",
         },
-        Limit: 2,
+        Limit: 1,
       }),
     );
 
-    const userItems = (
-      (Items ?? []) as Pick<UsersDynamoDBSchema, "ItemType" | "Id">[]
-    ).filter((item) => item.ItemType === USER_ITEM_TYPE);
-    if (userItems.length > 1) {
-      throw new Error("Hay más de un usuario con el mismo sub");
-    }
-    return userItems[0]?.Id;
+    const [indexItem] = (Items ?? []) as Pick<
+      UsersDynamoDBSchema,
+      "ItemType" | "Id"
+    >[];
+    return indexItem?.ItemType === USER_ITEM_TYPE ? indexItem.Id : undefined;
   }
 }
