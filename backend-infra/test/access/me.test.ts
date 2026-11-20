@@ -6,15 +6,15 @@ import { BackendStack } from "../../lib/backend-stack";
 import {
   AuthorizeRequestUseCase,
   type RoutePolicy,
-} from "../../lib/src/users/application/authorize-request.usecase";
-import { GetMeUseCase } from "../../lib/src/users/application/get-me.usecase";
+} from "../../lib/src/access/application/authorize-request.usecase";
+import { GetMeUseCase } from "../../lib/src/access/application/get-me.usecase";
+import { handleMe } from "../../lib/src/access/handlers/me.http";
 import {
   familyNameSchema,
   givenNameSchema,
 } from "../../lib/src/users/domain/value-objects/person-name.vo";
 import { phoneSchema } from "../../lib/src/users/domain/value-objects/phone.vo";
 import { treatmentSchema } from "../../lib/src/users/domain/value-objects/treatment.vo";
-import { handleMe } from "../../lib/src/users/handlers/me.http";
 import {
   buildUser,
   COGNITO_SUB,
@@ -22,7 +22,7 @@ import {
   InMemoryClinics,
   InMemoryUsers,
   privateEvent,
-} from "./fakes";
+} from "../fakes";
 
 const OWNER_USER_ID = "01M6MSQWFCK15Q3X04AQEQ0SFY";
 

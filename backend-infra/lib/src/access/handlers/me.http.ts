@@ -3,9 +3,9 @@ import {
   noStoreJsonResponse,
   type PrivateApiGatewayEvent,
 } from "../../shared/http/api-gateway";
-import type { AuthorizeRequestUseCase } from "../application/authorize-request.usecase";
+import type { AuthorizeRequestUseCase } from "../../access/application/authorize-request.usecase";
 import type { GetMeUseCase } from "../application/get-me.usecase";
-import { handlePrivateRoute } from "./private-route";
+import { handlePrivateRoute } from "../../access/handlers/private-route";
 
 export interface MeHttpDependencies {
   authorizeRequest: Pick<AuthorizeRequestUseCase, "execute">;

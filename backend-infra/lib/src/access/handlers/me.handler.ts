@@ -1,20 +1,20 @@
+import { SessionRepository } from "../../access/infrastructure/persistence/dynamodb/session.repository";
 import { requireEnv } from "../../shared/env";
 import type { PrivateApiGatewayEvent } from "../../shared/http/api-gateway";
-import { AuthorizeRequestUseCase } from "../application/authorize-request.usecase";
+import { AuthorizeRequestUseCase } from "../../access/application/authorize-request.usecase";
 import { GetMeUseCase } from "../application/get-me.usecase";
-import { AccountRepository } from "../infrastructure/persistence/dynamodb/account.repository";
-import { getClient } from "../infrastructure/persistence/dynamodb/client";
-import { ClinicRepository } from "../infrastructure/persistence/dynamodb/clinic.repository";
-import { UserRepository } from "../infrastructure/persistence/dynamodb/user.repository";
+import { AccountRepository } from "../../accounts/infrastructure/persistence/dynamodb/account.repository";
+import { getClient } from "../../shared/persistence/dynamodb/client";
+import { ClinicRepository } from "../../clinics/infrastructure/persistence/dynamodb/clinic.repository";
 import { handleMe } from "./me.http";
-import { readRoutePolicy } from "./private-route";
+import { readRoutePolicy } from "../../access/handlers/private-route";
 
 const tableName = requireEnv("TABLE_NAME");
 const documentClient = getClient();
 
 const dependencies = {
   authorizeRequest: new AuthorizeRequestUseCase(
-    new UserRepository(documentClient, tableName),
+    new SessionRepository(documentClient, tableName),
     new ClinicRepository(documentClient, tableName),
     readRoutePolicy(),
   ),

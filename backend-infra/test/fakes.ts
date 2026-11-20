@@ -1,7 +1,8 @@
+import type { DynamoDBDocumentClient } from "@aws-sdk/lib-dynamodb";
 import type { CognitoIdentityProviderClient } from "@aws-sdk/client-cognito-identity-provider";
 import type { SendEmailCommandInput, SESv2Client } from "@aws-sdk/client-sesv2";
-import type { Account } from "../../lib/src/users/domain/account.entity";
-import type { IAccountExistsNotices } from "../../lib/src/users/application/ports/account-exists-notices.port";
+import type { Account } from "../lib/src/accounts/domain/account.entity";
+import type { IAccountExistsNotices } from "../lib/src/users/application/ports/account-exists-notices.port";
 import type {
   ISessionProvider,
   RefreshedSession,
@@ -9,36 +10,37 @@ import type {
   SignInAttempt,
   SignInCredentials,
   StartSessionInput,
-} from "../../lib/src/users/application/ports/session-provider.port";
-import type { ISignUpVerificationTokenRepository } from "../../lib/src/users/domain/repository/sign-up-verification-token.repository";
-import type { VerificationToCommit } from "../../lib/src/users/domain/repository/user.repository";
-import type { IIpRateLimit } from "../../lib/src/users/application/ports/ip-rate-limit.port";
+} from "../lib/src/users/application/ports/session-provider.port";
+import type { ISignUpVerificationTokenRepository } from "../lib/src/users/domain/repository/sign-up-verification-token.repository";
+import type { VerificationToCommit } from "../lib/src/users/domain/repository/user.repository";
+import type { IIpRateLimit } from "../lib/src/users/application/ports/ip-rate-limit.port";
 import type {
   CreateUserIfAbsentInput,
   IIdentityProvider,
-} from "../../lib/src/users/application/ports/identity-provider.port";
-import type { ISignUpEmails } from "../../lib/src/users/application/ports/sign-up-emails.port";
-import type { ISignUpCodeRepository } from "../../lib/src/users/domain/repository/sign-up-code.repository";
+} from "../lib/src/users/application/ports/identity-provider.port";
+import type { ISignUpEmails } from "../lib/src/users/application/ports/sign-up-emails.port";
+import type { ISignUpCodeRepository } from "../lib/src/users/domain/repository/sign-up-code.repository";
 import {
   SIGN_UP_CODE_MAX_ATTEMPTS,
   type SignUpCode,
-} from "../../lib/src/users/domain/sign-up-code.entity";
-import type { SignUpVerificationToken } from "../../lib/src/users/domain/sign-up-verification-token.entity";
-import type { PrivateApiGatewayEvent } from "../../lib/src/shared/http/api-gateway";
-import type { Membership } from "../../lib/src/users/domain/membership.entity";
-import type { IAccountRepository } from "../../lib/src/users/domain/repository/account.repository";
-import type { IClinicRepository } from "../../lib/src/users/domain/repository/clinic.repository";
+} from "../lib/src/users/domain/sign-up-code.entity";
+import type { SignUpVerificationToken } from "../lib/src/users/domain/sign-up-verification-token.entity";
+import type { PrivateApiGatewayEvent } from "../lib/src/shared/http/api-gateway";
+import type { IAccountRepository } from "../lib/src/accounts/domain/repository/account.repository";
 import type {
-  IUserRepository,
+  ISessionRepository,
   UserWithMemberships,
-} from "../../lib/src/users/domain/repository/user.repository";
-import type { TermsAcceptance } from "../../lib/src/users/domain/terms-acceptance.entity";
-import type { User } from "../../lib/src/users/domain/user.entity";
+} from "../lib/src/access/domain/repository/session.repository";
+import type { Membership } from "../lib/src/clinics/domain/membership.entity";
+import type { IClinicRepository } from "../lib/src/clinics/domain/repository/clinic.repository";
+import type { IUserRepository } from "../lib/src/users/domain/repository/user.repository";
+import type { TermsAcceptance } from "../lib/src/users/domain/terms-acceptance.entity";
+import type { User } from "../lib/src/users/domain/user.entity";
 import {
   type EmailVO,
   emailSchema,
-} from "../../lib/src/users/domain/value-objects/email.vo";
-import { SesSignUpEmails } from "../../lib/src/users/infrastructure/email/ses/sign-up-emails";
+} from "../lib/src/users/domain/value-objects/email.vo";
+import { SesSignUpEmails } from "../lib/src/users/infrastructure/email/ses/sign-up-emails";
 
 export const COGNITO_SUB = "4b1c7a2e-0000-4000-8000-000000000001";
 export const FROM_ADDRESS = "WizyDoc <no-reply@wizydoc.app>";
@@ -89,7 +91,7 @@ export class RecordingSessions implements Pick<ISessionProvider, "start"> {
   }
 }
 
-export class InMemoryUsers implements IUserRepository {
+export class InMemoryUsers implements IUserRepository, ISessionRepository {
   readonly users: User[];
   readonly createdUsers: User[] = [];
   readonly createdAccounts: Account[] = [];
@@ -475,4 +477,22 @@ export const cognitoClient = (responses: Record<string, unknown>) => {
     },
   } as unknown as CognitoIdentityProviderClient;
   return { client, sent };
+};
+
+export const capturingClient = ({
+  failure,
+  response = {},
+}: {
+  failure?: Error;
+  response?: unknown;
+} = {}) => {
+  const inputs: unknown[] = [];
+  const client = {
+    send: async (command: { input: unknown }) => {
+      inputs.push(command.input);
+      if (failure) throw failure;
+      return response;
+    },
+  } as unknown as DynamoDBDocumentClient;
+  return { client, inputs };
 };

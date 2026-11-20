@@ -5,10 +5,10 @@ import {
   MEMBERSHIP_ROLES,
   type Membership,
   type MembershipRole,
-} from "../domain/membership.entity";
-import type { IClinicRepository } from "../domain/repository/clinic.repository";
-import type { IUserRepository } from "../domain/repository/user.repository";
-import { ONBOARDING_STEPS, type User } from "../domain/user.entity";
+} from "../../clinics/domain/membership.entity";
+import type { IClinicRepository } from "../../clinics/domain/repository/clinic.repository";
+import { ONBOARDING_STEPS, type User } from "../../users/domain/user.entity";
+import type { ISessionRepository } from "../domain/repository/session.repository";
 
 const ROLE_RANK: Record<MembershipRole, number> = {
   ADMIN: 100,
@@ -74,10 +74,7 @@ export class AuthorizeRequestUseCase {
   private readonly policy: ResolvedRoutePolicy;
 
   constructor(
-    private readonly users: Pick<
-      IUserRepository,
-      "findByCognitoSubWithMemberships"
-    >,
+    private readonly sessions: ISessionRepository,
     private readonly clinics: Pick<IClinicRepository, "findOrganizationId">,
     policy: RoutePolicy,
   ) {
@@ -93,7 +90,7 @@ export class AuthorizeRequestUseCase {
       : undefined;
 
     const session =
-      await this.users.findByCognitoSubWithMemberships(cognitoSub);
+      await this.sessions.findByCognitoSubWithMemberships(cognitoSub);
     if (!session) return { kind: "session-expired" };
 
     const { user, memberships } = session;

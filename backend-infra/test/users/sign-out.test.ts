@@ -7,7 +7,7 @@ import { emailSchema } from "../../lib/src/users/domain/value-objects/email.vo";
 import { SIGN_OUT_FAILED } from "../../lib/src/users/handlers/http-messages";
 import { handleRefreshSession } from "../../lib/src/users/handlers/refresh-session.http";
 import { handleSignOut } from "../../lib/src/users/handlers/sign-out.http";
-import { InMemoryCognitoSessions } from "./fakes";
+import { InMemoryCognitoSessions } from "../fakes";
 
 const EMAIL = emailSchema.parse("ana@clinica.pe");
 const PASSWORD = "una-clave-segura";

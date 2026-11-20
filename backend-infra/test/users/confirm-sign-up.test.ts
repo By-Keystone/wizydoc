@@ -23,7 +23,7 @@ import {
   InMemorySignUpVerificationTokens,
   InMemoryUsers,
   RecordingSessions,
-} from "./fakes";
+} from "../fakes";
 
 const email = emailSchema.parse("ana@clinica.pe");
 const PASSWORD = "una-clave-segura";
