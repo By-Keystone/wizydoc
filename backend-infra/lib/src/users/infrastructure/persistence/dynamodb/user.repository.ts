@@ -1,79 +1,29 @@
 import {
   type DynamoDBDocumentClient,
   QueryCommand,
-  type QueryCommandOutput,
   TransactWriteCommand,
 } from "@aws-sdk/lib-dynamodb";
-import type { Account } from "../../../domain/account.entity";
+import type { Account } from "../../../../accounts/domain/account.entity";
 import type {
   IUserRepository,
-  UserWithMemberships,
   VerificationToCommit,
 } from "../../../domain/repository/user.repository";
 import type { TermsAcceptance } from "../../../domain/terms-acceptance.entity";
 import type { User } from "../../../domain/user.entity";
 import type { EmailVO } from "../../../domain/value-objects/email.vo";
-import { fromAccountToDynamo } from "./account.mappers";
-import { isLostRace } from "./lost-race";
-import { fromDynamoToMembership } from "./membership.mappers";
-import {
-  MEMBERSHIP_ITEM_TYPE,
-  type MembershipDynamoDBSchema,
-} from "./membership.schema";
+import { fromAccountToDynamo } from "../../../../accounts/infrastructure/persistence/dynamodb/account.mappers";
+import { ONLY_IF_NEW } from "../../../../shared/persistence/dynamodb/conditions";
+import { isLostRace } from "../../../../shared/persistence/dynamodb/lost-race";
 import {
   signUpVerificationTokenPk,
   signUpVerificationTokenSk,
 } from "./sign-up-verification-token.schema";
 import { fromTermsAcceptanceToDynamo } from "./terms-acceptance.mappers";
-import { fromDomainToDynamo, fromDynamoToDomain } from "./user.mappers";
-import {
-  gsi1pk,
-  gsi2pk,
-  pk,
-  USER_ITEM_TYPE,
-  type UsersDynamoDBSchema,
-} from "./user.schema";
+import { fromDomainToDynamo } from "./user.mappers";
+import { gsi1pk, gsi2pk, USER_ITEM_TYPE } from "./user.schema";
 
-const ONLY_IF_NEW = "attribute_not_exists(PK)";
 const ONLY_IF_VERIFICATION_IS_VALID =
   "attribute_exists(PK) AND Email = :email AND DeleteAfter > :now";
-
-const PARTITION_READ_ATTRIBUTES = [
-  "ItemType",
-  "Id",
-  "Email",
-  "Confirmed",
-  "AccountId",
-  "OnboardingStep",
-  "CognitoSub",
-  "GivenName",
-  "FamilyName",
-  "Phone",
-  "Treatment",
-  "ResourceId",
-  "ResourceType",
-  "Role",
-];
-
-type SessionPartitionItem =
-  | Pick<
-      UsersDynamoDBSchema,
-      | "ItemType"
-      | "Id"
-      | "Email"
-      | "Confirmed"
-      | "AccountId"
-      | "OnboardingStep"
-      | "CognitoSub"
-      | "GivenName"
-      | "FamilyName"
-      | "Phone"
-      | "Treatment"
-    >
-  | Pick<
-      MembershipDynamoDBSchema,
-      "ItemType" | "ResourceId" | "ResourceType" | "AccountId" | "Role"
-    >;
 
 export class UserRepository implements IUserRepository {
   constructor(
@@ -170,76 +120,5 @@ export class UserRepository implements IUserRepository {
     return (
       Items?.[0]?.ItemType === USER_ITEM_TYPE && Items[0].Confirmed === true
     );
-  }
-
-  async findByCognitoSubWithMemberships(
-    cognitoSub: string,
-  ): Promise<UserWithMemberships | undefined> {
-    const userId = await this.findUserIdByCognitoSub(cognitoSub);
-    if (!userId) return undefined;
-
-    const partition: SessionPartitionItem[] = [];
-    let startKey: QueryCommandOutput["LastEvaluatedKey"];
-    do {
-      const { Items = [], LastEvaluatedKey } = await this.client.send(
-        new QueryCommand({
-          TableName: this.tableName,
-          KeyConditionExpression: "#PK = :pk",
-          FilterExpression: "#ItemType IN (:user, :membership)",
-          ProjectionExpression: PARTITION_READ_ATTRIBUTES.map(
-            (name) => `#${name}`,
-          ).join(", "),
-          ExpressionAttributeValues: {
-            ":pk": pk(userId),
-            ":user": USER_ITEM_TYPE,
-            ":membership": MEMBERSHIP_ITEM_TYPE,
-          },
-          ExpressionAttributeNames: Object.fromEntries([
-            ["#PK", "PK"],
-            ...PARTITION_READ_ATTRIBUTES.map((name) => [`#${name}`, name]),
-          ]),
-          ConsistentRead: true,
-          ...(startKey ? { ExclusiveStartKey: startKey } : {}),
-        }),
-      );
-      partition.push(...(Items as SessionPartitionItem[]));
-      startKey = LastEvaluatedKey;
-    } while (startKey);
-
-    const userItem = partition.find((item) => item.ItemType === USER_ITEM_TYPE);
-    if (!userItem || userItem.CognitoSub !== cognitoSub) return undefined;
-
-    return {
-      user: fromDynamoToDomain(userItem),
-      memberships: partition
-        .filter((item) => item.ItemType === MEMBERSHIP_ITEM_TYPE)
-        .map(fromDynamoToMembership),
-    };
-  }
-
-  private async findUserIdByCognitoSub(
-    cognitoSub: string,
-  ): Promise<string | undefined> {
-    const { Items } = await this.client.send(
-      new QueryCommand({
-        TableName: this.tableName,
-        IndexName: "GSI2",
-        KeyConditionExpression: "#GSI2PK = :gsi2pk",
-        ProjectionExpression: "#ItemType, #Id",
-        ExpressionAttributeValues: { ":gsi2pk": gsi2pk(cognitoSub) },
-        ExpressionAttributeNames: {
-          "#GSI2PK": "GSI2PK",
-          "#ItemType": "ItemType",
-          "#Id": "Id",
-        },
-        Limit: 1,
-      }),
-    );
-
-    const [indexItem] = (Items ?? []) as Pick<
-      UsersDynamoDBSchema,
-      "ItemType" | "Id"
-    >[];
-    return indexItem?.ItemType === USER_ITEM_TYPE ? indexItem.Id : undefined;
   }
 }

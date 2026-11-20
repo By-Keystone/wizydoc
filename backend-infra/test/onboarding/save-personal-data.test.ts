@@ -1,13 +1,11 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { AuthorizeRequestUseCase } from "../../lib/src/users/application/authorize-request.usecase";
-import { SavePersonalDataUseCase } from "../../lib/src/users/application/save-personal-data.usecase";
+import { AuthorizeRequestUseCase } from "../../lib/src/access/application/authorize-request.usecase";
+import { ONBOARDING_INCOMPLETE } from "../../lib/src/access/handlers/http-messages";
+import { SavePersonalDataUseCase } from "../../lib/src/onboarding/application/save-personal-data.usecase";
+import { PERSONAL_DATA_FAILED } from "../../lib/src/onboarding/handlers/http-messages";
+import { handleSavePersonalData } from "../../lib/src/onboarding/handlers/save-personal-data.http";
 import type { OnboardingStep } from "../../lib/src/users/domain/user.entity";
-import {
-  ONBOARDING_INCOMPLETE,
-  PERSONAL_DATA_FAILED,
-} from "../../lib/src/users/handlers/http-messages";
-import { handleSavePersonalData } from "../../lib/src/users/handlers/save-personal-data.http";
 import {
   buildUser,
   COGNITO_SUB,
@@ -16,7 +14,7 @@ import {
   InMemoryUsers,
   privateEvent,
   readDeclaredPolicy,
-} from "./fakes";
+} from "../fakes";
 
 const declaredPolicy = readDeclaredPolicy("SavePersonalDataFunction");
 

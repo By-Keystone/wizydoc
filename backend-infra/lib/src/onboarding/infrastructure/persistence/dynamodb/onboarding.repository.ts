@@ -6,9 +6,16 @@ import type {
   IOnboardingRepository,
   OnboardingStepTransition,
 } from "../../../domain/repository/onboarding.repository";
-import type { OnboardingStep, PersonalData } from "../../../domain/user.entity";
-import { isLostRace } from "./lost-race";
-import { pk, sk, type UsersDynamoDBSchema } from "./user.schema";
+import { isLostRace } from "../../../../shared/persistence/dynamodb/lost-race";
+import type {
+  OnboardingStep,
+  PersonalData,
+} from "../../../../users/domain/user.entity";
+import {
+  pk,
+  sk,
+  type UsersDynamoDBSchema,
+} from "../../../../users/infrastructure/persistence/dynamodb/user.schema";
 
 export class OnboardingRepository implements IOnboardingRepository {
   constructor(

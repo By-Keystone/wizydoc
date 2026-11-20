@@ -1,3 +1,5 @@
+import type { AuthorizeRequestUseCase } from "../../access/application/authorize-request.usecase";
+import { handlePrivateRoute } from "../../access/handlers/private-route";
 import {
   type ApiGatewayResult,
   HTTP_STATUS,
@@ -7,13 +9,11 @@ import {
   parseJsonBody,
 } from "../../shared/http/api-gateway";
 import { INVALID_REQUEST } from "../../shared/messages";
-import type { AuthorizeRequestUseCase } from "../application/authorize-request.usecase";
 import {
   type SavePersonalDataUseCase,
   savePersonalDataInputSchema,
 } from "../application/save-personal-data.usecase";
 import { PERSONAL_DATA_FAILED } from "./http-messages";
-import { handlePrivateRoute } from "./private-route";
 
 export interface SavePersonalDataHttpDependencies {
   authorizeRequest: Pick<AuthorizeRequestUseCase, "execute">;

@@ -15,13 +15,13 @@ import {
   type RoutePolicy,
   routePolicySchema,
 } from "../application/authorize-request.usecase";
+import { SESSION_EXPIRED } from "../../users/handlers/http-messages";
 import {
   EMAIL_NOT_CONFIRMED,
   ONBOARDING_INCOMPLETE,
   REQUEST_FAILED,
   RESOURCE_NOT_FOUND,
   ROLE_FORBIDDEN,
-  SESSION_EXPIRED,
 } from "./http-messages";
 
 export const readRoutePolicy = (): RoutePolicy =>

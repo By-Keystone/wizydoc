@@ -16,7 +16,7 @@ import {
   type RoutePolicy,
   requiresMembership,
   routePolicySchema,
-} from "./src/users/application/authorize-request.usecase";
+} from "./src/access/application/authorize-request.usecase";
 import { SESSION_EXPIRED } from "./src/users/handlers/http-messages";
 
 const PLATFORM_REQUESTS_PER_SECOND = 100;

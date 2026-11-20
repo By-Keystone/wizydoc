@@ -3,7 +3,7 @@ import { requireEnv } from "../../shared/env";
 import type { ApiGatewayEvent } from "../../shared/http/api-gateway";
 import { SignInUseCase } from "../application/sign-in.usecase";
 import { CognitoSessionProvider } from "../infrastructure/identity-provider/cognito/cognito-session";
-import { getClient } from "../infrastructure/persistence/dynamodb/client";
+import { getClient } from "../../shared/persistence/dynamodb/client";
 import {
   DynamoDBIpRateLimit,
   SIGN_IN_RATE_LIMIT,

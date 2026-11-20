@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { App } from "aws-cdk-lib";
 import { Match, Template } from "aws-cdk-lib/assertions";
-import { routePolicySchema } from "../lib/src/users/application/authorize-request.usecase";
+import { routePolicySchema } from "../lib/src/access/application/authorize-request.usecase";
 import { BackendStack, type BackendStackProps } from "../lib/backend-stack";
 
 const SKIP_BUNDLING = { "aws:cdk:bundling-stacks": [] };

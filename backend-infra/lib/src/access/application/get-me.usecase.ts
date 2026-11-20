@@ -1,5 +1,5 @@
-import type { IAccountRepository } from "../domain/repository/account.repository";
-import type { User } from "../domain/user.entity";
+import type { IAccountRepository } from "../../accounts/domain/repository/account.repository";
+import type { User } from "../../users/domain/user.entity";
 
 export interface Me {
   user: User;

@@ -6,10 +6,8 @@ import {
   TransactionConflictException,
 } from "@aws-sdk/client-dynamodb";
 import type {
-  DynamoDBDocumentClient,
   GetCommandInput,
   PutCommandInput,
-  QueryCommandInput,
   TransactWriteCommandInput,
   UpdateCommandInput,
 } from "@aws-sdk/lib-dynamodb";
@@ -21,8 +19,13 @@ import {
 import { createSignUpVerificationToken } from "../../lib/src/users/domain/sign-up-verification-token.entity";
 import { createSignUpCode } from "../../lib/src/users/domain/sign-up-code.entity";
 import { createTermsAcceptance } from "../../lib/src/users/domain/terms-acceptance.entity";
-import { createAccount } from "../../lib/src/users/domain/account.entity";
+import { createAccount } from "../../lib/src/accounts/domain/account.entity";
 import { createUser } from "../../lib/src/users/domain/user.entity";
+import {
+  familyNameSchema,
+  givenNameSchema,
+} from "../../lib/src/users/domain/value-objects/person-name.vo";
+import { phoneSchema } from "../../lib/src/users/domain/value-objects/phone.vo";
 import { DynamoDBAccountExistsNotices } from "../../lib/src/users/infrastructure/persistence/dynamodb/account-exists-notices";
 import {
   DynamoDBIpRateLimit,
@@ -30,69 +33,21 @@ import {
   SIGN_IN_RATE_LIMIT,
   SIGN_UP_VERIFY_RATE_LIMIT,
 } from "../../lib/src/users/infrastructure/persistence/dynamodb/ip-rate-limit";
-import { AccountRepository } from "../../lib/src/users/infrastructure/persistence/dynamodb/account.repository";
-import { ClinicRepository } from "../../lib/src/users/infrastructure/persistence/dynamodb/clinic.repository";
 import { SignUpVerificationTokenRepository } from "../../lib/src/users/infrastructure/persistence/dynamodb/sign-up-verification-token.repository";
 import { SignUpCodeRepository } from "../../lib/src/users/infrastructure/persistence/dynamodb/sign-up-code.repository";
-import { OnboardingRepository } from "../../lib/src/users/infrastructure/persistence/dynamodb/onboarding.repository";
 import { UserRepository } from "../../lib/src/users/infrastructure/persistence/dynamodb/user.repository";
-import {
-  familyNameSchema,
-  givenNameSchema,
-} from "../../lib/src/users/domain/value-objects/person-name.vo";
-import { phoneSchema } from "../../lib/src/users/domain/value-objects/phone.vo";
-import { treatmentSchema } from "../../lib/src/users/domain/value-objects/treatment.vo";
 import {
   fromDomainToDynamo,
   fromDynamoToDomain,
 } from "../../lib/src/users/infrastructure/persistence/dynamodb/user.mappers";
 import { emailSchema } from "../../lib/src/users/domain/value-objects/email.vo";
-import { buildUser, COGNITO_SUB } from "./fakes";
-
-const USER_ID = "01M6MSQWFCK15Q3X04AQEQ0S8Q";
-const ACCOUNT_ID = "01M6MSQWFCK15Q3X04AQEQ0S9R";
-const CLINIC_ID = "01M6MSQWFCK15Q3X04AQEQ0SAS";
-
-const userItem = {
-  ItemType: "USER",
-  Id: USER_ID,
-  Email: "ana@clinica.pe",
-  Confirmed: true,
-  AccountId: ACCOUNT_ID,
-  OnboardingStep: "COMPLETED",
-  CognitoSub: COGNITO_SUB,
-};
-const membershipItem = {
-  ItemType: "MEMBERSHIP",
-  ResourceId: CLINIC_ID,
-  ResourceType: "CLINIC",
-  AccountId: ACCOUNT_ID,
-  Role: "DOCTOR",
-};
+import { buildUser, COGNITO_SUB, capturingClient } from "../fakes";
 
 const TABLE_NAME = "MainTable";
 const TEN_PAST_NOON = Date.UTC(2026, 10, 6, 12, 10, 30);
 const THIRTEEN_PAST_NOON_AND_HALF = Date.UTC(2026, 10, 6, 12, 13, 30);
 const THIRTEEN_PAST_NOON = Date.UTC(2026, 10, 6, 12, 13, 0) / 1000;
 const WINDOW_START = Date.UTC(2026, 10, 6, 12, 10, 0) / 1000;
-
-const capturingClient = ({
-  failure,
-  response = {},
-}: {
-  failure?: Error;
-  response?: unknown;
-} = {}) => {
-  const inputs: unknown[] = [];
-  const client = {
-    send: async (command: { input: unknown }) => {
-      inputs.push(command.input);
-      if (failure) throw failure;
-      return response;
-    },
-  } as unknown as DynamoDBDocumentClient;
-  return { client, inputs };
-};
 
 const buildOwnerWithAccount = () => {
   const newAccount = createAccount();
@@ -699,195 +654,6 @@ test("isConfirmed consulta GSI2 por el sub con una proyección mínima y exige e
   );
 });
 
-const sessionClient = (...responses: unknown[]) => {
-  const inputs: unknown[] = [];
-  const client = {
-    send: async (command: { input: unknown }) => {
-      inputs.push(command.input);
-      return responses.shift();
-    },
-  } as unknown as DynamoDBDocumentClient;
-  return { client, inputs };
-};
-
-const findSession = (...responses: unknown[]) => {
-  const { client, inputs } = sessionClient(...responses);
-  const found = new UserRepository(
-    client,
-    TABLE_NAME,
-  ).findByCognitoSubWithMemberships(COGNITO_SUB);
-  return { found, inputs };
-};
-
-const sessionResponses = (partition: unknown) => [
-  { Items: [{ ItemType: "USER", Id: USER_ID }] },
-  partition,
-];
-
-test("el usuario de la sesión y sus memberships se leen sólo de su propia partición", async () => {
-  const { found, inputs } = findSession(
-    ...sessionResponses({ Items: [userItem, membershipItem] }),
-  );
-
-  const session = await found;
-
-  assert.equal(session?.user.id, USER_ID);
-  assert.equal(session?.user.accountId, ACCOUNT_ID);
-  assert.equal(session?.user.onboardingStep, "COMPLETED");
-  assert.deepEqual(session?.memberships, [
-    {
-      resourceId: CLINIC_ID,
-      resourceType: "CLINIC",
-      accountId: ACCOUNT_ID,
-      role: "DOCTOR",
-    },
-  ]);
-  const [index, partition] = inputs as {
-    IndexName?: string;
-    ProjectionExpression: string;
-    ConsistentRead?: boolean;
-    FilterExpression?: string;
-    KeyConditionExpression?: string;
-    Limit?: number;
-    ExpressionAttributeNames: Record<string, string>;
-    ExpressionAttributeValues: Record<string, unknown>;
-  }[];
-  assert.equal(index.IndexName, "GSI2");
-  assert.equal(index.ProjectionExpression, "#ItemType, #Id");
-  assert.equal(index.Limit, 1);
-  assert.equal(index.KeyConditionExpression, "#GSI2PK = :gsi2pk");
-  assert.equal(index.ExpressionAttributeNames["#GSI2PK"], "GSI2PK");
-  assert.equal(
-    index.ExpressionAttributeValues[":gsi2pk"],
-    `COGNITO#${COGNITO_SUB}`,
-  );
-  assert.equal(partition.IndexName, undefined);
-  assert.equal(partition.ConsistentRead, true);
-  assert.equal(partition.KeyConditionExpression, "#PK = :pk");
-  assert.equal(partition.ExpressionAttributeNames["#PK"], "PK");
-  assert.equal(partition.FilterExpression, "#ItemType IN (:user, :membership)");
-  assert.deepEqual(partition.ExpressionAttributeValues, {
-    ":pk": `USER#${USER_ID}`,
-    ":user": "USER",
-    ":membership": "MEMBERSHIP",
-  });
-});
-
-test("la partición del usuario se lee sin nada más que lo que piden la policy y /api/me", async () => {
-  const { found, inputs } = findSession(
-    ...sessionResponses({ Items: [userItem] }),
-  );
-  await found;
-
-  const [, partition] = inputs as {
-    ProjectionExpression: string;
-    ExpressionAttributeNames: Record<string, string>;
-  }[];
-  const projected = partition.ProjectionExpression.split(", ").map(
-    (name) => partition.ExpressionAttributeNames[name],
-  );
-  assert.deepEqual(projected, [
-    "ItemType",
-    "Id",
-    "Email",
-    "Confirmed",
-    "AccountId",
-    "OnboardingStep",
-    "CognitoSub",
-    "GivenName",
-    "FamilyName",
-    "Phone",
-    "Treatment",
-    "ResourceId",
-    "ResourceType",
-    "Role",
-  ]);
-});
-
-test("la lectura de la sesión trae el nombre, el apellido, el celular y el tratamiento del usuario", async () => {
-  const withPersonalData = {
-    ...userItem,
-    GivenName: "Ana",
-    FamilyName: "Pérez",
-    Phone: "+51987654321",
-    Treatment: "DRA",
-  };
-  const withoutTreatment = { ...withPersonalData, Treatment: null };
-
-  const session = await findSession(
-    ...sessionResponses({ Items: [withPersonalData] }),
-  ).found;
-  const sessionWithoutTreatment = await findSession(
-    ...sessionResponses({ Items: [withoutTreatment] }),
-  ).found;
-  const sessionWithoutData = await findSession(
-    ...sessionResponses({ Items: [userItem] }),
-  ).found;
-
-  assert.equal(session?.user.givenName, "Ana");
-  assert.equal(session?.user.familyName, "Pérez");
-  assert.equal(session?.user.phone, "+51987654321");
-  assert.equal(session?.user.treatment, "DRA");
-  assert.equal(sessionWithoutTreatment?.user.treatment, null);
-  assert.equal(sessionWithoutData?.user.givenName, undefined);
-  assert.equal(sessionWithoutData?.user.treatment, undefined);
-});
-
-test("sin un usuario en el índice, en la partición o con otro CognitoSub, no hay usuario", async () => {
-  const withoutIndexItem = findSession({ Items: [] });
-  const indexItemOfOtherType = findSession({
-    Items: [{ ItemType: "PATIENT", Id: USER_ID }],
-  });
-  const partitionWithoutUser = findSession(
-    ...sessionResponses({ Items: [membershipItem] }),
-  );
-  const userOfOtherSub = findSession(
-    ...sessionResponses({
-      Items: [{ ...userItem, CognitoSub: "otro-sub" }, membershipItem],
-    }),
-  );
-
-  assert.equal(await withoutIndexItem.found, undefined);
-  assert.equal(await indexItemOfOtherType.found, undefined);
-  assert.equal(await partitionWithoutUser.found, undefined);
-  assert.equal(await userOfOtherSub.found, undefined);
-  assert.equal(withoutIndexItem.inputs.length, 1);
-  assert.equal(indexItemOfOtherType.inputs.length, 1);
-});
-
-test("un ítem de otro tipo en la partición no se mapea como membership", async () => {
-  const session = await findSession(
-    ...sessionResponses({
-      Items: [userItem, { ...membershipItem, ItemType: "TERMS_ACCEPTANCE" }],
-    }),
-  ).found;
-
-  assert.deepEqual(session?.memberships, []);
-});
-
-test("una partición de más de una página se lee completa, página por página", async () => {
-  const lastEvaluatedKey = { PK: `USER#${USER_ID}`, SK: "!" };
-  const { found, inputs } = findSession(
-    ...sessionResponses({
-      Items: [userItem],
-      LastEvaluatedKey: lastEvaluatedKey,
-    }),
-    { Items: [membershipItem] },
-  );
-
-  const session = await found;
-
-  assert.equal(session?.user.id, USER_ID);
-  assert.equal(session?.memberships.length, 1);
-  const [, firstPage, secondPage] = inputs as QueryCommandInput[];
-  assert.equal(firstPage.ExclusiveStartKey, undefined);
-  assert.deepEqual(secondPage.ExclusiveStartKey, lastEvaluatedKey);
-  assert.equal(
-    secondPage.KeyConditionExpression,
-    firstPage.KeyConditionExpression,
-  );
-});
-
 test("el límite de inicios de sesión usa su propio prefijo, un máximo de 5 y ventanas de un minuto", async () => {
   const { client, inputs } = capturingClient();
 
@@ -909,195 +675,4 @@ test("el límite de inicios de sesión usa su propio prefijo, un máximo de 5 y 
     ":deleteAfter": THIRTEEN_PAST_NOON + 60,
     ":itemType": "SIGN_IN_ATTEMPTS",
   });
-});
-
-test("la sede se lee por su clave con lectura consistente y sólo si es una sede", async () => {
-  const organizationId = "01M6MSQWFCK15Q3X04AQEQ0SCV";
-  const found = capturingClient({
-    response: { Item: { ItemType: "CLINIC", OrganizationId: organizationId } },
-  });
-  const otherType = capturingClient({
-    response: {
-      Item: { ItemType: "ORGANIZATION", OrganizationId: organizationId },
-    },
-  });
-  const missing = capturingClient();
-
-  assert.equal(
-    await new ClinicRepository(found.client, TABLE_NAME).findOrganizationId(
-      CLINIC_ID,
-    ),
-    organizationId,
-  );
-  assert.equal(
-    await new ClinicRepository(otherType.client, TABLE_NAME).findOrganizationId(
-      CLINIC_ID,
-    ),
-    undefined,
-  );
-  assert.equal(
-    await new ClinicRepository(missing.client, TABLE_NAME).findOrganizationId(
-      CLINIC_ID,
-    ),
-    undefined,
-  );
-  assert.deepEqual(found.inputs, [
-    {
-      TableName: TABLE_NAME,
-      Key: { PK: `CLINIC#${CLINIC_ID}`, SK: "!" },
-      ProjectionExpression: "#ItemType, #OrganizationId",
-      ExpressionAttributeNames: {
-        "#ItemType": "ItemType",
-        "#OrganizationId": "OrganizationId",
-      },
-      ConsistentRead: true,
-    },
-  ]);
-});
-
-test("la cuenta se lee por su clave con lectura consistente y sólo si es una cuenta", async () => {
-  const found = capturingClient({
-    response: {
-      Item: { ItemType: "ACCOUNT", Id: ACCOUNT_ID, OwnerUserId: USER_ID },
-    },
-  });
-  const otherType = capturingClient({
-    response: {
-      Item: { ItemType: "USER", Id: ACCOUNT_ID, OwnerUserId: USER_ID },
-    },
-  });
-  const missing = capturingClient();
-
-  assert.deepEqual(
-    await new AccountRepository(found.client, TABLE_NAME).findById(ACCOUNT_ID),
-    { id: ACCOUNT_ID, ownerUserId: USER_ID },
-  );
-  assert.equal(
-    await new AccountRepository(otherType.client, TABLE_NAME).findById(
-      ACCOUNT_ID,
-    ),
-    undefined,
-  );
-  assert.equal(
-    await new AccountRepository(missing.client, TABLE_NAME).findById(
-      ACCOUNT_ID,
-    ),
-    undefined,
-  );
-  assert.deepEqual(found.inputs, [
-    {
-      TableName: TABLE_NAME,
-      Key: { PK: `ACCOUNT#${ACCOUNT_ID}`, SK: "!" },
-      ProjectionExpression: "ItemType, Id, OwnerUserId",
-      ConsistentRead: true,
-    },
-  ]);
-});
-
-const personalData = {
-  givenName: givenNameSchema.parse("Ana"),
-  familyName: familyNameSchema.parse("Pérez"),
-  phone: phoneSchema.parse("987654321"),
-  treatment: treatmentSchema.parse("DRA"),
-};
-
-test("guardar Tus datos con PERSONAL_DATA guarda el nombre, el apellido, el celular con +51 y el tratamiento, y pasa el paso a PLAN", async () => {
-  const { client, inputs } = capturingClient({
-    response: { Attributes: { OnboardingStep: "PLAN" } },
-  });
-
-  const step = await new OnboardingRepository(
-    client,
-    TABLE_NAME,
-  ).savePersonalData(USER_ID, personalData, {
-    from: ["PERSONAL_DATA"],
-    to: "PLAN",
-  });
-
-  assert.equal(step, "PLAN");
-  const [update] = inputs as UpdateCommandInput[];
-  assert.equal(update.TableName, TABLE_NAME);
-  assert.deepEqual(update.Key, { PK: `USER#${USER_ID}`, SK: "!" });
-  assert.equal(update.ConditionExpression, "#OnboardingStep IN (:from0)");
-  assert.equal(
-    update.UpdateExpression,
-    "SET #OnboardingStep = :OnboardingStep, #GivenName = :GivenName, #FamilyName = :FamilyName, #Phone = :Phone, #Treatment = :Treatment",
-  );
-  assert.deepEqual(update.ExpressionAttributeValues, {
-    ":from0": "PERSONAL_DATA",
-    ":OnboardingStep": "PLAN",
-    ":GivenName": "Ana",
-    ":FamilyName": "Pérez",
-    ":Phone": "+51987654321",
-    ":Treatment": "DRA",
-  });
-  assert.deepEqual(update.ExpressionAttributeNames, {
-    "#OnboardingStep": "OnboardingStep",
-    "#GivenName": "GivenName",
-    "#FamilyName": "FamilyName",
-    "#Phone": "Phone",
-    "#Treatment": "Treatment",
-  });
-  assert.equal(update.ReturnValues, "ALL_NEW");
-});
-
-test("savePersonalData sin paso de destino no toca OnboardingStep, y sin tratamiento guarda null", async () => {
-  const { client, inputs } = capturingClient({
-    response: { Attributes: { OnboardingStep: "CLINIC" } },
-  });
-
-  await new OnboardingRepository(client, TABLE_NAME).savePersonalData(
-    USER_ID,
-    { ...personalData, treatment: null },
-    { from: ["PLAN", "CLINIC"] },
-  );
-
-  const [update] = inputs as UpdateCommandInput[];
-  assert.equal(
-    update.ConditionExpression,
-    "#OnboardingStep IN (:from0, :from1)",
-  );
-  assert.equal(
-    update.UpdateExpression,
-    "SET #GivenName = :GivenName, #FamilyName = :FamilyName, #Phone = :Phone, #Treatment = :Treatment",
-  );
-  assert.deepEqual(update.ExpressionAttributeNames, {
-    "#OnboardingStep": "OnboardingStep",
-    "#GivenName": "GivenName",
-    "#FamilyName": "FamilyName",
-    "#Phone": "Phone",
-    "#Treatment": "Treatment",
-  });
-  assert.equal(update.ExpressionAttributeValues?.[":Treatment"], null);
-  assert.equal(
-    update.ExpressionAttributeValues?.[":OnboardingStep"],
-    undefined,
-  );
-});
-
-test("savePersonalData devuelve undefined si otro pedido cambió el paso, y deja subir cualquier otro error", async () => {
-  const lostRace = capturingClient({
-    failure: new ConditionalCheckFailedException({
-      message: "condición",
-      $metadata: {},
-    }),
-  });
-  const unavailable = capturingClient({ failure: new Error("sin red") });
-  const transition = { from: ["PERSONAL_DATA"], to: "PLAN" } as const;
-
-  assert.equal(
-    await new OnboardingRepository(
-      lostRace.client,
-      TABLE_NAME,
-    ).savePersonalData(USER_ID, personalData, transition),
-    undefined,
-  );
-  await assert.rejects(
-    new OnboardingRepository(unavailable.client, TABLE_NAME).savePersonalData(
-      USER_ID,
-      personalData,
-      transition,
-    ),
-    /sin red/,
-  );
 });
