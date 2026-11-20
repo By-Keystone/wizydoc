@@ -13,6 +13,10 @@ import { Authentication } from "./authentication";
 import { DynamoTables } from "./dynamo";
 import { senderAddressOf } from "./sender-address";
 import {
+  ANY_ONBOARDING_STEP,
+  type RoutePolicy,
+} from "./src/access/application/authorize-request.usecase";
+import {
   type SignUpEmailTemplate,
   SignUpEmailTemplates,
 } from "./sign-up-email-templates";
@@ -25,15 +29,16 @@ exports.handler = async () => ({
 });
 `;
 
-const USERS_HANDLERS_DIRECTORY = path.join(__dirname, "src/users/handlers");
-const USERS_FUNCTION_TIMEOUT = Duration.seconds(15);
-const USERS_FUNCTION_MEMORY_MB = 512;
+const MODULES_DIRECTORY = path.join(__dirname, "src");
+const FUNCTION_TIMEOUT = Duration.seconds(15);
+const FUNCTION_MEMORY_MB = 512;
 const USER_EMAIL_INDEX = "GSI1";
 const USER_COGNITO_SUB_INDEX = "GSI2";
 
 type TableAccess = Partial<
   Record<
     | "dynamodb:GetItem"
+    | "dynamodb:Query"
     | "dynamodb:PutItem"
     | "dynamodb:UpdateItem"
     | "dynamodb:DeleteItem",
@@ -58,6 +63,10 @@ const VERIFY_SIGN_UP_CODE_ACCESS: TableAccess = {
   "dynamodb:UpdateItem": ["SIGN_UP_CODE#*", "SIGN_UP_VERIFY_ATTEMPTS#*"],
   "dynamodb:DeleteItem": ["SIGN_UP_CODE#*"],
 };
+
+const SESSION_USER_PREFIXES = ["USER#*"];
+const CLINIC_PREFIXES = ["CLINIC#*"];
+const ME_ACCESS: TableAccess = { "dynamodb:GetItem": ["ACCOUNT#*"] };
 
 export interface BackendStackProps extends StackProps {
   hostedZoneId: string;
@@ -86,12 +95,13 @@ export class BackendStack extends Stack {
       code: lambda.Code.fromInline(HEALTH_RESPONSE_HANDLER),
     });
 
+    const authentication = new Authentication(this, "Authentication");
     const apiGateway = new ApiGateway(this, "ApiGateway", {
       hostedZone,
       domainName: props.apiDomainName,
+      userPool: authentication.userPool,
+      platformClientId: authentication.platformClient.userPoolClientId,
     });
-
-    const authentication = new Authentication(this, "Authentication");
     const database = new DynamoTables(this, "Database");
     const emailTemplates = new SignUpEmailTemplates(
       this,
@@ -115,7 +125,8 @@ export class BackendStack extends Stack {
         },
       });
 
-    const requestSignUpCodeFunction = this.usersFunction(
+    const requestSignUpCodeFunction = this.moduleFunction(
+      "users",
       "RequestSignUpCodeFunction",
       "request-sign-up-code",
       "Sends the 6-digit sign-up code, or a notice when the email already has an account.",
@@ -145,7 +156,8 @@ export class BackendStack extends Stack {
     );
     requestSignUpCodeFunction.node.addDependency(emailTemplates);
 
-    const verifySignUpCodeFunction = this.usersFunction(
+    const verifySignUpCodeFunction = this.moduleFunction(
+      "users",
       "VerifySignUpCodeFunction",
       "verify-sign-up-code",
       "Verifies the sign-up code and returns a verification token.",
@@ -157,7 +169,8 @@ export class BackendStack extends Stack {
       VERIFY_SIGN_UP_CODE_ACCESS,
     );
 
-    const confirmSignUpFunction = this.usersFunction(
+    const confirmSignUpFunction = this.moduleFunction(
+      "users",
       "ConfirmSignUpFunction",
       "confirm-sign-up",
       "Creates the account from the verification token and password, and signs the user in.",
@@ -183,7 +196,8 @@ export class BackendStack extends Stack {
       "cognito-idp:DescribeUserPoolClient",
     );
 
-    const signInFunction = this.usersFunction(
+    const signInFunction = this.moduleFunction(
+      "users",
       "SignInFunction",
       "sign-in",
       "Signs a confirmed user in with email and password, and returns the Cognito tokens.",
@@ -206,13 +220,15 @@ export class BackendStack extends Stack {
       PLATFORM_CLIENT_ID: authentication.platformClient.userPoolClientId,
     };
 
-    const refreshSessionFunction = this.usersFunction(
+    const refreshSessionFunction = this.moduleFunction(
+      "users",
       "RefreshSessionFunction",
       "refresh-session",
       "Returns new ID and access tokens for a valid refresh token.",
       sessionEnvironment,
     );
-    const signOutFunction = this.usersFunction(
+    const signOutFunction = this.moduleFunction(
+      "users",
       "SignOutFunction",
       "sign-out",
       "Signs the user out of one device by revoking its refresh token.",
@@ -224,6 +240,14 @@ export class BackendStack extends Stack {
         "cognito-idp:DescribeUserPoolClient",
       );
     }
+
+    const meFunction = this.moduleFunction(
+      "access",
+      "MeFunction",
+      "me",
+      "Returns the signed-in user, their account and their onboarding step.",
+      { TABLE_NAME: database.table.tableName },
+    );
 
     const signUpResource =
       apiGateway.api.root.resourceForPath("api/auth/sign-up");
@@ -257,12 +281,51 @@ export class BackendStack extends Stack {
     authResource
       .addResource("sign-out")
       .addMethod("POST", new apigateway.LambdaIntegration(signOutFunction));
+    this.addPrivateRoute(
+      apiGateway,
+      database.table,
+      "api/me",
+      "GET",
+      meFunction,
+      { confirmed: false, onboardingStep: ANY_ONBOARDING_STEP },
+      ME_ACCESS,
+    );
     apiGateway.api.root
       .addResource("health")
       .addMethod("GET", new apigateway.LambdaIntegration(healthFunction));
   }
 
-  private usersFunction(
+  private addPrivateRoute(
+    apiGateway: ApiGateway,
+    table: ITableV2,
+    path: string,
+    httpMethod: string,
+    routeFunction: NodejsFunction,
+    policy: RoutePolicy,
+    routeAccess: TableAccess = {},
+  ) {
+    const clinicPrefixes =
+      policy.resourceType === "CLINIC" ? CLINIC_PREFIXES : [];
+    const getItemPrefixes = [
+      ...clinicPrefixes,
+      ...(routeAccess["dynamodb:GetItem"] ?? []),
+    ];
+    grantTableAccess(routeFunction, table, {
+      ...routeAccess,
+      "dynamodb:Query": [
+        ...SESSION_USER_PREFIXES,
+        ...(routeAccess["dynamodb:Query"] ?? []),
+      ],
+      ...(getItemPrefixes.length > 0
+        ? { "dynamodb:GetItem": getItemPrefixes }
+        : {}),
+    });
+    grantIndexQuery(routeFunction, table, USER_COGNITO_SUB_INDEX);
+    apiGateway.addPrivateRoute(path, httpMethod, routeFunction, policy);
+  }
+
+  private moduleFunction(
+    moduleName: string,
     id: string,
     handlerName: string,
     description: string,
@@ -270,11 +333,16 @@ export class BackendStack extends Stack {
   ): NodejsFunction {
     return new NodejsFunction(this, id, {
       description,
-      entry: path.join(USERS_HANDLERS_DIRECTORY, `${handlerName}.handler.ts`),
+      entry: path.join(
+        MODULES_DIRECTORY,
+        moduleName,
+        "handlers",
+        `${handlerName}.handler.ts`,
+      ),
       runtime: lambda.Runtime.NODEJS_22_X,
       architecture: lambda.Architecture.ARM_64,
-      timeout: USERS_FUNCTION_TIMEOUT,
-      memorySize: USERS_FUNCTION_MEMORY_MB,
+      timeout: FUNCTION_TIMEOUT,
+      memorySize: FUNCTION_MEMORY_MB,
       environment: {
         ...environment,
         NODE_OPTIONS: "--enable-source-maps",

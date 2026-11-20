@@ -1,4 +1,4 @@
-import type { Account } from "../account.entity";
+import type { Account } from "../../../accounts/domain/account.entity";
 import type { TermsAcceptance } from "../terms-acceptance.entity";
 import type { User } from "../user.entity";
 import type { EmailVO } from "../value-objects/email.vo";

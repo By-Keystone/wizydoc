@@ -15,3 +15,11 @@ export const fromAccountToDynamo = (
   Id: account.id,
   OwnerUserId: account.ownerUserId,
 });
+
+export const fromDynamoToAccount = ({
+  Id,
+  OwnerUserId,
+}: Pick<AccountDynamoDBSchema, "Id" | "OwnerUserId">): Account => ({
+  id: Id,
+  ownerUserId: OwnerUserId,
+});
