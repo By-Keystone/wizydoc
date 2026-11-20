@@ -2,9 +2,9 @@
 
 Spec: [spec.md](./spec.md) · Ticket: WIZ-77 · Va **después** de las partes 3 y 4
 de [../session/plan.md](../session/plan.md) (la `policy()`, `RoutePolicy`,
-`handlePrivateRoute`, `addPrivateRoute` y el autorizador) y usa lo que dejaron
-sus partes 1 y 2: la cuenta, `AccountId`, `OnboardingStep` y la lectura del
-usuario con sus memberships.
+`handlePrivateRoute`, `addPrivateRoute`, el autorizador y los módulos `access`,
+`accounts` y `clinics`) y usa lo que dejaron sus partes 1 y 2: la cuenta,
+`AccountId`, `OnboardingStep` y la lectura del usuario con sus memberships.
 
 ## Objetivo
 
@@ -25,6 +25,11 @@ en la misma operación de DynamoDB.
   de su organización. Lo implementa la sesión. Ninguna de estas cuatro rutas va
   sobre un recurso, así que no les afecta (ver «Para otros tickets»).
 
+## Decidido por el humano el 19 de noviembre de 2026
+
+- **Un módulo por dominio,** y no todo en `users`: la cuenta, la sede y el
+  usuario son dominios distintos. No se rediseña (ver «Un módulo por dominio»).
+
 ## Partes
 
 Cada parte se puede mergear sola sin romper `main` y se apila sobre la anterior
@@ -35,12 +40,12 @@ ni docs.
 | Parte | Qué entrega | Depende de | Se verifica sola con | Tamaño estimado |
 |---|---|---|---|---|
 | 1 | Este plan y **los datos personales en el usuario**: los value objects de nombre, celular y tratamiento; su lectura en la policy y en `GET /api/me`; el cliente de Cognito sin `given_name` ni `family_name`. Ninguna ruta los escribe todavía. | spec #160 y parte 4 de la sesión | Pruebas de los value objects, de DynamoDB, de `/api/me` y de Cognito; `/api/me` en staging. | ~140 líneas |
-| 2 | **La ruta «Tus datos»**: el 500 con el mensaje de cada ruta, el repositorio del onboarding con `savePersonalData`, el caso de uso, el handler, su Lambda y su ruta. | 1 | Pruebas de la ruta y de DynamoDB; pedidos a staging. | ~210 líneas |
-| 3 | **La ruta «Tu plan»**: el plan de la cuenta (`SUBSCRIPTION`), `savePlan`, el caso de uso, el handler, su Lambda y su ruta. | 2 | Pruebas de la ruta y de DynamoDB; pedidos a staging. | ~180 líneas |
-| 4 | **Los ítems de «Tu consultorio»**: la organización, la sede, las memberships con su escritura, la fábrica que crea las cuatro y `createClinic`. Ninguna ruta los usa todavía. | 3 | Pruebas de la fábrica y de DynamoDB. | ~180 líneas |
+| 2 | **La ruta «Tus datos»**, en el módulo nuevo `onboarding`: el 500 con el mensaje de cada ruta, el repositorio del onboarding con `savePersonalData`, el caso de uso, el handler, su Lambda y su ruta. | 1 | Pruebas de la ruta y de DynamoDB; pedidos a staging. | ~210 líneas |
+| 3 | **La ruta «Tu plan»**: el plan de la cuenta (`SUBSCRIPTION`), en `accounts`, `savePlan`, el caso de uso, el handler, su Lambda y su ruta. | 2 | Pruebas de la ruta y de DynamoDB; pedidos a staging. | ~180 líneas |
+| 4 | **Los ítems de «Tu consultorio»**: la organización, la sede, las memberships con su escritura y la fábrica que crea las cuatro, en `clinics`, y `createClinic`. Ninguna ruta los usa todavía. | 3 | Pruebas de la fábrica y de DynamoDB. | ~180 líneas |
 | 5 | **La ruta «Tu consultorio»**: el caso de uso, el handler, el 201 y el 409, su Lambda y su ruta. | 4 | Pruebas de la ruta; pedidos a staging. | ~120 líneas |
-| 6 | **El horario y su ítem**: el value object del horario semanal, el ítem `SCHEDULE` y `completeOnboarding`. Ninguna ruta los usa todavía. | 5 | Pruebas del value object y de DynamoDB. | ~160 líneas |
-| 7 | **La ruta «Tu horario»**: las memberships en el resultado de la policy, el caso de uso con `skip`, el handler, su Lambda y su ruta. | 6 | Pruebas de la ruta; pedidos a staging. | ~140 líneas |
+| 6 | **El horario y su ítem**: el value object del horario semanal y el ítem `SCHEDULE`, en `clinics`, y `completeOnboarding`. Ninguna ruta los usa todavía. | 5 | Pruebas del value object y de DynamoDB. | ~160 líneas |
+| 7 | **La ruta «Tu horario»**: las memberships en el resultado de la policy, en `access`, el caso de uso con `skip`, el handler, su Lambda y su ruta. | 6 | Pruebas de la ruta; pedidos a staging. | ~140 líneas |
 
 - **Siete partes y no cuatro.** Con sus ítems, «Tu consultorio» y «Tu horario»
   rondan las 300 líneas, así que cada una se parte en sus ítems (dominio y
@@ -51,7 +56,7 @@ ni docs.
   sigue respondiendo `null`. El cliente de Cognito pierde dos atributos que
   nadie escribe.
 - **Se apilan en orden** porque comparten `onboarding.repository.ts`,
-  `backend-stack.ts` y `test/users/fakes.ts`.
+  `backend-stack.ts` y `test/fakes.ts`.
 - **Orden de despliegue:** el de las partes. Ninguna necesita a otra desplegada
   antes para no romper nada.
 
@@ -73,141 +78,169 @@ Producción (`backend-infra/`):
   objects.
 - `lib/src/users/infrastructure/persistence/dynamodb/user.mappers.ts`:
   `fromDynamoToDomain` los mapea.
-- `lib/src/users/infrastructure/persistence/dynamodb/user.repository.ts`: los
-  cuatro en `PARTITION_READ_ATTRIBUTES`.
-- `lib/src/users/handlers/me.http.ts`: responde los datos del usuario en lugar
+- `lib/src/access/infrastructure/persistence/dynamodb/session.repository.ts`:
+  los cuatro en `PARTITION_READ_ATTRIBUTES`.
+- `lib/src/access/handlers/me.http.ts`: responde los datos del usuario en lugar
   de los cuatro `null` fijos.
 - `lib/authentication.ts`: `writableAttributes` sólo con `email`.
 
 Pruebas: `test/users/person-name.vo.test.ts`, `test/users/phone.vo.test.ts` y
 `test/users/treatment.vo.test.ts` (nuevas), `test/users/dynamodb.test.ts`,
-`test/users/me.test.ts` y `test/authentication.test.ts`.
+`test/access/dynamodb.test.ts`, `test/access/me.test.ts` y
+`test/authentication.test.ts`.
 
 Docs: `backend-infra/docs/spec/onboarding/plan.md`.
 
 ### Archivos de la parte 2
 
 Producción:
-- `lib/src/users/handlers/private-route.ts`: `handlePrivateRoute` recibe el
+- `lib/src/access/handlers/private-route.ts`: `handlePrivateRoute` recibe el
   mensaje de su 500.
-- `lib/src/users/domain/repository/onboarding.repository.ts` (nuevo):
+- `lib/src/onboarding/domain/repository/onboarding.repository.ts` (nuevo):
   `OnboardingStepTransition` e `IOnboardingRepository` con `savePersonalData`.
-- `lib/src/users/application/save-personal-data.usecase.ts` (nuevo): el esquema
-  de entrada, `PERSONAL_DATA_STEPS` y el caso de uso.
-- `lib/src/users/infrastructure/persistence/dynamodb/onboarding.repository.ts`
-  (nuevo): `userStepUpdate` y `savePersonalData`.
-- `lib/src/users/handlers/save-personal-data.http.ts` y
+- `lib/src/onboarding/application/save-personal-data.usecase.ts` (nuevo): el
+  esquema de entrada, `PERSONAL_DATA_STEPS` y el caso de uso.
+- `lib/src/onboarding/infrastructure/persistence/dynamodb/onboarding.repository.ts`
+  (nuevo): `userStepUpdate` y `savePersonalData`, con las claves del usuario de
+  `users`.
+- `lib/src/onboarding/handlers/save-personal-data.http.ts` y
   `save-personal-data.handler.ts` (nuevos).
-- `lib/src/users/handlers/http-messages.ts`: `PERSONAL_DATA_FAILED`.
+- `lib/src/onboarding/handlers/http-messages.ts` (nuevo):
+  `PERSONAL_DATA_FAILED`.
 - `lib/backend-stack.ts`: `SAVE_PERSONAL_DATA_ACCESS`, `SavePersonalDataFunction`
   y su ruta.
 
-Pruebas: `test/users/save-personal-data.test.ts` (nueva),
-`test/users/private-route.test.ts`, `test/users/dynamodb.test.ts`,
-`test/users/fakes.ts` y `test/backend-stack.test.ts`.
+Pruebas: `test/onboarding/save-personal-data.test.ts` (nueva),
+`test/access/private-route.test.ts`, `test/onboarding/dynamodb.test.ts`
+(nueva), `test/fakes.ts` y `test/backend-stack.test.ts`.
 
 ### Archivos de la parte 3
 
 Producción:
-- `lib/src/users/domain/subscription.entity.ts` (nuevo): `PLANS`, `Plan`,
+- `lib/src/accounts/domain/subscription.entity.ts` (nuevo): `PLANS`, `Plan`,
   `BETA_PLAN`, `Subscription` y `createSubscription`.
-- `lib/src/users/application/save-plan.usecase.ts` (nuevo), con `PLAN_STEPS`.
-- `lib/src/users/domain/repository/onboarding.repository.ts`: `savePlan`.
-- `lib/src/users/infrastructure/persistence/dynamodb/user.repository.ts`:
-  `ONLY_IF_NEW` pasa a exportarse, porque `savePlan` es el primero que lo usa.
-- `lib/src/users/infrastructure/persistence/dynamodb/subscription.schema.ts` y
-  `subscription.mappers.ts` (nuevos).
-- `lib/src/users/infrastructure/persistence/dynamodb/onboarding.repository.ts`:
-  `savePlan`. `ONLY_IF_NEW` pasa a exportarse desde `user.repository.ts`.
-- `lib/src/users/handlers/save-plan.http.ts` y `save-plan.handler.ts` (nuevos).
-- `lib/src/users/handlers/http-messages.ts`: `PLAN_FAILED`.
+- `lib/src/onboarding/application/save-plan.usecase.ts` (nuevo), con
+  `PLAN_STEPS`.
+- `lib/src/onboarding/domain/repository/onboarding.repository.ts`: `savePlan`.
+- `lib/src/accounts/infrastructure/persistence/dynamodb/subscription.schema.ts`
+  y `subscription.mappers.ts` (nuevos).
+- `lib/src/onboarding/infrastructure/persistence/dynamodb/onboarding.repository.ts`:
+  `savePlan`, con `ONLY_IF_NEW` de `lib/src/shared/persistence/dynamodb/conditions.ts`,
+  donde lo dejó la parte 4 de la sesión.
+- `lib/src/onboarding/handlers/save-plan.http.ts` y `save-plan.handler.ts`
+  (nuevos).
+- `lib/src/onboarding/handlers/http-messages.ts`: `PLAN_FAILED`.
 - `lib/backend-stack.ts`: `SAVE_PLAN_ACCESS`, `SavePlanFunction` y su ruta.
 
-Pruebas: `test/users/save-plan.test.ts` (nueva), `test/users/dynamodb.test.ts`,
-`test/users/fakes.ts` y `test/backend-stack.test.ts`.
+Pruebas: `test/onboarding/save-plan.test.ts` (nueva),
+`test/onboarding/dynamodb.test.ts`, `test/fakes.ts` y
+`test/backend-stack.test.ts`.
 
 ### Archivos de la parte 4
 
 Producción:
-- `lib/src/users/domain/organization.entity.ts` (nuevo): `Organization`.
-- `lib/src/users/domain/clinic.entity.ts` (nuevo): `Clinic`, `OwnerClinic` y
+- `lib/src/clinics/domain/organization.entity.ts` (nuevo): `Organization`.
+- `lib/src/clinics/domain/clinic.entity.ts` (nuevo): `Clinic`, `OwnerClinic` y
   `createOwnerClinic`.
-- `lib/src/users/domain/membership.entity.ts`: `NewMembership`.
-- `lib/src/users/infrastructure/persistence/dynamodb/organization.schema.ts`,
-  `organization.mappers.ts` y `clinic.mappers.ts` (nuevos). `ClinicDynamoDBSchema`
-  y `MembershipDynamoDBSchema` ya existen desde la sesión.
-- `lib/src/users/infrastructure/persistence/dynamodb/membership.mappers.ts`:
-  `fromMembershipToDynamo`, junto a la lectura que ya existe.
-- `lib/src/users/domain/repository/onboarding.repository.ts` y
-  `infrastructure/persistence/dynamodb/onboarding.repository.ts`: `createClinic`.
+- `lib/src/clinics/domain/membership.entity.ts`: `NewMembership`.
+- `lib/src/clinics/infrastructure/persistence/dynamodb/organization.schema.ts`,
+  `organization.mappers.ts` y `clinic.mappers.ts` (nuevos).
+  `ClinicDynamoDBSchema` y `MembershipDynamoDBSchema` ya existen desde la
+  sesión.
+- `lib/src/clinics/infrastructure/persistence/dynamodb/membership.mappers.ts`:
+  `fromMembershipToDynamo`, junto a la lectura que ya existe, con la clave
+  `pk()` de `users`.
+- `lib/src/onboarding/domain/repository/onboarding.repository.ts` y
+  `lib/src/onboarding/infrastructure/persistence/dynamodb/onboarding.repository.ts`:
+  `createClinic`.
 
-Pruebas: `test/users/clinic.entity.test.ts` (nueva),
-`test/users/dynamodb.test.ts` y `test/users/fakes.ts`.
+Pruebas: `test/clinics/clinic.entity.test.ts` (nueva),
+`test/onboarding/dynamodb.test.ts` y `test/fakes.ts`.
 
 ### Archivos de la parte 5
 
 Producción:
-- `lib/src/users/application/create-clinic.usecase.ts` (nuevo), con
+- `lib/src/onboarding/application/create-clinic.usecase.ts` (nuevo), con
   `CREATE_CLINIC_STEPS`.
-- `lib/src/users/handlers/create-clinic.http.ts` y `create-clinic.handler.ts`
-  (nuevos).
+- `lib/src/onboarding/handlers/create-clinic.http.ts` y
+  `create-clinic.handler.ts` (nuevos).
 - `lib/src/shared/http/api-gateway.ts`: `CREATED` (201) y `CONFLICT` (409) en
   `HTTP_STATUS`.
-- `lib/src/users/handlers/http-messages.ts`: `CLINIC_FAILED` y
+- `lib/src/onboarding/handlers/http-messages.ts`: `CLINIC_FAILED` y
   `CLINIC_ALREADY_CREATED`.
 - `lib/backend-stack.ts`: `CREATE_CLINIC_ACCESS`, `CreateClinicFunction` y su
   ruta.
 
-Pruebas: `test/users/create-clinic.test.ts` (nueva), `test/users/fakes.ts` y
+Pruebas: `test/onboarding/create-clinic.test.ts` (nueva), `test/fakes.ts` y
 `test/backend-stack.test.ts`.
 
 ### Archivos de la parte 6
 
 Producción:
-- `lib/src/users/domain/value-objects/weekly-schedule.vo.ts` (nuevo).
-- `lib/src/users/domain/schedule.entity.ts` (nuevo): `Schedule`.
-- `lib/src/users/infrastructure/persistence/dynamodb/schedule.schema.ts` y
-  `schedule.mappers.ts` (nuevos).
+- `lib/src/clinics/domain/value-objects/weekly-schedule.vo.ts` (nuevo).
+- `lib/src/clinics/domain/schedule.entity.ts` (nuevo): `Schedule`.
+- `lib/src/clinics/infrastructure/persistence/dynamodb/schedule.schema.ts` y
+  `schedule.mappers.ts` (nuevos), con la clave `pk()` de `users`.
 - `lib/src/users/infrastructure/persistence/dynamodb/user.schema.ts`:
   `OnboardingCompletedAt` en el tipo del ítem.
-- `lib/src/users/domain/repository/onboarding.repository.ts` y
-  `infrastructure/persistence/dynamodb/onboarding.repository.ts`:
+- `lib/src/onboarding/domain/repository/onboarding.repository.ts` y
+  `lib/src/onboarding/infrastructure/persistence/dynamodb/onboarding.repository.ts`:
   `completeOnboarding`.
 
-Pruebas: `test/users/weekly-schedule.vo.test.ts` (nueva),
-`test/users/dynamodb.test.ts` y `test/users/fakes.ts`.
+Pruebas: `test/clinics/weekly-schedule.vo.test.ts` (nueva),
+`test/onboarding/dynamodb.test.ts` y `test/fakes.ts`.
 
 ### Archivos de la parte 7
 
 Producción:
-- `lib/src/users/application/authorize-request.usecase.ts` y
-  `lib/src/users/handlers/private-route.ts`: `memberships` en el resultado
+- `lib/src/access/application/authorize-request.usecase.ts` y
+  `lib/src/access/handlers/private-route.ts`: `memberships` en el resultado
   `authorized` y en lo que recibe `respond`.
-- `lib/src/users/application/save-schedule.usecase.ts` (nuevo), con
+- `lib/src/onboarding/application/save-schedule.usecase.ts` (nuevo), con
   `SAVE_SCHEDULE_STEPS`.
-- `lib/src/users/handlers/save-schedule.http.ts` y `save-schedule.handler.ts`
-  (nuevos).
-- `lib/src/users/handlers/http-messages.ts`: `SCHEDULE_FAILED` y
+- `lib/src/onboarding/handlers/save-schedule.http.ts` y
+  `save-schedule.handler.ts` (nuevos).
+- `lib/src/onboarding/handlers/http-messages.ts`: `SCHEDULE_FAILED` y
   `ONBOARDING_ALREADY_COMPLETED`.
 - `lib/backend-stack.ts`: `SAVE_SCHEDULE_ACCESS`, `SaveScheduleFunction` y su
   ruta.
 
-Pruebas: `test/users/save-schedule.test.ts` (nueva),
-`test/users/private-route.test.ts`, `test/users/fakes.ts` y
+Pruebas: `test/onboarding/save-schedule.test.ts` (nueva),
+`test/access/private-route.test.ts`, `test/fakes.ts` y
 `test/backend-stack.test.ts`.
 
 ## Decisiones
 
-### Todo en el módulo `users`
+### Un módulo por dominio
 
-Las cuatro rutas escriben el ítem del usuario y las memberships, que ya son de
-`users`, y leen la sesión con la policy de `users`. La organización, la sede, el
-plan y el horario no tienen otro consumidor todavía. Se descartó un módulo
-`onboarding`: importaría de `users` la entidad, las claves del usuario, el ítem
-de la membership y la policy, y la membership necesitaría las claves `ORG#` y
-`CLINIC#` del otro módulo, que es un ciclo. Separar la organización y la sede se
-decide con WIZ-79, cuando haya un segundo consumidor real. Las Lambdas se crean
-con `usersFunction`, sin cambios.
+Decidido por el humano el 19 de noviembre de 2026: la cuenta, la sede y el
+usuario son dominios distintos, y meterlos en `users` los mezclaba. Reemplaza la
+decisión «Todo en el módulo `users`» de este plan. La estructura, sus
+dependencias y lo que mueven las partes 3 y 4 de la sesión están en «Módulos» de
+[../session/plan.md](../session/plan.md). En este plan:
+
+- **`users`** se queda con los datos personales: los value objects de nombre,
+  celular y tratamiento y el usuario con su ítem (parte 1), y
+  `OnboardingCompletedAt` en el ítem (parte 6).
+- **`accounts`** gana el plan: `subscription.entity`, `subscription.schema.ts` y
+  `subscription.mappers.ts` (parte 3).
+- **`clinics`** gana la organización, la sede, la escritura de la membership
+  (parte 4), el horario y `weekly-schedule.vo` (parte 6).
+- **`access`** lee los datos personales en la sesión y los responde en
+  `/api/me` (parte 1), lleva el mensaje del 500 de cada ruta a
+  `handlePrivateRoute` (parte 2) y entrega `memberships` en el resultado de la
+  policy (parte 7).
+- **`onboarding`** nace en la parte 2 y sólo orquesta: los casos de uso de las
+  cuatro rutas, `IOnboardingRepository` y su implementación, los handlers y sus
+  mensajes HTTP. El repositorio arma sus transacciones con los mappers y las
+  claves de `users`, `accounts` y `clinics`, sin copiarlos.
+- **Sin ciclos.** `onboarding` depende de `users`, `accounts`, `clinics` y
+  `access`, y nadie depende de él. La membership vive en `clinics`, junto a las
+  claves `ORG#` y `CLINIC#` de su `GSI1PK`, y de `users` sólo toma `pk()` para
+  `USER#<id>`: el ciclo por el que este plan había descartado un módulo
+  `onboarding` ya no existe.
+- **Las Lambdas** se crean con la fábrica de la sesión, que recibe el módulo
+  (parte 4 de la sesión), con `onboarding`.
 
 ### La policy de cada ruta (parte 2)
 
@@ -265,8 +298,8 @@ transition, attributesToSet)`, en el `Update` del usuario:
   del paso.
 
 Si la condición falla, perdió la carrera contra otro pedido: `isLostRace`
-(`lost-race.ts`, el de la confirmación) devuelve `false` o `undefined`, y
-cualquier otro error sube y responde 500.
+(`shared/persistence/dynamodb/lost-race.ts`, el de la confirmación) devuelve
+`false` o `undefined`, y cualquier otro error sube y responde 500.
 
 | Ruta | Si otro pedido cambió el paso entre la policy y la escritura |
 |---|---|
@@ -291,16 +324,18 @@ cualquier otro error sube y responde 500.
   }).brand<"TreatmentVO">()`, el de `885c6ef` sin `.optional()`. La entrada de
   la ruta le agrega `.nullable().default(null)`.
 - **`trimmedTextSchema`** va en `shared/` porque lo usan cinco campos de dos
-  rutas: nombre, apellido, nombre del consultorio, dirección y especialidad.
+  rutas y dos módulos, `users` y `onboarding`: nombre, apellido, nombre del
+  consultorio, dirección y especialidad.
 
 **El usuario** (parte 1):
 - `PersonalData = { givenName: PersonNameVO; familyName: PersonNameVO; phone:
   PhoneVO; treatment: TreatmentVO | null }`. `User` gana sus cuatro campos como
   opcionales (`Partial<PersonalData>`): no existen hasta «Tus datos».
-- **La lectura de la policy los trae:** `PARTITION_READ_ATTRIBUTES` suma
-  `GivenName`, `FamilyName`, `Phone` y `Treatment`, y `fromDynamoToDomain` los
-  mapea opcionales con el tipo del ítem, sin validarlos: lo que se guarda ya
-  pasó por sus value objects. Así `/api/me` no necesita otra lectura. Cada ruta privada tiene esos datos en memoria, y ninguna los registra.
+- **La lectura de la policy los trae:** `PARTITION_READ_ATTRIBUTES`, de
+  `SessionRepository` (`access`), suma `GivenName`, `FamilyName`, `Phone` y
+  `Treatment`, y `fromDynamoToDomain` los mapea opcionales con el tipo del ítem,
+  sin validarlos: lo que se guarda ya pasó por sus value objects. Así `/api/me`
+  no necesita otra lectura. Cada ruta privada tiene esos datos en memoria, y ninguna los registra.
 - **`/api/me`** responde `user.givenName ?? null` y lo mismo con los otros tres.
 
 **El cliente de Cognito** (parte 1): `writableAttributes` queda sólo con
@@ -547,11 +582,15 @@ Las cuatro rutas siguen el mismo camino:
 | | `createClinic(ownerClinic, transition): Promise<boolean>` | 4 |
 | | `completeOnboarding({ userId, completedAt, schedule? }, transition): Promise<boolean>` | 6 |
 
-La implementación es `infrastructure/persistence/dynamodb/onboarding.repository.ts`.
-Cada caso de uso recibe sólo su método (`Pick<IOnboardingRepository, "…">`) y un
-`now: () => Date` para las fechas. Los handlers arman además
-`AuthorizeRequestUseCase` con `UserRepository` y `readRoutePolicy()`, como
-`me.handler.ts`.
+El contrato es `lib/src/onboarding/domain/repository/onboarding.repository.ts`, y
+la implementación,
+`lib/src/onboarding/infrastructure/persistence/dynamodb/onboarding.repository.ts`,
+que arma sus transacciones con los mappers y las claves de `users`, `accounts` y
+`clinics`. Cada caso de uso recibe sólo su método
+(`Pick<IOnboardingRepository, "…">`) y un `now: () => Date` para las fechas. Los
+handlers arman además `AuthorizeRequestUseCase`, de `access`, con
+`SessionRepository`, `ClinicRepository` y `readRoutePolicy()`, como
+`lib/src/access/handlers/me.handler.ts`.
 
 ## Ítems de DynamoDB
 
@@ -574,7 +613,9 @@ Cada caso de uso recibe sólo su método (`Pick<IOnboardingRepository, "…">`) 
   la organización, la sede y la membership (`decodeTime`), y si el usuario es el
   dueño (`OwnerUserId`).
 - **Las claves `ORG#` y `CLINIC#`** las definen `organization.schema.ts` y
-  `clinic.schema.ts`, y `membership.schema.ts` las importa para su `GSI1PK`.
+  `clinic.schema.ts`, y `membership.schema.ts` las importa para su `GSI1PK`. Los
+  tres viven en `clinics`. La `PK` de la membership y la del horario
+  (`USER#<userId>`) sale de `pk()` de `users`.
 - **Nadie consulta todavía los índices nuevos.** Los escribe el modelo para el
   booking, la agenda y WIZ-79. Quien los lea revisa `ItemType`, como pide
   `AGENTS.md`: en `GSI1`, `ORG#<id>` reúne la sede y las memberships de la
@@ -584,8 +625,10 @@ Cada caso de uso recibe sólo su método (`Pick<IOnboardingRepository, "…">`) 
 
 ## Infraestructura
 
-`lib/backend-stack.ts`, con `usersFunction` (Node 22, arm64, 15 s, 512 MB, logs
-un mes):
+`lib/backend-stack.ts`, con la fábrica de Lambdas que recibe el módulo (parte 4
+de la sesión; Node 22, arm64, 15 s, 512 MB, logs un mes). Las cuatro son del
+módulo `onboarding`: la entrada es
+`lib/src/onboarding/handlers/<handler>.handler.ts`.
 
 | Lambda | Handler | Descripción | Parte |
 |---|---|---|---|
@@ -653,7 +696,7 @@ Con el estilo de `test/`: los handlers con el caso de uso real y dobles en
 memoria, los adaptadores con clientes que registran los comandos, y la
 infraestructura con síntesis de CDK.
 
-**Dobles en `test/users/fakes.ts`**
+**Dobles en `test/fakes.ts`**
 - `buildUser` admite los datos personales (parte 1).
 - `InMemoryOnboarding` implementa `IOnboardingRepository` sobre el mismo almacén
   de `InMemoryUsers`, así la policy del pedido siguiente ve el paso nuevo. Aplica
@@ -719,7 +762,7 @@ infraestructura con síntesis de CDK.
 
 ## Cobertura de los criterios
 
-Prueba en `test/users/`, salvo donde se indica. Entre paréntesis, la parte.
+Prueba en `test/onboarding/`, salvo donde se indica. Entre paréntesis, la parte.
 
 | Criterio | Prueba |
 |---|---|
@@ -886,13 +929,13 @@ Lo comprueban los pedidos a staging de «Verificación».
 - **El horario en `GSI1 CLINIC#<id>`** no prueba que el médico siga en la sede.
   El booking y la agenda tendrán que cruzarlo con la membership, o borrar el
   horario cuando se quite a alguien de la sede.
-- **«Mi disponibilidad»:** reusa `weeklyScheduleSchema` y el ítem `SCHEDULE`, y
-  lo reemplaza con un `Put`. Si permite una lista vacía, como hoy, saca el
-  `.min(1)` del value object y lo deja en la entrada del onboarding.
+- **«Mi disponibilidad»:** reusa `weeklyScheduleSchema` y el ítem `SCHEDULE`, de
+  `clinics`, y lo reemplaza con un `Put`. Si permite una lista vacía, como hoy,
+  saca el `.min(1)` del value object y lo deja en la entrada del onboarding.
 - **El booking y la agenda** leen las memberships y los horarios de una sede por
   `GSI1` (`CLINIC#<id>`, `MEMBER#` y `SCHEDULE#`).
-- **WIZ-79 (editar el consultorio):** el ítem `CLINIC#<id>`, con `PatientContact`
-  todavía sin escribir.
+- **WIZ-79 (editar el consultorio):** el ítem `CLINIC#<id>`, en `clinics`, con
+  `PatientContact` todavía sin escribir.
 - **Las invitaciones:** la fecha de la membership deja de coincidir con
   `decodeTime(ResourceId)` (ver «Sin `CreatedAt`»).
 - **WIZ-80:** la finalidad del celular en la política de privacidad, antes de

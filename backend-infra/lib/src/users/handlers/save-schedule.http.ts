@@ -7,13 +7,16 @@ import {
   parseJsonBody,
 } from "../../shared/http/api-gateway";
 import { INVALID_REQUEST } from "../../shared/messages";
-import type { AuthorizeRequestUseCase } from "../application/authorize-request.usecase";
+import type { AuthorizeRequestUseCase } from "../../access/application/authorize-request.usecase";
 import {
   type SaveScheduleUseCase,
   saveScheduleInputSchema,
 } from "../application/save-schedule.usecase";
-import { ONBOARDING_ALREADY_COMPLETED, SCHEDULE_FAILED } from "./http-messages";
-import { handlePrivateRoute } from "./private-route";
+import {
+  ONBOARDING_ALREADY_COMPLETED,
+  SCHEDULE_FAILED,
+} from "../../onboarding/handlers/http-messages";
+import { handlePrivateRoute } from "../../access/handlers/private-route";
 
 export interface SaveScheduleHttpDependencies {
   authorizeRequest: Pick<AuthorizeRequestUseCase, "execute">;

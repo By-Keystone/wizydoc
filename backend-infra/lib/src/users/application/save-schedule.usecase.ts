@@ -1,9 +1,9 @@
 import { z } from "zod";
 import { INVALID_REQUEST } from "../../shared/messages";
-import type { Membership } from "../domain/membership.entity";
-import type { IOnboardingRepository } from "../domain/repository/onboarding.repository";
+import type { Membership } from "../../clinics/domain/membership.entity";
+import type { IOnboardingRepository } from "../../onboarding/domain/repository/onboarding.repository";
 import type { OnboardingStep, User } from "../domain/user.entity";
-import { weeklyScheduleSchema } from "../domain/value-objects/weekly-schedule.vo";
+import { weeklyScheduleSchema } from "../../clinics/domain/value-objects/weekly-schedule.vo";
 
 export const SAVE_SCHEDULE_STEPS: [OnboardingStep, ...OnboardingStep[]] = [
   "SCHEDULE",
