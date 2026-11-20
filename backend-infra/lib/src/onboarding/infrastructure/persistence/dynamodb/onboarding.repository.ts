@@ -7,12 +7,19 @@ import type {
   IOnboardingRepository,
   OnboardingStepTransition,
 } from "../../../domain/repository/onboarding.repository";
-import type { Subscription } from "../../../domain/subscription.entity";
-import type { OnboardingStep, PersonalData } from "../../../domain/user.entity";
-import { isLostRace } from "./lost-race";
-import { fromSubscriptionToDynamo } from "./subscription.mappers";
-import { ONLY_IF_NEW } from "./user.repository";
-import { pk, sk, type UsersDynamoDBSchema } from "./user.schema";
+import { ONLY_IF_NEW } from "../../../../shared/persistence/dynamodb/conditions";
+import { isLostRace } from "../../../../shared/persistence/dynamodb/lost-race";
+import type { Subscription } from "../../../../users/domain/subscription.entity";
+import type {
+  OnboardingStep,
+  PersonalData,
+} from "../../../../users/domain/user.entity";
+import {
+  pk,
+  sk,
+  type UsersDynamoDBSchema,
+} from "../../../../users/infrastructure/persistence/dynamodb/user.schema";
+import { fromSubscriptionToDynamo } from "../../../../users/infrastructure/persistence/dynamodb/subscription.mappers";
 
 export class OnboardingRepository implements IOnboardingRepository {
   constructor(

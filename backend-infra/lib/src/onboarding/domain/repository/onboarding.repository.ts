@@ -1,5 +1,8 @@
-import type { Subscription } from "../subscription.entity";
-import type { OnboardingStep, PersonalData } from "../user.entity";
+import type { Subscription } from "../../../users/domain/subscription.entity";
+import type {
+  OnboardingStep,
+  PersonalData,
+} from "../../../users/domain/user.entity";
 
 export interface OnboardingStepTransition {
   from: readonly OnboardingStep[];

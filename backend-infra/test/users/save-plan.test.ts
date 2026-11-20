@@ -1,14 +1,12 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { AuthorizeRequestUseCase } from "../../lib/src/users/application/authorize-request.usecase";
+import { AuthorizeRequestUseCase } from "../../lib/src/access/application/authorize-request.usecase";
 import { SavePlanUseCase } from "../../lib/src/users/application/save-plan.usecase";
 import type { OnboardingStep } from "../../lib/src/users/domain/user.entity";
 import { givenNameSchema } from "../../lib/src/users/domain/value-objects/person-name.vo";
 import { phoneSchema } from "../../lib/src/users/domain/value-objects/phone.vo";
-import {
-  ONBOARDING_INCOMPLETE,
-  PLAN_FAILED,
-} from "../../lib/src/users/handlers/http-messages";
+import { ONBOARDING_INCOMPLETE } from "../../lib/src/access/handlers/http-messages";
+import { PLAN_FAILED } from "../../lib/src/onboarding/handlers/http-messages";
 import { handleSavePlan } from "../../lib/src/users/handlers/save-plan.http";
 import {
   buildUser,
@@ -18,7 +16,7 @@ import {
   InMemoryUsers,
   privateEvent,
   readDeclaredPolicy,
-} from "./fakes";
+} from "../fakes";
 
 const declaredPolicy = readDeclaredPolicy("SavePlanFunction");
 const NOW = new Date("2026-11-12T15:00:00.000Z");

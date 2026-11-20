@@ -1,13 +1,17 @@
 import { z } from "zod";
 import { INVALID_REQUEST } from "../../shared/messages";
 import type { IOnboardingRepository } from "../domain/repository/onboarding.repository";
-import type { OnboardingStep, PersonalData, User } from "../domain/user.entity";
+import type {
+  OnboardingStep,
+  PersonalData,
+  User,
+} from "../../users/domain/user.entity";
 import {
   familyNameSchema,
   givenNameSchema,
-} from "../domain/value-objects/person-name.vo";
-import { phoneSchema } from "../domain/value-objects/phone.vo";
-import { treatmentSchema } from "../domain/value-objects/treatment.vo";
+} from "../../users/domain/value-objects/person-name.vo";
+import { phoneSchema } from "../../users/domain/value-objects/phone.vo";
+import { treatmentSchema } from "../../users/domain/value-objects/treatment.vo";
 
 const CORRECTION_STEPS: OnboardingStep[] = ["PLAN", "CLINIC"];
 

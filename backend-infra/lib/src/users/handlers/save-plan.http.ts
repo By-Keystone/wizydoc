@@ -7,13 +7,13 @@ import {
   parseJsonBody,
 } from "../../shared/http/api-gateway";
 import { INVALID_REQUEST } from "../../shared/messages";
-import type { AuthorizeRequestUseCase } from "../application/authorize-request.usecase";
+import type { AuthorizeRequestUseCase } from "../../access/application/authorize-request.usecase";
 import {
   type SavePlanUseCase,
   savePlanInputSchema,
 } from "../application/save-plan.usecase";
-import { PLAN_FAILED } from "./http-messages";
-import { handlePrivateRoute } from "./private-route";
+import { PLAN_FAILED } from "../../onboarding/handlers/http-messages";
+import { handlePrivateRoute } from "../../access/handlers/private-route";
 
 export interface SavePlanHttpDependencies {
   authorizeRequest: Pick<AuthorizeRequestUseCase, "execute">;

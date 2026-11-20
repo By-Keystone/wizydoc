@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { INVALID_REQUEST } from "../../shared/messages";
-import type { IOnboardingRepository } from "../domain/repository/onboarding.repository";
+import type { IOnboardingRepository } from "../../onboarding/domain/repository/onboarding.repository";
 import {
   BETA_PLAN,
   createSubscription,

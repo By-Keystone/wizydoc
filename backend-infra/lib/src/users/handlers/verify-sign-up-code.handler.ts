@@ -1,7 +1,7 @@
 import { requireEnv } from "../../shared/env";
 import type { ApiGatewayEvent } from "../../shared/http/api-gateway";
 import { VerifySignUpCodeUseCase } from "../application/verify-sign-up-code.usecase";
-import { getClient } from "../infrastructure/persistence/dynamodb/client";
+import { getClient } from "../../shared/persistence/dynamodb/client";
 import {
   DynamoDBIpRateLimit,
   SIGN_UP_VERIFY_RATE_LIMIT,
