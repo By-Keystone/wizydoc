@@ -12,7 +12,7 @@ import {
   type SavePlanUseCase,
   savePlanInputSchema,
 } from "../application/save-plan.usecase";
-import { PLAN_FAILED } from "../../onboarding/handlers/http-messages";
+import { PLAN_FAILED } from "./http-messages";
 import { handlePrivateRoute } from "../../access/handlers/private-route";
 
 export interface SavePlanHttpDependencies {

@@ -1,5 +1,5 @@
 import type { Subscription } from "../../../domain/subscription.entity";
-import { accountPk } from "../../../../accounts/infrastructure/persistence/dynamodb/account.schema";
+import { accountPk } from "./account.schema";
 import {
   SUBSCRIPTION_ITEM_TYPE,
   type SubscriptionDynamoDBSchema,

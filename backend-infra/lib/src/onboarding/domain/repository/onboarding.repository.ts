@@ -1,4 +1,4 @@
-import type { Subscription } from "../../../users/domain/subscription.entity";
+import type { Subscription } from "../../../accounts/domain/subscription.entity";
 import type {
   OnboardingStep,
   PersonalData,

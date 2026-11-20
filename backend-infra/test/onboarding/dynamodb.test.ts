@@ -8,7 +8,7 @@ import type {
   TransactWriteCommandInput,
   UpdateCommandInput,
 } from "@aws-sdk/lib-dynamodb";
-import { createSubscription } from "../../lib/src/users/domain/subscription.entity";
+import { createSubscription } from "../../lib/src/accounts/domain/subscription.entity";
 import { OnboardingRepository } from "../../lib/src/onboarding/infrastructure/persistence/dynamodb/onboarding.repository";
 import {
   familyNameSchema,

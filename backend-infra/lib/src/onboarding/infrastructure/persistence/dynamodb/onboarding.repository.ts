@@ -9,7 +9,7 @@ import type {
 } from "../../../domain/repository/onboarding.repository";
 import { ONLY_IF_NEW } from "../../../../shared/persistence/dynamodb/conditions";
 import { isLostRace } from "../../../../shared/persistence/dynamodb/lost-race";
-import type { Subscription } from "../../../../users/domain/subscription.entity";
+import type { Subscription } from "../../../../accounts/domain/subscription.entity";
 import type {
   OnboardingStep,
   PersonalData,
@@ -19,7 +19,7 @@ import {
   sk,
   type UsersDynamoDBSchema,
 } from "../../../../users/infrastructure/persistence/dynamodb/user.schema";
-import { fromSubscriptionToDynamo } from "../../../../users/infrastructure/persistence/dynamodb/subscription.mappers";
+import { fromSubscriptionToDynamo } from "../../../../accounts/infrastructure/persistence/dynamodb/subscription.mappers";
 
 export class OnboardingRepository implements IOnboardingRepository {
   constructor(

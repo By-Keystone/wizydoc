@@ -4,7 +4,7 @@ import { AuthorizeRequestUseCase } from "../../access/application/authorize-requ
 import { SavePlanUseCase } from "../application/save-plan.usecase";
 import { getClient } from "../../shared/persistence/dynamodb/client";
 import { ClinicRepository } from "../../clinics/infrastructure/persistence/dynamodb/clinic.repository";
-import { OnboardingRepository } from "../../onboarding/infrastructure/persistence/dynamodb/onboarding.repository";
+import { OnboardingRepository } from "../infrastructure/persistence/dynamodb/onboarding.repository";
 import { SessionRepository } from "../../access/infrastructure/persistence/dynamodb/session.repository";
 import { readRoutePolicy } from "../../access/handlers/private-route";
 import { handleSavePlan } from "./save-plan.http";

@@ -17,7 +17,7 @@ import {
   type RoutePolicy,
 } from "./src/access/application/authorize-request.usecase";
 import { PERSONAL_DATA_STEPS } from "./src/onboarding/application/save-personal-data.usecase";
-import { PLAN_STEPS } from "./src/users/application/save-plan.usecase";
+import { PLAN_STEPS } from "./src/onboarding/application/save-plan.usecase";
 import {
   type SignUpEmailTemplate,
   SignUpEmailTemplates,
@@ -267,7 +267,7 @@ export class BackendStack extends Stack {
     );
 
     const savePlanFunction = this.moduleFunction(
-      "users",
+      "onboarding",
       "SavePlanFunction",
       "save-plan",
       "Saves the account's plan in the second onboarding step.",

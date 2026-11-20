@@ -1,13 +1,13 @@
 import { z } from "zod";
 import { INVALID_REQUEST } from "../../shared/messages";
-import type { IOnboardingRepository } from "../../onboarding/domain/repository/onboarding.repository";
+import type { IOnboardingRepository } from "../domain/repository/onboarding.repository";
 import {
   BETA_PLAN,
   createSubscription,
   type Plan,
   PLANS,
-} from "../domain/subscription.entity";
-import type { OnboardingStep, User } from "../domain/user.entity";
+} from "../../accounts/domain/subscription.entity";
+import type { OnboardingStep, User } from "../../users/domain/user.entity";
 
 export const PLAN_STEPS: [OnboardingStep, ...OnboardingStep[]] = [
   "PLAN",

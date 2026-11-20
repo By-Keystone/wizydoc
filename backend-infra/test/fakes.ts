@@ -42,7 +42,7 @@ import type {
   OnboardingStepTransition,
 } from "../lib/src/onboarding/domain/repository/onboarding.repository";
 import type { IUserRepository } from "../lib/src/users/domain/repository/user.repository";
-import type { Subscription } from "../lib/src/users/domain/subscription.entity";
+import type { Subscription } from "../lib/src/accounts/domain/subscription.entity";
 import type { TermsAcceptance } from "../lib/src/users/domain/terms-acceptance.entity";
 import type {
   OnboardingStep,
