@@ -1,8 +1,8 @@
 import { z } from "zod";
 import { INVALID_REQUEST } from "../../shared/messages";
 import { trimmedTextSchema } from "../../shared/trimmed-text";
-import { createOwnerClinic } from "../domain/clinic.entity";
-import type { IOnboardingRepository } from "../domain/repository/onboarding.repository";
+import { createOwnerClinic } from "../../clinics/domain/clinic.entity";
+import type { IOnboardingRepository } from "../../onboarding/domain/repository/onboarding.repository";
 import type { OnboardingStep, User } from "../domain/user.entity";
 
 export const CREATE_CLINIC_STEPS: [OnboardingStep, ...OnboardingStep[]] = [

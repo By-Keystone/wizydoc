@@ -15,10 +15,10 @@ import { senderAddressOf } from "./sender-address";
 import {
   ANY_ONBOARDING_STEP,
   type RoutePolicy,
-} from "./src/users/application/authorize-request.usecase";
+} from "./src/access/application/authorize-request.usecase";
 import { CREATE_CLINIC_STEPS } from "./src/users/application/create-clinic.usecase";
-import { PERSONAL_DATA_STEPS } from "./src/users/application/save-personal-data.usecase";
-import { PLAN_STEPS } from "./src/users/application/save-plan.usecase";
+import { PERSONAL_DATA_STEPS } from "./src/onboarding/application/save-personal-data.usecase";
+import { PLAN_STEPS } from "./src/onboarding/application/save-plan.usecase";
 import {
   type SignUpEmailTemplate,
   SignUpEmailTemplates,
@@ -32,9 +32,9 @@ exports.handler = async () => ({
 });
 `;
 
-const USERS_HANDLERS_DIRECTORY = path.join(__dirname, "src/users/handlers");
-const USERS_FUNCTION_TIMEOUT = Duration.seconds(15);
-const USERS_FUNCTION_MEMORY_MB = 512;
+const MODULES_DIRECTORY = path.join(__dirname, "src");
+const FUNCTION_TIMEOUT = Duration.seconds(15);
+const FUNCTION_MEMORY_MB = 512;
 const USER_EMAIL_INDEX = "GSI1";
 const USER_COGNITO_SUB_INDEX = "GSI2";
 
@@ -73,12 +73,10 @@ const ME_ACCESS: TableAccess = { "dynamodb:GetItem": ["ACCOUNT#*"] };
 const SAVE_PERSONAL_DATA_ACCESS: TableAccess = {
   "dynamodb:UpdateItem": ["USER#*"],
 };
-
 const SAVE_PLAN_ACCESS: TableAccess = {
   "dynamodb:PutItem": ["ACCOUNT#*"],
   "dynamodb:UpdateItem": ["USER#*"],
 };
-
 const CREATE_CLINIC_ACCESS: TableAccess = {
   "dynamodb:PutItem": ["ORG#*", "CLINIC#*", "USER#*"],
   "dynamodb:UpdateItem": ["USER#*"],
@@ -141,7 +139,8 @@ export class BackendStack extends Stack {
         },
       });
 
-    const requestSignUpCodeFunction = this.usersFunction(
+    const requestSignUpCodeFunction = this.moduleFunction(
+      "users",
       "RequestSignUpCodeFunction",
       "request-sign-up-code",
       "Sends the 6-digit sign-up code, or a notice when the email already has an account.",
@@ -171,7 +170,8 @@ export class BackendStack extends Stack {
     );
     requestSignUpCodeFunction.node.addDependency(emailTemplates);
 
-    const verifySignUpCodeFunction = this.usersFunction(
+    const verifySignUpCodeFunction = this.moduleFunction(
+      "users",
       "VerifySignUpCodeFunction",
       "verify-sign-up-code",
       "Verifies the sign-up code and returns a verification token.",
@@ -183,7 +183,8 @@ export class BackendStack extends Stack {
       VERIFY_SIGN_UP_CODE_ACCESS,
     );
 
-    const confirmSignUpFunction = this.usersFunction(
+    const confirmSignUpFunction = this.moduleFunction(
+      "users",
       "ConfirmSignUpFunction",
       "confirm-sign-up",
       "Creates the account from the verification token and password, and signs the user in.",
@@ -209,7 +210,8 @@ export class BackendStack extends Stack {
       "cognito-idp:DescribeUserPoolClient",
     );
 
-    const signInFunction = this.usersFunction(
+    const signInFunction = this.moduleFunction(
+      "users",
       "SignInFunction",
       "sign-in",
       "Signs a confirmed user in with email and password, and returns the Cognito tokens.",
@@ -232,13 +234,15 @@ export class BackendStack extends Stack {
       PLATFORM_CLIENT_ID: authentication.platformClient.userPoolClientId,
     };
 
-    const refreshSessionFunction = this.usersFunction(
+    const refreshSessionFunction = this.moduleFunction(
+      "users",
       "RefreshSessionFunction",
       "refresh-session",
       "Returns new ID and access tokens for a valid refresh token.",
       sessionEnvironment,
     );
-    const signOutFunction = this.usersFunction(
+    const signOutFunction = this.moduleFunction(
+      "users",
       "SignOutFunction",
       "sign-out",
       "Signs the user out of one device by revoking its refresh token.",
@@ -251,28 +255,32 @@ export class BackendStack extends Stack {
       );
     }
 
-    const meFunction = this.usersFunction(
+    const meFunction = this.moduleFunction(
+      "access",
       "MeFunction",
       "me",
       "Returns the signed-in user, their account and their onboarding step.",
       { TABLE_NAME: database.table.tableName },
     );
 
-    const savePersonalDataFunction = this.usersFunction(
+    const savePersonalDataFunction = this.moduleFunction(
+      "onboarding",
       "SavePersonalDataFunction",
       "save-personal-data",
       "Saves the name, surname, phone and treatment of the signed-in user.",
       { TABLE_NAME: database.table.tableName },
     );
 
-    const savePlanFunction = this.usersFunction(
+    const savePlanFunction = this.moduleFunction(
+      "onboarding",
       "SavePlanFunction",
       "save-plan",
       "Saves the account's plan in the second onboarding step.",
       { TABLE_NAME: database.table.tableName },
     );
 
-    const createClinicFunction = this.usersFunction(
+    const createClinicFunction = this.moduleFunction(
+      "users",
       "CreateClinicFunction",
       "create-clinic",
       "Creates the owner's organization, clinic and memberships in the third onboarding step.",
@@ -381,7 +389,8 @@ export class BackendStack extends Stack {
     apiGateway.addPrivateRoute(path, httpMethod, routeFunction, policy);
   }
 
-  private usersFunction(
+  private moduleFunction(
+    moduleName: string,
     id: string,
     handlerName: string,
     description: string,
@@ -389,11 +398,16 @@ export class BackendStack extends Stack {
   ): NodejsFunction {
     return new NodejsFunction(this, id, {
       description,
-      entry: path.join(USERS_HANDLERS_DIRECTORY, `${handlerName}.handler.ts`),
+      entry: path.join(
+        MODULES_DIRECTORY,
+        moduleName,
+        "handlers",
+        `${handlerName}.handler.ts`,
+      ),
       runtime: lambda.Runtime.NODEJS_22_X,
       architecture: lambda.Architecture.ARM_64,
-      timeout: USERS_FUNCTION_TIMEOUT,
-      memorySize: USERS_FUNCTION_MEMORY_MB,
+      timeout: FUNCTION_TIMEOUT,
+      memorySize: FUNCTION_MEMORY_MB,
       environment: {
         ...environment,
         NODE_OPTIONS: "--enable-source-maps",

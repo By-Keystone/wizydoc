@@ -25,7 +25,7 @@ import {
   InMemorySignUpCodes,
   InMemoryUsers,
   RecordingEmails,
-} from "./fakes";
+} from "../fakes";
 
 const email = emailSchema.parse("ana@clinica.pe");
 const WRONG_CODE = "000000";

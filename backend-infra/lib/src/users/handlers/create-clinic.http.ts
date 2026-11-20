@@ -7,13 +7,16 @@ import {
   parseJsonBody,
 } from "../../shared/http/api-gateway";
 import { INVALID_REQUEST } from "../../shared/messages";
-import type { AuthorizeRequestUseCase } from "../application/authorize-request.usecase";
+import type { AuthorizeRequestUseCase } from "../../access/application/authorize-request.usecase";
 import {
   type CreateClinicUseCase,
   createClinicInputSchema,
 } from "../application/create-clinic.usecase";
-import { CLINIC_ALREADY_CREATED, CLINIC_FAILED } from "./http-messages";
-import { handlePrivateRoute } from "./private-route";
+import {
+  CLINIC_ALREADY_CREATED,
+  CLINIC_FAILED,
+} from "../../onboarding/handlers/http-messages";
+import { handlePrivateRoute } from "../../access/handlers/private-route";
 
 export interface CreateClinicHttpDependencies {
   authorizeRequest: Pick<AuthorizeRequestUseCase, "execute">;

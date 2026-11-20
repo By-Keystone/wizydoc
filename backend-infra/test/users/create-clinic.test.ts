@@ -1,16 +1,16 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { AuthorizeRequestUseCase } from "../../lib/src/users/application/authorize-request.usecase";
+import { AuthorizeRequestUseCase } from "../../lib/src/access/application/authorize-request.usecase";
 import { CreateClinicUseCase } from "../../lib/src/users/application/create-clinic.usecase";
 import { givenNameSchema } from "../../lib/src/users/domain/value-objects/person-name.vo";
 import { phoneSchema } from "../../lib/src/users/domain/value-objects/phone.vo";
 import type { OnboardingStep } from "../../lib/src/users/domain/user.entity";
 import { handleCreateClinic } from "../../lib/src/users/handlers/create-clinic.http";
+import { ONBOARDING_INCOMPLETE } from "../../lib/src/access/handlers/http-messages";
 import {
   CLINIC_ALREADY_CREATED,
   CLINIC_FAILED,
-  ONBOARDING_INCOMPLETE,
-} from "../../lib/src/users/handlers/http-messages";
+} from "../../lib/src/onboarding/handlers/http-messages";
 import {
   buildUser,
   COGNITO_SUB,
@@ -19,7 +19,7 @@ import {
   InMemoryUsers,
   privateEvent,
   readDeclaredPolicy,
-} from "./fakes";
+} from "../fakes";
 
 const declaredPolicy = readDeclaredPolicy("CreateClinicFunction");
 const NOW = new Date("2026-11-12T15:00:00.000Z");
