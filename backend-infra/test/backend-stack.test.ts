@@ -249,6 +249,24 @@ test("cada Lambda sólo tiene los permisos que usa", () => {
   ]) {
     assert.equal(createClinicStatements.includes(forbidden), false, forbidden);
   }
+  assert.deepEqual(accessByAction(template, "SaveScheduleFunction"), {
+    "dynamodb:PutItem": ["USER#*"],
+    "dynamodb:UpdateItem": ["USER#*"],
+    "dynamodb:Query": ["USER#*"],
+  });
+  const saveScheduleStatements = policyFor(template, "SaveScheduleFunction");
+  for (const forbidden of [
+    "DeleteItem",
+    "GetItem",
+    "ORG#*",
+    "CLINIC#*",
+    "ACCOUNT#*",
+    "/index/GSI1",
+    "cognito-idp:",
+    "ses:",
+  ]) {
+    assert.equal(saveScheduleStatements.includes(forbidden), false, forbidden);
+  }
   assert.deepEqual(accessByAction(template, "RefreshSessionFunction"), {});
   assert.deepEqual(accessByAction(template, "SignOutFunction"), {});
 });
@@ -476,6 +494,7 @@ test("las Lambdas de los usuarios tienen 15 segundos, 512 MB y logs que se conse
     "SavePersonalDataFunction",
     "SavePlanFunction",
     "CreateClinicFunction",
+    "SaveScheduleFunction",
   ]) {
     const properties = functionProperties(template, functionName);
     assert.equal(properties.Timeout, 15, functionName);
@@ -693,6 +712,12 @@ const ONBOARDING_ROUTES = [
     path: "/api/onboarding/clinic",
     functionName: "CreateClinicFunction",
     policy: { onboardingStep: ["CLINIC"] },
+  },
+  {
+    method: "PUT",
+    path: "/api/onboarding/schedule",
+    functionName: "SaveScheduleFunction",
+    policy: { onboardingStep: ["SCHEDULE"] },
   },
 ];
 

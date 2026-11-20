@@ -58,6 +58,7 @@ export interface AuthorizeRequestInput {
 
 export interface AuthorizedRequest {
   user: User;
+  memberships: Membership[];
   membership?: Membership;
   directMembership?: Membership;
 }
@@ -103,7 +104,9 @@ export class AuthorizeRequestUseCase {
         onboardingStep: user.onboardingStep,
       };
     }
-    if (routeResourceId === undefined) return { kind: "authorized", user };
+    if (routeResourceId === undefined) {
+      return { kind: "authorized", user, memberships };
+    }
     if (!z.ulid().safeParse(routeResourceId).success) {
       return { kind: "resource-not-found" };
     }
@@ -114,7 +117,13 @@ export class AuthorizeRequestUseCase {
     );
     if (!membership) return { kind: "resource-not-found" };
     if (!this.hasAllowedRole(membership)) return { kind: "role-forbidden" };
-    return { kind: "authorized", user, membership, directMembership };
+    return {
+      kind: "authorized",
+      user,
+      memberships,
+      membership,
+      directMembership,
+    };
   }
 
   private isInAllowedStep({ onboardingStep }: User): boolean {
