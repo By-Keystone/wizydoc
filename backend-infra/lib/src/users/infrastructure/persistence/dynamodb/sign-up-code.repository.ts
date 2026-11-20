@@ -14,7 +14,7 @@ import {
 import type { SignUpVerificationToken } from "../../../domain/sign-up-verification-token.entity";
 import type { EmailVO } from "../../../domain/value-objects/email.vo";
 import { toEpochSeconds } from "./epoch-seconds";
-import { isLostRace } from "./lost-race";
+import { isLostRace } from "../../../../shared/persistence/dynamodb/lost-race";
 import { fromSignUpCodeToDynamo } from "./sign-up-code.mappers";
 import { signUpCodePk, signUpCodeSk } from "./sign-up-code.schema";
 import { fromSignUpVerificationTokenToDynamo } from "./sign-up-verification-token.mappers";

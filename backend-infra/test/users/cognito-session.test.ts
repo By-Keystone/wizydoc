@@ -8,7 +8,7 @@ import {
 } from "@aws-sdk/client-cognito-identity-provider";
 import { CognitoSessionProvider } from "../../lib/src/users/infrastructure/identity-provider/cognito/cognito-session";
 import { emailSchema } from "../../lib/src/users/domain/value-objects/email.vo";
-import { COGNITO_SUB, cognitoClient, idTokenFor } from "./fakes";
+import { COGNITO_SUB, cognitoClient, idTokenFor } from "../fakes";
 
 const settings = { userPoolId: "us-east-2_ejemplo", clientId: "cliente-1" };
 const CLIENT_SECRET = "secreto-del-cliente";

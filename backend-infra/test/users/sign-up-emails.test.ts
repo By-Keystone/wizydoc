@@ -9,7 +9,7 @@ import {
   FROM_ADDRESS,
   TEMPLATE_NAMES,
   templateDataOf,
-} from "./fakes";
+} from "../fakes";
 
 test("a un correo con cuenta le manda el aviso con los enlaces para iniciar sesión y cambiar la contraseña", async () => {
   const { sesClient, inputs } = capturingSes();

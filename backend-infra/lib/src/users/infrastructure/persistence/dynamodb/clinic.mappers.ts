@@ -1,11 +1,11 @@
 import type { Clinic } from "../../../domain/clinic.entity";
-import { accountPk } from "./account.schema";
+import { accountPk } from "../../../../accounts/infrastructure/persistence/dynamodb/account.schema";
 import {
   CLINIC_ITEM_TYPE,
   type ClinicDynamoDBSchema,
   clinicPk,
   clinicSk,
-} from "./clinic.schema";
+} from "../../../../clinics/infrastructure/persistence/dynamodb/clinic.schema";
 import { organizationPk } from "./organization.schema";
 
 export const fromClinicToDynamo = ({

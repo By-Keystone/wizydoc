@@ -1,5 +1,5 @@
 import type { Organization } from "../../../domain/organization.entity";
-import { accountPk } from "./account.schema";
+import { accountPk } from "../../../../accounts/infrastructure/persistence/dynamodb/account.schema";
 import {
   ORGANIZATION_ITEM_TYPE,
   type OrganizationDynamoDBSchema,
