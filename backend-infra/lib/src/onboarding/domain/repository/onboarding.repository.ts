@@ -1,6 +1,6 @@
 import type { ULID } from "ulid";
 import type { OwnerClinic } from "../../../clinics/domain/clinic.entity";
-import type { Schedule } from "../../../users/domain/schedule.entity";
+import type { Schedule } from "../../../clinics/domain/schedule.entity";
 import type { Subscription } from "../../../accounts/domain/subscription.entity";
 import type {
   OnboardingStep,

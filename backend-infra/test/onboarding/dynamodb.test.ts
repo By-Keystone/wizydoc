@@ -9,7 +9,7 @@ import type {
   UpdateCommandInput,
 } from "@aws-sdk/lib-dynamodb";
 import { createOwnerClinic } from "../../lib/src/clinics/domain/clinic.entity";
-import { weeklyScheduleSchema } from "../../lib/src/users/domain/value-objects/weekly-schedule.vo";
+import { weeklyScheduleSchema } from "../../lib/src/clinics/domain/value-objects/weekly-schedule.vo";
 import { createSubscription } from "../../lib/src/accounts/domain/subscription.entity";
 import { OnboardingRepository } from "../../lib/src/onboarding/infrastructure/persistence/dynamodb/onboarding.repository";
 import {

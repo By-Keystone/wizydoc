@@ -1,10 +1,10 @@
 import type { Schedule } from "../../../domain/schedule.entity";
-import { clinicPk } from "../../../../clinics/infrastructure/persistence/dynamodb/clinic.schema";
+import { clinicPk } from "./clinic.schema";
 import {
   SCHEDULE_ITEM_TYPE,
   type ScheduleDynamoDBSchema,
 } from "./schedule.schema";
-import { pk } from "./user.schema";
+import { pk } from "../../../../users/infrastructure/persistence/dynamodb/user.schema";
 
 export const fromScheduleToDynamo = ({
   userId,

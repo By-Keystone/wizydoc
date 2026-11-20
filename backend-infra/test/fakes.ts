@@ -51,7 +51,7 @@ import type {
   OwnerClinic,
 } from "../lib/src/clinics/domain/clinic.entity";
 import type { Organization } from "../lib/src/clinics/domain/organization.entity";
-import type { Schedule } from "../lib/src/users/domain/schedule.entity";
+import type { Schedule } from "../lib/src/clinics/domain/schedule.entity";
 import type { Subscription } from "../lib/src/accounts/domain/subscription.entity";
 import type { TermsAcceptance } from "../lib/src/users/domain/terms-acceptance.entity";
 import type {

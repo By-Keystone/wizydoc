@@ -12,7 +12,7 @@ import type { OwnerClinic } from "../../../../clinics/domain/clinic.entity";
 import { fromClinicToDynamo } from "../../../../clinics/infrastructure/persistence/dynamodb/clinic.mappers";
 import { fromMembershipToDynamo } from "../../../../clinics/infrastructure/persistence/dynamodb/membership.mappers";
 import { fromOrganizationToDynamo } from "../../../../clinics/infrastructure/persistence/dynamodb/organization.mappers";
-import { fromScheduleToDynamo } from "../../../../users/infrastructure/persistence/dynamodb/schedule.mappers";
+import { fromScheduleToDynamo } from "../../../../clinics/infrastructure/persistence/dynamodb/schedule.mappers";
 import { ONLY_IF_NEW } from "../../../../shared/persistence/dynamodb/conditions";
 import { isLostRace } from "../../../../shared/persistence/dynamodb/lost-race";
 import type { Subscription } from "../../../../accounts/domain/subscription.entity";

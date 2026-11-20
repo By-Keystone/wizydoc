@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { weeklyScheduleSchema } from "../../lib/src/users/domain/value-objects/weekly-schedule.vo";
+import { weeklyScheduleSchema } from "../../lib/src/clinics/domain/value-objects/weekly-schedule.vo";
 
 const block = (dayOfWeek: number, startTime: string, endTime: string) => ({
   dayOfWeek,
