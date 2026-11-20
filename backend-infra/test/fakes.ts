@@ -35,7 +35,10 @@ import type {
   ISessionRepository,
   UserWithMemberships,
 } from "../lib/src/access/domain/repository/session.repository";
-import type { Membership } from "../lib/src/clinics/domain/membership.entity";
+import type {
+  Membership,
+  NewMembership,
+} from "../lib/src/clinics/domain/membership.entity";
 import type { IClinicRepository } from "../lib/src/clinics/domain/repository/clinic.repository";
 import type {
   IOnboardingRepository,
@@ -168,8 +171,9 @@ export class InMemoryOnboarding implements IOnboardingRepository {
   readonly subscriptions: Subscription[] = [];
   readonly organizations: Organization[] = [];
   readonly clinics: Clinic[] = [];
+  readonly memberships: NewMembership[] = [];
   failOnWrite = false;
-  beforeWrite?: () => void;
+  beforeWrite?: () => void | Promise<void>;
 
   constructor(private readonly users: InMemoryUsers) {}
 
@@ -215,12 +219,13 @@ export class InMemoryOnboarding implements IOnboardingRepository {
     transition: Required<OnboardingStepTransition>,
   ): Promise<boolean> {
     if (this.failOnWrite) throw new Error("DynamoDB no disponible");
-    this.beforeWrite?.();
+    await this.beforeWrite?.();
     this.transitions.push(transition);
     const user = this.users.users.find(({ id }) => id === ownerUserId);
     if (!user || !transition.from.includes(user.onboardingStep)) return false;
     this.organizations.push(organization);
     this.clinics.push(clinic);
+    this.memberships.push(...memberships);
     this.users.memberships.set(user.id, [
       ...(this.users.memberships.get(user.id) ?? []),
       ...memberships,
