@@ -4,7 +4,7 @@ import type { ApiGatewayEvent } from "../../shared/http/api-gateway";
 import { RequestSignUpCodeUseCase } from "../application/request-sign-up-code.usecase";
 import { DynamoDBAccountExistsNotices } from "../infrastructure/persistence/dynamodb/account-exists-notices";
 import { SesSignUpEmails } from "../infrastructure/email/ses/sign-up-emails";
-import { getClient } from "../infrastructure/persistence/dynamodb/client";
+import { getClient } from "../../shared/persistence/dynamodb/client";
 import {
   DynamoDBIpRateLimit,
   EMAIL_SEND_RATE_LIMIT,

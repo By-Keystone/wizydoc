@@ -19,7 +19,7 @@ import {
 import { createSignUpVerificationToken } from "../../lib/src/users/domain/sign-up-verification-token.entity";
 import { createSignUpCode } from "../../lib/src/users/domain/sign-up-code.entity";
 import { createTermsAcceptance } from "../../lib/src/users/domain/terms-acceptance.entity";
-import { createAccount } from "../../lib/src/users/domain/account.entity";
+import { createAccount } from "../../lib/src/accounts/domain/account.entity";
 import { createUser } from "../../lib/src/users/domain/user.entity";
 import { DynamoDBAccountExistsNotices } from "../../lib/src/users/infrastructure/persistence/dynamodb/account-exists-notices";
 import {

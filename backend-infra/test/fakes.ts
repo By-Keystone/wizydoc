@@ -1,7 +1,7 @@
 import type { DynamoDBDocumentClient } from "@aws-sdk/lib-dynamodb";
 import type { CognitoIdentityProviderClient } from "@aws-sdk/client-cognito-identity-provider";
 import type { SendEmailCommandInput, SESv2Client } from "@aws-sdk/client-sesv2";
-import type { Account } from "../lib/src/users/domain/account.entity";
+import type { Account } from "../lib/src/accounts/domain/account.entity";
 import type { IAccountExistsNotices } from "../lib/src/users/application/ports/account-exists-notices.port";
 import type {
   ISessionProvider,
@@ -26,7 +26,7 @@ import {
 } from "../lib/src/users/domain/sign-up-code.entity";
 import type { SignUpVerificationToken } from "../lib/src/users/domain/sign-up-verification-token.entity";
 import type { PrivateApiGatewayEvent } from "../lib/src/shared/http/api-gateway";
-import type { IAccountRepository } from "../lib/src/users/domain/repository/account.repository";
+import type { IAccountRepository } from "../lib/src/accounts/domain/repository/account.repository";
 import type {
   ISessionRepository,
   UserWithMemberships,

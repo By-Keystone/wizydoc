@@ -5,7 +5,10 @@ import {
   CURRENT_PRIVACY_POLICY_VERSION,
   CURRENT_TERMS_VERSION,
 } from "../domain/legal-documents";
-import { type Account, createAccount } from "../domain/account.entity";
+import {
+  type Account,
+  createAccount,
+} from "../../accounts/domain/account.entity";
 import type { ISignUpVerificationTokenRepository } from "../domain/repository/sign-up-verification-token.repository";
 import type { IUserRepository } from "../domain/repository/user.repository";
 import { hashSignUpVerificationToken } from "../domain/sign-up-verification-token.entity";

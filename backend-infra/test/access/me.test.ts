@@ -7,8 +7,8 @@ import {
   AuthorizeRequestUseCase,
   type RoutePolicy,
 } from "../../lib/src/access/application/authorize-request.usecase";
-import { GetMeUseCase } from "../../lib/src/users/application/get-me.usecase";
-import { handleMe } from "../../lib/src/users/handlers/me.http";
+import { GetMeUseCase } from "../../lib/src/access/application/get-me.usecase";
+import { handleMe } from "../../lib/src/access/handlers/me.http";
 import {
   buildUser,
   COGNITO_SUB,

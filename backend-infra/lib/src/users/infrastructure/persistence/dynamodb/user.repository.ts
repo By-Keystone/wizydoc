@@ -3,7 +3,7 @@ import {
   QueryCommand,
   TransactWriteCommand,
 } from "@aws-sdk/lib-dynamodb";
-import type { Account } from "../../../domain/account.entity";
+import type { Account } from "../../../../accounts/domain/account.entity";
 import type {
   IUserRepository,
   VerificationToCommit,
@@ -11,8 +11,9 @@ import type {
 import type { TermsAcceptance } from "../../../domain/terms-acceptance.entity";
 import type { User } from "../../../domain/user.entity";
 import type { EmailVO } from "../../../domain/value-objects/email.vo";
-import { fromAccountToDynamo } from "./account.mappers";
-import { isLostRace } from "./lost-race";
+import { fromAccountToDynamo } from "../../../../accounts/infrastructure/persistence/dynamodb/account.mappers";
+import { ONLY_IF_NEW } from "../../../../shared/persistence/dynamodb/conditions";
+import { isLostRace } from "../../../../shared/persistence/dynamodb/lost-race";
 import {
   signUpVerificationTokenPk,
   signUpVerificationTokenSk,
@@ -21,7 +22,6 @@ import { fromTermsAcceptanceToDynamo } from "./terms-acceptance.mappers";
 import { fromDomainToDynamo } from "./user.mappers";
 import { gsi1pk, gsi2pk, USER_ITEM_TYPE } from "./user.schema";
 
-const ONLY_IF_NEW = "attribute_not_exists(PK)";
 const ONLY_IF_VERIFICATION_IS_VALID =
   "attribute_exists(PK) AND Email = :email AND DeleteAfter > :now";
 
