@@ -7,7 +7,7 @@ import {
   MEMBERSHIP_ITEM_TYPE,
   type MembershipDynamoDBSchema,
 } from "./membership.schema";
-import { organizationPk } from "../../../../users/infrastructure/persistence/dynamodb/organization.schema";
+import { organizationPk } from "./organization.schema";
 import { pk } from "../../../../users/infrastructure/persistence/dynamodb/user.schema";
 
 export const fromDynamoToMembership = ({

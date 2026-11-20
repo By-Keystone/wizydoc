@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { decodeTime, ulid } from "ulid";
-import { createOwnerClinic } from "../../lib/src/users/domain/clinic.entity";
+import { createOwnerClinic } from "../../lib/src/clinics/domain/clinic.entity";
 
 const NOW = new Date("2026-11-12T15:00:00.000Z");
 const OWNER_USER_ID = ulid();

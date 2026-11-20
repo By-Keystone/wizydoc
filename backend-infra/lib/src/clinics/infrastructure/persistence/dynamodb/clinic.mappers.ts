@@ -5,7 +5,7 @@ import {
   type ClinicDynamoDBSchema,
   clinicPk,
   clinicSk,
-} from "../../../../clinics/infrastructure/persistence/dynamodb/clinic.schema";
+} from "./clinic.schema";
 import { organizationPk } from "./organization.schema";
 
 export const fromClinicToDynamo = ({

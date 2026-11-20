@@ -1,5 +1,5 @@
 import { type ULID, ulid } from "ulid";
-import type { NewMembership } from "../../clinics/domain/membership.entity";
+import type { NewMembership } from "./membership.entity";
 import type { Organization } from "./organization.entity";
 
 export interface Clinic {

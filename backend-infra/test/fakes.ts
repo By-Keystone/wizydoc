@@ -45,8 +45,8 @@ import type { IUserRepository } from "../lib/src/users/domain/repository/user.re
 import type {
   Clinic,
   OwnerClinic,
-} from "../lib/src/users/domain/clinic.entity";
-import type { Organization } from "../lib/src/users/domain/organization.entity";
+} from "../lib/src/clinics/domain/clinic.entity";
+import type { Organization } from "../lib/src/clinics/domain/organization.entity";
 import type { Subscription } from "../lib/src/accounts/domain/subscription.entity";
 import type { TermsAcceptance } from "../lib/src/users/domain/terms-acceptance.entity";
 import type {
