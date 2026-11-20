@@ -6,7 +6,7 @@ import {
 } from "@aws-sdk/client-cognito-identity-provider";
 import { emailSchema } from "../../lib/src/users/domain/value-objects/email.vo";
 import { CognitoIdentityProvider } from "../../lib/src/users/infrastructure/identity-provider/cognito/cognito";
-import { COGNITO_SUB, cognitoClient } from "./fakes";
+import { COGNITO_SUB, cognitoClient } from "../fakes";
 
 const USER_POOL_ID = "us-east-2_ejemplo";
 const email = emailSchema.parse("ana@clinica.pe");

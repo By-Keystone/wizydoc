@@ -7,7 +7,7 @@ import {
 } from "../application/confirm-sign-up.usecase";
 import { CognitoIdentityProvider } from "../infrastructure/identity-provider/cognito/cognito";
 import { CognitoSessionProvider } from "../infrastructure/identity-provider/cognito/cognito-session";
-import { getClient } from "../infrastructure/persistence/dynamodb/client";
+import { getClient } from "../../shared/persistence/dynamodb/client";
 import { SignUpVerificationTokenRepository } from "../infrastructure/persistence/dynamodb/sign-up-verification-token.repository";
 import { UserRepository } from "../infrastructure/persistence/dynamodb/user.repository";
 import { handleConfirmSignUp } from "./confirm-sign-up.http";

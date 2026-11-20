@@ -12,6 +12,70 @@ reconozca la sesión: el gateway valida el ID token y una policy compartida
 comprueba en cada pedido, contra DynamoDB, lo que declara cada ruta privada.
 `GET /api/me` es la primera ruta privada.
 
+## Módulos
+
+Decidido por el humano el 19 de noviembre de 2026: la cuenta, la sede y el
+usuario son dominios distintos, y vivir todos en `lib/src/users/` los mezclaba.
+Desde la parte 3, el código se divide en un módulo por dominio, cada uno con las
+capas de `AGENTS.md` (`domain/`, `application/`, `infrastructure/` y
+`handlers/`). Las partes 1 y 2 se escribieron en `users`, y sus listas de
+archivos quedan como se mergearon.
+
+| Módulo | Qué tiene |
+|---|---|
+| `users` | El usuario y sus value objects (`email`, `password`, `person-name`, `phone`, `treatment` y `refresh-token`), el código y el token del registro, la constancia de términos, `legal-documents`, `IUserRepository` sin `findByCognitoSubWithMemberships`, Cognito, SES y las rutas de registro, inicio de sesión, renovación y cierre de sesión. |
+| `accounts` | `account.entity` (`Account` y `createAccount`), `subscription.entity`, `IAccountRepository` y su implementación, y el schema y los mappers de la cuenta y del plan. |
+| `clinics` | `organization.entity`, `clinic.entity` (`Clinic`, `OwnerClinic` y `createOwnerClinic`), `membership.entity`, `schedule.entity`, `weekly-schedule.vo`, `IClinicRepository` y su implementación, y el schema y los mappers de la organización, la sede, la membership y el horario. |
+| `access` | La policy (`application/authorize-request.usecase.ts` y `handlers/private-route.ts`); la lectura de la sesión (`ISessionRepository`, con `findByCognitoSubWithMemberships` y `UserWithMemberships`, y su implementación, `SessionRepository`, en `infrastructure/persistence/dynamodb/session.repository.ts`); `GET /api/me` (`get-me.usecase`, `me.http` y `me.handler`), y sus mensajes HTTP. |
+| `onboarding` | Sólo orquesta: los casos de uso de las cuatro rutas del onboarding, `IOnboardingRepository` y su implementación, los handlers y sus mensajes HTTP. |
+| `shared/persistence/dynamodb/` | `client.ts` (`getClient`), `lost-race.ts` (`isLostRace`) y `conditions.ts` (`ONLY_IF_NEW`). |
+
+El nombre, el celular y el tratamiento, el plan, la organización, la sede, el
+horario y el módulo `onboarding` llegan con WIZ-77
+([../onboarding/plan.md](../onboarding/plan.md)).
+
+- **Cada ítem es de un módulo,** que tiene su entidad, su schema, su mapper y su
+  repositorio. Una transacción de otro módulo lo escribe con ese mapper y esas
+  claves, sin copiarlos: la confirmación (`users`) escribe la cuenta, y el
+  onboarding, la sede y las memberships.
+- **Las dependencias van en un solo sentido, sin ciclos:**
+  - `users` → `accounts`: la confirmación crea la cuenta con `createAccount` y
+    la escribe con su mapper;
+  - `clinics` → `users`, sólo la clave `USER#` (`pk()`): la membership y el
+    horario viven en la partición del usuario;
+  - `clinics` → `accounts`, sólo la clave `ACCOUNT#` (`accountPk()`): la
+    organización y la sede la usan en sus índices;
+  - `access` → `users`, `accounts` y `clinics`: lee el usuario, sus
+    memberships, la sede y la cuenta;
+  - `onboarding` → `users`, `accounts`, `clinics` y `access`. Nadie depende de
+    `onboarding`;
+  - `shared/` no importa ningún módulo.
+- **La policy va en `access` y no en `users`:** lee las memberships y la sede,
+  que son de `clinics`, y `clinics` ya depende de `users`. En `users` sería un
+  ciclo. Por lo mismo, la lectura de la sesión sale de `UserRepository`: arma
+  las memberships.
+- **`GET /api/me` va en `access` y no en `users`:** usa la policy, y la policy
+  lee `users`. En `users` sería un ciclo.
+- **Las Lambdas** (parte 4): `usersFunction(id, handlerName, …)` de
+  `lib/backend-stack.ts` pasa a una fábrica que recibe el módulo, y la entrada es
+  `lib/src/<módulo>/handlers/<nombre>.handler.ts`. Las Lambdas de hoy pasan
+  `users`: sus ids y su entrada no cambian.
+- **Las pruebas siguen el módulo del código que prueban:** `test/<módulo>/`.
+  Los dobles compartidos pasan de `test/users/fakes.ts` a `test/fakes.ts`, con
+  `capturingClient`, que hoy está en `test/users/dynamodb.test.ts` y lo usan
+  las pruebas de DynamoDB de cada módulo.
+
+**Qué mueve cada parte de esta spec.** Cada parte mueve lo que crea o lo
+primero que lo necesita:
+- **Parte 3:** crea `access` con la policy y la lectura de la sesión, que sale
+  de `UserRepository`; mueve la membership (`membership.entity`,
+  `membership.schema.ts` y `membership.mappers.ts`) de `users` a `clinics` y
+  crea ahí `IClinicRepository`; y mueve los dobles a `test/fakes.ts`.
+- **Parte 4:** `GET /api/me` en `access`; mueve la cuenta (`account.entity`,
+  `account.schema.ts` y `account.mappers.ts`) de `users` a `accounts` y crea
+  ahí `IAccountRepository`; mueve `client.ts`, `lost-race.ts` y `ONLY_IF_NEW` a
+  `shared/persistence/dynamodb/`; y la fábrica de Lambdas recibe el módulo.
+
 ## Partes
 
 Cada parte se puede mergear sola sin romper `main` y se apila sobre la anterior
@@ -22,17 +86,19 @@ tamaños son de código de producción, sin pruebas ni docs.
 |---|---|---|---|
 | 1 | Este plan y **la cuenta al registrarse**: el ítem `ACCOUNT#<id>`, el usuario con `AccountId` y `OnboardingStep = PERSONAL_DATA` y sin `OnboardingCompleted`, los dos en la transacción de la confirmación, y el permiso sobre `ACCOUNT#*`. | Las pruebas de la confirmación y de DynamoDB, y una cuenta creada en staging. | ~100 líneas |
 | 2 | **Leer al usuario de la sesión**: del `sub` al id por `GSI2`, y el usuario y sus memberships en una sola lectura consistente de su partición. La entidad `Membership` y sus mappers de lectura. Ninguna Lambda lo usa todavía. | Las pruebas de DynamoDB. | ~140 líneas |
-| 3 | **La policy**: lo que declara una ruta (`RoutePolicy`), el caso de uso que la evalúa en el orden de la spec, el envoltorio de las rutas privadas, que lee el `sub` de los claims y traduce cada resultado a 401, 403, 404 o 500, y la herencia del rol de la organización en sus sedes, con la lectura de la sede. Ninguna ruta la usa todavía. | Las pruebas de la policy con rutas de prueba. | ~300 líneas |
-| 4 | **El autorizador y `GET /api/me`**: el autorizador de Cognito, la respuesta 401 del gateway, `addPrivateRoute`, la lectura de la cuenta, el caso de uso y el handler de `/api/me`, su Lambda, su ruta y sus permisos. | Las pruebas de síntesis y de `/api/me`, y los pedidos a staging de «Verificación». | ~235 líneas |
+| 3 | **La policy**: lo que declara una ruta (`RoutePolicy`), el caso de uso que la evalúa en el orden de la spec, el envoltorio de las rutas privadas, que lee el `sub` de los claims y traduce cada resultado a 401, 403, 404 o 500, y la herencia del rol de la organización en sus sedes, con la lectura de la sede. Ninguna ruta la usa todavía. Crea el módulo `access`, con la policy y la lectura de la sesión, y mueve la membership a `clinics` (ver «Módulos»). | Las pruebas de la policy con rutas de prueba. | ~300 líneas |
+| 4 | **El autorizador y `GET /api/me`**: el autorizador de Cognito, la respuesta 401 del gateway, `addPrivateRoute`, la lectura de la cuenta, el caso de uso y el handler de `/api/me`, su Lambda, su ruta y sus permisos. Mueve la cuenta a `accounts` y lo compartido de DynamoDB a `shared/`, y la fábrica de Lambdas recibe el módulo (ver «Módulos»). | Las pruebas de síntesis y de `/api/me`, y los pedidos a staging de «Verificación». | ~235 líneas |
 
 - **El autorizador va con `/api/me`, no solo.** CDK no sintetiza un
   autorizador que ningún método usa («Authorizer … must be attached to a
   RestApi», `aws-cdk-lib` 2.275), y una ruta privada sin autorizador quedaría
   abierta. La primera ruta privada y su autorizador llegan juntos.
 - **Las partes 2 y 3 no cambian el comportamiento desplegado.** Agregan código
-  que ninguna Lambda usa todavía. `user.repository.ts` (parte 2) y
+  que ninguna Lambda usa todavía. `user.repository.ts` (partes 2 y 3) y
   `shared/http/api-gateway.ts` (parte 3) ya los importan las Lambdas de hoy,
   que cambian de paquete pero no de comportamiento.
+- **Los movimientos de las partes 3 y 4 no suman al tamaño:** git los muestra
+  como renombres, con las importaciones que cambian.
 - **Orden de despliegue:** el de las partes. Ninguna necesita a otra desplegada
   antes para no romper nada.
 
@@ -63,6 +129,9 @@ Pruebas: `test/users/fakes.ts`, `test/users/confirm-sign-up.test.ts`,
 
 Docs: `backend-infra/docs/spec/session/plan.md`.
 
+La parte 4 mueve la cuenta (`account.entity`, `account.schema.ts` y
+`account.mappers.ts`) a `accounts` (ver «Módulos»).
+
 ### Archivos de la parte 2
 
 Producción:
@@ -82,21 +151,44 @@ Producción:
 
 Pruebas: `test/users/dynamodb.test.ts` y `test/users/fakes.ts`.
 
+La parte 3 mueve la membership a `clinics`, `UserWithMemberships` y
+`findByCognitoSubWithMemberships` a `access`, y sus pruebas de DynamoDB a
+`test/access/dynamodb.test.ts` (ver «Módulos»).
+
 ### Archivos de la parte 3
 
 Producción:
 - `lib/src/shared/http/api-gateway.ts`: `FORBIDDEN`, `NOT_FOUND`,
   `jsonResponse` y `PrivateApiGatewayEvent`.
-- `lib/src/users/application/authorize-request.usecase.ts` (nuevo).
-- `lib/src/users/handlers/private-route.ts` (nuevo).
-- `lib/src/users/handlers/http-messages.ts`: los mensajes de la policy.
-- `lib/src/users/domain/repository/clinic.repository.ts` (nuevo):
+- `lib/src/access/application/authorize-request.usecase.ts` (nuevo).
+- `lib/src/access/handlers/private-route.ts` (nuevo).
+- `lib/src/access/handlers/http-messages.ts` (nuevo): los mensajes de la
+  policy. `SESSION_EXPIRED` sigue en `lib/src/users/handlers/http-messages.ts`,
+  porque también lo responde la renovación de la sesión.
+- `lib/src/access/domain/repository/session.repository.ts` (nuevo):
+  `ISessionRepository` y `UserWithMemberships`.
+- `lib/src/access/infrastructure/persistence/dynamodb/session.repository.ts`
+  (nuevo): `SessionRepository.findByCognitoSubWithMemberships`, con las dos
+  consultas de la parte 2: la de `GSI2` y la de la partición, página por
+  página.
+- `lib/src/users/domain/repository/user.repository.ts` y
+  `lib/src/users/infrastructure/persistence/dynamodb/user.repository.ts`:
+  pierden `UserWithMemberships` y `findByCognitoSubWithMemberships`, que pasan
+  a `access`.
+- `lib/src/clinics/domain/membership.entity.ts`, y
+  `lib/src/clinics/infrastructure/persistence/dynamodb/membership.schema.ts` y
+  `membership.mappers.ts`: se mueven de `users`, sin cambios.
+- `lib/src/clinics/domain/repository/clinic.repository.ts` (nuevo):
   `IClinicRepository`.
-- `lib/src/users/infrastructure/persistence/dynamodb/clinic.schema.ts` y
+- `lib/src/clinics/infrastructure/persistence/dynamodb/clinic.schema.ts` y
   `clinic.repository.ts` (nuevos): la lectura de la sede.
 
-Pruebas: `test/users/private-route.test.ts` (nuevo), `test/users/fakes.ts` y
-`test/users/dynamodb.test.ts`.
+Pruebas: `test/fakes.ts` (se mueve de `test/users/fakes.ts`, con
+`capturingClient` de `test/users/dynamodb.test.ts`),
+`test/access/private-route.test.ts` (nuevo), `test/access/dynamodb.test.ts`
+(nuevo, con las pruebas de la lectura de la sesión, que salen de
+`test/users/dynamodb.test.ts`), `test/clinics/dynamodb.test.ts` (nuevo, la
+lectura de la sede) y las importaciones de los dobles en `test/users/`.
 
 ### Archivos de la parte 4
 
@@ -104,16 +196,28 @@ Producción:
 - `lib/api-gateway.ts`: el autorizador, la respuesta `UNAUTHORIZED` y
   `addPrivateRoute`.
 - `lib/backend-stack.ts`: `Authentication` se crea antes que `ApiGateway`, la
-  Lambda `MeFunction`, sus permisos y su ruta.
-- `lib/src/users/domain/repository/account.repository.ts` (nuevo).
-- `lib/src/users/infrastructure/persistence/dynamodb/account.repository.ts`
-  (nuevo), y la lectura en `account.schema.ts` y `account.mappers.ts`.
-- `lib/src/users/application/get-me.usecase.ts` (nuevo).
-- `lib/src/users/handlers/me.http.ts` y `me.handler.ts` (nuevos).
+  fábrica de Lambdas recibe el módulo, y la Lambda `MeFunction`, del módulo
+  `access`, sus permisos y su ruta.
+- `lib/src/accounts/domain/account.entity.ts`, y
+  `lib/src/accounts/infrastructure/persistence/dynamodb/account.schema.ts` y
+  `account.mappers.ts`: se mueven de `users`, con la lectura en
+  `account.schema.ts` y `account.mappers.ts`.
+- `lib/src/accounts/domain/repository/account.repository.ts` (nuevo).
+- `lib/src/accounts/infrastructure/persistence/dynamodb/account.repository.ts`
+  (nuevo).
+- `lib/src/shared/persistence/dynamodb/client.ts` y `lost-race.ts`: se mueven de
+  `lib/src/users/infrastructure/persistence/dynamodb/`, sin cambios. En la misma
+  carpeta, `ONLY_IF_NEW`, que hoy es una constante privada de
+  `lib/src/users/infrastructure/persistence/dynamodb/user.repository.ts`.
+- `lib/src/users/`: `confirm-sign-up.usecase.ts` y los dos
+  `user.repository.ts` importan la cuenta de `accounts`, y los adaptadores y
+  handlers que usan `getClient`, `isLostRace` u `ONLY_IF_NEW`, de `shared`.
+- `lib/src/access/application/get-me.usecase.ts` (nuevo).
+- `lib/src/access/handlers/me.http.ts` y `me.handler.ts` (nuevos).
 
-Pruebas: `test/users/me.test.ts` (nuevo), `test/users/fakes.ts`,
-`test/users/dynamodb.test.ts`, `test/api-gateway.test.ts` y
-`test/backend-stack.test.ts`.
+Pruebas: `test/access/me.test.ts` (nuevo), `test/accounts/dynamodb.test.ts`
+(nuevo, la lectura de la cuenta), `test/fakes.ts`, `test/api-gateway.test.ts`,
+`test/backend-stack.test.ts` y las importaciones que cambian en `test/users/`.
 
 ## Decisiones
 
@@ -141,8 +245,9 @@ Pruebas: `test/users/me.test.ts` (nuevo), `test/users/fakes.ts`,
 
 ### Del `sub` al usuario y sus memberships (parte 2)
 
-`UserRepository.findByCognitoSubWithMemberships(cognitoSub)` hace dos pedidos a
-DynamoDB, uno detrás del otro:
+`UserRepository.findByCognitoSubWithMemberships(cognitoSub)` (desde la parte 3,
+`SessionRepository`, en `access`) hace dos pedidos a DynamoDB, uno detrás del
+otro:
 
 1. **`Query` sobre `GSI2`** con `GSI2PK = COGNITO#<sub>`, `Limit: 1` y la
    proyección `ItemType, Id`. Si no hay ítem o su `ItemType` no es `USER`,
@@ -184,17 +289,19 @@ DynamoDB, uno detrás del otro:
 
 ### La policy (parte 3)
 
-**Dónde vive.** En el módulo `users`, por capas:
+**Dónde vive.** En el módulo `access`, por capas (ver «Módulos»):
 - `application/authorize-request.usecase.ts`: el caso de uso y su esquema de
   entrada, que es la declaración de la ruta (`routePolicySchema` y el tipo
   `RoutePolicy`), como hace cada caso de uso con su esquema.
 - `handlers/private-route.ts`: el envoltorio de las rutas privadas. Lee el
   `sub`, llama al caso de uso y traduce el resultado a HTTP, sin lógica de
   negocio.
-- No va en `shared/`: lee usuarios y memberships, y `shared` dependería de
-  `users`. Cuando otro módulo tenga rutas privadas, importa
-  `users/handlers/private-route`; si eso molesta, moverlo a un módulo propio se
-  decide entonces, con dos consumidores reales.
+- `domain/repository/session.repository.ts` e
+  `infrastructure/persistence/dynamodb/session.repository.ts`: la lectura de la
+  sesión de la parte 2, que sale de `UserRepository`.
+- No va en `shared/`, que no importa ningún módulo, ni en `users`, que
+  dependería de `clinics` por las memberships y la sede. Cada módulo con rutas
+  privadas importa `access/handlers/private-route`.
 
 **Qué declara una ruta.** `RoutePolicy` es la entrada de `routePolicySchema`, un
 `z.strictObject`:
@@ -352,9 +459,11 @@ contraseña incorrectos.». `EXPIRED_TOKEN` es de las firmas de AWS y no aplica.
 
 Nace una dependencia de la capa de CDK (`lib/*.ts`) hacia `lib/src`:
 `SESSION_EXPIRED`, `RoutePolicy`, `routePolicySchema`, `requiresMembership`,
-`RESOURCE_ID_PARAMETER`, `ROUTE_POLICY_VARIABLE` y `ANY_ONBOARDING_STEP`. La síntesis carga esos módulos, así que
-`authorize-request.usecase.ts` y `http-messages.ts` no importan el AWS SDK,
-directa ni transitivamente.
+`RESOURCE_ID_PARAMETER`, `ROUTE_POLICY_VARIABLE` y `ANY_ONBOARDING_STEP`. La
+síntesis carga esos módulos, así que
+`access/application/authorize-request.usecase.ts` y
+`users/handlers/http-messages.ts` (el de `SESSION_EXPIRED`) no importan el AWS
+SDK, directa ni transitivamente.
 
 ### Toda ruta privada declara su policy (parte 4)
 
@@ -434,26 +543,30 @@ directa ni transitivamente.
 
 ### `GET /api/me` (parte 4)
 
-**`handlers/me.http.ts` (`handleMe`)**, con `{ authorizeRequest:
+**`access/handlers/me.http.ts` (`handleMe`)**, con `{ authorizeRequest:
 Pick<AuthorizeRequestUseCase, "execute">, getMe: Pick<GetMeUseCase, "execute">
 }`: `handlePrivateRoute(event, authorizeRequest, async ({ user }) => …)`, que
 llama a `getMe.execute(user)` y responde `noStoreJsonResponse` con el cuerpo de
 arriba.
 
-**`handlers/me.handler.ts`** lee `TABLE_NAME` y arma a nivel de módulo
-`AuthorizeRequestUseCase` con `UserRepository` y `readRoutePolicy()`, y
-`GetMeUseCase` con `AccountRepository`.
+**`access/handlers/me.handler.ts`** lee `TABLE_NAME` y arma a nivel de módulo
+`AuthorizeRequestUseCase` con `SessionRepository`, `ClinicRepository` y
+`readRoutePolicy()`, y `GetMeUseCase` con `AccountRepository`, de `accounts`.
 
 ## Puertos y adaptadores
 
+Cada contrato vive en `domain/repository/` de su módulo. Las rutas son desde
+`lib/src/`.
+
 | Contrato | Cambio | Implementación |
 |---|---|---|
-| `IUserRepository` | Parte 1: `createConfirmed(user: User, account: Account, verification, termsAcceptance?)`. Parte 2: `findByCognitoSubWithMemberships(cognitoSub): Promise<UserWithMemberships \| undefined>`, con `UserWithMemberships = { user: User; memberships: Membership[] }`. | `infrastructure/persistence/dynamodb/user.repository.ts` |
-| `IAccountRepository` (nuevo, parte 4) | `findById(accountId): Promise<Account \| undefined>` | `infrastructure/persistence/dynamodb/account.repository.ts` |
-| `IClinicRepository` (nuevo, parte 3) | `findOrganizationId(clinicId): Promise<ULID \| undefined>` | `infrastructure/persistence/dynamodb/clinic.repository.ts` |
+| `IUserRepository` (`users`) | Parte 1: `createConfirmed(user: User, account: Account, verification, termsAcceptance?)`. Parte 2: `findByCognitoSubWithMemberships(cognitoSub): Promise<UserWithMemberships \| undefined>`, con `UserWithMemberships = { user: User; memberships: Membership[] }`. Parte 3: lo pierde, y pasa a `ISessionRepository`. | `users/infrastructure/persistence/dynamodb/user.repository.ts` |
+| `ISessionRepository` (`access`, nuevo, parte 3) | `findByCognitoSubWithMemberships(cognitoSub): Promise<UserWithMemberships \| undefined>` y `UserWithMemberships`, que salen de `IUserRepository` sin cambios. | `access/infrastructure/persistence/dynamodb/session.repository.ts` (`SessionRepository`) |
+| `IAccountRepository` (`accounts`, nuevo, parte 4) | `findById(accountId): Promise<Account \| undefined>` | `accounts/infrastructure/persistence/dynamodb/account.repository.ts` |
+| `IClinicRepository` (`clinics`, nuevo, parte 3) | `findOrganizationId(clinicId): Promise<ULID \| undefined>` | `clinics/infrastructure/persistence/dynamodb/clinic.repository.ts` |
 
 Cada caso de uso recibe sólo lo que usa: `AuthorizeRequestUseCase`,
-`Pick<IUserRepository, "findByCognitoSubWithMemberships">` y
+`Pick<ISessionRepository, "findByCognitoSubWithMemberships">` y
 `Pick<IClinicRepository, "findOrganizationId">`; `GetMeUseCase`,
 `Pick<IAccountRepository, "findById">`.
 
@@ -478,12 +591,13 @@ Cada caso de uso recibe sólo lo que usa: `AuthorizeRequestUseCase`,
 
 ## Infraestructura
 
-`lib/backend-stack.ts`, con `usersFunction` (Node 22, arm64, 15 s, 512 MB, logs
-un mes):
+`lib/backend-stack.ts`. Desde la parte 4, `usersFunction` (Node 22, arm64,
+15 s, 512 MB, logs un mes) pasa a una fábrica que además recibe el módulo (ver
+«Módulos»):
 
-| Lambda | Handler | Descripción | Entorno |
-|---|---|---|---|
-| `MeFunction` (parte 4) | `me` | «Returns the signed-in user, their account and their onboarding step.» | `TABLE_NAME`, y `ROUTE_POLICY` de `addPrivateRoute` |
+| Lambda | Módulo | Handler | Descripción | Entorno |
+|---|---|---|---|---|
+| `MeFunction` (parte 4) | `access` | `me` | «Returns the signed-in user, their account and their onboarding step.» | `TABLE_NAME`, y `ROUTE_POLICY` de `addPrivateRoute` |
 
 **Permisos exactos**
 - `ConfirmSignUpFunction` (parte 1): `dynamodb:PutItem` con
@@ -550,12 +664,13 @@ Con el estilo de `test/`: los handlers con el caso de uso real y dobles en
 memoria, los adaptadores con clientes que registran los comandos, y la
 infraestructura con síntesis de CDK.
 
-**Dobles en `test/users/fakes.ts`**
+**Dobles en `test/fakes.ts`** (hasta la parte 2, en `test/users/fakes.ts`)
 - `buildUser` usa `accountId` y `onboardingStep` (parte 1).
 - `InMemoryUsers` guarda `createdAccounts` y escribe usuario y cuenta juntos o
   ninguno (parte 1). Gana `memberships` y `findByCognitoSubWithMemberships`, que
   devuelve sólo las del usuario de ese `sub`, y `failOnRead` también la hace
-  fallar (parte 2).
+  fallar (parte 2). Desde la parte 3, la policy lo recibe como
+  `ISessionRepository`, sobre el mismo almacén.
 - `privateEvent({ sub, resourceId, … })`: un evento con los claims del
   autorizador (parte 3).
 - `InMemoryAccounts` implementa `IAccountRepository` (parte 4).
@@ -601,17 +716,17 @@ Prueba en `test/`. Entre paréntesis, la parte.
 | Crear la cuenta con un token de verificación vigente crea, en la misma transacción, el usuario con `AccountId` y `OnboardingStep = PERSONAL_DATA`, y la cuenta con el usuario como dueño, sin nombre y sin plan | `users/confirm-sign-up.test.ts`: «crear la cuenta con un token de verificación vigente crea, en la misma transacción, el usuario con AccountId y OnboardingStep = PERSONAL_DATA, y la cuenta con el usuario como dueño, sin nombre y sin plan». `users/dynamodb.test.ts`: «crear la cuenta confirmada guarda el usuario, su cuenta y su constancia y gasta el token en una sola transacción», con el ítem de la cuenta exacto (`PK`, `SK`, `ItemType`, `Id`, `OwnerUserId`) y sin ningún otro ítem. (1) |
 | Si falla la transacción, no queda ni el usuario ni la cuenta, y el usuario se borra de Cognito | `users/confirm-sign-up.test.ts`: «si falla la transacción, no queda ni el usuario ni la cuenta, y el usuario se borra de Cognito». La de la spec anterior («si falla la escritura en DynamoDB…») sigue. (1) |
 | El usuario nuevo ya no guarda `OnboardingCompleted` | `users/dynamodb.test.ts`: «el usuario nuevo ya no guarda OnboardingCompleted», con el `Item` completo del usuario en el `Put`. `users/confirm-sign-up.test.ts` fija la lista de campos de la entidad. (1) |
-| `GET /api/me` con un ID token válido responde 200 con los datos del usuario, su cuenta, si es el dueño y su paso del onboarding, aunque no lo haya terminado | `users/me.test.ts`: «GET /api/me con un ID token válido responde 200 con los datos del usuario, su cuenta, si es el dueño y su paso del onboarding, aunque no lo haya terminado», con la policy que declara el stack. (4) |
+| `GET /api/me` con un ID token válido responde 200 con los datos del usuario, su cuenta, si es el dueño y su paso del onboarding, aunque no lo haya terminado | `access/me.test.ts`: «GET /api/me con un ID token válido responde 200 con los datos del usuario, su cuenta, si es el dueño y su paso del onboarding, aunque no lo haya terminado», con la policy que declara el stack. (4) |
 | Una ruta privada sin ID token, con uno vencido o con uno de otro user pool responde 401 sin invocar ninguna Lambda | `api-gateway.test.ts`: «una ruta privada sin ID token, con uno vencido o con uno de otro user pool responde 401 sin invocar ninguna Lambda»: el autorizador es `COGNITO_USER_POOLS` sobre ese pool, con `Authorization`, el `aud` del cliente y sin caché, y la respuesta `UNAUTHORIZED` es 401 con el mensaje. El comportamiento real, en staging (ver «Verificación»). (4) |
-| Un ID token válido cuyo `sub` no tiene usuario responde 401 | `users/private-route.test.ts` (3) y `users/me.test.ts` (4): «un ID token válido cuyo sub no tiene usuario responde 401». |
-| La Lambda toma el `sub` sólo de los claims del autorizador | `users/private-route.test.ts`: «la Lambda toma el sub sólo de los claims del autorizador», con otro `sub` en el cuerpo, la cabecera y los parámetros, y un evento sin claims que responde 401. (3) |
-| Una ruta que exige el onboarding terminado responde 403 con el paso en que va el usuario si no lo terminó | `users/private-route.test.ts`: «una ruta que exige el onboarding terminado responde 403 con el paso en que va el usuario si no lo terminó». (3) |
-| Una ruta que exige ser miembro de un recurso responde 404 si el usuario no tiene membership sobre él, también si el recurso existe en otra cuenta | `users/private-route.test.ts`: «una ruta que exige ser miembro de un recurso responde 404 si el usuario no tiene membership sobre él, también si el recurso existe en otra cuenta», con la membership de otro usuario de otra cuenta sobre ese recurso (3). `users/dynamodb.test.ts`: «el usuario de la sesión y sus memberships se leen sólo de su propia partición» (2). |
-| Una ruta que exige ciertos roles responde 403 si la membership tiene otro | `users/private-route.test.ts`: «una ruta que exige ciertos roles responde 403 si la membership tiene otro». (3) |
-| el rol en la organización se hereda en sus sedes: en una sede gana el rol más alto entre la membership directa y la de su organización, y la ruta recibe también la membership directa | `users/private-route.test.ts`: «El rol en la organización se hereda en sus sedes: en una sede gana el rol más alto entre la membership directa y la de su organización, y la ruta recibe también la membership directa.» (3) |
-| una membership de organización no sirve en una ruta de sede con el mismo id sin la herencia, y un id de sede que no existe o que es de otra organización responde 404 | `users/private-route.test.ts`: «Una membership de organización no sirve en una ruta de sede con el mismo id sin la herencia, y un id de sede que no existe o que es de otra organización responde 404.» Con «un resourceId que no es un ULID responde 404 sin leer la sede». (3) |
+| Un ID token válido cuyo `sub` no tiene usuario responde 401 | `access/private-route.test.ts` (3) y `access/me.test.ts` (4): «un ID token válido cuyo sub no tiene usuario responde 401». |
+| La Lambda toma el `sub` sólo de los claims del autorizador | `access/private-route.test.ts`: «la Lambda toma el sub sólo de los claims del autorizador», con otro `sub` en el cuerpo, la cabecera y los parámetros, y un evento sin claims que responde 401. (3) |
+| Una ruta que exige el onboarding terminado responde 403 con el paso en que va el usuario si no lo terminó | `access/private-route.test.ts`: «una ruta que exige el onboarding terminado responde 403 con el paso en que va el usuario si no lo terminó». (3) |
+| Una ruta que exige ser miembro de un recurso responde 404 si el usuario no tiene membership sobre él, también si el recurso existe en otra cuenta | `access/private-route.test.ts`: «una ruta que exige ser miembro de un recurso responde 404 si el usuario no tiene membership sobre él, también si el recurso existe en otra cuenta», con la membership de otro usuario de otra cuenta sobre ese recurso (3). `access/dynamodb.test.ts`: «el usuario de la sesión y sus memberships se leen sólo de su propia partición» (2; en `users/dynamodb.test.ts` hasta la parte 3). |
+| Una ruta que exige ciertos roles responde 403 si la membership tiene otro | `access/private-route.test.ts`: «una ruta que exige ciertos roles responde 403 si la membership tiene otro». (3) |
+| el rol en la organización se hereda en sus sedes: en una sede gana el rol más alto entre la membership directa y la de su organización, y la ruta recibe también la membership directa | `access/private-route.test.ts`: «El rol en la organización se hereda en sus sedes: en una sede gana el rol más alto entre la membership directa y la de su organización, y la ruta recibe también la membership directa.» (3) |
+| una membership de organización no sirve en una ruta de sede con el mismo id sin la herencia, y un id de sede que no existe o que es de otra organización responde 404 | `access/private-route.test.ts`: «Una membership de organización no sirve en una ruta de sede con el mismo id sin la herencia, y un id de sede que no existe o que es de otra organización responde 404.» Con «un resourceId que no es un ULID responde 404 sin leer la sede». (3) |
 | Toda ruta privada declara su policy y exige la clave de platform y el ID token | `backend-stack.test.ts`: «toda ruta privada declara su policy y exige la clave de platform y el ID token», con la lista de rutas públicas, y «toda Lambda de una ruta privada puede leer al usuario de la sesión y sus memberships». `api-gateway.test.ts`: «addPrivateRoute crea el método con el autorizador y deja la policy en ROUTE_POLICY». (4) |
-| Ni los tokens ni los datos personales aparecen en los logs | `users/private-route.test.ts` (3) y `users/me.test.ts` (4): «ni los tokens ni los datos personales aparecen en los logs», con errores cuyo mensaje lleva el correo, el `sub` y el token. `api-gateway.test.ts`: «el log de acceso no guarda la ruta ni los claims del autorizador» (4). |
+| Ni los tokens ni los datos personales aparecen en los logs | `access/private-route.test.ts` (3) y `access/me.test.ts` (4): «ni los tokens ni los datos personales aparecen en los logs», con errores cuyo mensaje lleva el correo, el `sub` y el token. `api-gateway.test.ts`: «el log de acceso no guarda la ruta ni los claims del autorizador» (4). |
 
 ## Verificación
 
