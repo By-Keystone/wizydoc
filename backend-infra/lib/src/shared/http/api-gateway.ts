@@ -6,6 +6,8 @@ export const HTTP_STATUS = {
   ACCEPTED: 202,
   BAD_REQUEST: 400,
   UNAUTHORIZED: 401,
+  FORBIDDEN: 403,
+  NOT_FOUND: 404,
   TOO_MANY_REQUESTS: 429,
   INTERNAL_SERVER_ERROR: 500,
 } as const;
@@ -13,6 +15,13 @@ export const HTTP_STATUS = {
 export interface ApiGatewayEvent {
   body: string | null;
   headers: Record<string, string | undefined> | null;
+}
+
+export interface PrivateApiGatewayEvent extends ApiGatewayEvent {
+  pathParameters: Record<string, string | undefined> | null;
+  requestContext: {
+    authorizer?: { claims?: Record<string, unknown> } | null;
+  };
 }
 
 export interface ApiGatewayResult {
@@ -37,14 +46,19 @@ export const noContentResponse = (): ApiGatewayResult => ({
   body: "",
 });
 
-export const messageResponse = (
+export const jsonResponse = (
   statusCode: number,
-  message: string,
+  body: object,
 ): ApiGatewayResult => ({
   statusCode,
   headers: { "content-type": "application/json" },
-  body: JSON.stringify({ message }),
+  body: JSON.stringify(body),
 });
+
+export const messageResponse = (
+  statusCode: number,
+  message: string,
+): ApiGatewayResult => jsonResponse(statusCode, { message });
 
 export const parseJsonBody = (body: string | null): unknown => {
   if (!body) return undefined;
