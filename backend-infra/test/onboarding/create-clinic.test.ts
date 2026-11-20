@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { AuthorizeRequestUseCase } from "../../lib/src/access/application/authorize-request.usecase";
-import { CreateClinicUseCase } from "../../lib/src/users/application/create-clinic.usecase";
+import { CreateClinicUseCase } from "../../lib/src/onboarding/application/create-clinic.usecase";
 import { givenNameSchema } from "../../lib/src/users/domain/value-objects/person-name.vo";
 import { phoneSchema } from "../../lib/src/users/domain/value-objects/phone.vo";
 import type { OnboardingStep } from "../../lib/src/users/domain/user.entity";
-import { handleCreateClinic } from "../../lib/src/users/handlers/create-clinic.http";
+import { handleCreateClinic } from "../../lib/src/onboarding/handlers/create-clinic.http";
 import { ONBOARDING_INCOMPLETE } from "../../lib/src/access/handlers/http-messages";
 import {
   CLINIC_ALREADY_CREATED,

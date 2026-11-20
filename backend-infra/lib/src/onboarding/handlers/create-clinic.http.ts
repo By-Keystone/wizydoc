@@ -12,10 +12,7 @@ import {
   type CreateClinicUseCase,
   createClinicInputSchema,
 } from "../application/create-clinic.usecase";
-import {
-  CLINIC_ALREADY_CREATED,
-  CLINIC_FAILED,
-} from "../../onboarding/handlers/http-messages";
+import { CLINIC_ALREADY_CREATED, CLINIC_FAILED } from "./http-messages";
 import { handlePrivateRoute } from "../../access/handlers/private-route";
 
 export interface CreateClinicHttpDependencies {

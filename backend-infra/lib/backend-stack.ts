@@ -16,7 +16,7 @@ import {
   ANY_ONBOARDING_STEP,
   type RoutePolicy,
 } from "./src/access/application/authorize-request.usecase";
-import { CREATE_CLINIC_STEPS } from "./src/users/application/create-clinic.usecase";
+import { CREATE_CLINIC_STEPS } from "./src/onboarding/application/create-clinic.usecase";
 import { PERSONAL_DATA_STEPS } from "./src/onboarding/application/save-personal-data.usecase";
 import { PLAN_STEPS } from "./src/onboarding/application/save-plan.usecase";
 import {
@@ -280,7 +280,7 @@ export class BackendStack extends Stack {
     );
 
     const createClinicFunction = this.moduleFunction(
-      "users",
+      "onboarding",
       "CreateClinicFunction",
       "create-clinic",
       "Creates the owner's organization, clinic and memberships in the third onboarding step.",
