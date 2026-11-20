@@ -15,7 +15,7 @@ import { senderAddressOf } from "./sender-address";
 import {
   ANY_ONBOARDING_STEP,
   type RoutePolicy,
-} from "./src/users/application/authorize-request.usecase";
+} from "./src/access/application/authorize-request.usecase";
 import {
   type SignUpEmailTemplate,
   SignUpEmailTemplates,

@@ -12,7 +12,7 @@ import {
   emailsFor,
   TEMPLATES_STACK_NAME,
   templateDataOf,
-} from "./users/fakes";
+} from "./fakes";
 
 interface SesTemplate {
   TemplateName: string;

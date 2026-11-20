@@ -19,7 +19,7 @@ import {
   FakeClock,
   InMemoryCognitoSessions,
   InMemoryUsers,
-} from "./fakes";
+} from "../fakes";
 
 const EMAIL = "ana@clinica.pe";
 const PASSWORD = "una-clave-segura";

@@ -6,7 +6,7 @@ import { BackendStack } from "../../lib/backend-stack";
 import {
   AuthorizeRequestUseCase,
   type RoutePolicy,
-} from "../../lib/src/users/application/authorize-request.usecase";
+} from "../../lib/src/access/application/authorize-request.usecase";
 import { GetMeUseCase } from "../../lib/src/users/application/get-me.usecase";
 import { handleMe } from "../../lib/src/users/handlers/me.http";
 import {
@@ -16,7 +16,7 @@ import {
   InMemoryClinics,
   InMemoryUsers,
   privateEvent,
-} from "./fakes";
+} from "../fakes";
 
 const OWNER_USER_ID = "01M6MSQWFCK15Q3X04AQEQ0SFY";
 
