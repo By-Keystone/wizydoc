@@ -366,8 +366,8 @@ personalData): Promise<OnboardingStep>`.
 
 **La escritura** (parte 2): un `UpdateCommand` con `userStepUpdate` y `SET
 #GivenName, #FamilyName, #Phone, #Treatment`, más `ReturnValues: "ALL_NEW"`.
-Devuelve el `OnboardingStep` de `Attributes`, validado con
-`z.enum(ONBOARDING_STEPS)`.
+Devuelve el `OnboardingStep` de `Attributes`, tipado con
+`Pick<UsersDynamoDBSchema, "OnboardingStep">`.
 - **`ALL_NEW`** hace que el paso de la respuesta sea el de después de guardar,
   aunque «Tu plan» lo haya movido al mismo tiempo. No gasta lectura.
 - **Sin tratamiento se guarda `Treatment: null`,** que se lee como `null`. Así una
@@ -626,7 +626,7 @@ módulo `onboarding`: la entrada es
 
 | Lambda | Handler | Descripción | Parte |
 |---|---|---|---|
-| `SavePersonalDataFunction` | `save-personal-data` | «Saves the owner's name, phone and title in the first onboarding step.» | 2 |
+| `SavePersonalDataFunction` | `save-personal-data` | «Saves the name, surname, phone and treatment of the signed-in user.» | 2 |
 | `SavePlanFunction` | `save-plan` | «Saves the account's plan in the second onboarding step.» | 3 |
 | `CreateClinicFunction` | `create-clinic` | «Creates the owner's organization, clinic and memberships in the third onboarding step.» | 5 |
 | `SaveScheduleFunction` | `save-schedule` | «Saves or skips the owner's weekly schedule and finishes the onboarding.» | 7 |
@@ -886,6 +886,11 @@ Lo comprueban los pedidos a staging de «Verificación».
 
 ## Para otros tickets
 
+- **Endurecer «Tus datos» con `dynamodb:Attributes`:** restringir los atributos
+  que escribe `SavePersonalDataFunction` a `PK`, `SK`, `OnboardingStep`,
+  `GivenName`, `FamilyName`, `Phone` y `Treatment`. Así, quien ejecutara código
+  dentro de la Lambda no podría crear memberships ni tocar el `sub`. Opcional;
+  falta verificar contra AWS cómo convive con `ReturnValues: "ALL_NEW"`.
 - **La policy de la sesión, con la herencia decidida el 12 de noviembre:**
   - el dueño queda con `ADMIN` efectivo en su sede, por la organización, y
     `DOCTOR` directo. Una ruta que pregunta si alguien atiende en una sede (la

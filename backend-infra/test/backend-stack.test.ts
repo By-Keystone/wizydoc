@@ -191,6 +191,30 @@ test("cada Lambda sólo tiene los permisos que usa", () => {
   ]) {
     assert.equal(meStatements.includes(forbidden), false, forbidden);
   }
+  assert.deepEqual(accessByAction(template, "SavePersonalDataFunction"), {
+    "dynamodb:UpdateItem": ["USER#*"],
+    "dynamodb:Query": ["USER#*"],
+  });
+  const savePersonalDataStatements = policyFor(
+    template,
+    "SavePersonalDataFunction",
+  );
+  for (const forbidden of [
+    "PutItem",
+    "DeleteItem",
+    "GetItem",
+    "ACCOUNT#*",
+    "CLINIC#*",
+    "/index/GSI1",
+    "cognito-idp:",
+    "ses:",
+  ]) {
+    assert.equal(
+      savePersonalDataStatements.includes(forbidden),
+      false,
+      forbidden,
+    );
+  }
   assert.deepEqual(accessByAction(template, "RefreshSessionFunction"), {});
   assert.deepEqual(accessByAction(template, "SignOutFunction"), {});
 });
@@ -415,6 +439,7 @@ test("las Lambdas de los usuarios tienen 15 segundos, 512 MB y logs que se conse
     "RefreshSessionFunction",
     "SignOutFunction",
     "MeFunction",
+    "SavePersonalDataFunction",
   ]) {
     const properties = functionProperties(template, functionName);
     assert.equal(properties.Timeout, 15, functionName);
@@ -610,6 +635,47 @@ test("toda Lambda del stack dice en su descripción qué hace", () => {
     assert.ok(
       description.length <= LAMBDA_DESCRIPTION_MAX_LENGTH,
       `la descripción de ${logicalId} pasa de ${LAMBDA_DESCRIPTION_MAX_LENGTH} caracteres`,
+    );
+  }
+});
+
+const ONBOARDING_ROUTES = [
+  {
+    method: "PUT",
+    path: "/api/onboarding/personal-data",
+    functionName: "SavePersonalDataFunction",
+    policy: { onboardingStep: ["PERSONAL_DATA", "PLAN", "CLINIC"] },
+  },
+];
+
+test("las cuatro rutas del onboarding exigen la clave de platform y el ID token, y declaran su policy", () => {
+  const template = synthesizeBackend();
+  const methods = Object.values(
+    template.findResources("AWS::ApiGateway::Method"),
+  );
+
+  for (const { method, path, functionName, policy } of ONBOARDING_ROUTES) {
+    const [{ Properties }] = methods.filter(
+      (candidate) =>
+        candidate.Properties.HttpMethod === method &&
+        resourcePath(template, candidate.Properties.ResourceId.Ref) === path,
+    );
+
+    assert.equal(Properties.ApiKeyRequired, true, path);
+    assert.equal(Properties.AuthorizationType, "COGNITO_USER_POOLS", path);
+    assert.ok(
+      JSON.stringify(Properties.Integration.Uri).includes(
+        functionLogicalId(template, functionName),
+      ),
+      path,
+    );
+    assert.deepEqual(
+      JSON.parse(
+        functionProperties(template, functionName).Environment.Variables
+          .ROUTE_POLICY,
+      ),
+      policy,
+      path,
     );
   }
 });

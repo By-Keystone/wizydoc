@@ -36,6 +36,7 @@ export const handlePrivateRoute = async (
   event: PrivateApiGatewayEvent,
   authorizeRequest: Pick<AuthorizeRequestUseCase, "execute">,
   respond: (authorized: AuthorizedRequest) => Promise<ApiGatewayResult>,
+  failureMessage = REQUEST_FAILED,
 ): Promise<ApiGatewayResult> => {
   const cognitoSub = readCognitoSub(event);
   if (!cognitoSub) {
@@ -67,6 +68,6 @@ export const handlePrivateRoute = async (
     }
   } catch (error) {
     console.error("[private-route] falló la solicitud:", errorName(error));
-    return messageResponse(HTTP_STATUS.INTERNAL_SERVER_ERROR, REQUEST_FAILED);
+    return messageResponse(HTTP_STATUS.INTERNAL_SERVER_ERROR, failureMessage);
   }
 };

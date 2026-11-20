@@ -481,6 +481,24 @@ test("si falla la lectura de DynamoDB o la ruta, responde 500 sin valores", asyn
   });
 });
 
+test("el 500 lleva el mensaje de la ruta, también si falla la lectura de la sesión", async () => {
+  const failureMessage = "No pudimos guardar tus datos. Intenta de nuevo.";
+  const { users, clinics } = route();
+  users.failOnRead = true;
+  const errors = captureErrors();
+
+  const response = await handlePrivateRoute(
+    privateEvent(),
+    new AuthorizeRequestUseCase(users, clinics, {}),
+    async () => ({ statusCode: 200, body: "{}" }),
+    failureMessage,
+  );
+  errors.restore();
+
+  assert.equal(response.statusCode, 500);
+  assert.deepEqual(message(response), { message: failureMessage });
+});
+
 test("ni los tokens ni los datos personales aparecen en los logs", async () => {
   const { call, users } = route();
   const secrets = ["ana@clinica.pe", COGNITO_SUB, "eyJhbGciOi.token.firma"];

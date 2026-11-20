@@ -1,6 +1,10 @@
+import { App } from "aws-cdk-lib";
+import { Template } from "aws-cdk-lib/assertions";
 import type { DynamoDBDocumentClient } from "@aws-sdk/lib-dynamodb";
 import type { CognitoIdentityProviderClient } from "@aws-sdk/client-cognito-identity-provider";
 import type { SendEmailCommandInput, SESv2Client } from "@aws-sdk/client-sesv2";
+import { BackendStack } from "../lib/backend-stack";
+import type { RoutePolicy } from "../lib/src/access/application/authorize-request.usecase";
 import type { Account } from "../lib/src/accounts/domain/account.entity";
 import type { IAccountExistsNotices } from "../lib/src/users/application/ports/account-exists-notices.port";
 import type {
@@ -33,9 +37,17 @@ import type {
 } from "../lib/src/access/domain/repository/session.repository";
 import type { Membership } from "../lib/src/clinics/domain/membership.entity";
 import type { IClinicRepository } from "../lib/src/clinics/domain/repository/clinic.repository";
+import type {
+  IOnboardingRepository,
+  OnboardingStepTransition,
+} from "../lib/src/onboarding/domain/repository/onboarding.repository";
 import type { IUserRepository } from "../lib/src/users/domain/repository/user.repository";
 import type { TermsAcceptance } from "../lib/src/users/domain/terms-acceptance.entity";
-import type { User } from "../lib/src/users/domain/user.entity";
+import type {
+  OnboardingStep,
+  PersonalData,
+  User,
+} from "../lib/src/users/domain/user.entity";
 import {
   type EmailVO,
   emailSchema,
@@ -142,6 +154,31 @@ export class InMemoryUsers implements IUserRepository, ISessionRepository {
     );
     if (!user) return undefined;
     return { user, memberships: this.memberships.get(user.id) ?? [] };
+  }
+}
+
+export class InMemoryOnboarding implements IOnboardingRepository {
+  readonly transitions: OnboardingStepTransition[] = [];
+  failOnWrite = false;
+  beforeWrite?: () => void;
+
+  constructor(private readonly users: InMemoryUsers) {}
+
+  async savePersonalData(
+    userId: string,
+    personalData: PersonalData,
+    transition: OnboardingStepTransition,
+  ): Promise<OnboardingStep | undefined> {
+    if (this.failOnWrite) throw new Error("DynamoDB no disponible");
+    this.beforeWrite?.();
+    this.transitions.push(transition);
+    const user = this.users.users.find(({ id }) => id === userId);
+    if (!user || !transition.from.includes(user.onboardingStep)) {
+      return undefined;
+    }
+    Object.assign(user, personalData);
+    user.onboardingStep = transition.to ?? user.onboardingStep;
+    return user.onboardingStep;
   }
 }
 
@@ -495,4 +532,28 @@ export const capturingClient = ({
     },
   } as unknown as DynamoDBDocumentClient;
   return { client, inputs };
+};
+
+export const readDeclaredPolicy = (functionName: string): RoutePolicy => {
+  const stack = new BackendStack(
+    new App({ context: { "aws:cdk:bundling-stacks": [] } }),
+    "DeclaredPolicyTest",
+    {
+      env: { account: "111111111111", region: "us-east-2" },
+      hostedZoneId: "Z0000000000000000000",
+      zoneName: "wizydoc.app",
+      apiDomainName: "api.wizydoc.app",
+      frontendUrl: "https://app.wizydoc.app",
+      emailFrom: "WizyDoc <no-reply@wizydoc.app>",
+      termsAcceptanceRequired: false,
+    },
+  );
+  const [routeFunction] = Object.entries(
+    Template.fromStack(stack).findResources("AWS::Lambda::Function"),
+  )
+    .filter(([logicalId]) => logicalId.startsWith(functionName))
+    .map(([, resource]) => resource);
+  return JSON.parse(
+    routeFunction.Properties.Environment.Variables.ROUTE_POLICY,
+  );
 };
