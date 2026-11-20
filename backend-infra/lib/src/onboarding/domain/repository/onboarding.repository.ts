@@ -1,3 +1,4 @@
+import type { OwnerClinic } from "../../../clinics/domain/clinic.entity";
 import type { Subscription } from "../../../accounts/domain/subscription.entity";
 import type {
   OnboardingStep,
@@ -20,5 +21,10 @@ export interface IOnboardingRepository {
     subscription: Subscription,
     userId: string,
     transition: OnboardingStepTransition,
+  ): Promise<boolean>;
+
+  createClinic(
+    ownerClinic: OwnerClinic,
+    transition: Required<OnboardingStepTransition>,
   ): Promise<boolean>;
 }

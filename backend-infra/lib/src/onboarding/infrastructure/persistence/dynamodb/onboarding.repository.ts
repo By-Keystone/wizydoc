@@ -7,6 +7,10 @@ import type {
   IOnboardingRepository,
   OnboardingStepTransition,
 } from "../../../domain/repository/onboarding.repository";
+import type { OwnerClinic } from "../../../../clinics/domain/clinic.entity";
+import { fromClinicToDynamo } from "../../../../clinics/infrastructure/persistence/dynamodb/clinic.mappers";
+import { fromMembershipToDynamo } from "../../../../clinics/infrastructure/persistence/dynamodb/membership.mappers";
+import { fromOrganizationToDynamo } from "../../../../clinics/infrastructure/persistence/dynamodb/organization.mappers";
 import { ONLY_IF_NEW } from "../../../../shared/persistence/dynamodb/conditions";
 import { isLostRace } from "../../../../shared/persistence/dynamodb/lost-race";
 import type { Subscription } from "../../../../accounts/domain/subscription.entity";
@@ -69,6 +73,37 @@ export class OnboardingRepository implements IOnboardingRepository {
               },
             },
             { Update: this.userStepUpdate(userId, transition, {}) },
+          ],
+        }),
+      );
+      return true;
+    } catch (error) {
+      if (isLostRace(error)) return false;
+      throw error;
+    }
+  }
+
+  async createClinic(
+    { ownerUserId, organization, clinic, memberships }: OwnerClinic,
+    transition: Required<OnboardingStepTransition>,
+  ): Promise<boolean> {
+    const newItems = [
+      fromOrganizationToDynamo(organization),
+      fromClinicToDynamo(clinic),
+      ...memberships.map(fromMembershipToDynamo),
+    ];
+    try {
+      await this.client.send(
+        new TransactWriteCommand({
+          TransactItems: [
+            ...newItems.map((Item) => ({
+              Put: {
+                TableName: this.tableName,
+                Item,
+                ConditionExpression: ONLY_IF_NEW,
+              },
+            })),
+            { Update: this.userStepUpdate(ownerUserId, transition, {}) },
           ],
         }),
       );

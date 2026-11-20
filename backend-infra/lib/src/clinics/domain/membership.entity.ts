@@ -12,3 +12,8 @@ export interface Membership {
   accountId: ULID;
   role: MembershipRole;
 }
+
+export interface NewMembership extends Membership {
+  userId: ULID;
+  specialties?: string[];
+}
