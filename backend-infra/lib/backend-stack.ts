@@ -19,7 +19,7 @@ import {
 import { CREATE_CLINIC_STEPS } from "./src/onboarding/application/create-clinic.usecase";
 import { PERSONAL_DATA_STEPS } from "./src/onboarding/application/save-personal-data.usecase";
 import { PLAN_STEPS } from "./src/onboarding/application/save-plan.usecase";
-import { SAVE_SCHEDULE_STEPS } from "./src/users/application/save-schedule.usecase";
+import { SAVE_SCHEDULE_STEPS } from "./src/onboarding/application/save-schedule.usecase";
 import {
   type SignUpEmailTemplate,
   SignUpEmailTemplates,
@@ -293,7 +293,7 @@ export class BackendStack extends Stack {
     );
 
     const saveScheduleFunction = this.moduleFunction(
-      "users",
+      "onboarding",
       "SaveScheduleFunction",
       "save-schedule",
       "Saves or skips the owner's weekly schedule and finishes the onboarding.",

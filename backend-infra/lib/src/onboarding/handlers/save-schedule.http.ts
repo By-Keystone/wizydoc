@@ -12,10 +12,7 @@ import {
   type SaveScheduleUseCase,
   saveScheduleInputSchema,
 } from "../application/save-schedule.usecase";
-import {
-  ONBOARDING_ALREADY_COMPLETED,
-  SCHEDULE_FAILED,
-} from "../../onboarding/handlers/http-messages";
+import { ONBOARDING_ALREADY_COMPLETED, SCHEDULE_FAILED } from "./http-messages";
 import { handlePrivateRoute } from "../../access/handlers/private-route";
 
 export interface SaveScheduleHttpDependencies {
