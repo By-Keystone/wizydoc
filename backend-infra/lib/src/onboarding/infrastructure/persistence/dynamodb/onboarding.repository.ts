@@ -1,12 +1,15 @@
 import {
   type DynamoDBDocumentClient,
+  TransactWriteCommand,
   UpdateCommand,
 } from "@aws-sdk/lib-dynamodb";
 import type {
   IOnboardingRepository,
   OnboardingStepTransition,
 } from "../../../domain/repository/onboarding.repository";
+import { ONLY_IF_NEW } from "../../../../shared/persistence/dynamodb/conditions";
 import { isLostRace } from "../../../../shared/persistence/dynamodb/lost-race";
+import type { Subscription } from "../../../../accounts/domain/subscription.entity";
 import type {
   OnboardingStep,
   PersonalData,
@@ -16,6 +19,7 @@ import {
   sk,
   type UsersDynamoDBSchema,
 } from "../../../../users/infrastructure/persistence/dynamodb/user.schema";
+import { fromSubscriptionToDynamo } from "../../../../accounts/infrastructure/persistence/dynamodb/subscription.mappers";
 
 export class OnboardingRepository implements IOnboardingRepository {
   constructor(
@@ -44,6 +48,33 @@ export class OnboardingRepository implements IOnboardingRepository {
         .OnboardingStep;
     } catch (error) {
       if (isLostRace(error)) return undefined;
+      throw error;
+    }
+  }
+
+  async savePlan(
+    subscription: Subscription,
+    userId: string,
+    transition: OnboardingStepTransition,
+  ): Promise<boolean> {
+    try {
+      await this.client.send(
+        new TransactWriteCommand({
+          TransactItems: [
+            {
+              Put: {
+                TableName: this.tableName,
+                Item: fromSubscriptionToDynamo(subscription),
+                ConditionExpression: ONLY_IF_NEW,
+              },
+            },
+            { Update: this.userStepUpdate(userId, transition, {}) },
+          ],
+        }),
+      );
+      return true;
+    } catch (error) {
+      if (isLostRace(error)) return false;
       throw error;
     }
   }

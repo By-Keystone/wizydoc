@@ -1,3 +1,4 @@
+import type { Subscription } from "../../../accounts/domain/subscription.entity";
 import type {
   OnboardingStep,
   PersonalData,
@@ -14,4 +15,10 @@ export interface IOnboardingRepository {
     personalData: PersonalData,
     transition: OnboardingStepTransition,
   ): Promise<OnboardingStep | undefined>;
+
+  savePlan(
+    subscription: Subscription,
+    userId: string,
+    transition: OnboardingStepTransition,
+  ): Promise<boolean>;
 }

@@ -215,6 +215,22 @@ test("cada Lambda sólo tiene los permisos que usa", () => {
       forbidden,
     );
   }
+  assert.deepEqual(accessByAction(template, "SavePlanFunction"), {
+    "dynamodb:PutItem": ["ACCOUNT#*"],
+    "dynamodb:UpdateItem": ["USER#*"],
+    "dynamodb:Query": ["USER#*"],
+  });
+  const savePlanStatements = policyFor(template, "SavePlanFunction");
+  for (const forbidden of [
+    "DeleteItem",
+    "GetItem",
+    "CLINIC#*",
+    "/index/GSI1",
+    "cognito-idp:",
+    "ses:",
+  ]) {
+    assert.equal(savePlanStatements.includes(forbidden), false, forbidden);
+  }
   assert.deepEqual(accessByAction(template, "RefreshSessionFunction"), {});
   assert.deepEqual(accessByAction(template, "SignOutFunction"), {});
 });
@@ -440,6 +456,7 @@ test("las Lambdas de los usuarios tienen 15 segundos, 512 MB y logs que se conse
     "SignOutFunction",
     "MeFunction",
     "SavePersonalDataFunction",
+    "SavePlanFunction",
   ]) {
     const properties = functionProperties(template, functionName);
     assert.equal(properties.Timeout, 15, functionName);
@@ -645,6 +662,12 @@ const ONBOARDING_ROUTES = [
     path: "/api/onboarding/personal-data",
     functionName: "SavePersonalDataFunction",
     policy: { onboardingStep: ["PERSONAL_DATA", "PLAN", "CLINIC"] },
+  },
+  {
+    method: "PUT",
+    path: "/api/onboarding/plan",
+    functionName: "SavePlanFunction",
+    policy: { onboardingStep: ["PLAN", "CLINIC"] },
   },
 ];
 
