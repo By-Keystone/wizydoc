@@ -5,12 +5,14 @@ import {
 } from "@aws-sdk/lib-dynamodb";
 import type {
   IOnboardingRepository,
+  OnboardingCompletion,
   OnboardingStepTransition,
 } from "../../../domain/repository/onboarding.repository";
 import type { OwnerClinic } from "../../../../clinics/domain/clinic.entity";
 import { fromClinicToDynamo } from "../../../../clinics/infrastructure/persistence/dynamodb/clinic.mappers";
 import { fromMembershipToDynamo } from "../../../../clinics/infrastructure/persistence/dynamodb/membership.mappers";
 import { fromOrganizationToDynamo } from "../../../../clinics/infrastructure/persistence/dynamodb/organization.mappers";
+import { fromScheduleToDynamo } from "../../../../clinics/infrastructure/persistence/dynamodb/schedule.mappers";
 import { ONLY_IF_NEW } from "../../../../shared/persistence/dynamodb/conditions";
 import { isLostRace } from "../../../../shared/persistence/dynamodb/lost-race";
 import type { Subscription } from "../../../../accounts/domain/subscription.entity";
@@ -104,6 +106,39 @@ export class OnboardingRepository implements IOnboardingRepository {
               },
             })),
             { Update: this.userStepUpdate(ownerUserId, transition, {}) },
+          ],
+        }),
+      );
+      return true;
+    } catch (error) {
+      if (isLostRace(error)) return false;
+      throw error;
+    }
+  }
+
+  async completeOnboarding(
+    { userId, completedAt, schedule }: OnboardingCompletion,
+    transition: Required<OnboardingStepTransition>,
+  ): Promise<boolean> {
+    try {
+      await this.client.send(
+        new TransactWriteCommand({
+          TransactItems: [
+            ...(schedule
+              ? [
+                  {
+                    Put: {
+                      TableName: this.tableName,
+                      Item: fromScheduleToDynamo(schedule),
+                    },
+                  },
+                ]
+              : []),
+            {
+              Update: this.userStepUpdate(userId, transition, {
+                OnboardingCompletedAt: completedAt.toISOString(),
+              }),
+            },
           ],
         }),
       );

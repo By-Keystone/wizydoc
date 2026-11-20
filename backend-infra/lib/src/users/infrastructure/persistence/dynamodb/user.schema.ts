@@ -40,6 +40,7 @@ export interface UsersDynamoDBSchema {
   FamilyName?: PersonNameVO;
   Phone?: PhoneVO;
   Treatment?: TreatmentVO | null;
+  OnboardingCompletedAt?: string;
 }
 
 export const pk = (id: string): PK => `USER#${id}`;
