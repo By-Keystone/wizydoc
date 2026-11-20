@@ -5,26 +5,26 @@ import {
   AuthorizeRequestUseCase,
   ROUTE_POLICY_VARIABLE,
   type RoutePolicy,
-} from "../../lib/src/users/application/authorize-request.usecase";
-import type { Membership } from "../../lib/src/users/domain/membership.entity";
+} from "../../lib/src/access/application/authorize-request.usecase";
+import type { Membership } from "../../lib/src/clinics/domain/membership.entity";
 import {
   EMAIL_NOT_CONFIRMED,
   ONBOARDING_INCOMPLETE,
   RESOURCE_NOT_FOUND,
   ROLE_FORBIDDEN,
-  SESSION_EXPIRED,
-} from "../../lib/src/users/handlers/http-messages";
+} from "../../lib/src/access/handlers/http-messages";
+import { SESSION_EXPIRED } from "../../lib/src/users/handlers/http-messages";
 import {
   handlePrivateRoute,
   readRoutePolicy,
-} from "../../lib/src/users/handlers/private-route";
+} from "../../lib/src/access/handlers/private-route";
 import {
   buildUser,
   COGNITO_SUB,
   InMemoryClinics,
   InMemoryUsers,
   privateEvent,
-} from "./fakes";
+} from "../fakes";
 
 const CLINIC_ID = "01M6MSQWFCK15Q3X04AQEQ0SAS";
 const OTHER_CLINIC_ID = "01M6MSQWFCK15Q3X04AQEQ0SBT";
