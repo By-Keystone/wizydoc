@@ -21,6 +21,11 @@ import { createSignUpCode } from "../../lib/src/users/domain/sign-up-code.entity
 import { createTermsAcceptance } from "../../lib/src/users/domain/terms-acceptance.entity";
 import { createAccount } from "../../lib/src/accounts/domain/account.entity";
 import { createUser } from "../../lib/src/users/domain/user.entity";
+import {
+  familyNameSchema,
+  givenNameSchema,
+} from "../../lib/src/users/domain/value-objects/person-name.vo";
+import { phoneSchema } from "../../lib/src/users/domain/value-objects/phone.vo";
 import { DynamoDBAccountExistsNotices } from "../../lib/src/users/infrastructure/persistence/dynamodb/account-exists-notices";
 import {
   DynamoDBIpRateLimit,
@@ -31,6 +36,10 @@ import {
 import { SignUpVerificationTokenRepository } from "../../lib/src/users/infrastructure/persistence/dynamodb/sign-up-verification-token.repository";
 import { SignUpCodeRepository } from "../../lib/src/users/infrastructure/persistence/dynamodb/sign-up-code.repository";
 import { UserRepository } from "../../lib/src/users/infrastructure/persistence/dynamodb/user.repository";
+import {
+  fromDomainToDynamo,
+  fromDynamoToDomain,
+} from "../../lib/src/users/infrastructure/persistence/dynamodb/user.mappers";
 import { emailSchema } from "../../lib/src/users/domain/value-objects/email.vo";
 import { buildUser, COGNITO_SUB, capturingClient } from "../fakes";
 
@@ -501,6 +510,24 @@ test("crear la cuenta confirmada guarda el usuario, su cuenta y su constancia y 
     ":email": user.email,
     ":now": TEN_PAST_NOON / 1000,
   });
+});
+
+test("el mapper escribe y vuelve a leer los datos personales, incluido el tratamiento null", () => {
+  const user = {
+    ...buildUser(),
+    givenName: givenNameSchema.parse("Ana"),
+    familyName: familyNameSchema.parse("Pérez"),
+    phone: phoneSchema.parse("987654321"),
+    treatment: null,
+  };
+
+  const stored = fromDomainToDynamo(user);
+
+  assert.equal(stored.GivenName, "Ana");
+  assert.equal(stored.FamilyName, "Pérez");
+  assert.equal(stored.Phone, "+51987654321");
+  assert.equal(stored.Treatment, null);
+  assert.deepEqual(fromDynamoToDomain(stored), user);
 });
 
 test("el usuario nuevo ya no guarda OnboardingCompleted", async () => {

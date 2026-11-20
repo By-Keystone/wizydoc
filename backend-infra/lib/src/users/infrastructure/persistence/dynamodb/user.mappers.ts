@@ -26,6 +26,10 @@ export const fromDomainToDynamo = (user: User): UsersDynamoDBSchema => {
     AccountId: user.accountId,
     OnboardingStep: user.onboardingStep,
     CognitoSub: user.cognitoSub,
+    ...(user.givenName !== undefined && { GivenName: user.givenName }),
+    ...(user.familyName !== undefined && { FamilyName: user.familyName }),
+    ...(user.phone !== undefined && { Phone: user.phone }),
+    ...(user.treatment !== undefined && { Treatment: user.treatment }),
   };
 };
 
@@ -36,9 +40,22 @@ export const fromDynamoToDomain = ({
   AccountId,
   OnboardingStep,
   CognitoSub,
+  GivenName,
+  FamilyName,
+  Phone,
+  Treatment,
 }: Pick<
   UsersDynamoDBSchema,
-  "Id" | "Email" | "Confirmed" | "AccountId" | "OnboardingStep" | "CognitoSub"
+  | "Id"
+  | "Email"
+  | "Confirmed"
+  | "AccountId"
+  | "OnboardingStep"
+  | "CognitoSub"
+  | "GivenName"
+  | "FamilyName"
+  | "Phone"
+  | "Treatment"
 >): User => ({
   id: Id,
   email: Email,
@@ -46,4 +63,8 @@ export const fromDynamoToDomain = ({
   accountId: AccountId,
   onboardingStep: OnboardingStep,
   cognitoSub: CognitoSub,
+  givenName: GivenName,
+  familyName: FamilyName,
+  phone: Phone,
+  treatment: Treatment,
 });

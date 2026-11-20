@@ -28,6 +28,10 @@ const PARTITION_READ_ATTRIBUTES = [
   "AccountId",
   "OnboardingStep",
   "CognitoSub",
+  "GivenName",
+  "FamilyName",
+  "Phone",
+  "Treatment",
   "ResourceId",
   "ResourceType",
   "Role",
@@ -43,6 +47,10 @@ type SessionPartitionItem =
       | "AccountId"
       | "OnboardingStep"
       | "CognitoSub"
+      | "GivenName"
+      | "FamilyName"
+      | "Phone"
+      | "Treatment"
     >
   | Pick<
       MembershipDynamoDBSchema,

@@ -1,6 +1,9 @@
 import type { ULID } from "ulid";
 import type { OnboardingStep } from "../../../domain/user.entity";
 import type { EmailVO } from "../../../domain/value-objects/email.vo";
+import type { PersonNameVO } from "../../../domain/value-objects/person-name.vo";
+import type { PhoneVO } from "../../../domain/value-objects/phone.vo";
+import type { TreatmentVO } from "../../../domain/value-objects/treatment.vo";
 
 type PKPrefix = "USER#";
 type PK = `${PKPrefix}${string}`;
@@ -33,6 +36,10 @@ export interface UsersDynamoDBSchema {
   AccountId: ULID;
   OnboardingStep: OnboardingStep;
   CognitoSub?: string;
+  GivenName?: PersonNameVO;
+  FamilyName?: PersonNameVO;
+  Phone?: PhoneVO;
+  Treatment?: TreatmentVO | null;
 }
 
 export const pk = (id: string): PK => `USER#${id}`;
